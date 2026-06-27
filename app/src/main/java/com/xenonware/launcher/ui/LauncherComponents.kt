@@ -1,6 +1,8 @@
 package com.xenonware.launcher.ui
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -11,6 +13,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -26,17 +29,29 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import com.xenonware.launcher.model.AppInfo
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
+import dev.chrisbanes.haze.materials.HazeMaterials
 
+@OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
 fun DockPill(
     modifier: Modifier = Modifier,
     apps: List<AppInfo>,
     onAppClick: (String) -> Unit,
     onSettingsClick: () -> Unit,
-    onFabClick: () -> Unit
+    onFabClick: () -> Unit,
+    isAppDrawerVisible: Boolean = false,
+    hazeState: HazeState? = null
 ) {
     var currentPage by remember { mutableIntStateOf(1) }
-
+    val dockAlpha by animateFloatAsState(
+        targetValue = if (isAppDrawerVisible) 0.4f else 1f, 
+        label = "dockAlpha",
+        animationSpec = tween(500)
+    )
+    
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -44,16 +59,21 @@ fun DockPill(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
-        val dockColor = Color.Black.copy(alpha = 0.4f)
+        val baseDockColor = MaterialTheme.colorScheme.primaryContainer
         Box(
             modifier = Modifier
                 .height(72.dp)
                 .weight(1f)
                 .clip(CircleShape)
-                .background(dockColor)
+                .then(
+                    if (isAppDrawerVisible && hazeState != null) {
+                        Modifier.hazeEffect(state = hazeState, style = HazeMaterials.thin())
+                    } else Modifier
+                )
+                .background(baseDockColor.copy(alpha = dockAlpha))
         ) {
             Row(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp),
+                modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
@@ -63,8 +83,16 @@ fun DockPill(
                     contentAlignment = Alignment.Center
                 ) {
                     if (currentPage == 0) StatusSection() 
-                    else IconButton(onClick = { currentPage = 0 }) {
-                        Icon(Icons.Default.Info, null, tint = Color.White.copy(0.6f))
+                    else Surface(
+                        onClick = { currentPage = 0 },
+                        modifier = Modifier.size(44.dp),
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f),
+                        contentColor = MaterialTheme.colorScheme.onSurface
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.Info, null, modifier = Modifier.size(20.dp))
+                        }
                     }
                 }
 
@@ -75,8 +103,16 @@ fun DockPill(
                     contentAlignment = Alignment.Center
                 ) {
                     if (currentPage == 1) FixedAppSection(apps, onAppClick)
-                    else IconButton(onClick = { currentPage = 1 }) {
-                        Icon(Icons.Default.Apps, null, tint = Color.White.copy(0.6f))
+                    else Surface(
+                        onClick = { currentPage = 1 },
+                        modifier = Modifier.size(44.dp),
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f),
+                        contentColor = MaterialTheme.colorScheme.onSurface
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.Apps, null, modifier = Modifier.size(20.dp))
+                        }
                     }
                 }
 
@@ -87,13 +123,29 @@ fun DockPill(
                     contentAlignment = Alignment.Center
                 ) {
                     if (currentPage == 2) MediaSection()
-                    else IconButton(onClick = { currentPage = 2 }) {
-                        Icon(Icons.Default.MusicNote, null, tint = Color.White.copy(0.6f))
+                    else Surface(
+                        onClick = { currentPage = 2 },
+                        modifier = Modifier.size(44.dp),
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f),
+                        contentColor = MaterialTheme.colorScheme.onSurface
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.MusicNote, null, modifier = Modifier.size(20.dp))
+                        }
                     }
                 }
 
-                IconButton(onClick = onSettingsClick) {
-                    Icon(Icons.Default.Settings, null, tint = Color.White.copy(0.4f))
+                Surface(
+                    onClick = onSettingsClick,
+                    modifier = Modifier.size(44.dp),
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f),
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.Settings, null, modifier = Modifier.size(20.dp))
+                    }
                 }
             }
         }
@@ -104,28 +156,30 @@ fun DockPill(
             onClick = onFabClick,
             shape = CircleShape,
             containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
             modifier = Modifier.size(64.dp)
         ) {
-            Icon(Icons.Default.Add, "Open Apps", modifier = Modifier.size(32.dp), tint = Color.White)
+            Icon(if (isAppDrawerVisible) Icons.Default.Close else Icons.Default.Add, "Toggle Apps", modifier = Modifier.size(32.dp))
         }
     }
 }
 
 @Composable
 fun StatusSection() {
+    val contentColor = MaterialTheme.colorScheme.onPrimaryContainer
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column {
-            Text("12:45", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
-            Text("Tue, Oct 24", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
+            Text("12:45", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = contentColor)
+            Text("Tue, Oct 24", fontSize = 10.sp, color = contentColor.copy(alpha = 0.7f))
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Default.WbSunny, null, tint = Color.Yellow, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(4.dp))
-            Text("24°C", color = Color.White, fontSize = 14.sp)
+            Text("24°C", color = contentColor, fontSize = 14.sp)
         }
     }
 }
@@ -156,21 +210,26 @@ fun FixedAppSection(apps: List<AppInfo>, onAppClick: (String) -> Unit) {
 
 @Composable
 fun MediaSection() {
+    val contentColor = MaterialTheme.colorScheme.onPrimaryContainer
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Surface(modifier = Modifier.size(36.dp), shape = CircleShape, color = Color.DarkGray) {
-            Icon(Icons.Default.MusicNote, null, tint = Color.White, modifier = Modifier.padding(9.dp))
+        Surface(
+            modifier = Modifier.size(36.dp), 
+            shape = CircleShape, 
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
+        ) {
+            Icon(Icons.Default.MusicNote, null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(9.dp))
         }
         Spacer(Modifier.width(8.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text("Song Title", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-            Text("Artist Name", color = Color.White.copy(0.7f), fontSize = 10.sp, maxLines = 1)
+            Text("Song Title", color = contentColor, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+            Text("Artist Name", color = contentColor.copy(0.7f), fontSize = 10.sp, maxLines = 1)
         }
         Row {
-            IconButton(onClick = {}, modifier = Modifier.size(28.dp)) { Icon(Icons.Default.PlayArrow, null, tint = Color.White, modifier = Modifier.size(20.dp)) }
-            IconButton(onClick = {}, modifier = Modifier.size(28.dp)) { Icon(Icons.Default.SkipNext, null, tint = Color.White, modifier = Modifier.size(18.dp)) }
+            IconButton(onClick = {}, modifier = Modifier.size(28.dp)) { Icon(Icons.Default.PlayArrow, null, tint = contentColor, modifier = Modifier.size(20.dp)) }
+            IconButton(onClick = {}, modifier = Modifier.size(28.dp)) { Icon(Icons.Default.SkipNext, null, tint = contentColor, modifier = Modifier.size(18.dp)) }
         }
     }
 }
@@ -184,51 +243,82 @@ fun AppDrawer(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.8f))
+            .background(Color.Black.copy(alpha = 0.2f))
+            .clickable(onClick = onDismiss)
     ) {
-        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth().statusBarsPadding(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("Applications", color = Color.White, style = MaterialTheme.typography.headlineMedium)
-                IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, null, tint = Color.White)
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .fillMaxHeight()
+                .align(Alignment.BottomCenter)
+                .clickable(enabled = false) { },
+            shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.4f),
+            tonalElevation = 0.dp
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                Spacer(Modifier.height(16.dp))
+                
+                Box(
+                    modifier = Modifier
+                        .width(40.dp)
+                        .height(4.dp)
+                        .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), CircleShape)
+                        .align(Alignment.CenterHorizontally)
+                )
+
+                Spacer(Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Applications", 
+                        color = MaterialTheme.colorScheme.onSurface, 
+                        style = MaterialTheme.typography.headlineMedium
+                    )
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Default.Close, null, tint = MaterialTheme.colorScheme.onSurface)
+                    }
                 }
-            }
-            
-            Spacer(Modifier.height(16.dp))
-            
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(4),
-                contentPadding = PaddingValues(bottom = 32.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                items(apps) { app ->
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.clickable { 
-                            onAppClick(app.packageName)
-                            onDismiss()
-                        }
-                    ) {
-                        app.icon?.let { icon ->
-                            Image(
-                                bitmap = icon.toBitmap().asImageBitmap(),
-                                contentDescription = app.name,
-                                modifier = Modifier.size(56.dp)
+                
+                Spacer(Modifier.height(16.dp))
+                
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(4),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 120.dp),
+                    verticalArrangement = Arrangement.spacedBy(24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(apps) { app ->
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.clickable { 
+                                onAppClick(app.packageName)
+                                onDismiss()
+                            }
+                        ) {
+                            app.icon?.let { icon ->
+                                Image(
+                                    bitmap = icon.toBitmap().asImageBitmap(),
+                                    contentDescription = app.name,
+                                    modifier = Modifier.size(56.dp)
+                                )
+                            }
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                app.name, 
+                                color = MaterialTheme.colorScheme.onSurface, 
+                                fontSize = 12.sp, 
+                                maxLines = 1,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
                         }
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            app.name, 
-                            color = Color.White, 
-                            fontSize = 12.sp, 
-                            maxLines = 1,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                        )
                     }
                 }
             }

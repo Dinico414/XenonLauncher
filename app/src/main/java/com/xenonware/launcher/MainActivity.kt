@@ -8,6 +8,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -19,8 +21,8 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.unit.dp
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
@@ -32,7 +34,6 @@ import com.xenonware.launcher.ui.pages.MediaPage
 import com.xenonware.launcher.ui.pages.WidgetPage
 import com.xenonware.launcher.ui.theme.XenonLauncherTheme
 import com.xenonware.launcher.viewmodel.LauncherViewModel
-import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 
@@ -98,48 +99,68 @@ fun LauncherScreen(
     val pagerState = rememberPagerState(initialPage = 1) { 3 }
     var isAppDrawerVisible by remember { mutableStateOf(false) }
     
+    val blurRadius by animateFloatAsState(
+        targetValue = if (isAppDrawerVisible) 20f else 0f,
+        animationSpec = tween(durationMillis = 500),
+        label = "homeScreenBlur"
+    )
+
     Box(modifier = Modifier.fillMaxSize()) {
-        // CONTENT SOURCE - Unified container for blur sampling
+        // SAMPLING LAYER
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .hazeSource(state = hazeState)
         ) {
-            WallpaperView(isStoragePermissionGranted = isStoragePermissionGranted)
+            // WALLPAPER LAYER (Blurred)
+            WallpaperView(
+                isStoragePermissionGranted = isStoragePermissionGranted,
+                blurRadius = blurRadius
+            )
             
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.fillMaxSize(),
-                beyondViewportPageCount = 1
-            ) { page ->
-                when (page) {
-                    0 -> MediaPage()
-                    1 -> MainHomePage()
-                    2 -> WidgetPage()
+            // HOME SCREEN CONTENT (Blurred)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .blur(radius = blurRadius.dp)
+            ) {
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize(),
+                    beyondViewportPageCount = 1
+                ) { page ->
+                    when (page) {
+                        0 -> MediaPage()
+                        1 -> MainHomePage()
+                        2 -> WidgetPage()
+                    }
                 }
+            }
+
+            // APP LIST
+            AnimatedVisibility(
+                visible = isAppDrawerVisible,
+                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                AppDrawer(
+                    apps = apps,
+                    onAppClick = onAppClick,
+                    onDismiss = { isAppDrawerVisible = false }
+                )
             }
         }
 
-        // OVERLAYS - Peer of the source box
+        // DOCK LAYER
         DockPill(
             modifier = Modifier.align(Alignment.BottomCenter),
             apps = apps,
             onAppClick = onAppClick,
             onSettingsClick = onOpenSettings,
-            onFabClick = { isAppDrawerVisible = true }
+            onFabClick = { isAppDrawerVisible = !isAppDrawerVisible },
+            isAppDrawerVisible = isAppDrawerVisible,
+            hazeState = hazeState
         )
-
-        AnimatedVisibility(
-            visible = isAppDrawerVisible,
-            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            AppDrawer(
-                apps = apps,
-                onAppClick = onAppClick,
-                onDismiss = { isAppDrawerVisible = false },
-            )
-        }
     }
 }

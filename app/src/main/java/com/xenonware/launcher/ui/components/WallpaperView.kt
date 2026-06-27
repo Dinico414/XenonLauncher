@@ -14,9 +14,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -44,7 +46,8 @@ private fun canReadRealWallpaper(context: Context): Boolean {
 @Composable
 fun WallpaperView(
     modifier: Modifier = Modifier,
-    isStoragePermissionGranted: Boolean = false
+    isStoragePermissionGranted: Boolean = false,
+    blurRadius: Float = 0f
 ) {
     val context = LocalContext.current
     val wallpaperManager = remember { WallpaperManager.getInstance(context) }
@@ -77,23 +80,32 @@ fun WallpaperView(
         key3 = hasAccess
     ) {
         value = withContext(Dispatchers.IO) {
-            if (hasAccess) {
-                runCatching { wallpaperManager.peekDrawable()?.toBitmapSafely() }.getOrNull()
-            } else null
+            // Force use the wallpaper manager to get the bitmap directly
+            runCatching { 
+                wallpaperManager.drawable?.toBitmapSafely() 
+            }.getOrNull()
         }
     }
 
     val bitmap = wallpaperBitmap
-    if (bitmap != null) {
-        Image(
-            bitmap = bitmap.asImageBitmap(),
-            contentDescription = null,
-            modifier = modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
-        )
-    } else {
-        // Transparent fallback to let system wallpaper show through
-        Box(modifier = modifier.fillMaxSize())
+    Box(modifier = modifier.fillMaxSize()) {
+        if (bitmap != null) {
+            Image(
+                bitmap = bitmap.asImageBitmap(),
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .blur(radius = blurRadius.dp),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            // Fallback for testing: a dark surface if wallpaper cannot be fetched
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .blur(radius = blurRadius.dp)
+            )
+        }
     }
 }
 
