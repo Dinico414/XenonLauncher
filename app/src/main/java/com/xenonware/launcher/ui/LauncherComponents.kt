@@ -6,6 +6,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -47,10 +48,11 @@ fun DockPill(
 ) {
     var currentPage by remember { mutableIntStateOf(1) }
     val dockAlpha by animateFloatAsState(
-        targetValue = if (isAppDrawerVisible) 0.4f else 1f, 
+        targetValue = if (isAppDrawerVisible) 0.4f else 1f,
         label = "dockAlpha",
         animationSpec = tween(500)
     )
+    val buttonAlpha = if (isSystemInDarkTheme()) 0.35f else 1f
     
     Row(
         modifier = modifier
@@ -59,15 +61,15 @@ fun DockPill(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
-        val baseDockColor = MaterialTheme.colorScheme.primaryContainer
+        val baseDockColor = MaterialTheme.colorScheme.surfaceContainer
         Box(
             modifier = Modifier
                 .height(72.dp)
                 .weight(1f)
                 .clip(CircleShape)
                 .then(
-                    if (isAppDrawerVisible && hazeState != null) {
-                        Modifier.hazeEffect(state = hazeState, style = HazeMaterials.thin())
+                    if (hazeState != null) {
+                        Modifier.hazeEffect(state = hazeState, style = HazeMaterials.ultraThin())
                     } else Modifier
                 )
                 .background(baseDockColor.copy(alpha = dockAlpha))
@@ -87,7 +89,7 @@ fun DockPill(
                         onClick = { currentPage = 0 },
                         modifier = Modifier.size(44.dp),
                         shape = CircleShape,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f),
+                        color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = buttonAlpha),
                         contentColor = MaterialTheme.colorScheme.onSurface
                     ) {
                         Box(contentAlignment = Alignment.Center) {
@@ -107,7 +109,7 @@ fun DockPill(
                         onClick = { currentPage = 1 },
                         modifier = Modifier.size(44.dp),
                         shape = CircleShape,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f),
+                        color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = buttonAlpha),
                         contentColor = MaterialTheme.colorScheme.onSurface
                     ) {
                         Box(contentAlignment = Alignment.Center) {
@@ -127,24 +129,12 @@ fun DockPill(
                         onClick = { currentPage = 2 },
                         modifier = Modifier.size(44.dp),
                         shape = CircleShape,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f),
+                        color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = buttonAlpha),
                         contentColor = MaterialTheme.colorScheme.onSurface
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(Icons.Default.MusicNote, null, modifier = Modifier.size(20.dp))
                         }
-                    }
-                }
-
-                Surface(
-                    onClick = onSettingsClick,
-                    modifier = Modifier.size(44.dp),
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f),
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.Settings, null, modifier = Modifier.size(20.dp))
                     }
                 }
             }
@@ -218,7 +208,7 @@ fun MediaSection() {
         Surface(
             modifier = Modifier.size(36.dp), 
             shape = CircleShape, 
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (isSystemInDarkTheme()) 0.35f else 1f)
         ) {
             Icon(Icons.Default.MusicNote, null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(9.dp))
         }
