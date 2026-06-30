@@ -41,19 +41,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.rounded.AcUnit
 import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.SkipNext
-import androidx.compose.material.icons.rounded.Thunderstorm
-import androidx.compose.material.icons.rounded.Umbrella
-import androidx.compose.material.icons.rounded.WbSunny
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -71,21 +66,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
+import com.xenonware.launcher.R
 import com.xenonware.launcher.media.MediaState
 import com.xenonware.launcher.model.AppInfo
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import dev.chrisbanes.haze.materials.HazeMaterials
+import java.util.Calendar
 
 @OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
@@ -429,29 +428,70 @@ private fun openMediaApp(context: Context, mediaState: MediaState) {
 @Composable
 fun StatusSection(time: String, date: String, temperature: String, condition: String, notificationCount: Int) {
     val contentColor = LocalContentColor.current
-    
-    val weatherInfo = remember(condition) {
-        when {
-            condition.contains("Sunny", ignoreCase = true) || condition.contains("Clear", ignoreCase = true) -> {
-                Triple(Icons.Rounded.WbSunny, Color(0xFFFFD700), "Sunny")
-            }
-            condition.contains("Cloudy", ignoreCase = true) || condition.contains("Overcast", ignoreCase = true) -> {
-                Triple(Icons.Rounded.Cloud, Color(0xFFB0C4DE), "Cloudy")
-            }
-            condition.contains("Rain", ignoreCase = true) || condition.contains("Drizzle", ignoreCase = true) || condition.contains("Showers", ignoreCase = true) -> {
-                Triple(Icons.Rounded.Umbrella, Color(0xFF6495ED), "Rainy")
-            }
-            condition.contains("Thunder", ignoreCase = true) -> {
-                Triple(Icons.Rounded.Thunderstorm, Color(0xFFDA70D6), "Stormy")
-            }
-            condition.contains("Snow", ignoreCase = true) || condition.contains("Ice", ignoreCase = true) || condition.contains("Sleet", ignoreCase = true) -> {
-                Triple(Icons.Rounded.AcUnit, Color(0xFFA6E7FF), "Snowy")
-            }
-            condition.contains("Fog", ignoreCase = true) || condition.contains("Mist", ignoreCase = true) -> {
-                Triple(Icons.Rounded.Cloud, Color(0xFFCFD8DC), "Foggy")
-            }
-            else -> Triple(Icons.Rounded.WbSunny, Color(0xFFFFD700), "Sunny")
+
+    // Re-evaluated whenever the clock string changes so it flips at dusk/dawn.
+    val isDay = remember(time) {
+        val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+        hour in 6..18 // 6:00 AM – 6:59 PM counts as day
+    }
+
+    val weatherRes = remember(condition, isDay) {
+        val (day, night) = when {
+            condition.contains("Thunder Shower", true) ||
+                    condition.contains("T-Shower", true) ->
+                R.drawable.tshower1 to R.drawable.tshower0
+
+            condition.contains("Thunder", true) ||
+                    condition.contains("Storm", true) ->
+                R.drawable.tstorm1 to R.drawable.tstorm0
+
+            condition.contains("Tornado", true) ->
+                R.drawable.tornado1 to R.drawable.tornado0
+
+            condition.contains("Hail", true) ->
+                R.drawable.hail1 to R.drawable.hail0
+
+            condition.contains("Sleet", true) ->
+                R.drawable.sleet1 to R.drawable.sleet0
+
+            condition.contains("Light Snow", true) ||
+                    condition.contains("Flurr", true) ->
+                R.drawable.lsnow1 to R.drawable.lsnow0
+
+            condition.contains("Snow", true) ||
+                    condition.contains("Ice", true) ->
+                R.drawable.snow1 to R.drawable.snow0
+
+            condition.contains("Shower", true) ||
+                    condition.contains("Drizzle", true) ->
+                R.drawable.shower1 to R.drawable.shower0
+
+            condition.contains("Rain", true) ->
+                R.drawable.rain1 to R.drawable.rain0
+
+            condition.contains("Fog", true) ||
+                    condition.contains("Mist", true) ||
+                    condition.contains("Haze", true) ->
+                R.drawable.fog1 to R.drawable.fog0
+
+            condition.contains("Wind", true) ->
+                R.drawable.windy1 to R.drawable.windy0
+
+            condition.contains("Partly", true) ->
+                R.drawable.pcloudy1 to R.drawable.pcloudy0
+
+            condition.contains("Overcast", true) ||
+                    condition.contains("Cloud", true) ->
+                R.drawable.mcloudy1 to R.drawable.mcloudy0
+
+            condition.contains("Clear", true) ||
+                    condition.contains("Sunny", true) ->
+                R.drawable.clear1 to R.drawable.clear0
+
+            else ->
+                R.drawable.unknown1 to R.drawable.unknown0
         }
+        if (isDay) day else night
     }
 
     Row(
@@ -467,11 +507,11 @@ fun StatusSection(time: String, date: String, temperature: String, condition: St
                 .fillMaxHeight(),
             verticalArrangement = Arrangement.spacedBy((-6).dp, Alignment.CenterVertically)
         ) {
-            Spacer (modifier=Modifier.height(9.dp))
+            Spacer(modifier = Modifier.height(9.dp))
             Text(time, fontWeight = FontWeight.Bold, maxLines = 1, fontSize = 16.sp, color = contentColor)
             Text(date, maxLines = 1, fontSize = 10.sp, color = contentColor.copy(alpha = 0.7f))
         }
-        
+
         if (notificationCount > 0) {
             Surface(
                 color = MaterialTheme.colorScheme.primary,
@@ -492,18 +532,17 @@ fun StatusSection(time: String, date: String, temperature: String, condition: St
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(contentAlignment = Alignment.Center) {
                 // Shadow
-                Icon(
-                    weatherInfo.first,
-                    null,
-                    tint = Color.Black.copy(alpha = 0.1f),
-                    modifier = Modifier.size(19.dp)
+                Image(
+                    painter = painterResource(id = weatherRes),
+                    contentDescription = null,
+                    colorFilter = ColorFilter.tint(Color.Black.copy(alpha = 0.1f)),
+                    modifier = Modifier.size(26.dp)
                 )
-                // Real Icon
-                Icon(
-                    weatherInfo.first,
-                    null,
-                    tint = weatherInfo.second,
-                    modifier = Modifier.size(18.dp)
+                // Real icon
+                Image(
+                    painter = painterResource(id = weatherRes),
+                    contentDescription = condition,
+                    modifier = Modifier.size(24.dp)
                 )
             }
             Spacer(Modifier.width(4.dp))
