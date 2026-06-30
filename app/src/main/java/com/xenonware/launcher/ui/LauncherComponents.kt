@@ -40,13 +40,13 @@ import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.media.MediaState
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import dev.chrisbanes.haze.materials.HazeMaterials
+import androidx.core.net.toUri
 
 @OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
@@ -68,6 +68,7 @@ fun DockPill(
     isAppDrawerVisible: Boolean = false,
     hazeState: HazeState? = null
 ) {
+    val context = LocalContext.current
     var currentPage by remember { mutableIntStateOf(1) }
     val dockAlpha by animateFloatAsState(
         targetValue = if (isAppDrawerVisible) 0.4f else 1f,
@@ -84,7 +85,11 @@ fun DockPill(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(bottom = 32.dp, start = 16.dp, end = 16.dp),
+            .padding(bottom = 32.dp, start = 16.dp, end = 16.dp)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) { /* Block touches */ },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
@@ -140,7 +145,13 @@ fun DockPill(
                     )
 
                     Surface(
-                        onClick = { currentPage = 0 },
+                        onClick = { 
+                            if (currentPage == 0) {
+                                openNotifications(context)
+                            } else {
+                                currentPage = 0
+                            }
+                        },
                         modifier = Modifier
                             .fillMaxHeight()
                             .padding(vertical = verticalPadding)
@@ -192,7 +203,13 @@ fun DockPill(
                     val contentColor = MaterialTheme.colorScheme.onSurface
 
                     Surface(
-                        onClick = { currentPage = 1 },
+                        onClick = { 
+                            if (currentPage == 1) {
+                                onFabClick()
+                            } else {
+                                currentPage = 1
+                            }
+                        },
                         modifier = Modifier
                             .fillMaxHeight()
                             .padding(vertical = verticalPadding)
@@ -241,7 +258,13 @@ fun DockPill(
                     val contentColor = MaterialTheme.colorScheme.onSurface
 
                     Surface(
-                        onClick = { currentPage = 2 },
+                        onClick = { 
+                            if (currentPage == 2) {
+                                openMediaApp(context, mediaState)
+                            } else {
+                                currentPage = 2
+                            }
+                        },
                         modifier = Modifier
                             .fillMaxHeight()
                             .padding(vertical = verticalPadding)
@@ -297,6 +320,43 @@ fun DockPill(
                 Icon(if (isAppDrawerVisible) Icons.Rounded.Close else Icons.Rounded.Apps, "Toggle Apps", modifier = Modifier.size(32.dp))
             }
         }
+    }
+}
+
+private fun openNotifications(context: Context) {
+    try {
+        val statusBarService = context.getSystemService("statusbar")
+        val statusBarManager = Class.forName("android.app.StatusBarManager")
+        val expandMethod = statusBarManager.getMethod("expandNotificationsPanel")
+        expandMethod.isAccessible = true
+        expandMethod.invoke(statusBarService)
+    } catch (_: Exception) {
+        try {
+            val intent = Intent("android.intent.action.SHOW_NOTIFICATIONS_PANEL")
+            context.sendBroadcast(intent)
+        } catch (_: Exception) {
+        }
+    }
+}
+
+private fun openMediaApp(context: Context, mediaState: MediaState) {
+    val packageName = mediaState.packageName
+    if (!packageName.isNullOrEmpty()) {
+        val intent = context.packageManager.getLaunchIntentForPackage(packageName)
+        if (intent != null) {
+            context.startActivity(intent)
+            return
+        }
+    }
+    
+    try {
+        val audioIntent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType("content://media/external/audio/media".toUri(), "audio/*")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        val chooserIntent = Intent.createChooser(audioIntent, "SELECT AUDIO SOURCE")
+        context.startActivity(chooserIntent)
+    } catch (_: Exception) {
     }
 }
 
