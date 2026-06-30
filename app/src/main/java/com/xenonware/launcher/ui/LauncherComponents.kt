@@ -61,6 +61,11 @@ fun DockPill(
         label = "dockAlpha",
         animationSpec = tween(500)
     )
+    val fabAlpha by animateFloatAsState(
+        targetValue = if (isAppDrawerVisible) 0.6f else 1f,
+        label = "dockAlpha",
+        animationSpec = tween(500)
+    )
     val buttonAlpha = if (isSystemInDarkTheme()) 0.35f else 1f
     
     Row(
@@ -161,14 +166,24 @@ fun DockPill(
 
         Spacer(Modifier.width(12.dp))
 
-        FloatingActionButton(
+        Surface(
             onClick = onFabClick,
             shape = CircleShape,
-            containerColor = MaterialTheme.colorScheme.primary,
+            color = MaterialTheme.colorScheme.primary.copy(alpha = fabAlpha),
             contentColor = MaterialTheme.colorScheme.onPrimary,
-            modifier = Modifier.size(64.dp)
+            tonalElevation = 0.dp,
+            modifier = Modifier
+                .size(64.dp)
+                .clip(CircleShape)
+                .then(
+                    if (hazeState != null) {
+                        Modifier.hazeEffect(state = hazeState, style = HazeMaterials.ultraThin())
+                    } else Modifier
+                )
         ) {
-            Icon(if (isAppDrawerVisible) Icons.Default.Close else Icons.Default.Add, "Toggle Apps", modifier = Modifier.size(32.dp))
+            Box(contentAlignment = Alignment.Center) {
+                Icon(if (isAppDrawerVisible) Icons.Default.Close else Icons.Default.Add, "Toggle Apps", modifier = Modifier.size(32.dp))
+            }
         }
     }
 }
