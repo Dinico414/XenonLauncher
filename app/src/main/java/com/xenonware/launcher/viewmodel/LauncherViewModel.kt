@@ -2,19 +2,18 @@ package com.xenonware.launcher.viewmodel
 
 import android.app.Application
 import android.content.Intent
-import android.content.pm.PackageManager
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.xenonware.launcher.model.AppInfo
-import kotlinx.coroutines.Dispatchers
 import com.xenonware.launcher.media.MediaControllerManager
 import com.xenonware.launcher.media.MediaState
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
+import com.xenonware.launcher.model.AppInfo
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 data class WeatherState(
     val temperature: String = "24°C",

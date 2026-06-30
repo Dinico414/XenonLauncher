@@ -399,7 +399,11 @@ fun StatusSection(time: String, date: String, temperature: String, notificationC
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxHeight().padding(10.dp)
     ) {
-        Column(modifier = Modifier.weight(1f)) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy((-6).dp, Alignment.CenterVertically)
+        ) {
+            Spacer(modifier = Modifier.height(9.dp))
             Text(time, fontWeight = FontWeight.Bold, maxLines = 1, fontSize = 16.sp, color = contentColor)
             Text(date, maxLines = 1, fontSize = 10.sp, color = contentColor.copy(alpha = 0.7f))
         }
@@ -424,7 +428,7 @@ fun StatusSection(time: String, date: String, temperature: String, notificationC
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Default.WbSunny, null, tint = Color.Yellow, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(4.dp))
-            Text(temperature, color = contentColor, maxLines = 1, fontSize = 14.sp)
+            Text(temperature.replace("+", ""), color = contentColor, maxLines = 1, fontSize = 14.sp)
         }
     }
 }
