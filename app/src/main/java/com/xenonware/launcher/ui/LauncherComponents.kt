@@ -11,6 +11,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -67,6 +68,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -102,7 +104,8 @@ fun DockPill(
     onMediaSkipNext: () -> Unit,
     onOpenMediaPermission: () -> Unit,
     isAppDrawerVisible: Boolean = false,
-    hazeState: HazeState? = null
+    hazeState: HazeState? = null,
+    progress: Float = 1f
 ) {
     val context = LocalContext.current
     var currentPage by remember { mutableIntStateOf(1) }
@@ -182,6 +185,24 @@ fun DockPill(
                         label = "statusContent"
                     )
 
+                    val borderBrush = remember(isExpanded, progress) {
+                        if (isExpanded) {
+                            Brush.horizontalGradient(
+                                0.0f to Color.Green,
+                                progress to Color.Green,
+                                progress to Color.Transparent,
+                                1.0f to Color.Transparent
+                            )
+                        } else {
+                            Brush.verticalGradient(
+                                0.0f to Color.Transparent,
+                                (1f - progress) to Color.Transparent,
+                                (1f - progress) to Color.Green,
+                                1.0f to Color.Green
+                            )
+                        }
+                    }
+
                     Surface(
                         onClick = { 
                             if (currentPage == 0) {
@@ -196,7 +217,8 @@ fun DockPill(
                             .then(if (isExpanded) Modifier.fillMaxWidth() else Modifier.width(32.dp)),
                         shape = CircleShape,
                         color = backgroundColor,
-                        contentColor = contentColor
+                        contentColor = contentColor,
+                        border = BorderStroke(1.dp, borderBrush)
                     ) {
                         AnimatedContent(
                             targetState = isExpanded,

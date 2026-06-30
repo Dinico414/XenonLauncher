@@ -81,6 +81,7 @@ class MainActivity : ComponentActivity() {
                 val currentTime by viewModel.currentTime.collectAsState()
                 val weatherState by viewModel.weatherState.collectAsState()
                 val notificationCount by viewModel.notificationCount.collectAsState()
+                val batteryLevel by viewModel.batteryLevel.collectAsState()
 
                 LauncherScreen(
                     viewModel = viewModel,
@@ -90,6 +91,7 @@ class MainActivity : ComponentActivity() {
                     weatherTemp = weatherState.temperature,
                     weatherCondition = weatherState.condition,
                     notificationCount = notificationCount,
+                    batteryLevel = batteryLevel,
                     onAppClick = { viewModel.launchApp(it) },
                     onOpenSettings = {
                         startActivity(Intent(this, SettingsActivity::class.java))
@@ -109,6 +111,7 @@ fun LauncherScreen(
     weatherTemp: String,
     weatherCondition: String,
     notificationCount: Int,
+    batteryLevel: Float,
     onAppClick: (String) -> Unit,
     onOpenSettings: () -> Unit
 ) {
@@ -192,7 +195,8 @@ fun LauncherScreen(
             onMediaSkipNext = { viewModel.skipNext() },
             onOpenMediaPermission = { viewModel.openNotificationAccessSettings() },
             isAppDrawerVisible = isAppDrawerVisible,
-            hazeState = hazeState
+            hazeState = hazeState,
+            progress = batteryLevel
         )
     }
 }

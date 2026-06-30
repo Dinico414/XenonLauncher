@@ -2,6 +2,8 @@ package com.xenonware.launcher.viewmodel
 
 import android.app.Application
 import android.content.Intent
+import android.content.IntentFilter
+import android.os.BatteryManager
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.xenonware.launcher.media.MediaControllerManager
@@ -35,6 +37,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val _weatherState = MutableStateFlow(WeatherState())
     val weatherState: StateFlow<WeatherState> = _weatherState
 
+    private val _batteryLevel = MutableStateFlow(1f)
+    val batteryLevel: StateFlow<Float> = _batteryLevel
+
     val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
     val dateFormatter = DateTimeFormatter.ofPattern("EEE, MMM d")
 
@@ -43,6 +48,23 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         startMediaUpdates()
         startTimeUpdates()
         startWeatherUpdates()
+        startBatteryUpdates()
+    }
+
+    private fun startBatteryUpdates() {
+        viewModelScope.launch {
+            while (true) {
+                val batteryStatus: Intent? = IntentFilter(Intent.ACTION_BATTERY_CHANGED).let { ifilter ->
+                    getApplication<Application>().registerReceiver(null, ifilter)
+                }
+                val level: Int = batteryStatus?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+                val scale: Int = batteryStatus?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
+                if (level != -1 && scale != -1) {
+                    _batteryLevel.value = level.toFloat() / scale.toFloat()
+                }
+                delay(60000)
+            }
+        }
     }
 
     private fun startWeatherUpdates() {
