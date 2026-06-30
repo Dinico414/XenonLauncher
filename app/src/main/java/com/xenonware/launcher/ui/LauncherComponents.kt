@@ -2,10 +2,12 @@ package com.xenonware.launcher.ui
 
 import android.content.Context
 import android.content.Intent
-import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -71,6 +73,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -82,6 +85,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -114,6 +118,8 @@ import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import dev.chrisbanes.haze.materials.HazeMaterials
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 import java.util.Calendar
 
 @OptIn(ExperimentalHazeMaterialsApi::class)
@@ -726,7 +732,6 @@ fun AppDrawer(
         else apps.filter { it.name.contains(searchQuery.trim(), ignoreCase = true) }
     }
 
-    // Back / search-close logic shared by the arrow button and the system back gesture.
     fun closeSearchOrDismiss() {
         if (isSearchFocused || searchQuery.isNotEmpty()) {
             searchQuery = ""
@@ -737,11 +742,31 @@ fun AppDrawer(
         }
     }
 
-    BackHandler(enabled = true) { closeSearchOrDismiss() }
 
-// Bottom-sheet drag: at the top the sheet follows the finger, then on release
-// either dismisses (past threshold or a fast flick) or springs back.
+    val scope = rememberCoroutineScope()
+    val backProgress = remember { Animatable(0f) }
     val currentOnDismiss by rememberUpdatedState(onDismiss)
+
+    PredictiveBackHandler(enabled = true) { progress ->
+        try {
+            progress.collect { backEvent ->
+                val searchActive = isSearchFocused || searchQuery.isNotEmpty()
+                // While searching, back just closes search — no dismiss preview.
+                val eased = FastOutSlowInEasing.transform(backEvent.progress)
+                backProgress.snapTo(if (searchActive) 0f else eased)
+            }
+            // Committed.
+            if (isSearchFocused || searchQuery.isNotEmpty()) {
+                searchQuery = ""
+                focusManager.clearFocus()
+                keyboardController?.hide()
+            } else {
+                currentOnDismiss()
+            }
+        } catch (_: CancellationException) {
+            scope.launch { backProgress.animateTo(0f, tween(220)) }
+        }
+    }
     var offsetY by remember { mutableFloatStateOf(0f) }
     var sheetHeightPx by remember { mutableIntStateOf(0) }
     val dismissThresholdPx = with(density) { 120.dp.toPx() }
@@ -750,7 +775,6 @@ fun AppDrawer(
     val sheetDragConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                // Dragging back up first re-seats the pulled-down sheet before the list scrolls.
                 if (available.y < 0f && offsetY > 0f) {
                     val consume = available.y.coerceAtLeast(-offsetY)
                     offsetY += consume
@@ -764,7 +788,6 @@ fun AppDrawer(
                 available: Offset,
                 source: NestedScrollSource
             ): Offset {
-                // Downward drag the list couldn't use (already at top) drags the sheet.
                 if (source == NestedScrollSource.UserInput && available.y > 0f) {
                     offsetY += available.y
                     return Offset(0f, available.y)
@@ -779,9 +802,9 @@ fun AppDrawer(
                         animate(offsetY, target, animationSpec = tween(220)) { v, _ -> offsetY = v }
                         currentOnDismiss()
                     } else {
-                        animate(offsetY, 0f) { v, _ -> offsetY = v } // spring back
+                        animate(offsetY, 0f) { v, _ -> offsetY = v }
                     }
-                    return available // swallow the fling so the list doesn't also fling
+                    return available
                 }
                 return Velocity.Zero
             }
@@ -796,7 +819,14 @@ fun AppDrawer(
         Surface(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .graphicsLayer { translationY = offsetY }
+                .graphicsLayer {
+                    val p = backProgress.value
+                    val s = 1f - 0.08f * p
+                    scaleX = s
+                    scaleY = s
+                    transformOrigin = TransformOrigin(0.5f, 1f)
+                    translationY = offsetY + 24.dp.toPx() * p
+                }
                 .onSizeChanged { sheetHeightPx = it.height }
                 .statusBarsPadding()
                 .then(
