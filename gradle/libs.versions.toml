@@ -13,6 +13,7 @@ media3 = "1.10.1"
 coil = "2.7.0"
 datastore = "1.2.1"
 accompanist = "0.37.3"
+playServicesLocation = "21.4.0"
 xenon-commons = "2.5.3"
 
 [libraries]
@@ -38,6 +39,7 @@ androidx-media3-exoplayer = { group = "androidx.media3", name = "media3-exoplaye
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
 accompanist-permissions = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "accompanist" }
+play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "playServicesLocation" }
 xenon-commons = { group = "com.github.Dinico414", name = "Xenon-Commons", version.ref = "xenon-commons" }
 
 [plugins]

@@ -16,6 +16,18 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import android.Manifest
+import android.annotation.SuppressLint
+import android.content.pm.PackageManager
+import android.location.Location
+import androidx.core.content.ContextCompat
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
+import kotlin.coroutines.resume
 
 data class WeatherState(
     val temperature: String = "24°C",
@@ -28,6 +40,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     
     val mediaControllerManager = MediaControllerManager(application)
     val mediaState: MediaState get() = mediaControllerManager.mediaState
+
+    private val fusedLocationClient: FusedLocationProviderClient =
+        LocationServices.getFusedLocationProviderClient(application)
 
     val notificationCount = com.xenonware.launcher.notification.NotificationManager.notificationCount
 
@@ -68,32 +83,77 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     }
 
     private fun startWeatherUpdates() {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
             while (true) {
-                try {
-                    // Fetch temperature and condition from wttr.in
-                    val url = java.net.URL("https://wttr.in?format=%t;%C")
-                    val connection = url.openConnection() as java.net.HttpURLConnection
-                    connection.connectTimeout = 5000
-                    connection.readTimeout = 5000
-                    
-                    val text = connection.inputStream.bufferedReader().use { it.readText() }.trim()
-                    if (text.isNotEmpty() && text.contains(";")) {
-                        val parts = text.split(";")
-                        if (parts.size >= 2) {
-                            _weatherState.value = WeatherState(
-                                temperature = parts[0],
-                                condition = parts[1]
-                            )
-                        }
-                    } else if (text.isNotEmpty() && (text.contains("+") || text.contains("-"))) {
-                        _weatherState.value = WeatherState(temperature = text)
-                    }
-                } catch (e: Exception) {
-                    // Keep previous state on error
-                }
-                delay(1800000) // Update every 30 minutes
+                val gotReading = updateWeatherOnce()
+                // If we couldn't get a fix/reading yet, retry soon; otherwise refresh every 30 min.
+                delay(if (gotReading) 1_800_000L else 60_000L)
             }
+        }
+    }
+
+    private suspend fun updateWeatherOnce(): Boolean {
+        val location = getDeviceLocation()
+        return withContext(Dispatchers.IO) {
+            try {
+                // With coordinates wttr.in reports your exact location, like Google Weather.
+                // Without them it falls back to IP-based geolocation (less accurate).
+                val locationPath = location?.let { "/${it.latitude},${it.longitude}" } ?: ""
+                val url = java.net.URL("https://wttr.in$locationPath?format=%t;%C")
+                val connection = url.openConnection() as java.net.HttpURLConnection
+                connection.connectTimeout = 5000
+                connection.readTimeout = 5000
+
+                val text = connection.inputStream.bufferedReader().use { it.readText() }.trim()
+                if (text.isNotEmpty() && text.contains(";")) {
+                    val parts = text.split(";")
+                    if (parts.size >= 2) {
+                        _weatherState.value = WeatherState(
+                            temperature = parts[0].trim(),
+                            condition = parts[1].trim()
+                        )
+                        return@withContext true
+                    }
+                }
+                false
+            } catch (e: Exception) {
+                false
+            }
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private suspend fun getDeviceLocation(): Location? {
+        val context = getApplication<Application>()
+        val hasFine = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        val hasCoarse = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!hasFine && !hasCoarse) return null // no permission -> wttr.in uses IP fallback
+
+        val priority = if (hasFine) {
+            Priority.PRIORITY_HIGH_ACCURACY
+        } else {
+            Priority.PRIORITY_BALANCED_POWER_ACCURACY
+        }
+
+        return suspendCancellableCoroutine { cont ->
+            val cts = CancellationTokenSource()
+            fusedLocationClient.getCurrentLocation(priority, cts.token)
+                .addOnSuccessListener { location ->
+                    if (location != null) {
+                        if (cont.isActive) cont.resume(location)
+                    } else {
+                        // Fresh fix unavailable (e.g. just booted) -> fall back to last known.
+                        fusedLocationClient.lastLocation
+                            .addOnSuccessListener { last -> if (cont.isActive) cont.resume(last) }
+                            .addOnFailureListener { if (cont.isActive) cont.resume(null) }
+                    }
+                }
+                .addOnFailureListener { if (cont.isActive) cont.resume(null) }
+            cont.invokeOnCancellation { cts.cancel() }
         }
     }
 
