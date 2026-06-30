@@ -51,6 +51,7 @@ fun DockPill(
     apps: List<AppInfo>,
     mediaState: MediaState,
     isMediaPermissionGranted: Boolean,
+    notificationCount: Int,
     currentTime: String,
     currentDate: String,
     weatherTemp: String,
@@ -108,16 +109,35 @@ fun DockPill(
                         .animateContentSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (currentPage == 0) StatusSection(currentTime, currentDate, weatherTemp) 
-                    else Surface(
-                        onClick = { currentPage = 0 },
-                        modifier = Modifier.size(width = 32.dp, height = 40.dp),
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = buttonAlpha),
-                        contentColor = MaterialTheme.colorScheme.onSurface
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Rounded.Info, null, modifier = Modifier.size(24.dp))
+                    AnimatedContent(
+                        targetState = currentPage == 0,
+                        transitionSpec = {
+                            fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
+                        },
+                        label = "statusTransition"
+                    ) { isExpanded ->
+                        if (isExpanded) {
+                            StatusSection(currentTime, currentDate, weatherTemp, notificationCount)
+                        } else {
+                            Surface(
+                                onClick = { currentPage = 0 },
+                                modifier = Modifier.size(width = 32.dp, height = 40.dp),
+                                shape = CircleShape,
+                                color = if (notificationCount > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = buttonAlpha),
+                                contentColor = if (notificationCount > 0) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    if (notificationCount > 0) {
+                                        Text(
+                                            text = notificationCount.toString(),
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 14.sp
+                                        )
+                                    } else {
+                                        Icon(Icons.Rounded.Info, null, modifier = Modifier.size(24.dp))
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -129,16 +149,27 @@ fun DockPill(
                         .animateContentSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (currentPage == 1) FixedAppSection(apps, onAppClick)
-                    else Surface(
-                        onClick = { currentPage = 1 },
-                        modifier = Modifier.size(width = 32.dp, height = 40.dp),
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = buttonAlpha),
-                        contentColor = MaterialTheme.colorScheme.onSurface
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Rounded.MoreHoriz, null, modifier = Modifier.size(24.dp))
+                    AnimatedContent(
+                        targetState = currentPage == 1,
+                        transitionSpec = {
+                            fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
+                        },
+                        label = "appsTransition"
+                    ) { isExpanded ->
+                        if (isExpanded) {
+                            FixedAppSection(apps, onAppClick)
+                        } else {
+                            Surface(
+                                onClick = { currentPage = 1 },
+                                modifier = Modifier.size(width = 32.dp, height = 40.dp),
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = buttonAlpha),
+                                contentColor = MaterialTheme.colorScheme.onSurface
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Rounded.MoreHoriz, null, modifier = Modifier.size(24.dp))
+                                }
+                            }
                         }
                     }
                 }
@@ -150,22 +181,33 @@ fun DockPill(
                         .animateContentSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (currentPage == 2) MediaSection(
-                        mediaState = mediaState,
-                        isPermissionGranted = isMediaPermissionGranted,
-                        onPlayPause = onMediaPlayPause,
-                        onSkipNext = onMediaSkipNext,
-                        onRequestPermission = onOpenMediaPermission
-                    )
-                    else Surface(
-                        onClick = { currentPage = 2 },
-                        modifier = Modifier.size(width = 32.dp, height = 40.dp),
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = buttonAlpha),
-                        contentColor = MaterialTheme.colorScheme.onSurface
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Rounded.MusicNote, null, modifier = Modifier.size(24.dp))
+                    AnimatedContent(
+                        targetState = currentPage == 2,
+                        transitionSpec = {
+                            fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
+                        },
+                        label = "mediaTransition"
+                    ) { isExpanded ->
+                        if (isExpanded) {
+                            MediaSection(
+                                mediaState = mediaState,
+                                isPermissionGranted = isMediaPermissionGranted,
+                                onPlayPause = onMediaPlayPause,
+                                onSkipNext = onMediaSkipNext,
+                                onRequestPermission = onOpenMediaPermission
+                            )
+                        } else {
+                            Surface(
+                                onClick = { currentPage = 2 },
+                                modifier = Modifier.size(width = 32.dp, height = 40.dp),
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = buttonAlpha),
+                                contentColor = MaterialTheme.colorScheme.onSurface
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Rounded.MusicNote, null, modifier = Modifier.size(24.dp))
+                                }
+                            }
                         }
                     }
                 }
@@ -197,16 +239,35 @@ fun DockPill(
 }
 
 @Composable
-fun StatusSection(time: String, date: String, temperature: String) {
+fun StatusSection(time: String, date: String, temperature: String, notificationCount: Int) {
     val contentColor = MaterialTheme.colorScheme.onPrimaryContainer
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxHeight()
     ) {
-        Column {
+        Column(modifier = Modifier.weight(1f)) {
             Text(time, fontWeight = FontWeight.Bold, maxLines = 1, fontSize = 16.sp, color = contentColor)
             Text(date, maxLines = 1, fontSize = 10.sp, color = contentColor.copy(alpha = 0.7f))
         }
+        
+        if (notificationCount > 0) {
+            Surface(
+                color = MaterialTheme.colorScheme.primary,
+                shape = CircleShape,
+                modifier = Modifier.size(24.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        notificationCount.toString(),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Default.WbSunny, null, tint = Color.Yellow, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(4.dp))

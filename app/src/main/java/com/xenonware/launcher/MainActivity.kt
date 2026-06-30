@@ -76,6 +76,7 @@ class MainActivity : ComponentActivity() {
                 val apps by viewModel.apps.collectAsState()
                 val currentTime by viewModel.currentTime.collectAsState()
                 val weatherState by viewModel.weatherState.collectAsState()
+                val notificationCount by viewModel.notificationCount.collectAsState()
                 
                 LauncherScreen(
                     viewModel = viewModel,
@@ -83,6 +84,7 @@ class MainActivity : ComponentActivity() {
                     currentTime = currentTime.format(viewModel.timeFormatter),
                     currentDate = currentTime.format(viewModel.dateFormatter),
                     weatherTemp = weatherState.temperature,
+                    notificationCount = notificationCount,
                     onAppClick = { viewModel.launchApp(it) },
                     onOpenSettings = {
                         startActivity(Intent(this, SettingsActivity::class.java))
@@ -101,6 +103,7 @@ fun LauncherScreen(
     currentTime: String,
     currentDate: String,
     weatherTemp: String,
+    notificationCount: Int,
     onAppClick: (String) -> Unit,
     onOpenSettings: () -> Unit,
     isStoragePermissionGranted: Boolean
@@ -168,6 +171,7 @@ fun LauncherScreen(
             apps = apps,
             mediaState = viewModel.mediaState,
             isMediaPermissionGranted = viewModel.isMediaPermissionGranted,
+            notificationCount = notificationCount,
             currentTime = currentTime,
             currentDate = currentDate,
             weatherTemp = weatherTemp,

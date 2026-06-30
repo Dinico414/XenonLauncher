@@ -55,7 +55,7 @@ class MediaControllerManager(private val context: Context) {
         updatePermissionStatus()
         if (!isPermissionGranted) return
 
-        val notificationListener = ComponentName(context, MediaNotificationService::class.java)
+        val notificationListener = ComponentName(context, com.xenonware.launcher.notification.XenonNotificationService::class.java)
         val controllers = try {
             sessionManager.getActiveSessions(notificationListener)
         } catch (e: SecurityException) {

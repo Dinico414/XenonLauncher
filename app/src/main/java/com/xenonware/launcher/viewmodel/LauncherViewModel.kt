@@ -28,6 +28,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     val mediaControllerManager = MediaControllerManager(application)
     val mediaState: MediaState get() = mediaControllerManager.mediaState
 
+    val notificationCount = com.xenonware.launcher.notification.NotificationManager.notificationCount
+
     private val _currentTime = MutableStateFlow(LocalDateTime.now())
     val currentTime: StateFlow<LocalDateTime> = _currentTime
 
