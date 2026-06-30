@@ -1,11 +1,11 @@
 package com.xenonware.launcher.ui
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -33,10 +33,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.media.MediaState
 import dev.chrisbanes.haze.HazeState
@@ -98,34 +102,63 @@ fun DockPill(
                 .background(baseDockColor.copy(alpha = dockAlpha))
         ) {
             Row(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
+                modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                // Status Section
+                val statusStartPadding by animateDpAsState(
+                    targetValue = if (currentPage == 0) 0.dp else 8.dp,
+                    label = "statusStartPadding"
+                )
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
+                        .padding(start = statusStartPadding)
                         .then(if (currentPage == 0) Modifier.weight(1f) else Modifier)
                         .animateContentSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    AnimatedContent(
-                        targetState = currentPage == 0,
-                        transitionSpec = {
-                            fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
+                    val isExpanded = currentPage == 0
+                    val verticalPadding by animateDpAsState(
+                        targetValue = if (isExpanded) 4.dp else 12.dp,
+                        label = "statusPadding"
+                    )
+                    val backgroundColor by animateColorAsState(
+                        targetValue = when {
+                            !isExpanded && notificationCount > 0 -> MaterialTheme.colorScheme.primary
+                            else -> MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = buttonAlpha)
                         },
-                        label = "statusTransition"
-                    ) { isExpanded ->
-                        if (isExpanded) {
-                            StatusSection(currentTime, currentDate, weatherTemp, notificationCount)
-                        } else {
-                            Surface(
-                                onClick = { currentPage = 0 },
-                                modifier = Modifier.size(width = 32.dp, height = 40.dp),
-                                shape = CircleShape,
-                                color = if (notificationCount > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = buttonAlpha),
-                                contentColor = if (notificationCount > 0) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
-                            ) {
+                        label = "statusBg"
+                    )
+                    val contentColor by animateColorAsState(
+                        targetValue = when {
+                            !isExpanded && notificationCount > 0 -> MaterialTheme.colorScheme.onPrimary
+                            else -> MaterialTheme.colorScheme.onSurface
+                        },
+                        label = "statusContent"
+                    )
+
+                    Surface(
+                        onClick = { currentPage = 0 },
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .padding(vertical = verticalPadding)
+                            .then(if (isExpanded) Modifier.fillMaxWidth() else Modifier.width(32.dp)),
+                        shape = CircleShape,
+                        color = backgroundColor,
+                        contentColor = contentColor
+                    ) {
+                        AnimatedContent(
+                            targetState = isExpanded,
+                            transitionSpec = {
+                                fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
+                            },
+                            label = "statusTransition"
+                        ) { targetExpanded ->
+                            if (targetExpanded) {
+                                StatusSection(currentTime, currentDate, weatherTemp, notificationCount)
+                            } else {
                                 Box(contentAlignment = Alignment.Center) {
                                     if (notificationCount > 0) {
                                         Text(
@@ -142,6 +175,7 @@ fun DockPill(
                     }
                 }
 
+                // Apps Section
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
@@ -149,23 +183,34 @@ fun DockPill(
                         .animateContentSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    AnimatedContent(
-                        targetState = currentPage == 1,
-                        transitionSpec = {
-                            fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
-                        },
-                        label = "appsTransition"
-                    ) { isExpanded ->
-                        if (isExpanded) {
-                            FixedAppSection(apps, onAppClick)
-                        } else {
-                            Surface(
-                                onClick = { currentPage = 1 },
-                                modifier = Modifier.size(width = 32.dp, height = 40.dp),
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = buttonAlpha),
-                                contentColor = MaterialTheme.colorScheme.onSurface
-                            ) {
+                    val isExpanded = currentPage == 1
+                    val verticalPadding by animateDpAsState(
+                        targetValue = if (isExpanded) 4.dp else 12.dp,
+                        label = "appsPadding"
+                    )
+                    val backgroundColor = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = buttonAlpha)
+                    val contentColor = MaterialTheme.colorScheme.onSurface
+
+                    Surface(
+                        onClick = { currentPage = 1 },
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .padding(vertical = verticalPadding)
+                            .then(if (isExpanded) Modifier.fillMaxWidth() else Modifier.width(32.dp)),
+                        shape = CircleShape,
+                        color = backgroundColor,
+                        contentColor = contentColor
+                    ) {
+                        AnimatedContent(
+                            targetState = isExpanded,
+                            transitionSpec = {
+                                fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
+                            },
+                            label = "appsTransition"
+                        ) { targetExpanded ->
+                            if (targetExpanded) {
+                                FixedAppSection(apps, onAppClick)
+                            } else {
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(Icons.Rounded.MoreHoriz, null, modifier = Modifier.size(24.dp))
                                 }
@@ -174,36 +219,53 @@ fun DockPill(
                     }
                 }
 
+                // Media Section
+                val mediaEndPadding by animateDpAsState(
+                    targetValue = if (currentPage == 2) 0.dp else 8.dp,
+                    label = "mediaEndPadding"
+                )
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
+                        .padding(end = mediaEndPadding)
                         .then(if (currentPage == 2) Modifier.weight(1f) else Modifier)
                         .animateContentSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    AnimatedContent(
-                        targetState = currentPage == 2,
-                        transitionSpec = {
-                            fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
-                        },
-                        label = "mediaTransition"
-                    ) { isExpanded ->
-                        if (isExpanded) {
-                            MediaSection(
-                                mediaState = mediaState,
-                                isPermissionGranted = isMediaPermissionGranted,
-                                onPlayPause = onMediaPlayPause,
-                                onSkipNext = onMediaSkipNext,
-                                onRequestPermission = onOpenMediaPermission
-                            )
-                        } else {
-                            Surface(
-                                onClick = { currentPage = 2 },
-                                modifier = Modifier.size(width = 32.dp, height = 40.dp),
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = buttonAlpha),
-                                contentColor = MaterialTheme.colorScheme.onSurface
-                            ) {
+                    val isExpanded = currentPage == 2
+                    val verticalPadding by animateDpAsState(
+                        targetValue = if (isExpanded) 4.dp else 12.dp,
+                        label = "mediaPadding"
+                    )
+                    val backgroundColor = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = buttonAlpha)
+                    val contentColor = MaterialTheme.colorScheme.onSurface
+
+                    Surface(
+                        onClick = { currentPage = 2 },
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .padding(vertical = verticalPadding)
+                            .then(if (isExpanded) Modifier.fillMaxWidth() else Modifier.width(32.dp)),
+                        shape = CircleShape,
+                        color = backgroundColor,
+                        contentColor = contentColor
+                    ) {
+                        AnimatedContent(
+                            targetState = isExpanded,
+                            transitionSpec = {
+                                fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
+                            },
+                            label = "mediaTransition"
+                        ) { targetExpanded ->
+                            if (targetExpanded) {
+                                MediaSection(
+                                    mediaState = mediaState,
+                                    isPermissionGranted = isMediaPermissionGranted,
+                                    onPlayPause = onMediaPlayPause,
+                                    onSkipNext = onMediaSkipNext,
+                                    onRequestPermission = onOpenMediaPermission
+                                )
+                            } else {
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(Icons.Rounded.MusicNote, null, modifier = Modifier.size(24.dp))
                                 }
@@ -240,11 +302,11 @@ fun DockPill(
 
 @Composable
 fun StatusSection(time: String, date: String, temperature: String, notificationCount: Int) {
-    val contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+    val contentColor = LocalContentColor.current
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxHeight()
+        modifier = Modifier.fillMaxHeight().padding(10.dp)
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(time, fontWeight = FontWeight.Bold, maxLines = 1, fontSize = 16.sp, color = contentColor)
@@ -279,9 +341,10 @@ fun StatusSection(time: String, date: String, temperature: String, notificationC
 @Composable
 fun FixedAppSection(apps: List<AppInfo>, onAppClick: (String) -> Unit) {
     LazyRow(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().padding(vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
+        contentPadding = PaddingValues(horizontal = 10.dp)
     ) {
         items(apps.take(8)) { app ->
             app.icon?.let { icon ->
@@ -307,9 +370,9 @@ fun MediaSection(
     onSkipNext: () -> Unit,
     onRequestPermission: () -> Unit
 ) {
-    val contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+    val contentColor = LocalContentColor.current
     Row(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
+        modifier = Modifier.fillMaxSize().padding(10.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -335,13 +398,13 @@ fun MediaSection(
                     bitmap = mediaState.albumArt.asImageBitmap(),
                     contentDescription = "Album Art",
                     modifier = Modifier
-                        .size(36.dp)
+                        .size(44.dp)
                         .clip(CircleShape),
                     contentScale = ContentScale.Crop
                 )
             } else {
                 Surface(
-                    modifier = Modifier.size(36.dp),
+                    modifier = Modifier.size(44.dp),
                     shape = CircleShape,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (isSystemInDarkTheme()) 0.35f else 1f)
                 ) {
@@ -349,7 +412,7 @@ fun MediaSection(
                         Icons.Rounded.MusicNote,
                         null,
                         tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(9.dp)
+                        modifier = Modifier.padding(10.dp)
                     )
                 }
             }
