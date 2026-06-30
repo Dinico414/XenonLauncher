@@ -84,52 +84,56 @@ fun DockPill(
                 .background(baseDockColor.copy(alpha = dockAlpha))
         ) {
             Row(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Box(
                     modifier = Modifier
-                        .weight(if (currentPage == 0) 1.2f else 0.4f)
+                        .fillMaxHeight()
+                        .then(if (currentPage == 0) Modifier.weight(1f) else Modifier)
                         .animateContentSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     if (currentPage == 0) StatusSection(currentTime, currentDate, weatherTemp) 
                     else Surface(
                         onClick = { currentPage = 0 },
-                        modifier = Modifier.size(44.dp),
+                        modifier = Modifier.size(width = 32.dp, height = 40.dp),
                         shape = CircleShape,
                         color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = buttonAlpha),
                         contentColor = MaterialTheme.colorScheme.onSurface
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.Info, null, modifier = Modifier.size(20.dp))
+                            Icon(Icons.Default.Info, null, modifier = Modifier.size(24.dp))
                         }
                     }
                 }
 
                 Box(
                     modifier = Modifier
-                        .weight(if (currentPage == 1) 3f else 0.4f)
+                        .fillMaxHeight()
+                        .then(if (currentPage == 1) Modifier.weight(1f) else Modifier)
                         .animateContentSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     if (currentPage == 1) FixedAppSection(apps, onAppClick)
                     else Surface(
                         onClick = { currentPage = 1 },
-                        modifier = Modifier.size(44.dp),
+                        modifier = Modifier.size(width = 32.dp, height = 40.dp),
                         shape = CircleShape,
                         color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = buttonAlpha),
                         contentColor = MaterialTheme.colorScheme.onSurface
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.Apps, null, modifier = Modifier.size(20.dp))
+                            Icon(Icons.Default.Apps, null, modifier = Modifier.size(24.dp))
                         }
                     }
                 }
 
                 Box(
                     modifier = Modifier
-                        .weight(if (currentPage == 2) 2f else 0.4f)
+                        .fillMaxHeight()
+                        .then(if (currentPage == 2) Modifier.weight(1f) else Modifier)
                         .animateContentSize(),
                     contentAlignment = Alignment.Center
                 ) {
@@ -142,13 +146,13 @@ fun DockPill(
                     )
                     else Surface(
                         onClick = { currentPage = 2 },
-                        modifier = Modifier.size(44.dp),
+                        modifier = Modifier.size(width = 32.dp, height = 40.dp),
                         shape = CircleShape,
                         color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = buttonAlpha),
                         contentColor = MaterialTheme.colorScheme.onSurface
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.MusicNote, null, modifier = Modifier.size(20.dp))
+                            Icon(Icons.Default.MusicNote, null, modifier = Modifier.size(24.dp))
                         }
                     }
                 }
@@ -173,18 +177,17 @@ fun DockPill(
 fun StatusSection(time: String, date: String, temperature: String) {
     val contentColor = MaterialTheme.colorScheme.onPrimaryContainer
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column {
-            Text(time, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = contentColor)
-            Text(date, fontSize = 10.sp, color = contentColor.copy(alpha = 0.7f))
+            Text(time, fontWeight = FontWeight.Bold, maxLines = 1, fontSize = 16.sp, color = contentColor)
+            Text(date, maxLines = 1, fontSize = 10.sp, color = contentColor.copy(alpha = 0.7f))
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Default.WbSunny, null, tint = Color.Yellow, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(4.dp))
-            Text(temperature, color = contentColor, fontSize = 14.sp)
+            Text(temperature, color = contentColor, maxLines = 1, fontSize = 14.sp)
         }
     }
 }
@@ -192,9 +195,9 @@ fun StatusSection(time: String, date: String, temperature: String) {
 @Composable
 fun FixedAppSection(apps: List<AppInfo>, onAppClick: (String) -> Unit) {
     LazyRow(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center,
-        contentPadding = PaddingValues(horizontal = 4.dp)
+        modifier = Modifier.fillMaxSize(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         items(apps.take(8)) { app ->
             app.icon?.let { icon ->
@@ -202,7 +205,6 @@ fun FixedAppSection(apps: List<AppInfo>, onAppClick: (String) -> Unit) {
                     bitmap = icon.toBitmap().asImageBitmap(),
                     contentDescription = app.name,
                     modifier = Modifier
-                        .padding(horizontal = 4.dp)
                         .size(44.dp)
                         .clip(CircleShape)
                         .clickable { onAppClick(app.packageName) },
@@ -223,7 +225,8 @@ fun MediaSection(
 ) {
     val contentColor = MaterialTheme.colorScheme.onPrimaryContainer
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+        modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (!isPermissionGranted) {
@@ -231,14 +234,16 @@ fun MediaSection(
                 "Media Access Required",
                 modifier = Modifier.weight(1f).padding(start = 8.dp),
                 fontSize = 12.sp,
-                color = contentColor
+                color = contentColor,
+                maxLines = 1,
+                softWrap = false
             )
             Button(
                 onClick = onRequestPermission,
                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                 modifier = Modifier.height(32.dp)
             ) {
-                Text("Grant", fontSize = 10.sp)
+                Text("Grant", fontSize = 10.sp, maxLines = 1, softWrap = false)
             }
         } else {
             if (mediaState.albumArt != null) {
@@ -343,7 +348,9 @@ fun AppDrawer(
                     Text(
                         "Applications", 
                         color = MaterialTheme.colorScheme.onSurface, 
-                        style = MaterialTheme.typography.headlineMedium
+                        style = MaterialTheme.typography.headlineMedium,
+                        maxLines = 1,
+                        softWrap = false
                     )
                     IconButton(onClick = onDismiss) {
                         Icon(Icons.Default.Close, null, tint = MaterialTheme.colorScheme.onSurface)
