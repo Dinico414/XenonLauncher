@@ -111,7 +111,7 @@ fun DockPill(
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp.dp
-    val finalMaxDockWidth = (screenWidth).coerceAtMost(536.dp)
+    val finalMaxDockWidth = (screenWidth).coerceAtMost(538.dp)
     
     var currentPage by remember { mutableIntStateOf(1) }
     val dockAlpha by animateFloatAsState(
@@ -740,7 +740,7 @@ fun AppDrawer(
                 Spacer(Modifier.height(16.dp))
                 
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(4),
+                    columns = GridCells.Fixed(if (isWideScreen) 6 else 4),
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 120.dp),
                     verticalArrangement = Arrangement.spacedBy(24.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
