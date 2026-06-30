@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -72,6 +73,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -108,6 +110,10 @@ fun DockPill(
     progress: Float = 1f
 ) {
     val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp.dp
+    val finalMaxDockWidth = (screenWidth).coerceAtMost(520.dp)
+    
     var currentPage by remember { mutableIntStateOf(1) }
     val dockAlpha by animateFloatAsState(
         targetValue = if (isAppDrawerVisible) 0.4f else 1f,
@@ -123,7 +129,7 @@ fun DockPill(
     
     Row(
         modifier = modifier
-            .fillMaxWidth()
+            .width(finalMaxDockWidth)
             .padding(bottom = 32.dp, start = 16.dp, end = 16.dp)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
@@ -630,6 +636,9 @@ fun AppDrawer(
     onAppClick: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val configuration = LocalConfiguration.current
+    val isWideScreen = configuration.screenWidthDp >= 640
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -637,10 +646,18 @@ fun AppDrawer(
     ) {
         Surface(
             modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .fillMaxHeight()
                 .align(Alignment.BottomCenter)
+                .statusBarsPadding()
+                .then(
+                    if (isWideScreen) {
+                        Modifier
+                            .padding(horizontal = 56.dp)
+                            .widthIn(max = 640.dp)
+                            .fillMaxHeight()
+                    } else {
+                        Modifier.fillMaxSize()
+                    }
+                )
                 .clickable(enabled = false) { },
             shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
             color = containerColor,
