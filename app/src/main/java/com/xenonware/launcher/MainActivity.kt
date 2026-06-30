@@ -3,6 +3,7 @@ package com.xenonware.launcher
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -14,25 +15,35 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.runtime.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.xenonware.launcher.ui.AppDrawer
 import com.xenonware.launcher.ui.DockPill
-import com.xenonware.launcher.ui.components.WallpaperView
 import com.xenonware.launcher.ui.pages.MainHomePage
 import com.xenonware.launcher.ui.pages.MediaPage
 import com.xenonware.launcher.ui.pages.WidgetPage
 import com.xenonware.launcher.ui.theme.XenonLauncherTheme
+import com.xenonware.launcher.util.WindowBlurBehind
+import com.xenonware.launcher.util.rememberBlurAvailable
 import com.xenonware.launcher.viewmodel.LauncherViewModel
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
@@ -44,40 +55,33 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
+
         setContent {
             XenonLauncherTheme {
                 val permissions = mutableListOf(
                     android.Manifest.permission.ACCESS_COARSE_LOCATION,
                     android.Manifest.permission.ACCESS_FINE_LOCATION,
+                    android.Manifest.permission.READ_EXTERNAL_STORAGE
                 )
-                
+
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     permissions.add(android.Manifest.permission.READ_MEDIA_IMAGES)
                     permissions.add(android.Manifest.permission.POST_NOTIFICATIONS)
-                } else {
-                    permissions.add(android.Manifest.permission.READ_EXTERNAL_STORAGE)
                 }
 
                 val permissionsState = rememberMultiplePermissionsState(permissions = permissions)
-                
+
                 LaunchedEffect(Unit) {
                     permissionsState.launchMultiplePermissionRequest()
                 }
 
-                val storagePermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    android.Manifest.permission.READ_MEDIA_IMAGES
-                } else {
-                    android.Manifest.permission.READ_EXTERNAL_STORAGE
-                }
-
-                val storagePermissionState = permissionsState.permissions.find { it.permission == storagePermission }
-                val isStorageGranted = storagePermissionState?.status?.isGranted ?: false
-                
                 val apps by viewModel.apps.collectAsState()
                 val currentTime by viewModel.currentTime.collectAsState()
                 val weatherState by viewModel.weatherState.collectAsState()
                 val notificationCount by viewModel.notificationCount.collectAsState()
-                
+
                 LauncherScreen(
                     viewModel = viewModel,
                     apps = apps,
@@ -88,8 +92,7 @@ class MainActivity : ComponentActivity() {
                     onAppClick = { viewModel.launchApp(it) },
                     onOpenSettings = {
                         startActivity(Intent(this, SettingsActivity::class.java))
-                    },
-                    isStoragePermissionGranted = isStorageGranted
+                    }
                 )
             }
         }
@@ -105,37 +108,35 @@ fun LauncherScreen(
     weatherTemp: String,
     notificationCount: Int,
     onAppClick: (String) -> Unit,
-    onOpenSettings: () -> Unit,
-    isStoragePermissionGranted: Boolean
+    onOpenSettings: () -> Unit
 ) {
     val hazeState = rememberHazeState()
     val pagerState = rememberPagerState(initialPage = 1) { 3 }
     var isAppDrawerVisible by remember { mutableStateOf(false) }
-    
-    val blurRadius by animateFloatAsState(
+
+    val contentBlur by animateFloatAsState(
         targetValue = if (isAppDrawerVisible) 20f else 0f,
-        animationSpec = tween(durationMillis = 500),
-        label = "homeScreenBlur"
+        animationSpec = tween(durationMillis = 250),
+        label = "contentBlur"
+    )
+
+    val blurAvailable = rememberBlurAvailable()
+
+    WindowBlurBehind(
+        targetRadiusPx = if (isAppDrawerVisible) 30 else 0,
+        durationMillis = 200
     )
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // ... (SAMPLING LAYER remains the same)
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .hazeSource(state = hazeState)
         ) {
-            // WALLPAPER LAYER (Blurred)
-            WallpaperView(
-                isStoragePermissionGranted = isStoragePermissionGranted,
-                blurRadius = blurRadius
-            )
-            
-            // HOME SCREEN CONTENT (Blurred)
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .blur(radius = blurRadius.dp)
+                    .blur(radius = contentBlur.dp)
             ) {
                 HorizontalPager(
                     state = pagerState,
@@ -159,6 +160,12 @@ fun LauncherScreen(
             ) {
                 AppDrawer(
                     apps = apps,
+                    containerColor = if (blurAvailable) {
+                        val lerp = if (isSystemInDarkTheme()) 0.5f else 0.15f
+                        lerp(MaterialTheme.colorScheme.surface.copy(alpha = 0.65f), Color.Black.copy(alpha = 0.2f), lerp)
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.95f)
+                    },
                     onAppClick = onAppClick,
                     onDismiss = { isAppDrawerVisible = false }
                 )
