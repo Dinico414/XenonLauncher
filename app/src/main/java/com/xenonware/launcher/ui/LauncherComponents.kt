@@ -39,15 +39,19 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.rounded.AcUnit
 import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.SkipNext
+import androidx.compose.material.icons.rounded.Thunderstorm
+import androidx.compose.material.icons.rounded.Umbrella
+import androidx.compose.material.icons.rounded.WbSunny
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -90,6 +94,7 @@ fun DockPill(
     currentTime: String,
     currentDate: String,
     weatherTemp: String,
+    weatherCondition: String,
     onAppClick: (String) -> Unit,
     onSettingsClick: () -> Unit,
     onFabClick: () -> Unit,
@@ -138,7 +143,9 @@ fun DockPill(
                 .background(baseDockColor.copy(alpha = dockAlpha))
         ) {
             Row(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -199,7 +206,7 @@ fun DockPill(
                             label = "statusTransition"
                         ) { targetExpanded ->
                             if (targetExpanded) {
-                                StatusSection(currentTime, currentDate, weatherTemp, notificationCount)
+                                StatusSection(currentTime, currentDate, weatherTemp, weatherCondition, notificationCount)
                             } else {
                                 Box(contentAlignment = Alignment.Center) {
                                     if (notificationCount > 0) {
@@ -392,18 +399,47 @@ private fun openMediaApp(context: Context, mediaState: MediaState) {
 }
 
 @Composable
-fun StatusSection(time: String, date: String, temperature: String, notificationCount: Int) {
+fun StatusSection(time: String, date: String, temperature: String, condition: String, notificationCount: Int) {
     val contentColor = LocalContentColor.current
+    
+    val weatherInfo = remember(condition) {
+        when {
+            condition.contains("Sunny", ignoreCase = true) || condition.contains("Clear", ignoreCase = true) -> {
+                Triple(Icons.Rounded.WbSunny, Color(0xFFFFD700), "Sunny")
+            }
+            condition.contains("Cloudy", ignoreCase = true) || condition.contains("Overcast", ignoreCase = true) -> {
+                Triple(Icons.Rounded.Cloud, Color(0xFFB0C4DE), "Cloudy")
+            }
+            condition.contains("Rain", ignoreCase = true) || condition.contains("Drizzle", ignoreCase = true) || condition.contains("Showers", ignoreCase = true) -> {
+                Triple(Icons.Rounded.Umbrella, Color(0xFF6495ED), "Rainy")
+            }
+            condition.contains("Thunder", ignoreCase = true) -> {
+                Triple(Icons.Rounded.Thunderstorm, Color(0xFFDA70D6), "Stormy")
+            }
+            condition.contains("Snow", ignoreCase = true) || condition.contains("Ice", ignoreCase = true) || condition.contains("Sleet", ignoreCase = true) -> {
+                Triple(Icons.Rounded.AcUnit, Color(0xFFA6E7FF), "Snowy")
+            }
+            condition.contains("Fog", ignoreCase = true) || condition.contains("Mist", ignoreCase = true) -> {
+                Triple(Icons.Rounded.Cloud, Color(0xFFCFD8DC), "Foggy")
+            }
+            else -> Triple(Icons.Rounded.WbSunny, Color(0xFFFFD700), "Sunny")
+        }
+    }
+
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxHeight().padding(10.dp)
+        modifier = Modifier
+            .fillMaxHeight()
+            .padding(10.dp)
     ) {
         Column(
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight(),
             verticalArrangement = Arrangement.spacedBy((-6).dp, Alignment.CenterVertically)
         ) {
-            Spacer(modifier = Modifier.height(9.dp))
+            Spacer (modifier=Modifier.height(9.dp))
             Text(time, fontWeight = FontWeight.Bold, maxLines = 1, fontSize = 16.sp, color = contentColor)
             Text(date, maxLines = 1, fontSize = 10.sp, color = contentColor.copy(alpha = 0.7f))
         }
@@ -426,7 +462,22 @@ fun StatusSection(time: String, date: String, temperature: String, notificationC
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.WbSunny, null, tint = Color.Yellow, modifier = Modifier.size(18.dp))
+            Box(contentAlignment = Alignment.Center) {
+                // Shadow
+                Icon(
+                    weatherInfo.first,
+                    null,
+                    tint = Color.Black.copy(alpha = 0.1f),
+                    modifier = Modifier.size(19.dp)
+                )
+                // Real Icon
+                Icon(
+                    weatherInfo.first,
+                    null,
+                    tint = weatherInfo.second,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
             Spacer(Modifier.width(4.dp))
             Text(temperature.replace("+", ""), color = contentColor, maxLines = 1, fontSize = 14.sp)
         }
@@ -436,7 +487,9 @@ fun StatusSection(time: String, date: String, temperature: String, notificationC
 @Composable
 fun FixedAppSection(apps: List<AppInfo>, onAppClick: (String) -> Unit) {
     LazyRow(
-        modifier = Modifier.fillMaxSize().padding(vertical = 10.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
         contentPadding = PaddingValues(horizontal = 10.dp)
@@ -467,14 +520,18 @@ fun MediaSection(
 ) {
     val contentColor = LocalContentColor.current
     Row(
-        modifier = Modifier.fillMaxSize().padding(10.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(10.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (!isPermissionGranted) {
             Text(
                 "Media Access Required",
-                modifier = Modifier.weight(1f).padding(start = 8.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 8.dp),
                 fontSize = 12.sp,
                 color = contentColor,
                 maxLines = 1,
@@ -574,7 +631,10 @@ fun AppDrawer(
                     modifier = Modifier
                         .width(40.dp)
                         .height(4.dp)
-                        .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), CircleShape)
+                        .background(
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                            CircleShape
+                        )
                         .align(Alignment.CenterHorizontally)
                 )
 

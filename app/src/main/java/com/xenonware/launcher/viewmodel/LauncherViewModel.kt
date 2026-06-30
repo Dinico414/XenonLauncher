@@ -49,14 +49,22 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch(Dispatchers.IO) {
             while (true) {
                 try {
-                    // Simple weather fetch from wttr.in (text-based for simplicity)
-                    val url = java.net.URL("https://wttr.in?format=%t")
+                    // Fetch temperature and condition from wttr.in
+                    val url = java.net.URL("https://wttr.in?format=%t;%C")
                     val connection = url.openConnection() as java.net.HttpURLConnection
                     connection.connectTimeout = 5000
                     connection.readTimeout = 5000
                     
                     val text = connection.inputStream.bufferedReader().use { it.readText() }.trim()
-                    if (text.isNotEmpty() && (text.contains("+") || text.contains("-"))) {
+                    if (text.isNotEmpty() && text.contains(";")) {
+                        val parts = text.split(";")
+                        if (parts.size >= 2) {
+                            _weatherState.value = WeatherState(
+                                temperature = parts[0],
+                                condition = parts[1]
+                            )
+                        }
+                    } else if (text.isNotEmpty() && (text.contains("+") || text.contains("-"))) {
                         _weatherState.value = WeatherState(temperature = text)
                     }
                 } catch (e: Exception) {

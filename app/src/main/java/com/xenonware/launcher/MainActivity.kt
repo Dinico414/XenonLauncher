@@ -88,6 +88,7 @@ class MainActivity : ComponentActivity() {
                     currentTime = currentTime.format(viewModel.timeFormatter),
                     currentDate = currentTime.format(viewModel.dateFormatter),
                     weatherTemp = weatherState.temperature,
+                    weatherCondition = weatherState.condition,
                     notificationCount = notificationCount,
                     onAppClick = { viewModel.launchApp(it) },
                     onOpenSettings = {
@@ -106,6 +107,7 @@ fun LauncherScreen(
     currentTime: String,
     currentDate: String,
     weatherTemp: String,
+    weatherCondition: String,
     notificationCount: Int,
     onAppClick: (String) -> Unit,
     onOpenSettings: () -> Unit
@@ -182,6 +184,7 @@ fun LauncherScreen(
             currentTime = currentTime,
             currentDate = currentDate,
             weatherTemp = weatherTemp,
+            weatherCondition = weatherCondition,
             onAppClick = onAppClick,
             onSettingsClick = onOpenSettings,
             onFabClick = { isAppDrawerVisible = !isAppDrawerVisible },
