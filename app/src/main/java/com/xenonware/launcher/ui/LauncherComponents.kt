@@ -17,6 +17,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.rounded.Apps
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.MoreHoriz
+import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -109,7 +117,7 @@ fun DockPill(
                         contentColor = MaterialTheme.colorScheme.onSurface
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.Info, null, modifier = Modifier.size(24.dp))
+                            Icon(Icons.Rounded.Info, null, modifier = Modifier.size(24.dp))
                         }
                     }
                 }
@@ -130,7 +138,7 @@ fun DockPill(
                         contentColor = MaterialTheme.colorScheme.onSurface
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.Apps, null, modifier = Modifier.size(24.dp))
+                            Icon(Icons.Rounded.MoreHoriz, null, modifier = Modifier.size(24.dp))
                         }
                     }
                 }
@@ -157,7 +165,7 @@ fun DockPill(
                         contentColor = MaterialTheme.colorScheme.onSurface
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.MusicNote, null, modifier = Modifier.size(24.dp))
+                            Icon(Icons.Rounded.MusicNote, null, modifier = Modifier.size(24.dp))
                         }
                     }
                 }
@@ -182,7 +190,7 @@ fun DockPill(
                 )
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Icon(if (isAppDrawerVisible) Icons.Default.Close else Icons.Default.Add, "Toggle Apps", modifier = Modifier.size(32.dp))
+                Icon(if (isAppDrawerVisible) Icons.Rounded.Close else Icons.Rounded.Apps, "Toggle Apps", modifier = Modifier.size(32.dp))
             }
         }
     }
@@ -277,7 +285,7 @@ fun MediaSection(
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (isSystemInDarkTheme()) 0.35f else 1f)
                 ) {
                     Icon(
-                        Icons.Default.MusicNote,
+                        Icons.Rounded.MusicNote,
                         null,
                         tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.padding(9.dp)
@@ -303,14 +311,14 @@ fun MediaSection(
             Row {
                 IconButton(onClick = onPlayPause, modifier = Modifier.size(28.dp)) {
                     Icon(
-                        if (mediaState.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        if (mediaState.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                         null,
                         tint = contentColor,
                         modifier = Modifier.size(20.dp)
                     )
                 }
                 IconButton(onClick = onSkipNext, modifier = Modifier.size(28.dp)) {
-                    Icon(Icons.Default.SkipNext, null, tint = contentColor, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Rounded.SkipNext, null, tint = contentColor, modifier = Modifier.size(18.dp))
                 }
             }
         }
