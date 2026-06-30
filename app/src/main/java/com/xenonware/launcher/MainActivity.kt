@@ -172,6 +172,7 @@ fun LauncherScreen(
                         MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.95f)
                     },
                     onAppClick = onAppClick,
+                    onSettingsClick = onOpenSettings,
                     onDismiss = { isAppDrawerVisible = false }
                 )
             }

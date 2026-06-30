@@ -2,9 +2,11 @@ package com.xenonware.launcher.ui
 
 import android.content.Context
 import android.content.Intent
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -32,6 +34,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -39,49 +42,76 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ViewList
 import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.MoreHoriz
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MaterialTheme.colorScheme
+import androidx.compose.material3.MaterialTheme.typography
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
+import com.xenon.mylibrary.theme.QuicksandTitleVariable
 import com.xenonware.launcher.R
 import com.xenonware.launcher.media.MediaState
 import com.xenonware.launcher.model.AppInfo
+import com.xenonware.launcher.ui.res.MenuItem
+import com.xenonware.launcher.ui.res.XenonDropDown
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import dev.chrisbanes.haze.materials.HazeMaterials
 import java.util.Calendar
@@ -137,7 +167,7 @@ fun DockPill(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
-        val baseDockColor = MaterialTheme.colorScheme.surfaceContainer
+        val baseDockColor = colorScheme.surfaceContainer
         Box(
             modifier = Modifier
                 .height(72.dp)
@@ -177,15 +207,15 @@ fun DockPill(
                     )
                     val backgroundColor by animateColorAsState(
                         targetValue = when {
-                            !isExpanded && notificationCount > 0 -> MaterialTheme.colorScheme.primary
-                            else -> MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = buttonAlpha)
+                            !isExpanded && notificationCount > 0 -> colorScheme.primary
+                            else -> colorScheme.surfaceContainerLowest.copy(alpha = buttonAlpha)
                         },
                         label = "statusBg"
                     )
                     val contentColor by animateColorAsState(
                         targetValue = when {
-                            !isExpanded && notificationCount > 0 -> MaterialTheme.colorScheme.onPrimary
-                            else -> MaterialTheme.colorScheme.onSurface
+                            !isExpanded && notificationCount > 0 -> colorScheme.onPrimary
+                            else -> colorScheme.onSurface
                         },
                         label = "statusContent"
                     )
@@ -264,8 +294,8 @@ fun DockPill(
                         targetValue = if (isExpanded) 4.dp else 12.dp,
                         label = "appsPadding"
                     )
-                    val backgroundColor = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = buttonAlpha)
-                    val contentColor = MaterialTheme.colorScheme.onSurface
+                    val backgroundColor = colorScheme.surfaceContainerLowest.copy(alpha = buttonAlpha)
+                    val contentColor = colorScheme.onSurface
 
                     Surface(
                         onClick = { 
@@ -319,8 +349,8 @@ fun DockPill(
                         targetValue = if (isExpanded) 4.dp else 12.dp,
                         label = "mediaPadding"
                     )
-                    val backgroundColor = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = buttonAlpha)
-                    val contentColor = MaterialTheme.colorScheme.onSurface
+                    val backgroundColor = colorScheme.surfaceContainerLowest.copy(alpha = buttonAlpha)
+                    val contentColor = colorScheme.onSurface
 
                     Surface(
                         onClick = { 
@@ -369,8 +399,8 @@ fun DockPill(
         Surface(
             onClick = onFabClick,
             shape = CircleShape,
-            color = MaterialTheme.colorScheme.primary.copy(alpha = fabAlpha),
-            contentColor = MaterialTheme.colorScheme.onPrimary,
+            color = colorScheme.primary.copy(alpha = fabAlpha),
+            contentColor = colorScheme.onPrimary,
             tonalElevation = 0.dp,
             modifier = Modifier
                 .size(64.dp)
@@ -514,14 +544,14 @@ fun StatusSection(time: String, date: String, temperature: String, condition: St
 
         if (notificationCount > 0) {
             Surface(
-                color = MaterialTheme.colorScheme.primary,
+                color = colorScheme.primary,
                 shape = CircleShape,
                 modifier = Modifier.size(24.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Text(
                         notificationCount.toString(),
-                        color = MaterialTheme.colorScheme.onPrimary,
+                        color = colorScheme.onPrimary,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -625,12 +655,12 @@ fun MediaSection(
                 Surface(
                     modifier = Modifier.size(44.dp),
                     shape = CircleShape,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (isSystemInDarkTheme()) 0.35f else 1f)
+                    color = colorScheme.onSurfaceVariant.copy(alpha = if (isSystemInDarkTheme()) 0.35f else 1f)
                 ) {
                     Icon(
                         Icons.Rounded.MusicNote,
                         null,
-                        tint = MaterialTheme.colorScheme.onSurface,
+                        tint = colorScheme.onSurface,
                         modifier = Modifier.padding(10.dp)
                     )
                 }
@@ -668,15 +698,95 @@ fun MediaSection(
     }
 }
 
+@OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
 fun AppDrawer(
     apps: List<AppInfo>,
     containerColor: Color,
     onAppClick: (String) -> Unit,
+    onSettingsClick: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val configuration = LocalConfiguration.current
     val isWideScreen = configuration.screenWidthDp >= 640
+    val density = LocalDensity.current
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    val hazeState = remember { HazeState() }
+
+    var searchQuery by remember { mutableStateOf("") }
+    var isSearchFocused by remember { mutableStateOf(false) }
+    var isGridLayout by remember { mutableStateOf(true) }
+    var showMenu by remember { mutableStateOf(false) }
+    var barHeightPx by remember { mutableIntStateOf(0) }
+
+    val filteredApps = remember(apps, searchQuery) {
+        if (searchQuery.isBlank()) apps
+        else apps.filter { it.name.contains(searchQuery.trim(), ignoreCase = true) }
+    }
+
+    // Back / search-close logic shared by the arrow button and the system back gesture.
+    fun closeSearchOrDismiss() {
+        if (isSearchFocused || searchQuery.isNotEmpty()) {
+            searchQuery = ""
+            focusManager.clearFocus()
+            keyboardController?.hide()
+        } else {
+            onDismiss()
+        }
+    }
+
+    BackHandler(enabled = true) { closeSearchOrDismiss() }
+
+// Bottom-sheet drag: at the top the sheet follows the finger, then on release
+// either dismisses (past threshold or a fast flick) or springs back.
+    val currentOnDismiss by rememberUpdatedState(onDismiss)
+    var offsetY by remember { mutableFloatStateOf(0f) }
+    var sheetHeightPx by remember { mutableIntStateOf(0) }
+    val dismissThresholdPx = with(density) { 120.dp.toPx() }
+    val flingDismissVelocity = 1200f
+
+    val sheetDragConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                // Dragging back up first re-seats the pulled-down sheet before the list scrolls.
+                if (available.y < 0f && offsetY > 0f) {
+                    val consume = available.y.coerceAtLeast(-offsetY)
+                    offsetY += consume
+                    return Offset(0f, consume)
+                }
+                return Offset.Zero
+            }
+
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource
+            ): Offset {
+                // Downward drag the list couldn't use (already at top) drags the sheet.
+                if (source == NestedScrollSource.UserInput && available.y > 0f) {
+                    offsetY += available.y
+                    return Offset(0f, available.y)
+                }
+                return Offset.Zero
+            }
+
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                if (offsetY > 0f) {
+                    val target = if (sheetHeightPx > 0) sheetHeightPx.toFloat() else offsetY + 1000f
+                    if (offsetY > dismissThresholdPx || available.y > flingDismissVelocity) {
+                        animate(offsetY, target, animationSpec = tween(220)) { v, _ -> offsetY = v }
+                        currentOnDismiss()
+                    } else {
+                        animate(offsetY, 0f) { v, _ -> offsetY = v } // spring back
+                    }
+                    return available // swallow the fling so the list doesn't also fling
+                }
+                return Velocity.Zero
+            }
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -686,6 +796,8 @@ fun AppDrawer(
         Surface(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
+                .graphicsLayer { translationY = offsetY }
+                .onSizeChanged { sheetHeightPx = it.height }
                 .statusBarsPadding()
                 .then(
                     if (isWideScreen) {
@@ -704,13 +816,14 @@ fun AppDrawer(
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 Spacer(Modifier.height(16.dp))
-                
+
+                // Drag handle
                 Box(
                     modifier = Modifier
                         .width(40.dp)
                         .height(4.dp)
                         .background(
-                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                            colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
                             CircleShape
                         )
                         .align(Alignment.CenterHorizontally)
@@ -718,55 +831,189 @@ fun AppDrawer(
 
                 Spacer(Modifier.height(16.dp))
 
-                Row(
+                // Bar floats over the scrolling list; the list is hazed where it passes behind it.
+                Box(
                     modifier = Modifier
+                        .weight(1f)
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(horizontal = 16.dp)
+                        .clip(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp))
+
                 ) {
-                    Text(
-                        "Applications", 
-                        color = MaterialTheme.colorScheme.onSurface, 
-                        style = MaterialTheme.typography.headlineMedium,
-                        maxLines = 1,
-                        softWrap = false
-                    )
-                    IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, null, tint = MaterialTheme.colorScheme.onSurface)
-                    }
-                }
-                
-                Spacer(Modifier.height(16.dp))
-                
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(if (isWideScreen) 6 else 4),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 120.dp),
-                    verticalArrangement = Arrangement.spacedBy(24.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    items(apps) { app ->
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.clickable { 
-                                onAppClick(app.packageName)
-                                onDismiss()
-                            }
+                    val contentTopPadding =
+                        if (barHeightPx > 0) with(density) { barHeightPx.toDp() } + 8.dp else 64.dp
+
+                    if (isGridLayout) {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(if (isWideScreen) 6 else 4),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .nestedScroll(sheetDragConnection)
+                                .hazeSource(hazeState),
+                            contentPadding = PaddingValues(
+                                top = contentTopPadding,
+                                bottom = 120.dp
+                            ),
+                            verticalArrangement = Arrangement.spacedBy(24.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            app.icon?.let { icon ->
-                                Image(
-                                    bitmap = icon.toBitmap().asImageBitmap(),
-                                    contentDescription = app.name,
-                                    modifier = Modifier.size(56.dp)
-                                )
+                            items(filteredApps) { app ->
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier
+                                        .clickable {
+                                        onAppClick(app.packageName)
+                                        onDismiss()
+                                    }
+                                ) {
+                                    app.icon?.let { icon ->
+                                        Image(
+                                            bitmap = icon.toBitmap().asImageBitmap(),
+                                            contentDescription = app.name,
+                                            modifier = Modifier.size(56.dp)
+                                        )
+                                    }
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        app.name,
+                                        color = colorScheme.onSurface,
+                                        fontSize = 12.sp,
+                                        maxLines = 1,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
                             }
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                app.name, 
-                                color = MaterialTheme.colorScheme.onSurface, 
-                                fontSize = 12.sp, 
-                                maxLines = 1,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .nestedScroll(sheetDragConnection)
+                                .hazeSource(hazeState),
+                            contentPadding = PaddingValues(
+                                top = contentTopPadding,
+                                bottom = 120.dp
+                            ),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            items(filteredApps) { app ->
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .clickable {
+                                            onAppClick(app.packageName)
+                                            onDismiss()
+                                        }
+                                        .padding(horizontal = 8.dp, vertical = 8.dp)
+                                ) {
+                                    app.icon?.let { icon ->
+                                        Image(
+                                            bitmap = icon.toBitmap().asImageBitmap(),
+                                            contentDescription = app.name,
+                                            modifier = Modifier.size(44.dp)
+                                        )
+                                    }
+                                    Spacer(Modifier.width(16.dp))
+                                    Text(
+                                        app.name,
+                                        color = colorScheme.onSurface,
+                                        fontSize = 16.sp,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    if (filteredApps.isEmpty() && searchQuery.isNotBlank()) {
+                        Text(
+                            "No apps found",
+                            color = colorScheme.onSurfaceVariant,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(100f))
+                            .background(colorScheme.surfaceDim)
+                            .hazeEffect(state = hazeState, style = HazeMaterials.ultraThin(colorScheme.surfaceDim)),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = { closeSearchOrDismiss() }, Modifier.padding(4.dp)) {
+                            Icon(
+                                Icons.AutoMirrored.Rounded.ArrowBack,
+                                tint = colorScheme.onSurface,
+                                contentDescription = if (isSearchFocused || searchQuery.isNotEmpty())
+                                    "Close search" else "Close"
+                            )
+                        }
+
+                        val textStyle = typography.titleLarge.merge(
+                            TextStyle(fontFamily = QuicksandTitleVariable, textAlign = TextAlign.Center, color = colorScheme.onSurface)
+                        )
+
+                        BasicTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            modifier = Modifier
+                                .weight(1f)
+                                .onFocusChanged { isSearchFocused = it.isFocused },
+                            singleLine = true,
+                            textStyle = textStyle,
+                            cursorBrush = SolidColor(colorScheme.primary),
+                            decorationBox = { innerTextField ->
+                                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                    if (searchQuery.isEmpty()) {
+                                        Text(
+                                            text = "Search apps",
+                                            style = textStyle,
+                                            color = colorScheme.onSurface.copy(alpha = 0.6f),
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
+                                    innerTextField()
+                                }
+                            }
+                        )
+
+                        Box {
+                            IconButton(onClick = { showMenu = !showMenu }, modifier = Modifier.padding(4.dp)) {
+                                Icon(Icons.Rounded.MoreVert, tint = colorScheme.onSurface, contentDescription = "More options")
+                            }
+                            XenonDropDown(
+                                expanded = showMenu,
+                                onDismissRequest = { showMenu = false },
+                                items = listOf(
+                                    MenuItem(
+                                        text = if (isGridLayout) "List view" else "Grid view",
+                                        onClick = { isGridLayout = !isGridLayout },
+                                        dismissOnClick = true,
+                                        leadingIcon = {
+                                            Icon(
+                                                if (isGridLayout) Icons.AutoMirrored.Rounded.ViewList
+                                                else Icons.Rounded.GridView,
+                                                contentDescription = "Toggle layout"
+                                            )
+                                        }
+                                    ),
+                                    MenuItem(
+                                        text = "Settings",
+                                        onClick = { onSettingsClick() },
+                                        dismissOnClick = true,
+                                        leadingIcon = {
+                                            Icon(
+                                                Icons.Rounded.Settings,
+                                                contentDescription = "Settings"
+                                            )
+                                        }
+                                    )
+                                ),
+                                hazeState = hazeState
                             )
                         }
                     }
