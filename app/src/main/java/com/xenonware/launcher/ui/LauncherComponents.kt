@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import com.xenonware.launcher.model.AppInfo
+import com.xenonware.launcher.media.MediaState
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
@@ -40,9 +41,17 @@ import dev.chrisbanes.haze.materials.HazeMaterials
 fun DockPill(
     modifier: Modifier = Modifier,
     apps: List<AppInfo>,
+    mediaState: MediaState,
+    isMediaPermissionGranted: Boolean,
+    currentTime: String,
+    currentDate: String,
+    weatherTemp: String,
     onAppClick: (String) -> Unit,
     onSettingsClick: () -> Unit,
     onFabClick: () -> Unit,
+    onMediaPlayPause: () -> Unit,
+    onMediaSkipNext: () -> Unit,
+    onOpenMediaPermission: () -> Unit,
     isAppDrawerVisible: Boolean = false,
     hazeState: HazeState? = null
 ) {
@@ -84,7 +93,7 @@ fun DockPill(
                         .animateContentSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (currentPage == 0) StatusSection() 
+                    if (currentPage == 0) StatusSection(currentTime, currentDate, weatherTemp) 
                     else Surface(
                         onClick = { currentPage = 0 },
                         modifier = Modifier.size(44.dp),
@@ -124,7 +133,13 @@ fun DockPill(
                         .animateContentSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (currentPage == 2) MediaSection()
+                    if (currentPage == 2) MediaSection(
+                        mediaState = mediaState,
+                        isPermissionGranted = isMediaPermissionGranted,
+                        onPlayPause = onMediaPlayPause,
+                        onSkipNext = onMediaSkipNext,
+                        onRequestPermission = onOpenMediaPermission
+                    )
                     else Surface(
                         onClick = { currentPage = 2 },
                         modifier = Modifier.size(44.dp),
@@ -155,7 +170,7 @@ fun DockPill(
 }
 
 @Composable
-fun StatusSection() {
+fun StatusSection(time: String, date: String, temperature: String) {
     val contentColor = MaterialTheme.colorScheme.onPrimaryContainer
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
@@ -163,13 +178,13 @@ fun StatusSection() {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column {
-            Text("12:45", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = contentColor)
-            Text("Tue, Oct 24", fontSize = 10.sp, color = contentColor.copy(alpha = 0.7f))
+            Text(time, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = contentColor)
+            Text(date, fontSize = 10.sp, color = contentColor.copy(alpha = 0.7f))
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Default.WbSunny, null, tint = Color.Yellow, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(4.dp))
-            Text("24°C", color = contentColor, fontSize = 14.sp)
+            Text(temperature, color = contentColor, fontSize = 14.sp)
         }
     }
 }
@@ -199,27 +214,85 @@ fun FixedAppSection(apps: List<AppInfo>, onAppClick: (String) -> Unit) {
 }
 
 @Composable
-fun MediaSection() {
+fun MediaSection(
+    mediaState: MediaState,
+    isPermissionGranted: Boolean,
+    onPlayPause: () -> Unit,
+    onSkipNext: () -> Unit,
+    onRequestPermission: () -> Unit
+) {
     val contentColor = MaterialTheme.colorScheme.onPrimaryContainer
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Surface(
-            modifier = Modifier.size(36.dp), 
-            shape = CircleShape, 
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (isSystemInDarkTheme()) 0.35f else 1f)
-        ) {
-            Icon(Icons.Default.MusicNote, null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(9.dp))
-        }
-        Spacer(Modifier.width(8.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text("Song Title", color = contentColor, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-            Text("Artist Name", color = contentColor.copy(0.7f), fontSize = 10.sp, maxLines = 1)
-        }
-        Row {
-            IconButton(onClick = {}, modifier = Modifier.size(28.dp)) { Icon(Icons.Default.PlayArrow, null, tint = contentColor, modifier = Modifier.size(20.dp)) }
-            IconButton(onClick = {}, modifier = Modifier.size(28.dp)) { Icon(Icons.Default.SkipNext, null, tint = contentColor, modifier = Modifier.size(18.dp)) }
+        if (!isPermissionGranted) {
+            Text(
+                "Media Access Required",
+                modifier = Modifier.weight(1f).padding(start = 8.dp),
+                fontSize = 12.sp,
+                color = contentColor
+            )
+            Button(
+                onClick = onRequestPermission,
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                modifier = Modifier.height(32.dp)
+            ) {
+                Text("Grant", fontSize = 10.sp)
+            }
+        } else {
+            if (mediaState.albumArt != null) {
+                Image(
+                    bitmap = mediaState.albumArt.asImageBitmap(),
+                    contentDescription = "Album Art",
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Surface(
+                    modifier = Modifier.size(36.dp),
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (isSystemInDarkTheme()) 0.35f else 1f)
+                ) {
+                    Icon(
+                        Icons.Default.MusicNote,
+                        null,
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(9.dp)
+                    )
+                }
+            }
+            Spacer(Modifier.width(8.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    mediaState.title ?: "No Media",
+                    color = contentColor,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1
+                )
+                Text(
+                    mediaState.artist ?: "Unknown Artist",
+                    color = contentColor.copy(0.7f),
+                    fontSize = 10.sp,
+                    maxLines = 1
+                )
+            }
+            Row {
+                IconButton(onClick = onPlayPause, modifier = Modifier.size(28.dp)) {
+                    Icon(
+                        if (mediaState.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        null,
+                        tint = contentColor,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                IconButton(onClick = onSkipNext, modifier = Modifier.size(28.dp)) {
+                    Icon(Icons.Default.SkipNext, null, tint = contentColor, modifier = Modifier.size(18.dp))
+                }
+            }
         }
     }
 }

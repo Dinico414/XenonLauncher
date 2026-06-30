@@ -74,9 +74,15 @@ class MainActivity : ComponentActivity() {
                 val isStorageGranted = storagePermissionState?.status?.isGranted ?: false
                 
                 val apps by viewModel.apps.collectAsState()
+                val currentTime by viewModel.currentTime.collectAsState()
+                val weatherState by viewModel.weatherState.collectAsState()
                 
                 LauncherScreen(
+                    viewModel = viewModel,
                     apps = apps,
+                    currentTime = currentTime.format(viewModel.timeFormatter),
+                    currentDate = currentTime.format(viewModel.dateFormatter),
+                    weatherTemp = weatherState.temperature,
                     onAppClick = { viewModel.launchApp(it) },
                     onOpenSettings = {
                         startActivity(Intent(this, SettingsActivity::class.java))
@@ -90,7 +96,11 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun LauncherScreen(
+    viewModel: LauncherViewModel,
     apps: List<com.xenonware.launcher.model.AppInfo>,
+    currentTime: String,
+    currentDate: String,
+    weatherTemp: String,
     onAppClick: (String) -> Unit,
     onOpenSettings: () -> Unit,
     isStoragePermissionGranted: Boolean
@@ -106,7 +116,7 @@ fun LauncherScreen(
     )
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // SAMPLING LAYER
+        // ... (SAMPLING LAYER remains the same)
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -156,9 +166,17 @@ fun LauncherScreen(
         DockPill(
             modifier = Modifier.align(Alignment.BottomCenter),
             apps = apps,
+            mediaState = viewModel.mediaState,
+            isMediaPermissionGranted = viewModel.isMediaPermissionGranted,
+            currentTime = currentTime,
+            currentDate = currentDate,
+            weatherTemp = weatherTemp,
             onAppClick = onAppClick,
             onSettingsClick = onOpenSettings,
             onFabClick = { isAppDrawerVisible = !isAppDrawerVisible },
+            onMediaPlayPause = { viewModel.togglePlayPause() },
+            onMediaSkipNext = { viewModel.skipNext() },
+            onOpenMediaPermission = { viewModel.openNotificationAccessSettings() },
             isAppDrawerVisible = isAppDrawerVisible,
             hazeState = hazeState
         )
