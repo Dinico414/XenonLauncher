@@ -112,7 +112,7 @@ fun DockPill(
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp.dp
-    val finalMaxDockWidth = (screenWidth).coerceAtMost(520.dp)
+    val finalMaxDockWidth = (screenWidth).coerceAtMost(536.dp)
     
     var currentPage by remember { mutableIntStateOf(1) }
     val dockAlpha by animateFloatAsState(
@@ -522,7 +522,7 @@ fun FixedAppSection(apps: List<AppInfo>, onAppClick: (String) -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         contentPadding = PaddingValues(horizontal = 10.dp)
     ) {
-        items(apps.take(8)) { app ->
+        items(apps.take(6)) { app ->
             app.icon?.let { icon ->
                 Image(
                     bitmap = icon.toBitmap().asImageBitmap(),
