@@ -81,9 +81,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.LinearGradientShader
+import androidx.compose.ui.graphics.Shader
+import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
@@ -226,21 +229,30 @@ fun DockPill(
                         label = "statusContent"
                     )
 
-                    val borderBrush = remember(isExpanded, progress) {
-                        if (isExpanded) {
-                            Brush.horizontalGradient(
-                                0.0f to Color.Green,
-                                progress to Color.Green,
-                                progress to Color.Transparent,
-                                1.0f to Color.Transparent
-                            )
-                        } else {
-                            Brush.verticalGradient(
-                                0.0f to Color.Transparent,
-                                (1f - progress) to Color.Transparent,
-                                (1f - progress) to Color.Green,
-                                1.0f to Color.Green
-                            )
+                    val strokeRotationProgress by animateFloatAsState(
+                        targetValue = if (isExpanded) 1f else 0f,
+                        animationSpec = tween(500),
+                        label = "strokeRotationProgress"
+                    )
+
+                    val borderBrush = remember(strokeRotationProgress, progress) {
+                        object : ShaderBrush() {
+                            override fun createShader(size: Size): Shader {
+                                val start = Offset(
+                                    x = 0f,
+                                    y = size.height * (1f - strokeRotationProgress)
+                                )
+                                val end = Offset(
+                                    x = size.width * strokeRotationProgress,
+                                    y = 0f
+                                )
+                                return LinearGradientShader(
+                                    from = start,
+                                    to = end,
+                                    colors = listOf(Color.Green, Color.Green, Color.Transparent, Color.Transparent),
+                                    colorStops = listOf(0.0f, progress, progress, 1.0f)
+                                )
+                            }
                         }
                     }
 
@@ -969,6 +981,7 @@ fun AppDrawer(
                         modifier = Modifier
                             .align(Alignment.TopCenter)
                             .fillMaxWidth()
+                            .onSizeChanged { barHeightPx = it.height }
                             .clip(RoundedCornerShape(100f))
                             .background(colorScheme.surfaceDim)
                             .hazeEffect(state = hazeState, style = HazeMaterials.ultraThin(colorScheme.surfaceDim)),
