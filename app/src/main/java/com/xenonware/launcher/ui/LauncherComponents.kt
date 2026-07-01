@@ -217,14 +217,14 @@ fun DockPill(
                     )
                     val backgroundColor by animateColorAsState(
                         targetValue = when {
-                            !isExpanded && notificationCount > 0 -> colorScheme.primary
+                            !isExpanded && notificationCount > 0 -> colorScheme.primaryContainer
                             else -> colorScheme.surfaceContainerLowest.copy(alpha = buttonAlpha)
                         },
                         label = "statusBg"
                     )
                     val contentColor by animateColorAsState(
                         targetValue = when {
-                            !isExpanded && notificationCount > 0 -> colorScheme.onPrimary
+                            !isExpanded && notificationCount > 0 -> colorScheme.onPrimaryContainer
                             else -> colorScheme.onSurface
                         },
                         label = "statusContent"
@@ -234,6 +234,11 @@ fun DockPill(
                         targetValue = if (isExpanded) 1f else 0f,
                         animationSpec = tween(500),
                         label = "strokeRotationProgress"
+                    )
+
+                    val strokeWidth by animateDpAsState(
+                        targetValue = if (isExpanded) 2.dp else 1.dp,
+                        label = "strokeWidth"
                     )
 
                     val borderBrush = remember(strokeRotationProgress, progress) {
@@ -284,7 +289,7 @@ fun DockPill(
                         shape = CircleShape,
                         color = backgroundColor,
                         contentColor = contentColor,
-                        border = BorderStroke(1.dp, borderBrush)
+                        border = BorderStroke(strokeWidth, borderBrush)
                     ) {
                         AnimatedContent(
                             targetState = isExpanded,
