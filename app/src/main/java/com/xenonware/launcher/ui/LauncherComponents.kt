@@ -901,7 +901,7 @@ fun AppDrawer(
 
                 ) {
                     val contentTopPadding =
-                        if (barHeightPx > 0) with(density) { barHeightPx.toDp() } + 8.dp else 64.dp
+                        if (barHeightPx > 0) with(density) { barHeightPx.toDp() } + 16.dp else 64.dp
 
                     if (isGridLayout) {
                         LazyVerticalGrid(
@@ -1001,8 +1001,8 @@ fun AppDrawer(
                             .fillMaxWidth()
                             .onSizeChanged { barHeightPx = it.height }
                             .clip(RoundedCornerShape(100f))
-                            .background(colorScheme.surfaceDim)
-                            .hazeEffect(state = hazeState, style = HazeMaterials.ultraThin(colorScheme.surfaceDim)),
+                            .hazeEffect(state = hazeState, style = HazeMaterials.ultraThin())
+                            .background(colorScheme.surfaceContainer.copy(alpha = 0.4f)),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         IconButton(onClick = { closeSearchOrDismiss() }, Modifier.padding(4.dp)) {
