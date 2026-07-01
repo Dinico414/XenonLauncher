@@ -91,6 +91,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -236,6 +237,18 @@ fun DockPill(
                     )
 
                     val borderBrush = remember(strokeRotationProgress, progress) {
+                        val strokeColor = when {
+                            progress <= 0.15f -> Color.Red
+                            progress <= 0.20f -> {
+                                val fraction = (progress - 0.15f) / 0.05f
+                                lerp(Color.Red, Color.Yellow, fraction)
+                            }
+                            progress <= 0.25f -> {
+                                val fraction = (progress - 0.20f) / 0.05f
+                                lerp(Color.Yellow, Color.Green, fraction)
+                            }
+                            else -> Color.Green
+                        }
                         object : ShaderBrush() {
                             override fun createShader(size: Size): Shader {
                                 val start = Offset(
@@ -249,7 +262,7 @@ fun DockPill(
                                 return LinearGradientShader(
                                     from = start,
                                     to = end,
-                                    colors = listOf(Color.Green, Color.Green, Color.Transparent, Color.Transparent),
+                                    colors = listOf(strokeColor, strokeColor, Color.Transparent, Color.Transparent),
                                     colorStops = listOf(0.0f, progress, progress, 1.0f)
                                 )
                             }
