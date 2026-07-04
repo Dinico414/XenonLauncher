@@ -68,8 +68,10 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.MaterialTheme.typography
@@ -1234,58 +1236,73 @@ fun AppDrawer(
                                         .pointerInput(Unit) {
                                             detectTapGestures(
                                                 onTap = {
-                                                    onAppClick(app.packageName)
-                                                    onDismiss()
+                                                    if (!app.isInstalling) {
+                                                        onAppClick(app.packageName)
+                                                        onDismiss()
+                                                    }
                                                 }
                                             )
                                         }
                                         .pointerInput(Unit) {
-                                            detectDragGesturesAfterLongPress(
-                                                onDragStart = { offset ->
-                                                    dragDropState.startDrag(app, itemPos + offset)
-                                                },
-                                                onDrag = { change, dragAmount ->
-                                                    change.consume()
-                                                    dragDropState.dragOffset += dragAmount
-                                                    
-                                                    if (dragDropState.dockBounds.contains(dragDropState.dragOffset)) {
-                                                        val relativeX = dragDropState.dragOffset.x - dragDropState.dockBounds.left
-                                                        val itemWidth = with(density) { 52.dp.toPx() }
-                                                        dragDropState.targetIndex = (relativeX / itemWidth).toInt().coerceIn(0, 100) // 100 is just a safe upper bound
-                                                    } else {
-                                                        dragDropState.targetIndex = -1
-                                                    }
-                                                },
-                                                onDragEnd = {
-                                                    val finalPos = dragDropState.dragOffset
-                                                    val verticalDist = if (finalPos.y < dragDropState.dockBounds.top) {
-                                                        dragDropState.dockBounds.top - finalPos.y
-                                                    } else if (finalPos.y > dragDropState.dockBounds.bottom) {
-                                                        finalPos.y - dragDropState.dockBounds.bottom
-                                                    } else 0f
-                                                    
-                                                    val hitThreshold = with(density) { 80.dp.toPx() }
-                                                    
-                                                    if (dragDropState.dockBounds.contains(finalPos) || verticalDist < hitThreshold) {
-                                                        onPinApp(app.packageName, dragDropState.targetIndex)
-                                                    }
-                                                    dragDropState.stopDrag()
-                                                },
-                                                onDragCancel = { dragDropState.stopDrag() }
-                                            )
+                                            if (!app.isInstalling) {
+                                                detectDragGesturesAfterLongPress(
+                                                    onDragStart = { offset ->
+                                                        dragDropState.startDrag(app, itemPos + offset)
+                                                    },
+                                                    onDrag = { change, dragAmount ->
+                                                        change.consume()
+                                                        dragDropState.dragOffset += dragAmount
+                                                        
+                                                        if (dragDropState.dockBounds.contains(dragDropState.dragOffset)) {
+                                                            val relativeX = dragDropState.dragOffset.x - dragDropState.dockBounds.left
+                                                            val itemWidth = with(density) { 52.dp.toPx() }
+                                                            dragDropState.targetIndex = (relativeX / itemWidth).toInt().coerceIn(0, 100)
+                                                        } else {
+                                                            dragDropState.targetIndex = -1
+                                                        }
+                                                    },
+                                                    onDragEnd = {
+                                                        val finalPos = dragDropState.dragOffset
+                                                        val verticalDist = if (finalPos.y < dragDropState.dockBounds.top) {
+                                                            dragDropState.dockBounds.top - finalPos.y
+                                                        } else if (finalPos.y > dragDropState.dockBounds.bottom) {
+                                                            finalPos.y - dragDropState.dockBounds.bottom
+                                                        } else 0f
+                                                        
+                                                        val hitThreshold = with(density) { 80.dp.toPx() }
+                                                        
+                                                        if (dragDropState.dockBounds.contains(finalPos) || verticalDist < hitThreshold) {
+                                                            onPinApp(app.packageName, dragDropState.targetIndex)
+                                                        }
+                                                        dragDropState.stopDrag()
+                                                    },
+                                                    onDragCancel = { dragDropState.stopDrag() }
+                                                )
+                                            }
                                         }
                                 ) {
-                                    app.icon?.let { icon ->
-                                        Image(
-                                            bitmap = icon.toBitmap().asImageBitmap(),
-                                            contentDescription = app.name,
-                                            modifier = Modifier.size(56.dp)
-                                        )
+                                    Box(contentAlignment = Alignment.Center) {
+                                        app.icon?.let { icon ->
+                                            Image(
+                                                bitmap = icon.toBitmap().asImageBitmap(),
+                                                contentDescription = app.name,
+                                                modifier = Modifier.size(56.dp).alpha(if (app.isInstalling) 0.6f else 1f)
+                                            )
+                                        }
+                                        if (app.isInstalling) {
+                                            CircularProgressIndicator(
+                                                progress = { app.installProgress ?: 0f },
+                                                modifier = Modifier.size(48.dp),
+                                                color = colorScheme.primary,
+                                                strokeWidth = 3.dp,
+                                                trackColor = colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                                            )
+                                        }
                                     }
                                     Spacer(Modifier.height(4.dp))
                                     Text(
                                         app.name,
-                                        color = colorScheme.onSurface,
+                                        color = if (app.isInstalling) colorScheme.onSurface.copy(alpha = 0.6f) else colorScheme.onSurface,
                                         fontSize = 12.sp,
                                         maxLines = 1,
                                         textAlign = TextAlign.Center
@@ -1318,45 +1335,49 @@ fun AppDrawer(
                                         .pointerInput(Unit) {
                                             detectTapGestures(
                                                 onTap = {
-                                                    onAppClick(app.packageName)
-                                                    onDismiss()
+                                                    if (!app.isInstalling) {
+                                                        onAppClick(app.packageName)
+                                                        onDismiss()
+                                                    }
                                                 }
                                             )
                                         }
                                         .pointerInput(Unit) {
-                                            detectDragGesturesAfterLongPress(
-                                                onDragStart = { offset ->
-                                                    dragDropState.startDrag(app, itemPos + offset)
-                                                },
-                                                onDrag = { change, dragAmount ->
-                                                    change.consume()
-                                                    dragDropState.dragOffset += dragAmount
-                                                    
-                                                    if (dragDropState.dockBounds.contains(dragDropState.dragOffset)) {
-                                                        val relativeX = dragDropState.dragOffset.x - dragDropState.dockBounds.left
-                                                        val itemWidth = with(density) { 52.dp.toPx() }
-                                                        dragDropState.targetIndex = (relativeX / itemWidth).toInt().coerceIn(0, 100) // 100 is just a safe upper bound
-                                                    } else {
-                                                        dragDropState.targetIndex = -1
-                                                    }
-                                                },
-                                                onDragEnd = {
-                                                    val finalPos = dragDropState.dragOffset
-                                                    val verticalDist = if (finalPos.y < dragDropState.dockBounds.top) {
-                                                        dragDropState.dockBounds.top - finalPos.y
-                                                    } else if (finalPos.y > dragDropState.dockBounds.bottom) {
-                                                        finalPos.y - dragDropState.dockBounds.bottom
-                                                    } else 0f
-                                                    
-                                                    val hitThreshold = with(density) { 80.dp.toPx() }
-                                                    
-                                                    if (dragDropState.dockBounds.contains(finalPos) || verticalDist < hitThreshold) {
-                                                        onPinApp(app.packageName, dragDropState.targetIndex)
-                                                    }
-                                                    dragDropState.stopDrag()
-                                                },
-                                                onDragCancel = { dragDropState.stopDrag() }
-                                            )
+                                            if (!app.isInstalling) {
+                                                detectDragGesturesAfterLongPress(
+                                                    onDragStart = { offset ->
+                                                        dragDropState.startDrag(app, itemPos + offset)
+                                                    },
+                                                    onDrag = { change, dragAmount ->
+                                                        change.consume()
+                                                        dragDropState.dragOffset += dragAmount
+                                                        
+                                                        if (dragDropState.dockBounds.contains(dragDropState.dragOffset)) {
+                                                            val relativeX = dragDropState.dragOffset.x - dragDropState.dockBounds.left
+                                                            val itemWidth = with(density) { 52.dp.toPx() }
+                                                            dragDropState.targetIndex = (relativeX / itemWidth).toInt().coerceIn(0, 100)
+                                                        } else {
+                                                            dragDropState.targetIndex = -1
+                                                        }
+                                                    },
+                                                    onDragEnd = {
+                                                        val finalPos = dragDropState.dragOffset
+                                                        val verticalDist = if (finalPos.y < dragDropState.dockBounds.top) {
+                                                            dragDropState.dockBounds.top - finalPos.y
+                                                        } else if (finalPos.y > dragDropState.dockBounds.bottom) {
+                                                            finalPos.y - dragDropState.dockBounds.bottom
+                                                        } else 0f
+                                                        
+                                                        val hitThreshold = with(density) { 80.dp.toPx() }
+                                                        
+                                                        if (dragDropState.dockBounds.contains(finalPos) || verticalDist < hitThreshold) {
+                                                            onPinApp(app.packageName, dragDropState.targetIndex)
+                                                        }
+                                                        dragDropState.stopDrag()
+                                                    },
+                                                    onDragCancel = { dragDropState.stopDrag() }
+                                                )
+                                            }
                                         }
                                         .padding(horizontal = 8.dp, vertical = 8.dp)
                                 ) {
@@ -1364,16 +1385,27 @@ fun AppDrawer(
                                         Image(
                                             bitmap = icon.toBitmap().asImageBitmap(),
                                             contentDescription = app.name,
-                                            modifier = Modifier.size(44.dp)
+                                            modifier = Modifier.size(44.dp).alpha(if (app.isInstalling) 0.6f else 1f)
                                         )
                                     }
                                     Spacer(Modifier.width(16.dp))
-                                    Text(
-                                        app.name,
-                                        color = colorScheme.onSurface,
-                                        fontSize = 16.sp,
-                                        maxLines = 1
-                                    )
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            app.name,
+                                            color = if (app.isInstalling) colorScheme.onSurface.copy(alpha = 0.6f) else colorScheme.onSurface,
+                                            fontSize = 16.sp,
+                                            maxLines = 1
+                                        )
+                                        if (app.isInstalling) {
+                                            Spacer(Modifier.height(4.dp))
+                                            LinearProgressIndicator(
+                                                progress = { app.installProgress ?: 0f },
+                                                modifier = Modifier.fillMaxWidth().height(4.dp),
+                                                color = colorScheme.primary,
+                                                trackColor = colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
