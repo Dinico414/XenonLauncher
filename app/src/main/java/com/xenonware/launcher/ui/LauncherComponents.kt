@@ -1461,13 +1461,13 @@ fun AppDrawer(
                                         }
                                     ),
                                     MenuItem(
-                                        text = "Open Keyboard",
+                                        text = "Show Keyboard",
                                         onClick = onToggleOpenKeyboard,
                                         dismissOnClick = false,
                                         leadingIcon = {
                                             Icon(
-                                                if (openKeyboard) Icons.Rounded.Keyboard
-                                                else Icons.Rounded.KeyboardHide,
+                                                if (openKeyboard) Icons.Rounded.Visibility
+                                                else Icons.Rounded.VisibilityOff,
                                                 contentDescription = null
                                             )
                                         }
