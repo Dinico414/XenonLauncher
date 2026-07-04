@@ -34,6 +34,7 @@ fun SettingsLayout(
 ) {
     val currentThemeTitle by viewModel.currentThemeTitle.collectAsState()
     val blackedOutEnabled by viewModel.blackedOutModeEnabled.collectAsState()
+    val isGridLayout by viewModel.isGridLayout.collectAsState()
 
     val innerRadius = 4.dp
     val outerRadius = 24.dp
@@ -76,13 +77,14 @@ fun SettingsLayout(
                 )
                 
                 Column {
-                    SettingsTile(
+                    SettingsSwitchTile(
                         title = "Grid Layout",
-                        subtitle = "Choose app columns",
+                        subtitle = if (isGridLayout) "Using grid view" else "Using list view",
+                        checked = isGridLayout,
+                        onCheckedChange = { viewModel.setGridLayout(it) },
                         icon = { Icon(Icons.Default.GridView, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                         backgroundColor = tileColor,
-                        shape = topShape,
-                        onClick = { viewModel.onThemeSettingClicked() }
+                        shape = topShape
                     )
                     Spacer(Modifier.height(2.dp))
                     SettingsSwitchTile(

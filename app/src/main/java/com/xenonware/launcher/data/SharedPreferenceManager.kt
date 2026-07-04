@@ -13,4 +13,20 @@ class SharedPreferenceManager(context: Context) {
     var blurEnabled: Boolean
         get() = prefs.getBoolean("blur_enabled", true)
         set(value) = prefs.edit().putBoolean("blur_enabled", value).apply()
+
+    var pinnedApps: List<String>
+        get() = prefs.getString("pinned_apps", "")?.split(",")?.filter { it.isNotEmpty() } ?: emptyList()
+        set(value) = prefs.edit().putString("pinned_apps", value.joinToString(",")).apply()
+
+    var isGridLayout: Boolean
+        get() = prefs.getBoolean("is_grid_layout", true)
+        set(value) = prefs.edit().putBoolean("is_grid_layout", value).apply()
+
+    fun registerListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+    }
+
+    fun unregisterListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
+        prefs.unregisterOnSharedPreferenceChangeListener(listener)
+    }
 }

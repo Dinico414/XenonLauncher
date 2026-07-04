@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
@@ -19,6 +20,9 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -31,6 +35,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -42,6 +47,8 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -68,6 +75,7 @@ import androidx.compose.material3.MaterialTheme.typography
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -76,9 +84,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -95,8 +106,11 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -106,9 +120,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.toSize
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
 import com.xenon.mylibrary.theme.QuicksandTitleVariable
@@ -123,8 +139,76 @@ import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import dev.chrisbanes.haze.materials.HazeMaterials
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Calendar
+import kotlin.math.roundToInt
+
+// Custom Drag and Drop implementation for Launcher
+class DragDropState {
+    var draggedApp by mutableStateOf<AppInfo?>(null)
+    var dragOffset by mutableStateOf(Offset.Zero)
+    var isDragging by mutableStateOf(false)
+    var sourceIndex by mutableIntStateOf(-1)
+    var targetIndex by mutableIntStateOf(-1)
+    
+    // Position of the dock to detect drops
+    var dockBounds by mutableStateOf(androidx.compose.ui.geometry.Rect.Zero)
+    
+    fun startDrag(app: AppInfo, offset: Offset, index: Int = -1) {
+        draggedApp = app
+        dragOffset = offset
+        isDragging = true
+        sourceIndex = index
+        targetIndex = index
+    }
+    
+    fun stopDrag() {
+        draggedApp = null
+        isDragging = false
+        sourceIndex = -1
+        targetIndex = -1
+    }
+}
+
+val LocalDragDropState = staticCompositionLocalOf { DragDropState() }
+
+@Composable
+fun LauncherDragLayer(
+    modifier: Modifier = Modifier,
+    state: DragDropState = LocalDragDropState.current,
+    content: @Composable () -> Unit
+) {
+    Box(modifier = modifier.fillMaxSize()) {
+        content()
+        
+        if (state.isDragging && state.draggedApp != null) {
+            val app = state.draggedApp!!
+            val density = LocalDensity.current
+            
+            Box(
+                modifier = Modifier
+                    .offset {
+                        IntOffset(
+                            state.dragOffset.x.roundToInt() - with(density) { 28.dp.toPx() }.roundToInt(),
+                            state.dragOffset.y.roundToInt() - with(density) { 28.dp.toPx() }.roundToInt()
+                        )
+                    }
+                    .size(56.dp)
+                    .scale(1.1f)
+                    .alpha(0.9f)
+            ) {
+                app.icon?.let { icon ->
+                    Image(
+                        bitmap = icon.toBitmap().asImageBitmap(),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+            }
+        }
+    }
+}
 
 @OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
@@ -146,7 +230,10 @@ fun DockPill(
     onOpenMediaPermission: () -> Unit,
     isAppDrawerVisible: Boolean = false,
     hazeState: HazeState? = null,
-    progress: Float = 1f
+    progress: Float = 1f,
+    onUnpinApp: (String) -> Unit = {},
+    onPinApp: (String, Int) -> Unit = { _, _ -> },
+    onReorderApp: (Int, Int) -> Unit = { _, _ -> }
 ) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
@@ -357,7 +444,7 @@ fun DockPill(
                             label = "appsTransition"
                         ) { targetExpanded ->
                             if (targetExpanded) {
-                                FixedAppSection(apps, onAppClick)
+                                FixedAppSection(apps, onAppClick, onPinApp, onReorderApp, onUnpinApp)
                             } else {
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(Icons.Rounded.MoreHoriz, null, modifier = Modifier.size(24.dp))
@@ -448,7 +535,13 @@ fun DockPill(
                 )
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Icon(if (isAppDrawerVisible) Icons.Rounded.Close else Icons.Rounded.Apps, "Toggle Apps", modifier = Modifier.size(32.dp))
+                Crossfade(targetState = isAppDrawerVisible, label = "fabIconFade") { visible ->
+                    Icon(
+                        if (visible) Icons.Rounded.Close else Icons.Rounded.Apps,
+                        "Toggle Apps",
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
             }
         }
     }
@@ -618,26 +711,185 @@ fun StatusSection(time: String, date: String, temperature: String, condition: St
 }
 
 @Composable
-fun FixedAppSection(apps: List<AppInfo>, onAppClick: (String) -> Unit) {
-    LazyRow(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-        verticalAlignment = Alignment.CenterVertically,
-        contentPadding = PaddingValues(horizontal = 10.dp)
+fun FixedAppSection(
+    apps: List<AppInfo>,
+    onAppClick: (String) -> Unit,
+    onPinApp: (String, Int) -> Unit,
+    onReorderApp: (Int, Int) -> Unit,
+    onUnpinApp: (String) -> Unit
+) {
+    val dragDropState = LocalDragDropState.current
+    val density = LocalDensity.current
+    val listState = rememberLazyListState()
+    
+    val itemWidthPx = with(density) { 52.dp.toPx() }
+    val contentPaddingPx = with(density) { 10.dp.toPx() }
+    val spacingPx = with(density) { 8.dp.toPx() }
+
+    // Unified target index calculation
+    LaunchedEffect(dragDropState.isDragging, dragDropState.dragOffset, listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
+        if (dragDropState.isDragging && dragDropState.dockBounds.contains(dragDropState.dragOffset)) {
+            val relativeX = dragDropState.dragOffset.x - dragDropState.dockBounds.left
+            val viewportWidth = dragDropState.dockBounds.width
+            val baseSize = if (dragDropState.sourceIndex == -1) apps.size else apps.size - 1
+            
+            // Total width including padding and spacing
+            val totalContentWidth = (baseSize + 1) * itemWidthPx - spacingPx + (contentPaddingPx * 2)
+            val scrollPos = listState.firstVisibleItemIndex * itemWidthPx + listState.firstVisibleItemScrollOffset
+            
+            val contentStart = if (totalContentWidth < viewportWidth) {
+                (viewportWidth - totalContentWidth) / 2f + contentPaddingPx
+            } else {
+                contentPaddingPx - scrollPos
+            }
+            
+            val xInContent = relativeX - contentStart
+            val newTarget = (xInContent / itemWidthPx).roundToInt().coerceIn(0, baseSize)
+            
+            if (dragDropState.targetIndex != newTarget) {
+                dragDropState.targetIndex = newTarget
+            }
+        } else if (!dragDropState.isDragging) {
+            dragDropState.targetIndex = -1
+        }
+    }
+
+    // Elegant Auto-scroll logic
+    LaunchedEffect(dragDropState.isDragging) {
+        if (dragDropState.isDragging) {
+            while (dragDropState.isDragging) {
+                if (dragDropState.dockBounds.contains(dragDropState.dragOffset)) {
+                    val viewportWidth = dragDropState.dockBounds.width
+                    val dragX = dragDropState.dragOffset.x - dragDropState.dockBounds.left
+                    val edgeThreshold = with(density) { 40.dp.toPx() }
+                    
+                    if (dragX < edgeThreshold && listState.canScrollBackward) {
+                        val speed = ((edgeThreshold - dragX) / edgeThreshold * 15f).coerceIn(1f, 15f)
+                        listState.scrollBy(-speed)
+                    } else if (dragX > viewportWidth - edgeThreshold && listState.canScrollForward) {
+                        val speed = ((dragX - (viewportWidth - edgeThreshold)) / edgeThreshold * 15f).coerceIn(1f, 15f)
+                        listState.scrollBy(speed)
+                    }
+                }
+                delay(16)
+            }
+        }
+    }
+    
+    // Display list that handles the visual "push" during drag
+    val displayApps = remember(apps, dragDropState.isDragging, dragDropState.targetIndex, dragDropState.sourceIndex) {
+        if (!dragDropState.isDragging || dragDropState.targetIndex == -1) {
+            apps
+        } else {
+            val list = apps.toMutableList()
+            val draggedApp = dragDropState.draggedApp ?: return@remember apps
+            
+            list.removeAll { it.packageName == draggedApp.packageName }
+            
+            if (dragDropState.sourceIndex == -1 && list.size >= 6) return@remember apps
+            
+            val insertPos = dragDropState.targetIndex.coerceIn(0, list.size)
+            list.add(insertPos, draggedApp)
+            list
+        }
+    }
+
+    Box(
+        modifier = Modifier.fillMaxSize()
+            .onGloballyPositioned { coordinates ->
+                dragDropState.dockBounds = coordinates.positionInRoot().let { pos ->
+                    androidx.compose.ui.geometry.Rect(pos, coordinates.size.toSize())
+                }
+            },
+        contentAlignment = Alignment.Center
     ) {
-        items(apps.take(6)) { app ->
-            app.icon?.let { icon ->
-                Image(
-                    bitmap = icon.toBitmap().asImageBitmap(),
-                    contentDescription = app.name,
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .clickable { onAppClick(app.packageName) },
-                    contentScale = ContentScale.Fit
-                )
+        if (apps.isEmpty() && !dragDropState.isDragging) {
+            Text(
+                "Drag App to pin",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = LocalContentColor.current.copy(alpha = 0.5f)
+            )
+        } else {
+            LazyRow(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically,
+                contentPadding = PaddingValues(horizontal = 10.dp)
+            ) {
+                itemsIndexed(displayApps, key = { _, app -> app.packageName }) { index, app ->
+                    var itemPos by remember { mutableStateOf(Offset.Zero) }
+                    val isBeingDragged = dragDropState.isDragging && app == dragDropState.draggedApp
+
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .onGloballyPositioned { itemPos = it.positionInRoot() }
+                            .animateItem(
+                                placementSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing)
+                            )
+                            .graphicsLayer {
+                                alpha = if (isBeingDragged) 0f else 1f
+                            }
+                    ) {
+                        app.icon?.let { icon ->
+                            Image(
+                                bitmap = icon.toBitmap().asImageBitmap(),
+                                contentDescription = app.name,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                                    .pointerInput(Unit) {
+                                        detectTapGestures(onTap = { onAppClick(app.packageName) })
+                                    }
+                                    .pointerInput(Unit) {
+                                        detectDragGesturesAfterLongPress(
+                                            onDragStart = { offset ->
+                                                val originalIndex = apps.indexOf(app)
+                                                dragDropState.startDrag(app, itemPos + offset, originalIndex)
+                                            },
+                                            onDrag = { change, dragAmount ->
+                                                change.consume()
+                                                dragDropState.dragOffset += dragAmount
+                                            },
+                                            onDragEnd = {
+                                                val finalPos = dragDropState.dragOffset
+                                                val sourceIdx = dragDropState.sourceIndex
+                                                val targetIdx = dragDropState.targetIndex
+                                                
+                                                val verticalDist = if (finalPos.y < dragDropState.dockBounds.top) {
+                                                    dragDropState.dockBounds.top - finalPos.y
+                                                } else if (finalPos.y > dragDropState.dockBounds.bottom) {
+                                                    finalPos.y - dragDropState.dockBounds.bottom
+                                                } else 0f
+                                                
+                                                val unpinThreshold = with(density) { 80.dp.toPx() }
+                                                val isOutside = !dragDropState.dockBounds.contains(finalPos) && verticalDist > unpinThreshold
+
+                                                if (isOutside) {
+                                                    if (sourceIdx != -1) {
+                                                        onUnpinApp(app.packageName)
+                                                    }
+                                                } else {
+                                                    if (sourceIdx == -1) {
+                                                        if (targetIdx != -1) {
+                                                            onPinApp(app.packageName, targetIdx)
+                                                        }
+                                                    } else if (targetIdx != -1 && targetIdx != sourceIdx) {
+                                                        onReorderApp(sourceIdx, targetIdx)
+                                                    }
+                                                }
+                                                dragDropState.stopDrag()
+                                            },
+                                            onDragCancel = { dragDropState.stopDrag() }
+                                        )
+                                    },
+                                contentScale = ContentScale.Fit
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -741,8 +993,12 @@ fun AppDrawer(
     containerColor: Color,
     onAppClick: (String) -> Unit,
     onSettingsClick: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onPinApp: (String, Int) -> Unit = { _, _ -> },
+    isGridLayout: Boolean = true,
+    onToggleLayout: () -> Unit = {}
 ) {
+    val dragDropState = LocalDragDropState.current
     val configuration = LocalConfiguration.current
     val isWideScreen = configuration.screenWidthDp >= 640
     val density = LocalDensity.current
@@ -753,7 +1009,6 @@ fun AppDrawer(
 
     var searchQuery by remember { mutableStateOf("") }
     var isSearchFocused by remember { mutableStateOf(false) }
-    var isGridLayout by remember { mutableStateOf(true) }
     var showMenu by remember { mutableStateOf(false) }
     var barHeightPx by remember { mutableIntStateOf(0) }
 
@@ -883,7 +1138,7 @@ fun AppDrawer(
                         .width(40.dp)
                         .height(4.dp)
                         .background(
-                            colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                            colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                             CircleShape
                         )
                         .align(Alignment.CenterHorizontally)
@@ -918,13 +1173,55 @@ fun AppDrawer(
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             items(filteredApps) { app ->
+                                var itemPos by remember { mutableStateOf(Offset.Zero) }
+                                
                                 Column(
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     modifier = Modifier
-                                        .clickable {
-                                        onAppClick(app.packageName)
-                                        onDismiss()
-                                    }
+                                        .onGloballyPositioned { itemPos = it.positionInRoot() }
+                                        .pointerInput(Unit) {
+                                            detectTapGestures(
+                                                onTap = {
+                                                    onAppClick(app.packageName)
+                                                    onDismiss()
+                                                }
+                                            )
+                                        }
+                                        .pointerInput(Unit) {
+                                            detectDragGesturesAfterLongPress(
+                                                onDragStart = { offset ->
+                                                    dragDropState.startDrag(app, itemPos + offset)
+                                                },
+                                                onDrag = { change, dragAmount ->
+                                                    change.consume()
+                                                    dragDropState.dragOffset += dragAmount
+                                                    
+                                                    if (dragDropState.dockBounds.contains(dragDropState.dragOffset)) {
+                                                        val relativeX = dragDropState.dragOffset.x - dragDropState.dockBounds.left
+                                                        val itemWidth = with(density) { 52.dp.toPx() }
+                                                        dragDropState.targetIndex = (relativeX / itemWidth).toInt().coerceIn(0, 100) // 100 is just a safe upper bound
+                                                    } else {
+                                                        dragDropState.targetIndex = -1
+                                                    }
+                                                },
+                                                onDragEnd = {
+                                                    val finalPos = dragDropState.dragOffset
+                                                    val verticalDist = if (finalPos.y < dragDropState.dockBounds.top) {
+                                                        dragDropState.dockBounds.top - finalPos.y
+                                                    } else if (finalPos.y > dragDropState.dockBounds.bottom) {
+                                                        finalPos.y - dragDropState.dockBounds.bottom
+                                                    } else 0f
+                                                    
+                                                    val hitThreshold = with(density) { 80.dp.toPx() }
+                                                    
+                                                    if (dragDropState.dockBounds.contains(finalPos) || verticalDist < hitThreshold) {
+                                                        onPinApp(app.packageName, dragDropState.targetIndex)
+                                                    }
+                                                    dragDropState.stopDrag()
+                                                },
+                                                onDragCancel = { dragDropState.stopDrag() }
+                                            )
+                                        }
                                 ) {
                                     app.icon?.let { icon ->
                                         Image(
@@ -957,14 +1254,56 @@ fun AppDrawer(
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             items(filteredApps) { app ->
+                                var itemPos by remember { mutableStateOf(Offset.Zero) }
+                                
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clip(RoundedCornerShape(16.dp))
-                                        .clickable {
-                                            onAppClick(app.packageName)
-                                            onDismiss()
+                                        .onGloballyPositioned { itemPos = it.positionInRoot() }
+                                        .pointerInput(Unit) {
+                                            detectTapGestures(
+                                                onTap = {
+                                                    onAppClick(app.packageName)
+                                                    onDismiss()
+                                                }
+                                            )
+                                        }
+                                        .pointerInput(Unit) {
+                                            detectDragGesturesAfterLongPress(
+                                                onDragStart = { offset ->
+                                                    dragDropState.startDrag(app, itemPos + offset)
+                                                },
+                                                onDrag = { change, dragAmount ->
+                                                    change.consume()
+                                                    dragDropState.dragOffset += dragAmount
+                                                    
+                                                    if (dragDropState.dockBounds.contains(dragDropState.dragOffset)) {
+                                                        val relativeX = dragDropState.dragOffset.x - dragDropState.dockBounds.left
+                                                        val itemWidth = with(density) { 52.dp.toPx() }
+                                                        dragDropState.targetIndex = (relativeX / itemWidth).toInt().coerceIn(0, 100) // 100 is just a safe upper bound
+                                                    } else {
+                                                        dragDropState.targetIndex = -1
+                                                    }
+                                                },
+                                                onDragEnd = {
+                                                    val finalPos = dragDropState.dragOffset
+                                                    val verticalDist = if (finalPos.y < dragDropState.dockBounds.top) {
+                                                        dragDropState.dockBounds.top - finalPos.y
+                                                    } else if (finalPos.y > dragDropState.dockBounds.bottom) {
+                                                        finalPos.y - dragDropState.dockBounds.bottom
+                                                    } else 0f
+                                                    
+                                                    val hitThreshold = with(density) { 80.dp.toPx() }
+                                                    
+                                                    if (dragDropState.dockBounds.contains(finalPos) || verticalDist < hitThreshold) {
+                                                        onPinApp(app.packageName, dragDropState.targetIndex)
+                                                    }
+                                                    dragDropState.stopDrag()
+                                                },
+                                                onDragCancel = { dragDropState.stopDrag() }
+                                            )
                                         }
                                         .padding(horizontal = 8.dp, vertical = 8.dp)
                                 ) {
@@ -1052,7 +1391,7 @@ fun AppDrawer(
                                 items = listOf(
                                     MenuItem(
                                         text = if (isGridLayout) "List view" else "Grid view",
-                                        onClick = { isGridLayout = !isGridLayout },
+                                        onClick = onToggleLayout,
                                         dismissOnClick = true,
                                         leadingIcon = {
                                             Icon(

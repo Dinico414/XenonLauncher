@@ -23,6 +23,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _blackedOutModeEnabled = MutableStateFlow(sharedPreferenceManager.blurEnabled)
     val blackedOutModeEnabled = _blackedOutModeEnabled.asStateFlow()
 
+    private val _isGridLayout = MutableStateFlow(sharedPreferenceManager.isGridLayout)
+    val isGridLayout = _isGridLayout.asStateFlow()
+
     private val _hasWallpaperAccess = MutableStateFlow(checkWallpaperAccess())
     val hasWallpaperAccess = _hasWallpaperAccess.asStateFlow()
 
@@ -52,6 +55,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setBlackedOutEnabled(enabled: Boolean) { 
         sharedPreferenceManager.blurEnabled = enabled
         _blackedOutModeEnabled.value = enabled 
+    }
+
+    fun setGridLayout(enabled: Boolean) {
+        sharedPreferenceManager.isGridLayout = enabled
+        _isGridLayout.value = enabled
     }
 
     fun onLanguageSettingClicked() { /* TODO */ }

@@ -1,11 +1,20 @@
-package com.xenonware.launcher.viewmodel
-
+import android.Manifest
+import android.annotation.SuppressLint
 import android.app.Application
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.SharedPreferences
+import android.content.pm.PackageManager
+import android.location.Location
 import android.os.BatteryManager
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
+import com.xenonware.launcher.data.SharedPreferenceManager
 import com.xenonware.launcher.media.MediaControllerManager
 import com.xenonware.launcher.media.MediaState
 import com.xenonware.launcher.model.AppInfo
@@ -14,19 +23,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
-import android.Manifest
-import android.annotation.SuppressLint
-import android.content.pm.PackageManager
-import android.location.Location
-import androidx.core.content.ContextCompat
-import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.location.Priority
-import com.google.android.gms.tasks.CancellationTokenSource
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import kotlin.coroutines.resume
 
 data class WeatherState(
@@ -35,8 +35,22 @@ data class WeatherState(
 )
 
 class LauncherViewModel(application: Application) : AndroidViewModel(application) {
+    private val prefManager = SharedPreferenceManager(application)
+
+    private val preferenceListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key == "is_grid_layout") {
+            _isGridLayout.value = prefManager.isGridLayout
+        }
+    }
+
     private val _apps = MutableStateFlow<List<AppInfo>>(emptyList())
     val apps: StateFlow<List<AppInfo>> = _apps
+
+    private val _pinnedApps = MutableStateFlow<List<AppInfo>>(emptyList())
+    val pinnedApps: StateFlow<List<AppInfo>> = _pinnedApps
+
+    private val _isGridLayout = MutableStateFlow(prefManager.isGridLayout)
+    val isGridLayout: StateFlow<Boolean> = _isGridLayout
     
     val mediaControllerManager = MediaControllerManager(application)
     val mediaState: MediaState get() = mediaControllerManager.mediaState
@@ -59,11 +73,17 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     val dateFormatter = DateTimeFormatter.ofPattern("EEE, MMM d")
 
     init {
+        prefManager.registerListener(preferenceListener)
         loadApps()
         startMediaUpdates()
         startTimeUpdates()
         startWeatherUpdates()
         startBatteryUpdates()
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        prefManager.unregisterListener(preferenceListener)
     }
 
     private fun startBatteryUpdates() {
@@ -202,7 +222,17 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 )
             }.sortedBy { it.name.lowercase() }
             _apps.value = appList
+
+            // Restore pinned apps once the main list is loaded
+            val savedPinnedPkgs = prefManager.pinnedApps
+            _pinnedApps.value = savedPinnedPkgs.mapNotNull { pkg ->
+                appList.find { it.packageName == pkg }
+            }
         }
+    }
+
+    private fun savePinnedApps() {
+        prefManager.pinnedApps = _pinnedApps.value.map { it.packageName }
     }
 
     fun launchApp(packageName: String) {
@@ -211,5 +241,44 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         if (launchIntent != null) {
             getApplication<Application>().startActivity(launchIntent)
         }
+    }
+
+    fun pinApp(packageName: String, atIndex: Int = -1) {
+        val app = _apps.value.find { it.packageName == packageName } ?: return
+        val currentPinned = _pinnedApps.value.toMutableList()
+        
+        val alreadyPinned = currentPinned.any { it.packageName == packageName }
+        if (!alreadyPinned && currentPinned.size >= 6) return
+        
+        // Remove if already exists to avoid duplicates
+        currentPinned.removeAll { it.packageName == packageName }
+        
+        if (atIndex == -1 || atIndex >= currentPinned.size) {
+            currentPinned.add(app)
+        } else {
+            currentPinned.add(atIndex.coerceAtLeast(0), app)
+        }
+        _pinnedApps.value = currentPinned
+        savePinnedApps()
+    }
+
+    fun unpinApp(packageName: String) {
+        _pinnedApps.value = _pinnedApps.value.filter { it.packageName != packageName }
+        savePinnedApps()
+    }
+
+    fun reorderPinnedApp(fromIndex: Int, toIndex: Int) {
+        val list = _pinnedApps.value.toMutableList()
+        if (fromIndex in list.indices && toIndex in list.indices) {
+            val item = list.removeAt(fromIndex)
+            list.add(toIndex, item)
+            _pinnedApps.value = list
+            savePinnedApps()
+        }
+    }
+
+    fun setGridLayout(isGrid: Boolean) {
+        _isGridLayout.value = isGrid
+        prefManager.isGridLayout = isGrid
     }
 }

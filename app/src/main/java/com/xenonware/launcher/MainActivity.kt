@@ -1,5 +1,6 @@
 package com.xenonware.launcher
 
+import LauncherViewModel
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
@@ -38,13 +39,13 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.xenonware.launcher.ui.AppDrawer
 import com.xenonware.launcher.ui.DockPill
+import com.xenonware.launcher.ui.LauncherDragLayer
 import com.xenonware.launcher.ui.pages.MainHomePage
 import com.xenonware.launcher.ui.pages.MediaPage
 import com.xenonware.launcher.ui.pages.WidgetPage
 import com.xenonware.launcher.ui.theme.XenonLauncherTheme
 import com.xenonware.launcher.util.WindowBlurBehind
 import com.xenonware.launcher.util.rememberBlurAvailable
-import com.xenonware.launcher.viewmodel.LauncherViewModel
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 
@@ -78,6 +79,8 @@ class MainActivity : ComponentActivity() {
                 }
 
                 val apps by viewModel.apps.collectAsState()
+                val pinnedApps by viewModel.pinnedApps.collectAsState()
+                val isGridLayout by viewModel.isGridLayout.collectAsState()
                 val currentTime by viewModel.currentTime.collectAsState()
                 val weatherState by viewModel.weatherState.collectAsState()
                 val notificationCount by viewModel.notificationCount.collectAsState()
@@ -86,6 +89,8 @@ class MainActivity : ComponentActivity() {
                 LauncherScreen(
                     viewModel = viewModel,
                     apps = apps,
+                    pinnedApps = pinnedApps,
+                    isGridLayout = isGridLayout,
                     currentTime = currentTime.format(viewModel.timeFormatter),
                     currentDate = currentTime.format(viewModel.dateFormatter),
                     weatherTemp = weatherState.temperature,
@@ -106,6 +111,8 @@ class MainActivity : ComponentActivity() {
 fun LauncherScreen(
     viewModel: LauncherViewModel,
     apps: List<com.xenonware.launcher.model.AppInfo>,
+    pinnedApps: List<com.xenonware.launcher.model.AppInfo>,
+    isGridLayout: Boolean,
     currentTime: String,
     currentDate: String,
     weatherTemp: String,
@@ -132,72 +139,80 @@ fun LauncherScreen(
         durationMillis = 200
     )
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .hazeSource(state = hazeState)
-        ) {
+    LauncherDragLayer {
+        Box(modifier = Modifier.fillMaxSize()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .blur(radius = contentBlur.dp)
+                    .hazeSource(state = hazeState)
             ) {
-                HorizontalPager(
-                    state = pagerState,
-                    modifier = Modifier.fillMaxSize(),
-                    beyondViewportPageCount = 1
-                ) { page ->
-                    when (page) {
-                        0 -> MediaPage()
-                        1 -> MainHomePage()
-                        2 -> WidgetPage()
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .blur(radius = contentBlur.dp)
+                ) {
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.fillMaxSize(),
+                        beyondViewportPageCount = 1
+                    ) { page ->
+                        when (page) {
+                            0 -> MediaPage()
+                            1 -> MainHomePage()
+                            2 -> WidgetPage()
+                        }
                     }
+                }
+
+                // APP LIST
+                AnimatedVisibility(
+                    visible = isAppDrawerVisible,
+                    enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                    exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    AppDrawer(
+                        apps = apps,
+                        containerColor = if (blurAvailable) {
+                            val lerp = if (isSystemInDarkTheme()) 0.5f else 0.15f
+                            lerp(MaterialTheme.colorScheme.surface.copy(alpha = 0.65f), Color.Black.copy(alpha = 0.2f), lerp)
+                        } else {
+                            MaterialTheme.colorScheme.surfaceContainerHighest
+                        },
+                        onAppClick = onAppClick,
+                        onSettingsClick = onOpenSettings,
+                        onDismiss = { isAppDrawerVisible = false },
+                        onPinApp = { pkg, index -> viewModel.pinApp(pkg, index) },
+                        isGridLayout = isGridLayout,
+                        onToggleLayout = { viewModel.setGridLayout(!isGridLayout) }
+                    )
                 }
             }
 
-            // APP LIST
-            AnimatedVisibility(
-                visible = isAppDrawerVisible,
-                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
-                modifier = Modifier.fillMaxSize()
-            ) {
-                AppDrawer(
-                    apps = apps,
-                    containerColor = if (blurAvailable) {
-                        val lerp = if (isSystemInDarkTheme()) 0.5f else 0.15f
-                        lerp(MaterialTheme.colorScheme.surface.copy(alpha = 0.65f), Color.Black.copy(alpha = 0.2f), lerp)
-                    } else {
-                        MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.95f)
-                    },
-                    onAppClick = onAppClick,
-                    onSettingsClick = onOpenSettings,
-                    onDismiss = { isAppDrawerVisible = false }
-                )
-            }
+            // DOCK LAYER
+            DockPill(
+                modifier = Modifier.align(Alignment.BottomCenter),
+                apps = pinnedApps,
+                mediaState = viewModel.mediaState,
+                isMediaPermissionGranted = viewModel.isMediaPermissionGranted,
+                notificationCount = notificationCount,
+                currentTime = currentTime,
+                currentDate = currentDate,
+                weatherTemp = weatherTemp,
+                weatherCondition = weatherCondition,
+                onAppClick = onAppClick,
+                onSettingsClick = onOpenSettings,
+                onFabClick = { isAppDrawerVisible = !isAppDrawerVisible },
+                onMediaPlayPause = { viewModel.togglePlayPause() },
+                onMediaSkipNext = { viewModel.skipNext() },
+                onOpenMediaPermission = { viewModel.openNotificationAccessSettings() },
+                isAppDrawerVisible = isAppDrawerVisible,
+                hazeState = hazeState,
+                progress = batteryLevel,
+                onUnpinApp = { viewModel.unpinApp(it) },
+                onPinApp = { pkg, index -> viewModel.pinApp(pkg, index) },
+                onReorderApp = { from, to -> viewModel.reorderPinnedApp(from, to) }
+            )
         }
-
-        // DOCK LAYER
-        DockPill(
-            modifier = Modifier.align(Alignment.BottomCenter),
-            apps = apps,
-            mediaState = viewModel.mediaState,
-            isMediaPermissionGranted = viewModel.isMediaPermissionGranted,
-            notificationCount = notificationCount,
-            currentTime = currentTime,
-            currentDate = currentDate,
-            weatherTemp = weatherTemp,
-            weatherCondition = weatherCondition,
-            onAppClick = onAppClick,
-            onSettingsClick = onOpenSettings,
-            onFabClick = { isAppDrawerVisible = !isAppDrawerVisible },
-            onMediaPlayPause = { viewModel.togglePlayPause() },
-            onMediaSkipNext = { viewModel.skipNext() },
-            onOpenMediaPermission = { viewModel.openNotificationAccessSettings() },
-            isAppDrawerVisible = isAppDrawerVisible,
-            hazeState = hazeState,
-            progress = batteryLevel
-        )
     }
 }
