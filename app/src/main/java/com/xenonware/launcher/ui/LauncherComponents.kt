@@ -1016,6 +1016,11 @@ fun AppDrawer(
     val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
     val listState = rememberLazyListState()
 
+    var searchQuery by remember { mutableStateOf("") }
+    var isSearchFocused by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
+    var barHeightPx by remember { mutableIntStateOf(0) }
+
     val isAtTop by remember(isGridLayout) {
         derivedStateOf {
             if (isGridLayout) {
@@ -1035,10 +1040,13 @@ fun AppDrawer(
         }
     }
 
-    var searchQuery by remember { mutableStateOf("") }
-    var isSearchFocused by remember { mutableStateOf(false) }
-    var showMenu by remember { mutableStateOf(false) }
-    var barHeightPx by remember { mutableIntStateOf(0) }
+    // Unfocus and hide keyboard when scrolling down if search is empty
+    LaunchedEffect(isAtTop) {
+        if (!isAtTop && searchQuery.isEmpty()) {
+            focusManager.clearFocus()
+            keyboardController?.hide()
+        }
+    }
 
     val filteredApps = remember(apps, searchQuery) {
         if (searchQuery.isBlank()) apps

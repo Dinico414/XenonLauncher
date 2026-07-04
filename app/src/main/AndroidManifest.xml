@@ -30,6 +30,7 @@
             android:launchMode="singleTask"
             android:clearTaskOnLaunch="true"
             android:stateNotNeeded="true"
+            android:windowSoftInputMode="adjustNothing"
             android:theme="@style/Theme.XenonLauncher">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

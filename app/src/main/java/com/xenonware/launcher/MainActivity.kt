@@ -136,6 +136,15 @@ fun LauncherScreen(
     )
 
     val blurAvailable = rememberBlurAvailable()
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+
+    LaunchedEffect(isAppDrawerVisible) {
+        if (!isAppDrawerVisible) {
+            focusManager.clearFocus()
+            keyboardController?.hide()
+        }
+    }
 
     WindowBlurBehind(
         targetRadiusPx = if (isAppDrawerVisible) 30 else 0,
