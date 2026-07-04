@@ -1368,9 +1368,9 @@ fun AppDrawer(
                             cursorBrush = SolidColor(colorScheme.primary),
                             decorationBox = { innerTextField ->
                                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                    if (searchQuery.isEmpty()) {
+                                    if (searchQuery.isEmpty() && !isSearchFocused) {
                                         Text(
-                                            text = "Search apps",
+                                            text = "Search",
                                             style = textStyle,
                                             color = colorScheme.onSurface.copy(alpha = 0.6f),
                                             modifier = Modifier.fillMaxWidth()
