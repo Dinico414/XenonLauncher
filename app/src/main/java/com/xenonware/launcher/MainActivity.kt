@@ -166,7 +166,13 @@ fun LauncherScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .blur(radius = (20 * blurProgress).dp)
+                        .then(
+                            if (blurAvailable) {
+                                Modifier.blur(radius = (20 * blurProgress).dp)
+                            } else {
+                                Modifier
+                            }
+                        )
                 ) {
                     HorizontalPager(
                         state = pagerState,
