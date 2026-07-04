@@ -1,12 +1,12 @@
 package com.xenonware.launcher.ui.res
 
-import android.os.Build
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
@@ -79,8 +79,6 @@ fun XenonDropDown(
     widthMin: Dp = 150.dp,
     widthMax: Dp = 280.dp,
     shadowElevation: Dp = 4.dp,
-    bgcSDK12a: Color = colorScheme.surfaceContainerHigh,
-    bgcSDK11b: Color = colorScheme.surfaceDim,
     alignment: Alignment = Alignment.TopEnd,
     maxLines: Int = 1,
 ) {
@@ -128,9 +126,6 @@ fun XenonDropDown(
 
             val transformOrigin = remember(alignment) { alignmentToTransformOrigin(alignment) }
 
-            val hazeThinColor =
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) bgcSDK12a else bgcSDK11b
-
             Column(
                 modifier = Modifier
                     .widthIn(min = widthMin, max = widthMax)
@@ -145,8 +140,9 @@ fun XenonDropDown(
                     .clip(RoundedCornerShape(radius))
                     .hazeEffect(
                         state = hazeState,
-                        style = HazeMaterials.ultraThin(hazeThinColor),
-                    ),
+                        style = HazeMaterials.ultraThin(),
+                    )
+                    .background(colorScheme.surfaceContainer.copy(alpha = 0.4f)),
             ) {
                 items.forEach { item ->
                     DropdownMenuItem(

@@ -59,6 +59,8 @@ import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Keyboard
+import androidx.compose.material.icons.rounded.KeyboardHide
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.MusicNote
@@ -66,8 +68,6 @@ import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.SkipNext
-import androidx.compose.material.icons.rounded.Visibility
-import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -1395,7 +1395,11 @@ fun AppDrawer(
                             .onSizeChanged { barHeightPx = it.height }
                             .clip(RoundedCornerShape(100f))
                             .hazeEffect(state = hazeState, style = HazeMaterials.ultraThin())
-                            .background(colorScheme.surfaceContainer.copy(alpha = 0.4f)),
+                            .background(colorScheme.surfaceContainer.copy(alpha = 0.4f))
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) { /* Block touches to list behind */ },
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         IconButton(onClick = { closeSearchOrDismiss() }, Modifier.padding(4.dp)) {
@@ -1457,13 +1461,13 @@ fun AppDrawer(
                                         }
                                     ),
                                     MenuItem(
-                                        text = "Show Keyboard",
+                                        text = "Open Keyboard",
                                         onClick = onToggleOpenKeyboard,
                                         dismissOnClick = false,
                                         leadingIcon = {
                                             Icon(
-                                                if (openKeyboard) Icons.Rounded.Visibility
-                                                else Icons.Rounded.VisibilityOff,
+                                                if (openKeyboard) Icons.Rounded.Keyboard
+                                                else Icons.Rounded.KeyboardHide,
                                                 contentDescription = null
                                             )
                                         }
