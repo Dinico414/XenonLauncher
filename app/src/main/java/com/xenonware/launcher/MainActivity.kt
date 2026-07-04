@@ -1,6 +1,5 @@
 package com.xenonware.launcher
 
-import LauncherViewModel
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
@@ -48,6 +47,7 @@ import com.xenonware.launcher.ui.pages.WidgetPage
 import com.xenonware.launcher.ui.theme.XenonLauncherTheme
 import com.xenonware.launcher.util.WindowBlurBehind
 import com.xenonware.launcher.util.rememberBlurAvailable
+import com.xenonware.launcher.viewmodel.LauncherViewModel
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 

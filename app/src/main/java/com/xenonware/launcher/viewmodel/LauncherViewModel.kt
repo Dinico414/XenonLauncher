@@ -1,3 +1,5 @@
+package com.xenonware.launcher.viewmodel
+
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Application
@@ -6,9 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.SharedPreferences
-import android.content.pm.PackageInstaller
 import android.content.pm.PackageManager
-import android.graphics.drawable.BitmapDrawable
 import android.location.Location
 import android.os.BatteryManager
 import androidx.core.content.ContextCompat
@@ -50,103 +50,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private val _apps = MutableStateFlow<List<AppInfo>>(emptyList())
     val apps: StateFlow<List<AppInfo>> = _apps
-
-    private val _installedApps = MutableStateFlow<List<AppInfo>>(emptyList())
-    private val _installingApps = MutableStateFlow<Map<Int, AppInfo>>(emptyMap())
-
-    private val sessionCallback = object : PackageInstaller.SessionCallback() {
-        override fun onCreated(sessionId: Int) = updateInstallingApps()
-        override fun onBadgingChanged(sessionId: Int) = updateInstallingApps()
-        override fun onActiveChanged(sessionId: Int, active: Boolean) = updateInstallingApps()
-        override fun onProgressChanged(sessionId: Int, progress: Float) {
-            val current = _installingApps.value.toMutableMap()
-            val session = getApplication<Application>().packageManager.packageInstaller.getSessionInfo(sessionId)
-            current[sessionId]?.let { oldApp ->
-                val newLabel = getDisplayLabel(session) ?: oldApp.name
-                if (oldApp.installProgress != progress || oldApp.name != newLabel) {
-                    current[sessionId] = oldApp.copy(
-                        installProgress = progress,
-                        name = newLabel
-                    )
-                    _installingApps.value = current
-                    combineApps()
-                }
-            }
-        }
-        override fun onFinished(sessionId: Int, success: Boolean) {
-            val current = _installingApps.value.toMutableMap()
-            current.remove(sessionId)
-            _installingApps.value = current
-            loadApps()
-        }
-    }
-
-    private fun updateInstallingApps() {
-        viewModelScope.launch(Dispatchers.IO) {
-            val pm = getApplication<Application>().packageManager
-            val installer = pm.packageInstaller
-            val sessions = installer.allSessions
-            val newInstallingApps = mutableMapOf<Int, AppInfo>()
-            
-            sessions.forEach { session ->
-                val packageName = session.appPackageName ?: return@forEach
-                val label = getDisplayLabel(session) ?: beautifyPackageName(packageName)
-                
-                val icon = session.appIcon?.let { BitmapDrawable(getApplication<Application>().resources, it) }
-                
-                newInstallingApps[session.sessionId] = AppInfo(
-                    name = label,
-                    packageName = packageName,
-                    icon = icon,
-                    installProgress = session.progress,
-                    isInstalling = true
-                )
-            }
-            _installingApps.value = newInstallingApps
-            combineApps()
-        }
-    }
-
-    private fun getDisplayLabel(session: PackageInstaller.SessionInfo?): String? {
-        val rawLabel = session?.appLabel?.toString()?.trim()
-        val packageName = session?.appPackageName ?: return null
-        
-        val statusKeywords = listOf(
-            "install", "wird", "get", "herunter", "download", 
-            "pending", "ausstehend", "wait", "laden"
-        )
-        
-        val isStatus = rawLabel.isNullOrBlank() || statusKeywords.any { word -> 
-            rawLabel.contains(word, ignoreCase = true) 
-        } && rawLabel.length < 25
-        
-        return if (isStatus) beautifyPackageName(packageName) else rawLabel
-    }
-
-    private fun beautifyPackageName(packageName: String): String {
-        val parts = packageName.split('.')
-        if (parts.isEmpty()) return packageName
-        
-        val name = when {
-            parts.size >= 3 && (parts.last().equals("android", ignoreCase = true) || parts.last().equals("mobile", ignoreCase = true)) -> parts[parts.size - 2]
-            parts.size >= 2 && parts[0].equals("com", ignoreCase = true) -> parts[1]
-            else -> parts.last()
-        }
-
-        return name.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
-    }
-
-    private fun combineApps() {
-        val installed = _installedApps.value
-        val installing = _installingApps.value.values.toList()
-        
-        // Remove installing apps if they are already in the installed list (just in case of overlap during finish)
-        val filteredInstalling = installing.filter { installingApp ->
-            installed.none { it.packageName == installingApp.packageName }
-        }
-        
-        _apps.value = (installed + filteredInstalling).sortedBy { it.name.lowercase() }
-    }
 
     private val _pinnedApps = MutableStateFlow<List<AppInfo>>(emptyList())
     val pinnedApps: StateFlow<List<AppInfo>> = _pinnedApps
@@ -208,10 +111,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         }
         application.registerReceiver(packageReceiver, packageFilter)
         application.registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
-        
-        val installer = application.packageManager.packageInstaller
-        installer.registerSessionCallback(sessionCallback)
-        updateInstallingApps()
     }
 
     override fun onCleared() {
@@ -219,7 +118,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         prefManager.unregisterListener(preferenceListener)
         getApplication<Application>().unregisterReceiver(packageReceiver)
         getApplication<Application>().unregisterReceiver(batteryReceiver)
-        getApplication<Application>().packageManager.packageInstaller.unregisterSessionCallback(sessionCallback)
     }
 
     private fun startWeatherUpdates() {
@@ -342,8 +240,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                     icon = it.loadIcon(pm)
                 )
             }.sortedBy { it.name.lowercase() }
-            _installedApps.value = appList
-            combineApps()
+            _apps.value = appList
 
             // Restore pinned apps once the main list is loaded
             val savedPinnedPkgs = prefManager.pinnedApps
