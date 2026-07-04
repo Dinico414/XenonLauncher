@@ -35,6 +35,7 @@ fun SettingsLayout(
     val currentThemeTitle by viewModel.currentThemeTitle.collectAsState()
     val blackedOutEnabled by viewModel.blackedOutModeEnabled.collectAsState()
     val isGridLayout by viewModel.isGridLayout.collectAsState()
+    val autoFocusSearch by viewModel.autoFocusSearch.collectAsState()
 
     val innerRadius = 4.dp
     val outerRadius = 24.dp
@@ -85,6 +86,16 @@ fun SettingsLayout(
                         icon = { Icon(Icons.Default.GridView, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                         backgroundColor = tileColor,
                         shape = topShape
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    SettingsSwitchTile(
+                        title = "Auto focus keyboard",
+                        subtitle = "Focus search at top of drawer",
+                        checked = autoFocusSearch,
+                        onCheckedChange = { viewModel.setAutoFocusSearch(it) },
+                        icon = { Icon(Icons.Default.Keyboard, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                        backgroundColor = tileColor,
+                        shape = middleShape
                     )
                     Spacer(Modifier.height(2.dp))
                     SettingsSwitchTile(

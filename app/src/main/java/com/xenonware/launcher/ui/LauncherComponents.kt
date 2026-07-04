@@ -59,6 +59,7 @@ import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Keyboard
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.MusicNote
@@ -76,6 +77,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -90,6 +92,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -996,7 +999,9 @@ fun AppDrawer(
     onDismiss: () -> Unit,
     onPinApp: (String, Int) -> Unit = { _, _ -> },
     isGridLayout: Boolean = true,
-    onToggleLayout: () -> Unit = {}
+    onToggleLayout: () -> Unit = {},
+    autoFocusSearch: Boolean = false,
+    onToggleAutoFocus: () -> Unit = {}
 ) {
     val dragDropState = LocalDragDropState.current
     val configuration = LocalConfiguration.current
@@ -1006,6 +1011,29 @@ fun AppDrawer(
     val keyboardController = LocalSoftwareKeyboardController.current
 
     val hazeState = remember { HazeState() }
+    val focusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
+
+    val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
+    val listState = rememberLazyListState()
+
+    val isAtTop by remember(isGridLayout) {
+        derivedStateOf {
+            if (isGridLayout) {
+                gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0
+            } else {
+                listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+            }
+        }
+    }
+
+    // Auto-focus search when scrolled to top
+    LaunchedEffect(isAtTop, autoFocusSearch) {
+        if (autoFocusSearch && isAtTop) {
+            focusRequester.requestFocus()
+            delay(100)
+            keyboardController?.show()
+        }
+    }
 
     var searchQuery by remember { mutableStateOf("") }
     var isSearchFocused by remember { mutableStateOf(false) }
@@ -1099,7 +1127,11 @@ fun AppDrawer(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .clickable(onClick = onDismiss)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onDismiss
+            )
     ) {
         Surface(
             modifier = Modifier
@@ -1161,6 +1193,7 @@ fun AppDrawer(
                     if (isGridLayout) {
                         LazyVerticalGrid(
                             columns = GridCells.Fixed(if (isWideScreen) 6 else 4),
+                            state = gridState,
                             modifier = Modifier
                                 .fillMaxSize()
                                 .nestedScroll(sheetDragConnection)
@@ -1243,6 +1276,7 @@ fun AppDrawer(
                         }
                     } else {
                         LazyColumn(
+                            state = listState,
                             modifier = Modifier
                                 .fillMaxSize()
                                 .nestedScroll(sheetDragConnection)
@@ -1362,6 +1396,7 @@ fun AppDrawer(
                             onValueChange = { searchQuery = it },
                             modifier = Modifier
                                 .weight(1f)
+                                .focusRequester(focusRequester)
                                 .onFocusChanged { isSearchFocused = it.isFocused },
                             singleLine = true,
                             textStyle = textStyle,
@@ -1398,6 +1433,24 @@ fun AppDrawer(
                                                 if (isGridLayout) Icons.AutoMirrored.Rounded.ViewList
                                                 else Icons.Rounded.GridView,
                                                 contentDescription = "Toggle layout"
+                                            )
+                                        }
+                                    ),
+                                    MenuItem(
+                                        text = "Auto focus keyboard",
+                                        onClick = onToggleAutoFocus,
+                                        dismissOnClick = false,
+                                        trailingIcon = {
+                                            androidx.compose.material3.Switch(
+                                                checked = autoFocusSearch,
+                                                onCheckedChange = null,
+                                                modifier = Modifier.scale(0.7f)
+                                            )
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                Icons.Rounded.Keyboard,
+                                                contentDescription = null
                                             )
                                         }
                                     ),

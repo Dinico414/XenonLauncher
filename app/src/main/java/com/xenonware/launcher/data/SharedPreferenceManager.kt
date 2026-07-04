@@ -22,6 +22,10 @@ class SharedPreferenceManager(context: Context) {
         get() = prefs.getBoolean("is_grid_layout", true)
         set(value) = prefs.edit().putBoolean("is_grid_layout", value).apply()
 
+    var autoFocusSearch: Boolean
+        get() = prefs.getBoolean("auto_focus_search", false)
+        set(value) = prefs.edit().putBoolean("auto_focus_search", value).apply()
+
     fun registerListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
         prefs.registerOnSharedPreferenceChangeListener(listener)
     }

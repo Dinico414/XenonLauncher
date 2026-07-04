@@ -38,8 +38,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val prefManager = SharedPreferenceManager(application)
 
     private val preferenceListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-        if (key == "is_grid_layout") {
-            _isGridLayout.value = prefManager.isGridLayout
+        when (key) {
+            "is_grid_layout" -> _isGridLayout.value = prefManager.isGridLayout
+            "auto_focus_search" -> _autoFocusSearch.value = prefManager.autoFocusSearch
         }
     }
 
@@ -51,6 +52,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private val _isGridLayout = MutableStateFlow(prefManager.isGridLayout)
     val isGridLayout: StateFlow<Boolean> = _isGridLayout
+
+    private val _autoFocusSearch = MutableStateFlow(prefManager.autoFocusSearch)
+    val autoFocusSearch: StateFlow<Boolean> = _autoFocusSearch
     
     val mediaControllerManager = MediaControllerManager(application)
     val mediaState: MediaState get() = mediaControllerManager.mediaState
@@ -280,5 +284,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun setGridLayout(isGrid: Boolean) {
         _isGridLayout.value = isGrid
         prefManager.isGridLayout = isGrid
+    }
+
+    fun setAutoFocusSearch(enabled: Boolean) {
+        _autoFocusSearch.value = enabled
+        prefManager.autoFocusSearch = enabled
     }
 }
