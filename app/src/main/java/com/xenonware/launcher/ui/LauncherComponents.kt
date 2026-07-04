@@ -1001,7 +1001,8 @@ fun AppDrawer(
     isGridLayout: Boolean = true,
     onToggleLayout: () -> Unit = {},
     autoFocusSearch: Boolean = false,
-    onToggleAutoFocus: () -> Unit = {}
+    onToggleAutoFocus: () -> Unit = {},
+    onProgress: (Float) -> Unit = {}
 ) {
     val dragDropState = LocalDragDropState.current
     val configuration = LocalConfiguration.current
@@ -1090,6 +1091,16 @@ fun AppDrawer(
     }
     var offsetY by remember { mutableFloatStateOf(0f) }
     var sheetHeightPx by remember { mutableIntStateOf(0) }
+    
+    val currentProgress = remember(offsetY, sheetHeightPx, backProgress.value) {
+        val dragProgress = if (sheetHeightPx > 0) (1f - (offsetY / sheetHeightPx)).coerceIn(0f, 1f) else 1f
+        dragProgress * (1f - backProgress.value)
+    }
+
+    LaunchedEffect(currentProgress) {
+        onProgress(currentProgress)
+    }
+
     val dismissThresholdPx = with(density) { 120.dp.toPx() }
     val flingDismissVelocity = 1200f
 

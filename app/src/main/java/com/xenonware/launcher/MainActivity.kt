@@ -11,6 +11,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -26,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -128,11 +130,16 @@ fun LauncherScreen(
     val hazeState = rememberHazeState()
     val pagerState = rememberPagerState(initialPage = 1) { 3 }
     var isAppDrawerVisible by remember { mutableStateOf(false) }
+    var drawerInteractiveProgress by remember { mutableFloatStateOf(1f) }
 
-    val contentBlur by animateFloatAsState(
-        targetValue = if (isAppDrawerVisible) 20f else 0f,
-        animationSpec = tween(durationMillis = 250),
-        label = "contentBlur"
+    val blurProgress by animateFloatAsState(
+        targetValue = if (isAppDrawerVisible) drawerInteractiveProgress else 0f,
+        animationSpec = if (drawerInteractiveProgress < 0.99f && isAppDrawerVisible) {
+            snap()
+        } else {
+            tween(durationMillis = 250)
+        },
+        label = "blurProgress"
     )
 
     val blurAvailable = rememberBlurAvailable()
@@ -143,13 +150,11 @@ fun LauncherScreen(
         if (!isAppDrawerVisible) {
             focusManager.clearFocus()
             keyboardController?.hide()
+            drawerInteractiveProgress = 1f
         }
     }
 
-    WindowBlurBehind(
-        targetRadiusPx = if (isAppDrawerVisible) 30 else 0,
-        durationMillis = 200
-    )
+    WindowBlurBehind(radiusPx = (30 * blurProgress).toInt())
 
     LauncherDragLayer {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -161,7 +166,7 @@ fun LauncherScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .blur(radius = contentBlur.dp)
+                        .blur(radius = (20 * blurProgress).dp)
                 ) {
                     HorizontalPager(
                         state = pagerState,
@@ -198,7 +203,8 @@ fun LauncherScreen(
                         isGridLayout = isGridLayout,
                         onToggleLayout = { viewModel.setGridLayout(!isGridLayout) },
                         autoFocusSearch = autoFocusSearch,
-                        onToggleAutoFocus = { viewModel.setAutoFocusSearch(!autoFocusSearch) }
+                        onToggleAutoFocus = { viewModel.setAutoFocusSearch(!autoFocusSearch) },
+                        onProgress = { drawerInteractiveProgress = it }
                     )
                 }
             }

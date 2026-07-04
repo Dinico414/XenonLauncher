@@ -11,7 +11,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -51,28 +50,13 @@ fun rememberBlurAvailable(): Boolean {
 
 @Composable
 fun WindowBlurBehind(
-    targetRadiusPx: Int,
-    durationMillis: Int = 250,
-    steps: Int = 8,
+    radiusPx: Int
 ) {
     val context = LocalContext.current
-    val applied = remember { mutableIntStateOf(0) }
 
-    LaunchedEffect(targetRadiusPx) {
+    LaunchedEffect(radiusPx) {
         val window = context.findActivity()?.window ?: return@LaunchedEffect
-        val from = applied.intValue
-        val to = targetRadiusPx
-        if (from == to) return@LaunchedEffect
-
-        val stepDelay = (durationMillis / steps).toLong().coerceAtLeast(1)
-        for (i in 1..steps) {
-            val r = from + (to - from) * i / steps
-            applyBackgroundBlur(window, r)
-            applied.intValue = r
-            delay(stepDelay)
-        }
-        applyBackgroundBlur(window, to)
-        applied.intValue = to
+        applyBackgroundBlur(window, radiusPx)
     }
 
     DisposableEffect(Unit) {
