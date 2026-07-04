@@ -26,8 +26,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _isGridLayout = MutableStateFlow(sharedPreferenceManager.isGridLayout)
     val isGridLayout = _isGridLayout.asStateFlow()
 
-    private val _autoFocusSearch = MutableStateFlow(sharedPreferenceManager.autoFocusSearch)
-    val autoFocusSearch = _autoFocusSearch.asStateFlow()
+    private val _openKeyboard = MutableStateFlow(sharedPreferenceManager.openKeyboard)
+    val openKeyboard = _openKeyboard.asStateFlow()
 
     private val _hasWallpaperAccess = MutableStateFlow(checkWallpaperAccess())
     val hasWallpaperAccess = _hasWallpaperAccess.asStateFlow()
@@ -65,9 +65,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         _isGridLayout.value = enabled
     }
 
-    fun setAutoFocusSearch(enabled: Boolean) {
-        sharedPreferenceManager.autoFocusSearch = enabled
-        _autoFocusSearch.value = enabled
+    fun setOpenKeyboard(enabled: Boolean) {
+        sharedPreferenceManager.openKeyboard = enabled
+        _openKeyboard.value = enabled
     }
 
     fun onLanguageSettingClicked() { /* TODO */ }

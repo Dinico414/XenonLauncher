@@ -44,7 +44,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val preferenceListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         when (key) {
             "is_grid_layout" -> _isGridLayout.value = prefManager.isGridLayout
-            "auto_focus_search" -> _autoFocusSearch.value = prefManager.autoFocusSearch
+            "open_keyboard" -> _openKeyboard.value = prefManager.openKeyboard
         }
     }
 
@@ -57,8 +57,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val _isGridLayout = MutableStateFlow(prefManager.isGridLayout)
     val isGridLayout: StateFlow<Boolean> = _isGridLayout
 
-    private val _autoFocusSearch = MutableStateFlow(prefManager.autoFocusSearch)
-    val autoFocusSearch: StateFlow<Boolean> = _autoFocusSearch
+    private val _openKeyboard = MutableStateFlow(prefManager.openKeyboard)
+    val openKeyboard: StateFlow<Boolean> = _openKeyboard
 
     private val packageReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -301,8 +301,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         prefManager.isGridLayout = isGrid
     }
 
-    fun setAutoFocusSearch(enabled: Boolean) {
-        _autoFocusSearch.value = enabled
-        prefManager.autoFocusSearch = enabled
+    fun setOpenKeyboard(enabled: Boolean) {
+        _openKeyboard.value = enabled
+        prefManager.openKeyboard = enabled
     }
 }

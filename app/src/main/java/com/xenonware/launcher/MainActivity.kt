@@ -83,7 +83,7 @@ class MainActivity : ComponentActivity() {
                 val apps by viewModel.apps.collectAsState()
                 val pinnedApps by viewModel.pinnedApps.collectAsState()
                 val isGridLayout by viewModel.isGridLayout.collectAsState()
-                val autoFocusSearch by viewModel.autoFocusSearch.collectAsState()
+                val openKeyboard by viewModel.openKeyboard.collectAsState()
                 val currentTime by viewModel.currentTime.collectAsState()
                 val weatherState by viewModel.weatherState.collectAsState()
                 val notificationCount by viewModel.notificationCount.collectAsState()
@@ -94,7 +94,7 @@ class MainActivity : ComponentActivity() {
                     apps = apps,
                     pinnedApps = pinnedApps,
                     isGridLayout = isGridLayout,
-                    autoFocusSearch = autoFocusSearch,
+                    openKeyboard = openKeyboard,
                     currentTime = currentTime.format(viewModel.timeFormatter),
                     currentDate = currentTime.format(viewModel.dateFormatter),
                     weatherTemp = weatherState.temperature,
@@ -117,7 +117,7 @@ fun LauncherScreen(
     apps: List<com.xenonware.launcher.model.AppInfo>,
     pinnedApps: List<com.xenonware.launcher.model.AppInfo>,
     isGridLayout: Boolean,
-    autoFocusSearch: Boolean,
+    openKeyboard: Boolean,
     currentTime: String,
     currentDate: String,
     weatherTemp: String,
@@ -208,8 +208,8 @@ fun LauncherScreen(
                         onPinApp = { pkg, index -> viewModel.pinApp(pkg, index) },
                         isGridLayout = isGridLayout,
                         onToggleLayout = { viewModel.setGridLayout(!isGridLayout) },
-                        autoFocusSearch = autoFocusSearch,
-                        onToggleAutoFocus = { viewModel.setAutoFocusSearch(!autoFocusSearch) },
+                        openKeyboard = openKeyboard,
+                        onToggleOpenKeyboard = { viewModel.setOpenKeyboard(!openKeyboard) },
                         onProgress = { drawerInteractiveProgress = it }
                     )
                 }

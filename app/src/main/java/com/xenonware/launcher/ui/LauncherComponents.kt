@@ -59,7 +59,6 @@ import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.Keyboard
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.MusicNote
@@ -67,6 +66,8 @@ import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.SkipNext
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -1000,8 +1001,8 @@ fun AppDrawer(
     onPinApp: (String, Int) -> Unit = { _, _ -> },
     isGridLayout: Boolean = true,
     onToggleLayout: () -> Unit = {},
-    autoFocusSearch: Boolean = false,
-    onToggleAutoFocus: () -> Unit = {},
+    openKeyboard: Boolean = false,
+    onToggleOpenKeyboard: () -> Unit = {},
     onProgress: (Float) -> Unit = {}
 ) {
     val dragDropState = LocalDragDropState.current
@@ -1033,8 +1034,8 @@ fun AppDrawer(
     }
 
     // Auto-focus search when scrolled to top
-    LaunchedEffect(isAtTop, autoFocusSearch) {
-        if (autoFocusSearch && isAtTop) {
+    LaunchedEffect(isAtTop, openKeyboard) {
+        if (openKeyboard && isAtTop) {
             focusRequester.requestFocus()
             delay(100)
             keyboardController?.show()
@@ -1456,19 +1457,13 @@ fun AppDrawer(
                                         }
                                     ),
                                     MenuItem(
-                                        text = "Auto focus keyboard",
-                                        onClick = onToggleAutoFocus,
+                                        text = "Show Keyboard",
+                                        onClick = onToggleOpenKeyboard,
                                         dismissOnClick = false,
-                                        trailingIcon = {
-                                            androidx.compose.material3.Switch(
-                                                checked = autoFocusSearch,
-                                                onCheckedChange = null,
-                                                modifier = Modifier.scale(0.7f)
-                                            )
-                                        },
                                         leadingIcon = {
                                             Icon(
-                                                Icons.Rounded.Keyboard,
+                                                if (openKeyboard) Icons.Rounded.Visibility
+                                                else Icons.Rounded.VisibilityOff,
                                                 contentDescription = null
                                             )
                                         }
