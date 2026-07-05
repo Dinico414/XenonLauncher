@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Xenon Launcher</string>
+    <string name="accessibility_service_description">Used to lock the screen via a double tap gesture.</string>
 </resources>

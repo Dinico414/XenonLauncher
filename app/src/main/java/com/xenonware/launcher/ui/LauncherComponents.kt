@@ -2,6 +2,7 @@ package com.xenonware.launcher.ui
 
 import android.content.Context
 import android.content.Intent
+import android.provider.Settings
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.Crossfade
@@ -135,6 +136,7 @@ import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
 import com.xenon.mylibrary.theme.QuicksandTitleVariable
 import com.xenonware.launcher.R
+import com.xenonware.launcher.accessibility.XenonAccessibilityService
 import com.xenonware.launcher.media.MediaState
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.ui.res.MenuItem
@@ -525,15 +527,31 @@ fun DockPill(
 
         Spacer(Modifier.width(12.dp))
 
+        val fabShape = RoundedCornerShape(16.dp)
         Surface(
-            onClick = onFabClick,
-            shape = CircleShape,
+            shape = fabShape,
             color = colorScheme.primary.copy(alpha = fabAlpha),
             contentColor = colorScheme.onPrimary,
             tonalElevation = 0.dp,
             modifier = Modifier
                 .size(64.dp)
-                .clip(CircleShape)
+                .clip(fabShape)
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onTap = { onFabClick() },
+                        onDoubleTap = {
+                            val service = XenonAccessibilityService.instance
+                            if (service != null) {
+                                service.lockScreen()
+                            } else {
+                                val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                                context.startActivity(intent)
+                            }
+                        }
+                    )
+                }
                 .then(
                     if (hazeState != null) {
                         Modifier.hazeEffect(state = hazeState, style = HazeMaterials.ultraThin())
