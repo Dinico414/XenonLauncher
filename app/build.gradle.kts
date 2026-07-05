@@ -38,6 +38,7 @@ android {
 }
 
 dependencies {
+    implementation(libs.material3)
     implementation(libs.xenon.commons)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
@@ -55,7 +56,6 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.accompanist.permissions)
-    implementation(libs.xenon.commons)
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
