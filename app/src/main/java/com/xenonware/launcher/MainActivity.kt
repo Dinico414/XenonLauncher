@@ -185,7 +185,10 @@ fun LauncherScreen(
                         when (page) {
                             0 -> MediaPage()
                             1 -> MainHomePage()
-                            2 -> WidgetPage()
+                            2 -> WidgetPage(
+                                viewModel = viewModel,
+                                onOpenSettings = onOpenSettings
+                            )
                         }
                     }
                 }

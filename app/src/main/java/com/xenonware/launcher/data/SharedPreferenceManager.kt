@@ -30,6 +30,22 @@ class SharedPreferenceManager(context: Context) {
         get() = prefs.getString("app_usage", "") ?: ""
         set(value) = prefs.edit().putString("app_usage", value).apply()
 
+    var widgetColumnsNormal: Int
+        get() = prefs.getInt("widget_columns_normal", 4)
+        set(value) = prefs.edit().putInt("widget_columns_normal", value).apply()
+
+    var widgetColumnsWide: Int
+        get() = prefs.getInt("widget_columns_wide", 8)
+        set(value) = prefs.edit().putInt("widget_columns_wide", value).apply()
+
+    var widgetLayoutNormal: String
+        get() = prefs.getString("widget_layout_normal", "") ?: ""
+        set(value) = prefs.edit().putString("widget_layout_normal", value).apply()
+
+    var widgetLayoutWide: String
+        get() = prefs.getString("widget_layout_wide", "") ?: ""
+        set(value) = prefs.edit().putString("widget_layout_wide", value).apply()
+
     fun registerListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
         prefs.registerOnSharedPreferenceChangeListener(listener)
     }

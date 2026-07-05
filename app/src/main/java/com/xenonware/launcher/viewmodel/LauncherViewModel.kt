@@ -45,6 +45,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         when (key) {
             "is_grid_layout" -> _isGridLayout.value = prefManager.isGridLayout
             "open_keyboard" -> _openKeyboard.value = prefManager.openKeyboard
+            "widget_columns_normal", "widget_columns_wide" -> {
+                _widgetColumns.value = if (_isWide.value) prefManager.widgetColumnsWide else prefManager.widgetColumnsNormal
+            }
+            "widget_layout_normal", "widget_layout_wide" -> loadWidgets()
         }
     }
 
@@ -62,6 +66,25 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private val _recentlyOpened = MutableStateFlow<List<AppInfo>>(emptyList())
     val recentlyOpened: StateFlow<List<AppInfo>> = _recentlyOpened
+
+    private val _isWide = MutableStateFlow(false)
+    val isWide: StateFlow<Boolean> = _isWide
+
+    private val _widgetColumns = MutableStateFlow(prefManager.widgetColumnsNormal)
+    val widgetColumns: StateFlow<Int> = _widgetColumns
+
+    private val _widgets = MutableStateFlow<List<com.xenonware.launcher.model.WidgetItem>>(emptyList())
+    val widgets: StateFlow<List<com.xenonware.launcher.model.WidgetItem>> = _widgets
+
+    private val _installedWidgets = MutableStateFlow<Map<AppWidgetGroup, List<android.appwidget.AppWidgetProviderInfo>>>(emptyMap())
+    val installedWidgets: StateFlow<Map<AppWidgetGroup, List<android.appwidget.AppWidgetProviderInfo>>> = _installedWidgets
+
+    data class AppWidgetGroup(
+        val appName: String,
+        val icon: android.graphics.drawable.Drawable?
+    ) : Comparable<AppWidgetGroup> {
+        override fun compareTo(other: AppWidgetGroup): Int = appName.compareTo(other.appName)
+    }
 
     private val packageReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -102,6 +125,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     init {
         prefManager.registerListener(preferenceListener)
         loadApps()
+        loadWidgets()
+        loadInstalledWidgets()
         startMediaUpdates()
         startTimeUpdates()
         startWeatherUpdates()
@@ -347,5 +372,113 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun setOpenKeyboard(enabled: Boolean) {
         _openKeyboard.value = enabled
         prefManager.openKeyboard = enabled
+    }
+
+    fun setIsWide(wide: Boolean) {
+        if (_isWide.value != wide) {
+            _isWide.value = wide
+            _widgetColumns.value = if (wide) prefManager.widgetColumnsWide else prefManager.widgetColumnsNormal
+            loadWidgets()
+        }
+    }
+
+    fun setWidgetColumns(cols: Int) {
+        _widgetColumns.value = cols
+        if (_isWide.value) {
+            prefManager.widgetColumnsWide = cols
+        } else {
+            prefManager.widgetColumnsNormal = cols
+        }
+    }
+
+    private fun loadInstalledWidgets() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val manager = android.appwidget.AppWidgetManager.getInstance(getApplication())
+            val pm = getApplication<Application>().packageManager
+            val providers = manager.installedProviders
+            
+            val grouped = providers.groupBy { it.provider.packageName }
+                .map { (pkg, widgets) ->
+                    val appName = try {
+                        pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
+                    } catch (e: Exception) {
+                        pkg
+                    }
+                    val icon = try {
+                        pm.getApplicationIcon(pkg)
+                    } catch (e: Exception) {
+                        null
+                    }
+                    AppWidgetGroup(appName, icon) to widgets
+                }
+                .toMap()
+                .toSortedMap()
+            
+            _installedWidgets.value = grouped
+        }
+    }
+
+    private fun loadWidgets() {
+        val layout = if (_isWide.value) prefManager.widgetLayoutWide else prefManager.widgetLayoutNormal
+        if (layout.isEmpty()) {
+            _widgets.value = emptyList()
+            return
+        }
+        val items = layout.split(",").mapNotNull {
+            val parts = it.split("|")
+            if (parts.size == 6) {
+                com.xenonware.launcher.model.WidgetItem(
+                    parts[0].toIntOrNull() ?: -1,
+                    parts[1].toIntOrNull() ?: 0,
+                    parts[2].toIntOrNull() ?: 0,
+                    parts[3].toIntOrNull() ?: 0,
+                    parts[4].toIntOrNull() ?: 1,
+                    parts[5].toIntOrNull() ?: 1
+                )
+            } else if (parts.size == 5) {
+                // Backward compatibility
+                com.xenonware.launcher.model.WidgetItem(
+                    parts[0].toIntOrNull() ?: -1,
+                    0,
+                    parts[1].toIntOrNull() ?: 0,
+                    parts[2].toIntOrNull() ?: 0,
+                    parts[3].toIntOrNull() ?: 1,
+                    parts[4].toIntOrNull() ?: 1
+                )
+            } else null
+        }.filter { it.id != -1 }
+        _widgets.value = items
+    }
+
+    fun addWidget(id: Int, page: Int, x: Int, y: Int, w: Int, h: Int) {
+        val current = _widgets.value.toMutableList()
+        current.add(com.xenonware.launcher.model.WidgetItem(id, page, x, y, w, h))
+        _widgets.value = current
+        saveWidgets()
+    }
+
+    fun removeWidget(id: Int) {
+        val current = _widgets.value.filter { it.id != id }
+        _widgets.value = current
+        saveWidgets()
+    }
+
+    fun updateWidget(id: Int, page: Int, x: Int, y: Int, w: Int, h: Int) {
+        val current = _widgets.value.toMutableList()
+        val index = current.indexOfFirst { it.id == id }
+        if (index != -1) {
+            current[index] = com.xenonware.launcher.model.WidgetItem(id, page, x, y, w, h)
+            _widgets.value = current
+            saveWidgets()
+        }
+    }
+
+    private fun saveWidgets() {
+        val layout = _widgets.value.joinToString(",") { "${it.id}|${it.page}|${it.x}|${it.y}|${it.width}|${it.height}" }
+        if (_isWide.value) {
+            prefManager.widgetLayoutWide = layout
+        } else {
+            prefManager.widgetLayoutNormal = layout
+        }
     }
 }
