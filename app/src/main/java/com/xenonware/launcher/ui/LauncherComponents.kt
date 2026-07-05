@@ -168,10 +168,10 @@ class DragDropState {
     var isDragging by mutableStateOf(false)
     var sourceIndex by mutableIntStateOf(-1)
     var targetIndex by mutableIntStateOf(-1)
-    
+
     // Position of the dock to detect drops
     var dockBounds by mutableStateOf(androidx.compose.ui.geometry.Rect.Zero)
-    
+
     fun startDrag(app: AppInfo, offset: Offset, index: Int = -1) {
         draggedApp = app
         dragOffset = offset
@@ -179,7 +179,7 @@ class DragDropState {
         sourceIndex = index
         targetIndex = index
     }
-    
+
     fun stopDrag() {
         draggedApp = null
         isDragging = false
@@ -194,27 +194,25 @@ val LocalDragDropState = staticCompositionLocalOf { DragDropState() }
 fun LauncherDragLayer(
     modifier: Modifier = Modifier,
     state: DragDropState = LocalDragDropState.current,
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         content()
-        
+
         if (state.isDragging && state.draggedApp != null) {
             val app = state.draggedApp!!
             val density = LocalDensity.current
-            
-            Box(
-                modifier = Modifier
-                    .offset {
-                        IntOffset(
-                            state.dragOffset.x.roundToInt() - with(density) { 28.dp.toPx() }.roundToInt(),
-                            state.dragOffset.y.roundToInt() - with(density) { 28.dp.toPx() }.roundToInt()
-                        )
-                    }
-                    .size(56.dp)
-                    .scale(1.1f)
-                    .alpha(0.9f)
-            ) {
+
+            Box(modifier = Modifier
+                .offset {
+                    IntOffset(
+                        state.dragOffset.x.roundToInt() - with(density) { 28.dp.toPx() }.roundToInt(),
+                        state.dragOffset.y.roundToInt() - with(density) { 28.dp.toPx() }.roundToInt()
+                    )
+                }
+                .size(56.dp)
+                .scale(1.1f)
+                .alpha(0.9f)) {
                 app.icon?.let { icon ->
                     Image(
                         bitmap = icon.toBitmap().asImageBitmap(),
@@ -250,13 +248,13 @@ fun DockPill(
     progress: Float = 1f,
     onUnpinApp: (String) -> Unit = {},
     onPinApp: (String, Int) -> Unit = { _, _ -> },
-    onReorderApp: (Int, Int) -> Unit = { _, _ -> }
+    onReorderApp: (Int, Int) -> Unit = { _, _ -> },
 ) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp.dp
     val finalMaxDockWidth = (screenWidth).coerceAtMost(538.dp)
-    
+
     var currentPage by remember { mutableIntStateOf(1) }
     val dockAlpha by animateFloatAsState(
         targetValue = if (isAppDrawerVisible) 0.4f else 1f,
@@ -269,14 +267,13 @@ fun DockPill(
         animationSpec = tween(500)
     )
     val buttonAlpha = if (isSystemInDarkTheme()) 0.35f else 1f
-    
+
     Row(
         modifier = modifier
             .width(finalMaxDockWidth)
             .padding(bottom = 32.dp, start = 16.dp, end = 16.dp)
             .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null
+                interactionSource = remember { MutableInteractionSource() }, indication = null
             ) { /* Block touches */ },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
@@ -303,35 +300,30 @@ fun DockPill(
             ) {
                 // Status Section
                 val statusStartPadding by animateDpAsState(
-                    targetValue = if (currentPage == 0) 0.dp else 8.dp,
-                    label = "statusStartPadding"
+                    targetValue = if (currentPage == 0) 0.dp else 8.dp, label = "statusStartPadding"
                 )
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
                         .padding(start = statusStartPadding)
                         .then(if (currentPage == 0) Modifier.weight(1f) else Modifier)
-                        .animateContentSize(),
-                    contentAlignment = Alignment.Center
+                        .animateContentSize(), contentAlignment = Alignment.Center
                 ) {
                     val isExpanded = currentPage == 0
                     val verticalPadding by animateDpAsState(
-                        targetValue = if (isExpanded) 4.dp else 12.dp,
-                        label = "statusPadding"
+                        targetValue = if (isExpanded) 4.dp else 12.dp, label = "statusPadding"
                     )
                     val backgroundColor by animateColorAsState(
                         targetValue = when {
                             !isExpanded && notificationCount > 0 -> colorScheme.primaryContainer
                             else -> colorScheme.surfaceContainerLowest.copy(alpha = buttonAlpha)
-                        },
-                        label = "statusBg"
+                        }, label = "statusBg"
                     )
                     val contentColor by animateColorAsState(
                         targetValue = when {
                             !isExpanded && notificationCount > 0 -> colorScheme.onPrimaryContainer
                             else -> colorScheme.onSurface
-                        },
-                        label = "statusContent"
+                        }, label = "statusContent"
                     )
 
                     val strokeRotationProgress by animateFloatAsState(
@@ -341,8 +333,7 @@ fun DockPill(
                     )
 
                     val strokeWidth by animateDpAsState(
-                        targetValue = if (isExpanded) 2.dp else 1.dp,
-                        label = "strokeWidth"
+                        targetValue = if (isExpanded) 2.dp else 1.dp, label = "strokeWidth"
                     )
 
                     val borderBrush = remember(strokeRotationProgress, progress) {
@@ -352,34 +343,36 @@ fun DockPill(
                                 val fraction = (progress - 0.15f) / 0.05f
                                 lerp(Color.Red, Color.Yellow, fraction)
                             }
+
                             progress <= 0.25f -> {
                                 val fraction = (progress - 0.20f) / 0.05f
                                 lerp(Color.Yellow, Color.Green, fraction)
                             }
+
                             else -> Color.Green
                         }
                         object : ShaderBrush() {
                             override fun createShader(size: Size): Shader {
                                 val start = Offset(
-                                    x = 0f,
-                                    y = size.height * (1f - strokeRotationProgress)
+                                    x = 0f, y = size.height * (1f - strokeRotationProgress)
                                 )
                                 val end = Offset(
-                                    x = size.width * strokeRotationProgress,
-                                    y = 0f
+                                    x = size.width * strokeRotationProgress, y = 0f
                                 )
                                 return LinearGradientShader(
-                                    from = start,
-                                    to = end,
-                                    colors = listOf(strokeColor, strokeColor, Color.Transparent, Color.Transparent),
-                                    colorStops = listOf(0.0f, progress, progress, 1.0f)
+                                    from = start, to = end, colors = listOf(
+                                        strokeColor,
+                                        strokeColor,
+                                        Color.Transparent,
+                                        Color.Transparent
+                                    ), colorStops = listOf(0.0f, progress, progress, 1.0f)
                                 )
                             }
                         }
                     }
 
                     Surface(
-                        onClick = { 
+                        onClick = {
                             if (currentPage == 0) {
                                 openNotifications(context)
                             } else {
@@ -396,14 +389,20 @@ fun DockPill(
                         border = BorderStroke(strokeWidth, borderBrush)
                     ) {
                         AnimatedContent(
-                            targetState = isExpanded,
-                            transitionSpec = {
-                                fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
-                            },
-                            label = "statusTransition"
+                            targetState = isExpanded, transitionSpec = {
+                                fadeIn(animationSpec = tween(300)) togetherWith fadeOut(
+                                    animationSpec = tween(300)
+                                )
+                            }, label = "statusTransition"
                         ) { targetExpanded ->
                             if (targetExpanded) {
-                                StatusSection(currentTime, currentDate, weatherTemp, weatherCondition, notificationCount)
+                                StatusSection(
+                                    currentTime,
+                                    currentDate,
+                                    weatherTemp,
+                                    weatherCondition,
+                                    notificationCount
+                                )
                             } else {
                                 Box(contentAlignment = Alignment.Center) {
                                     if (notificationCount > 0) {
@@ -413,7 +412,11 @@ fun DockPill(
                                             fontSize = 14.sp
                                         )
                                     } else {
-                                        Icon(Icons.Rounded.Info, null, modifier = Modifier.size(24.dp))
+                                        Icon(
+                                            Icons.Rounded.Info,
+                                            null,
+                                            modifier = Modifier.size(24.dp)
+                                        )
                                     }
                                 }
                             }
@@ -426,19 +429,18 @@ fun DockPill(
                     modifier = Modifier
                         .fillMaxHeight()
                         .then(if (currentPage == 1) Modifier.weight(1f) else Modifier)
-                        .animateContentSize(),
-                    contentAlignment = Alignment.Center
+                        .animateContentSize(), contentAlignment = Alignment.Center
                 ) {
                     val isExpanded = currentPage == 1
                     val verticalPadding by animateDpAsState(
-                        targetValue = if (isExpanded) 4.dp else 12.dp,
-                        label = "appsPadding"
+                        targetValue = if (isExpanded) 4.dp else 12.dp, label = "appsPadding"
                     )
-                    val backgroundColor = colorScheme.surfaceContainerLowest.copy(alpha = buttonAlpha)
+                    val backgroundColor =
+                        colorScheme.surfaceContainerLowest.copy(alpha = buttonAlpha)
                     val contentColor = colorScheme.onSurface
 
                     Surface(
-                        onClick = { 
+                        onClick = {
                             if (currentPage == 1) {
                                 onFabClick()
                             } else {
@@ -454,17 +456,23 @@ fun DockPill(
                         contentColor = contentColor
                     ) {
                         AnimatedContent(
-                            targetState = isExpanded,
-                            transitionSpec = {
-                                fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
-                            },
-                            label = "appsTransition"
+                            targetState = isExpanded, transitionSpec = {
+                                fadeIn(animationSpec = tween(300)) togetherWith fadeOut(
+                                    animationSpec = tween(300)
+                                )
+                            }, label = "appsTransition"
                         ) { targetExpanded ->
                             if (targetExpanded) {
-                                FixedAppSection(apps, onAppClick, onPinApp, onReorderApp, onUnpinApp)
+                                FixedAppSection(
+                                    apps, onAppClick, onPinApp, onReorderApp, onUnpinApp
+                                )
                             } else {
                                 Box(contentAlignment = Alignment.Center) {
-                                    Icon(Icons.Rounded.MoreHoriz, null, modifier = Modifier.size(24.dp))
+                                    Icon(
+                                        Icons.Rounded.MoreHoriz,
+                                        null,
+                                        modifier = Modifier.size(24.dp)
+                                    )
                                 }
                             }
                         }
@@ -473,27 +481,25 @@ fun DockPill(
 
                 // Media Section
                 val mediaEndPadding by animateDpAsState(
-                    targetValue = if (currentPage == 2) 0.dp else 8.dp,
-                    label = "mediaEndPadding"
+                    targetValue = if (currentPage == 2) 0.dp else 8.dp, label = "mediaEndPadding"
                 )
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
                         .padding(end = mediaEndPadding)
                         .then(if (currentPage == 2) Modifier.weight(1f) else Modifier)
-                        .animateContentSize(),
-                    contentAlignment = Alignment.Center
+                        .animateContentSize(), contentAlignment = Alignment.Center
                 ) {
                     val isExpanded = currentPage == 2
                     val verticalPadding by animateDpAsState(
-                        targetValue = if (isExpanded) 4.dp else 12.dp,
-                        label = "mediaPadding"
+                        targetValue = if (isExpanded) 4.dp else 12.dp, label = "mediaPadding"
                     )
-                    val backgroundColor = colorScheme.surfaceContainerLowest.copy(alpha = buttonAlpha)
+                    val backgroundColor =
+                        colorScheme.surfaceContainerLowest.copy(alpha = buttonAlpha)
                     val contentColor = colorScheme.onSurface
 
                     Surface(
-                        onClick = { 
+                        onClick = {
                             if (currentPage == 2) {
                                 openMediaApp(context, mediaState)
                             } else {
@@ -509,11 +515,11 @@ fun DockPill(
                         contentColor = contentColor
                     ) {
                         AnimatedContent(
-                            targetState = isExpanded,
-                            transitionSpec = {
-                                fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
-                            },
-                            label = "mediaTransition"
+                            targetState = isExpanded, transitionSpec = {
+                                fadeIn(animationSpec = tween(300)) togetherWith fadeOut(
+                                    animationSpec = tween(300)
+                                )
+                            }, label = "mediaTransition"
                         ) { targetExpanded ->
                             if (targetExpanded) {
                                 MediaSection(
@@ -525,7 +531,11 @@ fun DockPill(
                                 )
                             } else {
                                 Box(contentAlignment = Alignment.Center) {
-                                    Icon(Icons.Rounded.MusicNote, null, modifier = Modifier.size(24.dp))
+                                    Icon(
+                                        Icons.Rounded.MusicNote,
+                                        null,
+                                        modifier = Modifier.size(24.dp)
+                                    )
                                 }
                             }
                         }
@@ -546,27 +556,23 @@ fun DockPill(
                 .size(64.dp)
                 .clip(fabShape)
                 .pointerInput(Unit) {
-                    detectTapGestures(
-                        onTap = { onFabClick() },
-                        onDoubleTap = {
-                            val service = XenonAccessibilityService.instance
-                            if (service != null) {
-                                service.lockScreen()
-                            } else {
-                                val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
-                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                }
-                                context.startActivity(intent)
+                    detectTapGestures(onTap = { onFabClick() }, onDoubleTap = {
+                        val service = XenonAccessibilityService.instance
+                        if (service != null) {
+                            service.lockScreen()
+                        } else {
+                            val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             }
+                            context.startActivity(intent)
                         }
-                    )
+                    })
                 }
                 .then(
                     if (hazeState != null) {
                         Modifier.hazeEffect(state = hazeState, style = HazeMaterials.ultraThin())
                     } else Modifier
-                )
-        ) {
+                )) {
             Box(contentAlignment = Alignment.Center) {
                 Crossfade(targetState = isAppDrawerVisible, label = "fabIconFade") { visible ->
                     Icon(
@@ -605,7 +611,7 @@ private fun openMediaApp(context: Context, mediaState: MediaState) {
             return
         }
     }
-    
+
     try {
         val audioIntent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType("content://media/external/audio/media".toUri(), "audio/*")
@@ -618,7 +624,13 @@ private fun openMediaApp(context: Context, mediaState: MediaState) {
 }
 
 @Composable
-fun StatusSection(time: String, date: String, temperature: String, condition: String, notificationCount: Int) {
+fun StatusSection(
+    time: String,
+    date: String,
+    temperature: String,
+    condition: String,
+    notificationCount: Int,
+) {
     val contentColor = LocalContentColor.current
 
     // Re-evaluated whenever the clock string changes so it flips at dusk/dawn.
@@ -629,59 +641,59 @@ fun StatusSection(time: String, date: String, temperature: String, condition: St
 
     val weatherRes = remember(condition, isDay) {
         val (day, night) = when {
-            condition.contains("Thunder Shower", true) ||
-                    condition.contains("T-Shower", true) ->
-                R.drawable.tshower1 to R.drawable.tshower0
+            condition.contains("Thunder Shower", true) || condition.contains(
+                "T-Shower",
+                true
+            ) -> R.drawable.tshower1 to R.drawable.tshower0
 
-            condition.contains("Thunder", true) ||
-                    condition.contains("Storm", true) ->
-                R.drawable.tstorm1 to R.drawable.tstorm0
+            condition.contains("Thunder", true) || condition.contains(
+                "Storm",
+                true
+            ) -> R.drawable.tstorm1 to R.drawable.tstorm0
 
-            condition.contains("Tornado", true) ->
-                R.drawable.tornado1 to R.drawable.tornado0
+            condition.contains("Tornado", true) -> R.drawable.tornado1 to R.drawable.tornado0
 
-            condition.contains("Hail", true) ->
-                R.drawable.hail1 to R.drawable.hail0
+            condition.contains("Hail", true) -> R.drawable.hail1 to R.drawable.hail0
 
-            condition.contains("Sleet", true) ->
-                R.drawable.sleet1 to R.drawable.sleet0
+            condition.contains("Sleet", true) -> R.drawable.sleet1 to R.drawable.sleet0
 
-            condition.contains("Light Snow", true) ||
-                    condition.contains("Flurr", true) ->
-                R.drawable.lsnow1 to R.drawable.lsnow0
+            condition.contains("Light Snow", true) || condition.contains(
+                "Flurr",
+                true
+            ) -> R.drawable.lsnow1 to R.drawable.lsnow0
 
-            condition.contains("Snow", true) ||
-                    condition.contains("Ice", true) ->
-                R.drawable.snow1 to R.drawable.snow0
+            condition.contains("Snow", true) || condition.contains(
+                "Ice",
+                true
+            ) -> R.drawable.snow1 to R.drawable.snow0
 
-            condition.contains("Shower", true) ||
-                    condition.contains("Drizzle", true) ->
-                R.drawable.shower1 to R.drawable.shower0
+            condition.contains("Shower", true) || condition.contains(
+                "Drizzle",
+                true
+            ) -> R.drawable.shower1 to R.drawable.shower0
 
-            condition.contains("Rain", true) ->
-                R.drawable.rain1 to R.drawable.rain0
+            condition.contains("Rain", true) -> R.drawable.rain1 to R.drawable.rain0
 
-            condition.contains("Fog", true) ||
-                    condition.contains("Mist", true) ||
-                    condition.contains("Haze", true) ->
-                R.drawable.fog1 to R.drawable.fog0
+            condition.contains("Fog", true) || condition.contains(
+                "Mist",
+                true
+            ) || condition.contains("Haze", true) -> R.drawable.fog1 to R.drawable.fog0
 
-            condition.contains("Wind", true) ->
-                R.drawable.windy1 to R.drawable.windy0
+            condition.contains("Wind", true) -> R.drawable.windy1 to R.drawable.windy0
 
-            condition.contains("Partly", true) ->
-                R.drawable.pcloudy1 to R.drawable.pcloudy0
+            condition.contains("Partly", true) -> R.drawable.pcloudy1 to R.drawable.pcloudy0
 
-            condition.contains("Overcast", true) ||
-                    condition.contains("Cloud", true) ->
-                R.drawable.mcloudy1 to R.drawable.mcloudy0
+            condition.contains("Overcast", true) || condition.contains(
+                "Cloud",
+                true
+            ) -> R.drawable.mcloudy1 to R.drawable.mcloudy0
 
-            condition.contains("Clear", true) ||
-                    condition.contains("Sunny", true) ->
-                R.drawable.clear1 to R.drawable.clear0
+            condition.contains("Clear", true) || condition.contains(
+                "Sunny",
+                true
+            ) -> R.drawable.clear1 to R.drawable.clear0
 
-            else ->
-                R.drawable.unknown1 to R.drawable.unknown0
+            else -> R.drawable.unknown1 to R.drawable.unknown0
         }
         if (isDay) day else night
     }
@@ -700,15 +712,19 @@ fun StatusSection(time: String, date: String, temperature: String, condition: St
             verticalArrangement = Arrangement.spacedBy((-6).dp, Alignment.CenterVertically)
         ) {
             Spacer(modifier = Modifier.height(9.dp))
-            Text(time, fontWeight = FontWeight.Bold, maxLines = 1, fontSize = 16.sp, color = contentColor)
+            Text(
+                time,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                fontSize = 16.sp,
+                color = contentColor
+            )
             Text(date, maxLines = 1, fontSize = 10.sp, color = contentColor.copy(alpha = 0.7f))
         }
 
         if (notificationCount > 0) {
             Surface(
-                color = colorScheme.primary,
-                shape = CircleShape,
-                modifier = Modifier.size(24.dp)
+                color = colorScheme.primary, shape = CircleShape, modifier = Modifier.size(24.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Text(
@@ -749,36 +765,43 @@ fun FixedAppSection(
     onAppClick: (String) -> Unit,
     onPinApp: (String, Int) -> Unit,
     onReorderApp: (Int, Int) -> Unit,
-    onUnpinApp: (String) -> Unit
+    onUnpinApp: (String) -> Unit,
 ) {
     val dragDropState = LocalDragDropState.current
     val density = LocalDensity.current
     val listState = rememberLazyListState()
-    
+
     val itemWidthPx = with(density) { 52.dp.toPx() }
     val contentPaddingPx = with(density) { 10.dp.toPx() }
     val spacingPx = with(density) { 8.dp.toPx() }
 
     // Unified target index calculation
-    LaunchedEffect(dragDropState.isDragging, dragDropState.dragOffset, listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
+    LaunchedEffect(
+        dragDropState.isDragging,
+        dragDropState.dragOffset,
+        listState.firstVisibleItemIndex,
+        listState.firstVisibleItemScrollOffset
+    ) {
         if (dragDropState.isDragging && dragDropState.dockBounds.contains(dragDropState.dragOffset)) {
             val relativeX = dragDropState.dragOffset.x - dragDropState.dockBounds.left
             val viewportWidth = dragDropState.dockBounds.width
             val baseSize = if (dragDropState.sourceIndex == -1) apps.size else apps.size - 1
-            
+
             // Total width including padding and spacing
-            val totalContentWidth = (baseSize + 1) * itemWidthPx - spacingPx + (contentPaddingPx * 2)
-            val scrollPos = listState.firstVisibleItemIndex * itemWidthPx + listState.firstVisibleItemScrollOffset
-            
+            val totalContentWidth =
+                (baseSize + 1) * itemWidthPx - spacingPx + (contentPaddingPx * 2)
+            val scrollPos =
+                listState.firstVisibleItemIndex * itemWidthPx + listState.firstVisibleItemScrollOffset
+
             val contentStart = if (totalContentWidth < viewportWidth) {
                 (viewportWidth - totalContentWidth) / 2f + contentPaddingPx
             } else {
                 contentPaddingPx - scrollPos
             }
-            
+
             val xInContent = relativeX - contentStart
             val newTarget = (xInContent / itemWidthPx).roundToInt().coerceIn(0, baseSize)
-            
+
             if (dragDropState.targetIndex != newTarget) {
                 dragDropState.targetIndex = newTarget
             }
@@ -795,12 +818,16 @@ fun FixedAppSection(
                     val viewportWidth = dragDropState.dockBounds.width
                     val dragX = dragDropState.dragOffset.x - dragDropState.dockBounds.left
                     val edgeThreshold = with(density) { 40.dp.toPx() }
-                    
+
                     if (dragX < edgeThreshold && listState.canScrollBackward) {
-                        val speed = ((edgeThreshold - dragX) / edgeThreshold * 15f).coerceIn(1f, 15f)
+                        val speed =
+                            ((edgeThreshold - dragX) / edgeThreshold * 15f).coerceIn(1f, 15f)
                         listState.scrollBy(-speed)
                     } else if (dragX > viewportWidth - edgeThreshold && listState.canScrollForward) {
-                        val speed = ((dragX - (viewportWidth - edgeThreshold)) / edgeThreshold * 15f).coerceIn(1f, 15f)
+                        val speed =
+                            ((dragX - (viewportWidth - edgeThreshold)) / edgeThreshold * 15f).coerceIn(
+                                1f, 15f
+                            )
                         listState.scrollBy(speed)
                     }
                 }
@@ -808,19 +835,21 @@ fun FixedAppSection(
             }
         }
     }
-    
+
     // Display list that handles the visual "push" during drag
-    val displayApps = remember(apps, dragDropState.isDragging, dragDropState.targetIndex, dragDropState.sourceIndex) {
+    val displayApps = remember(
+        apps, dragDropState.isDragging, dragDropState.targetIndex, dragDropState.sourceIndex
+    ) {
         if (!dragDropState.isDragging || dragDropState.targetIndex == -1) {
             apps
         } else {
             val list = apps.toMutableList()
             val draggedApp = dragDropState.draggedApp ?: return@remember apps
-            
+
             list.removeAll { it.packageName == draggedApp.packageName }
-            
+
             if (dragDropState.sourceIndex == -1 && list.size >= 6) return@remember apps
-            
+
             val insertPos = dragDropState.targetIndex.coerceIn(0, list.size)
             list.add(insertPos, draggedApp)
             list
@@ -828,13 +857,13 @@ fun FixedAppSection(
     }
 
     Box(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
             .onGloballyPositioned { coordinates ->
                 dragDropState.dockBounds = coordinates.positionInRoot().let { pos ->
                     androidx.compose.ui.geometry.Rect(pos, coordinates.size.toSize())
                 }
-            },
-        contentAlignment = Alignment.Center
+            }, contentAlignment = Alignment.Center
     ) {
         if (apps.isEmpty() && !dragDropState.isDragging) {
             Text(
@@ -860,12 +889,13 @@ fun FixedAppSection(
                             .size(44.dp)
                             .onGloballyPositioned { itemPos = it.positionInRoot() }
                             .animateItem(
-                                placementSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing)
+                                placementSpec = tween(
+                                    durationMillis = 400, easing = FastOutSlowInEasing
+                                )
                             )
                             .graphicsLayer {
                                 alpha = if (isBeingDragged) 0f else 1f
-                            }
-                    ) {
+                            }) {
                         app.icon?.let { icon ->
                             Image(
                                 bitmap = icon.toBitmap().asImageBitmap(),
@@ -877,46 +907,45 @@ fun FixedAppSection(
                                         detectTapGestures(onTap = { onAppClick(app.packageName) })
                                     }
                                     .pointerInput(Unit) {
-                                        detectDragGesturesAfterLongPress(
-                                            onDragStart = { offset ->
-                                                val originalIndex = apps.indexOf(app)
-                                                dragDropState.startDrag(app, itemPos + offset, originalIndex)
-                                            },
-                                            onDrag = { change, dragAmount ->
-                                                change.consume()
-                                                dragDropState.dragOffset += dragAmount
-                                            },
-                                            onDragEnd = {
-                                                val finalPos = dragDropState.dragOffset
-                                                val sourceIdx = dragDropState.sourceIndex
-                                                val targetIdx = dragDropState.targetIndex
-                                                
-                                                val verticalDist = if (finalPos.y < dragDropState.dockBounds.top) {
+                                        detectDragGesturesAfterLongPress(onDragStart = { offset ->
+                                            val originalIndex = apps.indexOf(app)
+                                            dragDropState.startDrag(
+                                                app, itemPos + offset, originalIndex
+                                            )
+                                        }, onDrag = { change, dragAmount ->
+                                            change.consume()
+                                            dragDropState.dragOffset += dragAmount
+                                        }, onDragEnd = {
+                                            val finalPos = dragDropState.dragOffset
+                                            val sourceIdx = dragDropState.sourceIndex
+                                            val targetIdx = dragDropState.targetIndex
+
+                                            val verticalDist =
+                                                if (finalPos.y < dragDropState.dockBounds.top) {
                                                     dragDropState.dockBounds.top - finalPos.y
                                                 } else if (finalPos.y > dragDropState.dockBounds.bottom) {
                                                     finalPos.y - dragDropState.dockBounds.bottom
                                                 } else 0f
-                                                
-                                                val unpinThreshold = with(density) { 80.dp.toPx() }
-                                                val isOutside = !dragDropState.dockBounds.contains(finalPos) && verticalDist > unpinThreshold
 
-                                                if (isOutside) {
-                                                    if (sourceIdx != -1) {
-                                                        onUnpinApp(app.packageName)
-                                                    }
-                                                } else {
-                                                    if (sourceIdx == -1) {
-                                                        if (targetIdx != -1) {
-                                                            onPinApp(app.packageName, targetIdx)
-                                                        }
-                                                    } else if (targetIdx != -1 && targetIdx != sourceIdx) {
-                                                        onReorderApp(sourceIdx, targetIdx)
-                                                    }
+                                            val unpinThreshold = with(density) { 80.dp.toPx() }
+                                            val isOutside =
+                                                !dragDropState.dockBounds.contains(finalPos) && verticalDist > unpinThreshold
+
+                                            if (isOutside) {
+                                                if (sourceIdx != -1) {
+                                                    onUnpinApp(app.packageName)
                                                 }
-                                                dragDropState.stopDrag()
-                                            },
-                                            onDragCancel = { dragDropState.stopDrag() }
-                                        )
+                                            } else {
+                                                if (sourceIdx == -1) {
+                                                    if (targetIdx != -1) {
+                                                        onPinApp(app.packageName, targetIdx)
+                                                    }
+                                                } else if (targetIdx != -1 && targetIdx != sourceIdx) {
+                                                    onReorderApp(sourceIdx, targetIdx)
+                                                }
+                                            }
+                                            dragDropState.stopDrag()
+                                        }, onDragCancel = { dragDropState.stopDrag() })
                                     },
                                 contentScale = ContentScale.Fit
                             )
@@ -934,7 +963,7 @@ fun MediaSection(
     isPermissionGranted: Boolean,
     onPlayPause: () -> Unit,
     onSkipNext: () -> Unit,
-    onRequestPermission: () -> Unit
+    onRequestPermission: () -> Unit,
 ) {
     val contentColor = LocalContentColor.current
     Row(
@@ -1012,7 +1041,12 @@ fun MediaSection(
                     )
                 }
                 IconButton(onClick = onSkipNext, modifier = Modifier.size(28.dp)) {
-                    Icon(Icons.Rounded.SkipNext, null, tint = contentColor, modifier = Modifier.size(18.dp))
+                    Icon(
+                        Icons.Rounded.SkipNext,
+                        null,
+                        tint = contentColor,
+                        modifier = Modifier.size(18.dp)
+                    )
                 }
             }
         }
@@ -1026,8 +1060,7 @@ fun AllAppsDivider(modifier: Modifier = Modifier) {
         modifier = modifier.padding(top = 20.dp, bottom = 16.dp)
     ) {
         HorizontalDivider(
-            modifier = Modifier.weight(1f),
-            color = colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
+            modifier = Modifier.weight(1f), color = colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
         )
         Text(
             text = "All apps",
@@ -1036,8 +1069,7 @@ fun AllAppsDivider(modifier: Modifier = Modifier) {
             color = colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
         )
         HorizontalDivider(
-            modifier = Modifier.weight(1f),
-            color = colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
+            modifier = Modifier.weight(1f), color = colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
         )
     }
 }
@@ -1049,7 +1081,7 @@ fun AppDrawerGridItem(
     onDismiss: () -> Unit,
     onPinApp: (String, Int) -> Unit,
     dragDropState: DragDropState,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     var itemPos by remember { mutableStateOf(Offset.Zero) }
     val density = LocalDensity.current
@@ -1063,45 +1095,38 @@ fun AppDrawerGridItem(
                     onTap = {
                         onAppClick(app.packageName)
                         onDismiss()
-                    }
-                )
+                    })
             }
             .pointerInput(Unit) {
-                detectDragGesturesAfterLongPress(
-                    onDragStart = { offset ->
-                        dragDropState.startDrag(app, itemPos + offset)
-                    },
-                    onDrag = { change, dragAmount ->
-                        change.consume()
-                        dragDropState.dragOffset += dragAmount
+                detectDragGesturesAfterLongPress(onDragStart = { offset ->
+                    dragDropState.startDrag(app, itemPos + offset)
+                }, onDrag = { change, dragAmount ->
+                    change.consume()
+                    dragDropState.dragOffset += dragAmount
 
-                        if (dragDropState.dockBounds.contains(dragDropState.dragOffset)) {
-                            val relativeX = dragDropState.dragOffset.x - dragDropState.dockBounds.left
-                            val itemWidth = with(density) { 52.dp.toPx() }
-                            dragDropState.targetIndex = (relativeX / itemWidth).toInt().coerceIn(0, 100)
-                        } else {
-                            dragDropState.targetIndex = -1
-                        }
-                    },
-                    onDragEnd = {
-                        val finalPos = dragDropState.dragOffset
-                        val verticalDist = if (finalPos.y < dragDropState.dockBounds.top) {
-                            dragDropState.dockBounds.top - finalPos.y
-                        } else if (finalPos.y > dragDropState.dockBounds.bottom) {
-                            finalPos.y - dragDropState.dockBounds.bottom
-                        } else 0f
+                    if (dragDropState.dockBounds.contains(dragDropState.dragOffset)) {
+                        val relativeX = dragDropState.dragOffset.x - dragDropState.dockBounds.left
+                        val itemWidth = with(density) { 52.dp.toPx() }
+                        dragDropState.targetIndex = (relativeX / itemWidth).toInt().coerceIn(0, 100)
+                    } else {
+                        dragDropState.targetIndex = -1
+                    }
+                }, onDragEnd = {
+                    val finalPos = dragDropState.dragOffset
+                    val verticalDist = if (finalPos.y < dragDropState.dockBounds.top) {
+                        dragDropState.dockBounds.top - finalPos.y
+                    } else if (finalPos.y > dragDropState.dockBounds.bottom) {
+                        finalPos.y - dragDropState.dockBounds.bottom
+                    } else 0f
 
-                        val hitThreshold = with(density) { 80.dp.toPx() }
+                    val hitThreshold = with(density) { 80.dp.toPx() }
 
-                        if (dragDropState.dockBounds.contains(finalPos) || verticalDist < hitThreshold) {
-                            onPinApp(app.packageName, dragDropState.targetIndex)
-                        }
-                        dragDropState.stopDrag()
-                    },
-                    onDragCancel = { dragDropState.stopDrag() }
-                )
-            }
-    ) {
+                    if (dragDropState.dockBounds.contains(finalPos) || verticalDist < hitThreshold) {
+                        onPinApp(app.packageName, dragDropState.targetIndex)
+                    }
+                    dragDropState.stopDrag()
+                }, onDragCancel = { dragDropState.stopDrag() })
+            }) {
         app.icon?.let { icon ->
             Image(
                 bitmap = icon.toBitmap().asImageBitmap(),
@@ -1138,7 +1163,7 @@ fun AppDrawer(
     onToggleLayout: () -> Unit = {},
     openKeyboard: Boolean = false,
     onToggleOpenKeyboard: () -> Unit = {},
-    onProgress: (Float) -> Unit = {}
+    onProgress: (Float) -> Unit = {},
 ) {
     val dragDropState = LocalDragDropState.current
     val configuration = LocalConfiguration.current
@@ -1231,9 +1256,10 @@ fun AppDrawer(
     }
     var offsetY by remember { mutableFloatStateOf(0f) }
     var sheetHeightPx by remember { mutableIntStateOf(0) }
-    
+
     val currentProgress = remember(offsetY, sheetHeightPx, backProgress.value) {
-        val dragProgress = if (sheetHeightPx > 0) (1f - (offsetY / sheetHeightPx)).coerceIn(0f, 1f) else 1f
+        val dragProgress =
+            if (sheetHeightPx > 0) (1f - (offsetY / sheetHeightPx)).coerceIn(0f, 1f) else 1f
         dragProgress * (1f - backProgress.value)
     }
 
@@ -1258,7 +1284,7 @@ fun AppDrawer(
             override fun onPostScroll(
                 consumed: Offset,
                 available: Offset,
-                source: NestedScrollSource
+                source: NestedScrollSource,
             ): Offset {
                 if (source == NestedScrollSource.UserInput && available.y > 0f) {
                     offsetY += available.y
@@ -1307,10 +1333,7 @@ fun AppDrawer(
                 .statusBarsPadding()
                 .then(
                     if (isWideScreen) {
-                        Modifier
-                            .padding(horizontal = 56.dp)
-                            .widthIn(max = 640.dp)
-                            .fillMaxHeight()
+                        Modifier.padding(horizontal = 56.dp).widthIn(max = 640.dp).fillMaxHeight()
                     } else {
                         Modifier.fillMaxSize()
                     }
@@ -1329,8 +1352,7 @@ fun AppDrawer(
                         .width(40.dp)
                         .height(4.dp)
                         .background(
-                            colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                            CircleShape
+                            colorScheme.onSurfaceVariant.copy(alpha = 0.6f), CircleShape
                         )
                         .align(Alignment.CenterHorizontally)
                 )
@@ -1346,12 +1368,7 @@ fun AppDrawer(
                         .clip(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp))
 
                 ) {
-                    val animatedBarHeight by animateDpAsState(
-                        targetValue = if (barHeightPx > 0) with(density) { barHeightPx.toDp() } else 64.dp,
-                        label = "animatedBarHeight",
-                        animationSpec = tween(300)
-                    )
-                    val contentTopPadding = animatedBarHeight + 16.dp
+                    val contentTopPadding = with(density) { barHeightPx.toDp() } + 16.dp
 
                     if (isGridLayout) {
                         LazyVerticalGrid(
@@ -1361,7 +1378,9 @@ fun AppDrawer(
                                 .fillMaxSize()
                                 .nestedScroll(sheetDragConnection)
                                 .hazeSource(hazeState),
-                            contentPadding = PaddingValues(top = contentTopPadding, bottom = 120.dp),
+                            contentPadding = PaddingValues(
+                                top = contentTopPadding, bottom = 120.dp
+                            ),
                             verticalArrangement = Arrangement.spacedBy(24.dp),
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
@@ -1370,14 +1389,16 @@ fun AppDrawer(
                                     Box {
                                         androidx.compose.animation.AnimatedVisibility(
                                             visible = searchQuery.isEmpty(),
-                                            enter = fadeIn() + expandVertically(),
-                                            exit = fadeOut() + shrinkVertically() + slideOutVertically { -it }
+                                            enter = fadeIn(animationSpec = tween(300)) + expandVertically(animationSpec = tween(300)),
+                                            exit = fadeOut(animationSpec = tween(200)) + shrinkVertically(animationSpec = tween(50))
                                         ) {
                                             if (recentApps.isNotEmpty()) {
                                                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                                     Row(
                                                         modifier = Modifier.fillMaxWidth(),
-                                                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                                        horizontalArrangement = Arrangement.spacedBy(
+                                                            16.dp
+                                                        )
                                                     ) {
                                                         recentApps.forEach { app ->
                                                             Box(
@@ -1417,7 +1438,9 @@ fun AppDrawer(
                             } else {
                                 item(span = { GridItemSpan(maxLineSpan) }) {
                                     Box(
-                                        modifier = Modifier.fillMaxWidth().padding(top = 80.dp),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(top = 80.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Text(
@@ -1436,7 +1459,9 @@ fun AppDrawer(
                                 .fillMaxSize()
                                 .nestedScroll(sheetDragConnection)
                                 .hazeSource(hazeState),
-                            contentPadding = PaddingValues(top = contentTopPadding, bottom = 120.dp),
+                            contentPadding = PaddingValues(
+                                top = contentTopPadding, bottom = 120.dp
+                            ),
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             if (selectedSearchType == SearchType.Apps) {
@@ -1444,14 +1469,16 @@ fun AppDrawer(
                                     Box {
                                         androidx.compose.animation.AnimatedVisibility(
                                             visible = searchQuery.isEmpty(),
-                                            enter = fadeIn() + expandVertically(),
-                                            exit = fadeOut() + shrinkVertically() + slideOutVertically { -it }
+                                            enter = fadeIn(animationSpec = tween(300)) + expandVertically(animationSpec = tween(300)),
+                                            exit = fadeOut(animationSpec = tween(200)) + shrinkVertically(animationSpec = tween(50))
                                         ) {
                                             if (recentApps.isNotEmpty()) {
                                                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                                     Row(
                                                         modifier = Modifier.fillMaxWidth(),
-                                                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                                        horizontalArrangement = Arrangement.spacedBy(
+                                                            16.dp
+                                                        )
                                                     ) {
                                                         recentApps.forEach { app ->
                                                             Box(
@@ -1472,7 +1499,11 @@ fun AppDrawer(
                                                         }
                                                     }
 
-                                                    AllAppsDivider(modifier = Modifier.padding(bottom = 20.dp))
+                                                    AllAppsDivider(
+                                                        modifier = Modifier.padding(
+                                                            bottom = 20.dp
+                                                        )
+                                                    )
                                                 }
                                             }
                                         }
@@ -1493,53 +1524,56 @@ fun AppDrawer(
                                                     onTap = {
                                                         onAppClick(app.packageName)
                                                         onDismiss()
-                                                    }
-                                                )
+                                                    })
                                             }
                                             .pointerInput(Unit) {
-                                                detectDragGesturesAfterLongPress(
-                                                    onDragStart = { offset ->
-                                                        dragDropState.startDrag(app, itemPos + offset)
-                                                    },
-                                                    onDrag = { change, dragAmount ->
-                                                        change.consume()
-                                                        dragDropState.dragOffset += dragAmount
+                                                detectDragGesturesAfterLongPress(onDragStart = { offset ->
+                                                    dragDropState.startDrag(
+                                                        app, itemPos + offset
+                                                    )
+                                                }, onDrag = { change, dragAmount ->
+                                                    change.consume()
+                                                    dragDropState.dragOffset += dragAmount
 
-                                                        if (dragDropState.dockBounds.contains(dragDropState.dragOffset)) {
-                                                            val relativeX =
-                                                                dragDropState.dragOffset.x - dragDropState.dockBounds.left
-                                                            val itemWidth = with(density) { 52.dp.toPx() }
-                                                            dragDropState.targetIndex =
-                                                                (relativeX / itemWidth).toInt()
-                                                                    .coerceIn(0, 100)
-                                                        } else {
-                                                            dragDropState.targetIndex = -1
-                                                        }
-                                                    },
-                                                    onDragEnd = {
-                                                        val finalPos = dragDropState.dragOffset
-                                                        val verticalDist =
-                                                            if (finalPos.y < dragDropState.dockBounds.top) {
-                                                                dragDropState.dockBounds.top - finalPos.y
-                                                            } else if (finalPos.y > dragDropState.dockBounds.bottom) {
-                                                                finalPos.y - dragDropState.dockBounds.bottom
-                                                            } else 0f
+                                                    if (dragDropState.dockBounds.contains(
+                                                            dragDropState.dragOffset
+                                                        )
+                                                    ) {
+                                                        val relativeX =
+                                                            dragDropState.dragOffset.x - dragDropState.dockBounds.left
+                                                        val itemWidth =
+                                                            with(density) { 52.dp.toPx() }
+                                                        dragDropState.targetIndex =
+                                                            (relativeX / itemWidth).toInt()
+                                                                .coerceIn(0, 100)
+                                                    } else {
+                                                        dragDropState.targetIndex = -1
+                                                    }
+                                                }, onDragEnd = {
+                                                    val finalPos = dragDropState.dragOffset
+                                                    val verticalDist =
+                                                        if (finalPos.y < dragDropState.dockBounds.top) {
+                                                            dragDropState.dockBounds.top - finalPos.y
+                                                        } else if (finalPos.y > dragDropState.dockBounds.bottom) {
+                                                            finalPos.y - dragDropState.dockBounds.bottom
+                                                        } else 0f
 
-                                                        val hitThreshold = with(density) { 80.dp.toPx() }
+                                                    val hitThreshold =
+                                                        with(density) { 80.dp.toPx() }
 
-                                                        if (dragDropState.dockBounds.contains(finalPos) || verticalDist < hitThreshold) {
-                                                            onPinApp(
-                                                                app.packageName,
-                                                                dragDropState.targetIndex
-                                                            )
-                                                        }
-                                                        dragDropState.stopDrag()
-                                                    },
-                                                    onDragCancel = { dragDropState.stopDrag() }
-                                                )
+                                                    if (dragDropState.dockBounds.contains(
+                                                            finalPos
+                                                        ) || verticalDist < hitThreshold
+                                                    ) {
+                                                        onPinApp(
+                                                            app.packageName,
+                                                            dragDropState.targetIndex
+                                                        )
+                                                    }
+                                                    dragDropState.stopDrag()
+                                                }, onDragCancel = { dragDropState.stopDrag() })
                                             }
-                                            .padding(horizontal = 8.dp, vertical = 8.dp)
-                                    ) {
+                                            .padding(horizontal = 8.dp, vertical = 8.dp)) {
                                         app.icon?.let { icon ->
                                             Image(
                                                 bitmap = icon.toBitmap().asImageBitmap(),
@@ -1559,7 +1593,9 @@ fun AppDrawer(
                             } else {
                                 item {
                                     Box(
-                                        modifier = Modifier.fillMaxWidth().padding(top = 80.dp),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(top = 80.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Text(
@@ -1586,8 +1622,7 @@ fun AppDrawer(
                             .align(Alignment.TopCenter)
                             .fillMaxWidth()
                             .animateContentSize(animationSpec = tween(300))
-                            .onSizeChanged { barHeightPx = it.height }
-                    ) {
+                            .onSizeChanged { barHeightPx = it.height }) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1600,12 +1635,13 @@ fun AppDrawer(
                                 ) { /* Block touches to list behind */ },
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            IconButton(onClick = { closeSearchOrDismiss() }, Modifier.padding(4.dp)) {
+                            IconButton(
+                                onClick = { closeSearchOrDismiss() }, Modifier.padding(4.dp)
+                            ) {
                                 Icon(
                                     Icons.AutoMirrored.Rounded.ArrowBack,
                                     tint = colorScheme.onSurface,
-                                    contentDescription = if (isSearchFocused || searchQuery.isNotEmpty())
-                                        "Close search" else "Close"
+                                    contentDescription = if (isSearchFocused || searchQuery.isNotEmpty()) "Close search" else "Close"
                                 )
                             }
 
@@ -1628,7 +1664,9 @@ fun AppDrawer(
                                 textStyle = textStyle,
                                 cursorBrush = SolidColor(colorScheme.primary),
                                 decorationBox = { innerTextField ->
-                                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                    Box(
+                                        Modifier.fillMaxWidth(), contentAlignment = Alignment.Center
+                                    ) {
                                         if (searchQuery.isEmpty() && !isSearchFocused) {
                                             Text(
                                                 text = "Search",
@@ -1639,8 +1677,7 @@ fun AppDrawer(
                                         }
                                         innerTextField()
                                     }
-                                }
-                            )
+                                })
 
                             Box {
                                 IconButton(
@@ -1658,43 +1695,36 @@ fun AppDrawer(
                                     onDismissRequest = { showMenu = false },
                                     items = listOf(
                                         MenuItem(
-                                            text = if (isGridLayout) "List view" else "Grid view",
-                                            onClick = onToggleLayout,
-                                            dismissOnClick = true,
-                                            leadingIcon = {
-                                                Icon(
-                                                    if (isGridLayout) Icons.AutoMirrored.Rounded.ViewList
-                                                    else Icons.Rounded.GridView,
-                                                    contentDescription = "Toggle layout"
-                                                )
-                                            }
-                                        ),
-                                        MenuItem(
-                                            text = "Show Keyboard",
-                                            onClick = onToggleOpenKeyboard,
-                                            dismissOnClick = false,
-                                            leadingIcon = {
-                                                Icon(
-                                                    if (openKeyboard) Icons.Rounded.Visibility
-                                                    else Icons.Rounded.VisibilityOff,
-                                                    contentDescription = null
-                                                )
-                                            }
-                                        ),
-                                        MenuItem(
-                                            text = "Settings",
-                                            onClick = { onSettingsClick() },
-                                            dismissOnClick = true,
-                                            leadingIcon = {
-                                                Icon(
-                                                    Icons.Rounded.Settings,
-                                                    contentDescription = "Settings"
-                                                )
-                                            }
-                                        )
-                                    ),
-                                    hazeState = hazeState
-                                )
+                                        text = if (isGridLayout) "List view" else "Grid view",
+                                        onClick = onToggleLayout,
+                                        dismissOnClick = true,
+                                        leadingIcon = {
+                                            Icon(
+                                                if (isGridLayout) Icons.AutoMirrored.Rounded.ViewList
+                                                else Icons.Rounded.GridView,
+                                                contentDescription = "Toggle layout"
+                                            )
+                                        }), MenuItem(
+                                        text = "Show Keyboard",
+                                        onClick = onToggleOpenKeyboard,
+                                        dismissOnClick = false,
+                                        leadingIcon = {
+                                            Icon(
+                                                if (openKeyboard) Icons.Rounded.Visibility
+                                                else Icons.Rounded.VisibilityOff,
+                                                contentDescription = null
+                                            )
+                                        }), MenuItem(
+                                        text = "Settings",
+                                        onClick = { onSettingsClick() },
+                                        dismissOnClick = true,
+                                        leadingIcon = {
+                                            Icon(
+                                                Icons.Rounded.Settings,
+                                                contentDescription = "Settings"
+                                            )
+                                        })),
+                                    hazeState = hazeState)
                             }
                         }
 
@@ -1702,21 +1732,20 @@ fun AppDrawer(
                             androidx.compose.animation.AnimatedVisibility(
                                 visible = searchQuery.isNotEmpty(),
                                 enter = slideInVertically { -it } + fadeIn(),
-                                exit = slideOutVertically { -it } + fadeOut()
-                            ) {
-                            CompositionLocalProvider(LocalTextStyle provides typography.labelMedium) {
-                                XenonSingleChoiceButtonGroup(
-                                    options = SearchType.entries,
-                                    selectedOption = selectedSearchType,
-                                    onOptionSelect = { selectedSearchType = it },
-                                    label = { it.name },
-                                    icon = { _, _ -> },
-                                    buttonHeight = 36.dp,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(top = 8.dp)
-                                )
-                            }
+                                exit = slideOutVertically { -it } + shrinkVertically() + fadeOut()) {
+                                CompositionLocalProvider(LocalTextStyle provides typography.labelMedium) {
+                                    XenonSingleChoiceButtonGroup(
+                                        options = SearchType.entries,
+                                        selectedOption = selectedSearchType,
+                                        onOptionSelect = { selectedSearchType = it },
+                                        label = { it.name },
+                                        icon = { _, _ -> },
+                                        buttonHeight = 36.dp,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(top = 8.dp)
+                                    )
+                                }
                             }
                         }
                     }
