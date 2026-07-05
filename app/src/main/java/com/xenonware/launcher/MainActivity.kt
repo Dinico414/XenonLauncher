@@ -82,6 +82,7 @@ class MainActivity : ComponentActivity() {
 
                 val apps by viewModel.apps.collectAsState()
                 val pinnedApps by viewModel.pinnedApps.collectAsState()
+                val recentlyOpened by viewModel.recentlyOpened.collectAsState()
                 val isGridLayout by viewModel.isGridLayout.collectAsState()
                 val openKeyboard by viewModel.openKeyboard.collectAsState()
                 val currentTime by viewModel.currentTime.collectAsState()
@@ -93,6 +94,7 @@ class MainActivity : ComponentActivity() {
                     viewModel = viewModel,
                     apps = apps,
                     pinnedApps = pinnedApps,
+                    recentlyOpened = recentlyOpened,
                     isGridLayout = isGridLayout,
                     openKeyboard = openKeyboard,
                     currentTime = currentTime.format(viewModel.timeFormatter),
@@ -116,6 +118,7 @@ fun LauncherScreen(
     viewModel: LauncherViewModel,
     apps: List<com.xenonware.launcher.model.AppInfo>,
     pinnedApps: List<com.xenonware.launcher.model.AppInfo>,
+    recentlyOpened: List<com.xenonware.launcher.model.AppInfo>,
     isGridLayout: Boolean,
     openKeyboard: Boolean,
     currentTime: String,
@@ -196,6 +199,7 @@ fun LauncherScreen(
                 ) {
                     AppDrawer(
                         apps = apps,
+                        recentlyOpened = recentlyOpened,
                         containerColor = if (blurAvailable) {
                             val lerp = if (isSystemInDarkTheme()) 0.5f else 0.15f
                             lerp(MaterialTheme.colorScheme.surface.copy(alpha = 0.65f), Color.Black.copy(alpha = 0.2f), lerp)

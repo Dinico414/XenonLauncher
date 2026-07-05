@@ -44,6 +44,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
@@ -69,6 +70,7 @@ import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
@@ -990,10 +992,112 @@ fun MediaSection(
     }
 }
 
+@Composable
+fun AllAppsDivider(modifier: Modifier = Modifier) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier.padding(top = 20.dp, bottom = 16.dp)
+    ) {
+        HorizontalDivider(
+            modifier = Modifier.weight(1f),
+            color = colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
+        )
+        Text(
+            text = "All apps",
+            modifier = Modifier.padding(horizontal = 16.dp),
+            style = typography.labelMedium,
+            color = colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+        )
+        HorizontalDivider(
+            modifier = Modifier.weight(1f),
+            color = colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
+        )
+    }
+}
+
+@Composable
+fun AppDrawerGridItem(
+    app: AppInfo,
+    onAppClick: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onPinApp: (String, Int) -> Unit,
+    dragDropState: DragDropState,
+    modifier: Modifier = Modifier
+) {
+    var itemPos by remember { mutableStateOf(Offset.Zero) }
+    val density = LocalDensity.current
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier
+            .onGloballyPositioned { itemPos = it.positionInRoot() }
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onTap = {
+                        onAppClick(app.packageName)
+                        onDismiss()
+                    }
+                )
+            }
+            .pointerInput(Unit) {
+                detectDragGesturesAfterLongPress(
+                    onDragStart = { offset ->
+                        dragDropState.startDrag(app, itemPos + offset)
+                    },
+                    onDrag = { change, dragAmount ->
+                        change.consume()
+                        dragDropState.dragOffset += dragAmount
+
+                        if (dragDropState.dockBounds.contains(dragDropState.dragOffset)) {
+                            val relativeX = dragDropState.dragOffset.x - dragDropState.dockBounds.left
+                            val itemWidth = with(density) { 52.dp.toPx() }
+                            dragDropState.targetIndex = (relativeX / itemWidth).toInt().coerceIn(0, 100)
+                        } else {
+                            dragDropState.targetIndex = -1
+                        }
+                    },
+                    onDragEnd = {
+                        val finalPos = dragDropState.dragOffset
+                        val verticalDist = if (finalPos.y < dragDropState.dockBounds.top) {
+                            dragDropState.dockBounds.top - finalPos.y
+                        } else if (finalPos.y > dragDropState.dockBounds.bottom) {
+                            finalPos.y - dragDropState.dockBounds.bottom
+                        } else 0f
+
+                        val hitThreshold = with(density) { 80.dp.toPx() }
+
+                        if (dragDropState.dockBounds.contains(finalPos) || verticalDist < hitThreshold) {
+                            onPinApp(app.packageName, dragDropState.targetIndex)
+                        }
+                        dragDropState.stopDrag()
+                    },
+                    onDragCancel = { dragDropState.stopDrag() }
+                )
+            }
+    ) {
+        app.icon?.let { icon ->
+            Image(
+                bitmap = icon.toBitmap().asImageBitmap(),
+                contentDescription = app.name,
+                modifier = Modifier.size(56.dp)
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            app.name,
+            color = colorScheme.onSurface,
+            fontSize = 12.sp,
+            maxLines = 1,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
 @OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
 fun AppDrawer(
     apps: List<AppInfo>,
+    recentlyOpened: List<AppInfo>,
     containerColor: Color,
     onAppClick: (String) -> Unit,
     onSettingsClick: () -> Unit,
@@ -1022,6 +1126,11 @@ fun AppDrawer(
     var isSearchFocused by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     var barHeightPx by remember { mutableIntStateOf(0) }
+
+    val recentCount = if (isWideScreen) 6 else 4
+    val displayRecent = remember(recentlyOpened, searchQuery) {
+        if (searchQuery.isEmpty()) recentlyOpened.take(recentCount) else emptyList()
+    }
 
     val isAtTop by remember(isGridLayout) {
         derivedStateOf {
@@ -1218,80 +1327,49 @@ fun AppDrawer(
                                 .fillMaxSize()
                                 .nestedScroll(sheetDragConnection)
                                 .hazeSource(hazeState),
-                            contentPadding = PaddingValues(
-                                top = contentTopPadding,
-                                bottom = 120.dp
-                            ),
+                            contentPadding = PaddingValues(top = contentTopPadding, bottom = 120.dp),
                             verticalArrangement = Arrangement.spacedBy(24.dp),
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            items(filteredApps) { app ->
-                                var itemPos by remember { mutableStateOf(Offset.Zero) }
-                                
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    modifier = Modifier
-                                        .onGloballyPositioned { itemPos = it.positionInRoot() }
-                                        .pointerInput(Unit) {
-                                            detectTapGestures(
-                                                onTap = {
-                                                    onAppClick(app.packageName)
-                                                    onDismiss()
+                            if (displayRecent.isNotEmpty()) {
+                                item(span = { GridItemSpan(maxLineSpan) }) {
+                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                        ) {
+                                            displayRecent.forEach { app ->
+                                                Box(
+                                                    modifier = Modifier.weight(1f),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    AppDrawerGridItem(
+                                                        app = app,
+                                                        onAppClick = onAppClick,
+                                                        onDismiss = onDismiss,
+                                                        onPinApp = onPinApp,
+                                                        dragDropState = dragDropState
+                                                    )
                                                 }
-                                            )
+                                            }
+                                            repeat(recentCount - displayRecent.size) {
+                                                Spacer(Modifier.weight(1f))
+                                            }
                                         }
-                                        .pointerInput(Unit) {
-                                            detectDragGesturesAfterLongPress(
-                                                onDragStart = { offset ->
-                                                    dragDropState.startDrag(app, itemPos + offset)
-                                                },
-                                                onDrag = { change, dragAmount ->
-                                                    change.consume()
-                                                    dragDropState.dragOffset += dragAmount
-                                                    
-                                                    if (dragDropState.dockBounds.contains(dragDropState.dragOffset)) {
-                                                        val relativeX = dragDropState.dragOffset.x - dragDropState.dockBounds.left
-                                                        val itemWidth = with(density) { 52.dp.toPx() }
-                                                        dragDropState.targetIndex = (relativeX / itemWidth).toInt().coerceIn(0, 100)
-                                                    } else {
-                                                        dragDropState.targetIndex = -1
-                                                    }
-                                                },
-                                                onDragEnd = {
-                                                    val finalPos = dragDropState.dragOffset
-                                                    val verticalDist = if (finalPos.y < dragDropState.dockBounds.top) {
-                                                        dragDropState.dockBounds.top - finalPos.y
-                                                    } else if (finalPos.y > dragDropState.dockBounds.bottom) {
-                                                        finalPos.y - dragDropState.dockBounds.bottom
-                                                    } else 0f
-                                                    
-                                                    val hitThreshold = with(density) { 80.dp.toPx() }
-                                                    
-                                                    if (dragDropState.dockBounds.contains(finalPos) || verticalDist < hitThreshold) {
-                                                        onPinApp(app.packageName, dragDropState.targetIndex)
-                                                    }
-                                                    dragDropState.stopDrag()
-                                                },
-                                                onDragCancel = { dragDropState.stopDrag() }
-                                            )
-                                        }
-                                ) {
-                                    app.icon?.let { icon ->
-                                        Image(
-                                            bitmap = icon.toBitmap().asImageBitmap(),
-                                            contentDescription = app.name,
-                                            modifier = Modifier.size(56.dp)
-                                        )
+
+                                        AllAppsDivider()
                                     }
-                                    Spacer(Modifier.height(4.dp))
-                                    Text(
-                                        app.name,
-                                        color = colorScheme.onSurface,
-                                        fontSize = 12.sp,
-                                        maxLines = 1,
-                                        textAlign = TextAlign.Center
-                                    )
                                 }
+                            }
+
+                            items(filteredApps) { app ->
+                                AppDrawerGridItem(
+                                    app = app,
+                                    onAppClick = onAppClick,
+                                    onDismiss = onDismiss,
+                                    onPinApp = onPinApp,
+                                    dragDropState = dragDropState
+                                )
                             }
                         }
                     } else {
@@ -1301,12 +1379,40 @@ fun AppDrawer(
                                 .fillMaxSize()
                                 .nestedScroll(sheetDragConnection)
                                 .hazeSource(hazeState),
-                            contentPadding = PaddingValues(
-                                top = contentTopPadding,
-                                bottom = 120.dp
-                            ),
+                            contentPadding = PaddingValues(top = contentTopPadding, bottom = 120.dp),
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
+                            if (displayRecent.isNotEmpty()) {
+                                item {
+                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                        ) {
+                                            displayRecent.forEach { app ->
+                                                Box(
+                                                    modifier = Modifier.weight(1f),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    AppDrawerGridItem(
+                                                        app = app,
+                                                        onAppClick = onAppClick,
+                                                        onDismiss = onDismiss,
+                                                        onPinApp = onPinApp,
+                                                        dragDropState = dragDropState
+                                                    )
+                                                }
+                                            }
+                                            repeat(recentCount - displayRecent.size) {
+                                                Spacer(Modifier.weight(1f))
+                                            }
+                                        }
+
+                                        AllAppsDivider(modifier = Modifier.padding(bottom = 20.dp))
+                                    }
+                                }
+                            }
+
                             items(filteredApps) { app ->
                                 var itemPos by remember { mutableStateOf(Offset.Zero) }
                                 
@@ -1365,7 +1471,7 @@ fun AppDrawer(
                                         Image(
                                             bitmap = icon.toBitmap().asImageBitmap(),
                                             contentDescription = app.name,
-                                            modifier = Modifier.size(44.dp)
+                                            modifier = Modifier.size(48.dp)
                                         )
                                     }
                                     Spacer(Modifier.width(16.dp))

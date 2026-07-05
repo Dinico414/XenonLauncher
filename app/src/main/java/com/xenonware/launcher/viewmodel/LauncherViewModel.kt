@@ -60,6 +60,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val _openKeyboard = MutableStateFlow(prefManager.openKeyboard)
     val openKeyboard: StateFlow<Boolean> = _openKeyboard
 
+    private val _recentlyOpened = MutableStateFlow<List<AppInfo>>(emptyList())
+    val recentlyOpened: StateFlow<List<AppInfo>> = _recentlyOpened
+
     private val packageReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             loadApps()
@@ -247,6 +250,45 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             _pinnedApps.value = savedPinnedPkgs.mapNotNull { pkg ->
                 appList.find { it.packageName == pkg }
             }
+            loadRecentlyOpened()
+        }
+    }
+
+    private fun recordLaunch(packageName: String) {
+        val now = System.currentTimeMillis()
+        val usageStr = prefManager.appUsage
+        val entries = usageStr.split(",").filter { it.isNotEmpty() }.toMutableList()
+        entries.add("$packageName|$now")
+        
+        val oneDayAgo = now - 24 * 60 * 60 * 1000
+        val filteredEntries = entries.filter { 
+            val parts = it.split("|")
+            parts.size == 2 && parts[1].toLongOrNull() ?: 0L > oneDayAgo
+        }
+        
+        prefManager.appUsage = filteredEntries.joinToString(",")
+        loadRecentlyOpened()
+    }
+
+    private fun loadRecentlyOpened() {
+        val now = System.currentTimeMillis()
+        val oneDayAgo = now - 24 * 60 * 60 * 1000
+        val usageStr = prefManager.appUsage
+        val recentApps = usageStr.split(",")
+            .filter { it.isNotEmpty() }
+            .mapNotNull { 
+                val parts = it.split("|")
+                if (parts.size == 2) parts[0] to (parts[1].toLongOrNull() ?: 0L) else null 
+            }
+            .filter { it.second > oneDayAgo }
+            .groupBy { it.first }
+            .mapValues { it.value.size }
+            .toList()
+            .sortedByDescending { it.second }
+            .map { it.first }
+
+        _recentlyOpened.value = recentApps.mapNotNull { pkg ->
+            _apps.value.find { it.packageName == pkg }
         }
     }
 
@@ -258,6 +300,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         val pm = getApplication<Application>().packageManager
         val launchIntent = pm.getLaunchIntentForPackage(packageName)
         if (launchIntent != null) {
+            recordLaunch(packageName)
             getApplication<Application>().startActivity(launchIntent)
         }
     }

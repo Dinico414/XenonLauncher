@@ -26,6 +26,10 @@ class SharedPreferenceManager(context: Context) {
         get() = prefs.getBoolean("open_keyboard", false)
         set(value) = prefs.edit().putBoolean("open_keyboard", value).apply()
 
+    var appUsage: String
+        get() = prefs.getString("app_usage", "") ?: ""
+        set(value) = prefs.edit().putString("app_usage", value).apply()
+
     fun registerListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
         prefs.registerOnSharedPreferenceChangeListener(listener)
     }
