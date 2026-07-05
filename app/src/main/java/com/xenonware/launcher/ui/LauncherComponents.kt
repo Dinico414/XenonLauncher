@@ -14,8 +14,12 @@ import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -75,11 +79,13 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.MaterialTheme.typography
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -103,6 +109,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.LinearGradientShader
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shader
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.SolidColor
@@ -141,6 +148,7 @@ import com.xenonware.launcher.media.MediaState
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.ui.res.MenuItem
 import com.xenonware.launcher.ui.res.XenonDropDown
+import com.xenonware.launcher.ui.res.XenonSingleChoiceButtonGroup
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
@@ -151,6 +159,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.milliseconds
 
 // Custom Drag and Drop implementation for Launcher
 class DragDropState {
@@ -795,7 +804,7 @@ fun FixedAppSection(
                         listState.scrollBy(speed)
                     }
                 }
-                delay(16)
+                delay(16.milliseconds)
             }
         }
     }
@@ -842,7 +851,7 @@ fun FixedAppSection(
                 verticalAlignment = Alignment.CenterVertically,
                 contentPadding = PaddingValues(horizontal = 10.dp)
             ) {
-                itemsIndexed(displayApps, key = { _, app -> app.packageName }) { index, app ->
+                itemsIndexed(displayApps, key = { _, app -> app.packageName }) { _, app ->
                     var itemPos by remember { mutableStateOf(Offset.Zero) }
                     val isBeingDragged = dragDropState.isDragging && app == dragDropState.draggedApp
 
@@ -1111,6 +1120,10 @@ fun AppDrawerGridItem(
     }
 }
 
+enum class SearchType {
+    Apps, Contacts, Files, Web
+}
+
 @OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
 fun AppDrawer(
@@ -1141,14 +1154,13 @@ fun AppDrawer(
     val listState = rememberLazyListState()
 
     var searchQuery by remember { mutableStateOf("") }
+    var selectedSearchType by remember { mutableStateOf(SearchType.Apps) }
     var isSearchFocused by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     var barHeightPx by remember { mutableIntStateOf(0) }
 
     val recentCount = if (isWideScreen) 6 else 4
-    val displayRecent = remember(recentlyOpened, searchQuery) {
-        if (searchQuery.isEmpty()) recentlyOpened.take(recentCount) else emptyList()
-    }
+    val recentApps = remember(recentlyOpened) { recentlyOpened.take(recentCount) }
 
     val isAtTop by remember(isGridLayout) {
         derivedStateOf {
@@ -1164,7 +1176,7 @@ fun AppDrawer(
     LaunchedEffect(isAtTop, openKeyboard) {
         if (openKeyboard && isAtTop) {
             focusRequester.requestFocus()
-            delay(100)
+            delay(100.milliseconds)
             keyboardController?.show()
         }
     }
@@ -1334,8 +1346,12 @@ fun AppDrawer(
                         .clip(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp))
 
                 ) {
-                    val contentTopPadding =
-                        if (barHeightPx > 0) with(density) { barHeightPx.toDp() } + 16.dp else 64.dp
+                    val animatedBarHeight by animateDpAsState(
+                        targetValue = if (barHeightPx > 0) with(density) { barHeightPx.toDp() } else 64.dp,
+                        label = "animatedBarHeight",
+                        animationSpec = tween(300)
+                    )
+                    val contentTopPadding = animatedBarHeight + 16.dp
 
                     if (isGridLayout) {
                         LazyVerticalGrid(
@@ -1349,45 +1365,68 @@ fun AppDrawer(
                             verticalArrangement = Arrangement.spacedBy(24.dp),
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            if (displayRecent.isNotEmpty()) {
+                            if (selectedSearchType == SearchType.Apps) {
                                 item(span = { GridItemSpan(maxLineSpan) }) {
-                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                    Box {
+                                        androidx.compose.animation.AnimatedVisibility(
+                                            visible = searchQuery.isEmpty(),
+                                            enter = fadeIn() + expandVertically(),
+                                            exit = fadeOut() + shrinkVertically() + slideOutVertically { -it }
                                         ) {
-                                            displayRecent.forEach { app ->
-                                                Box(
-                                                    modifier = Modifier.weight(1f),
-                                                    contentAlignment = Alignment.Center
-                                                ) {
-                                                    AppDrawerGridItem(
-                                                        app = app,
-                                                        onAppClick = onAppClick,
-                                                        onDismiss = onDismiss,
-                                                        onPinApp = onPinApp,
-                                                        dragDropState = dragDropState
-                                                    )
+                                            if (recentApps.isNotEmpty()) {
+                                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                    Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                                    ) {
+                                                        recentApps.forEach { app ->
+                                                            Box(
+                                                                modifier = Modifier.weight(1f),
+                                                                contentAlignment = Alignment.Center
+                                                            ) {
+                                                                AppDrawerGridItem(
+                                                                    app = app,
+                                                                    onAppClick = onAppClick,
+                                                                    onDismiss = onDismiss,
+                                                                    onPinApp = onPinApp,
+                                                                    dragDropState = dragDropState
+                                                                )
+                                                            }
+                                                        }
+                                                        repeat(recentCount - recentApps.size) {
+                                                            Spacer(Modifier.weight(1f))
+                                                        }
+                                                    }
+
+                                                    AllAppsDivider()
                                                 }
                                             }
-                                            repeat(recentCount - displayRecent.size) {
-                                                Spacer(Modifier.weight(1f))
-                                            }
                                         }
-
-                                        AllAppsDivider()
                                     }
                                 }
-                            }
 
-                            items(filteredApps) { app ->
-                                AppDrawerGridItem(
-                                    app = app,
-                                    onAppClick = onAppClick,
-                                    onDismiss = onDismiss,
-                                    onPinApp = onPinApp,
-                                    dragDropState = dragDropState
-                                )
+                                items(filteredApps) { app ->
+                                    AppDrawerGridItem(
+                                        app = app,
+                                        onAppClick = onAppClick,
+                                        onDismiss = onDismiss,
+                                        onPinApp = onPinApp,
+                                        dragDropState = dragDropState
+                                    )
+                                }
+                            } else {
+                                item(span = { GridItemSpan(maxLineSpan) }) {
+                                    Box(
+                                        modifier = Modifier.fillMaxWidth().padding(top = 80.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            "Search ${selectedSearchType.name} Placeholder",
+                                            style = typography.bodyLarge,
+                                            color = colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                        )
+                                    }
+                                }
                             }
                         }
                     } else {
@@ -1400,105 +1439,135 @@ fun AppDrawer(
                             contentPadding = PaddingValues(top = contentTopPadding, bottom = 120.dp),
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            if (displayRecent.isNotEmpty()) {
+                            if (selectedSearchType == SearchType.Apps) {
                                 item {
-                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                    Box {
+                                        androidx.compose.animation.AnimatedVisibility(
+                                            visible = searchQuery.isEmpty(),
+                                            enter = fadeIn() + expandVertically(),
+                                            exit = fadeOut() + shrinkVertically() + slideOutVertically { -it }
                                         ) {
-                                            displayRecent.forEach { app ->
-                                                Box(
-                                                    modifier = Modifier.weight(1f),
-                                                    contentAlignment = Alignment.Center
-                                                ) {
-                                                    AppDrawerGridItem(
-                                                        app = app,
-                                                        onAppClick = onAppClick,
-                                                        onDismiss = onDismiss,
-                                                        onPinApp = onPinApp,
-                                                        dragDropState = dragDropState
-                                                    )
+                                            if (recentApps.isNotEmpty()) {
+                                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                    Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                                    ) {
+                                                        recentApps.forEach { app ->
+                                                            Box(
+                                                                modifier = Modifier.weight(1f),
+                                                                contentAlignment = Alignment.Center
+                                                            ) {
+                                                                AppDrawerGridItem(
+                                                                    app = app,
+                                                                    onAppClick = onAppClick,
+                                                                    onDismiss = onDismiss,
+                                                                    onPinApp = onPinApp,
+                                                                    dragDropState = dragDropState
+                                                                )
+                                                            }
+                                                        }
+                                                        repeat(recentCount - recentApps.size) {
+                                                            Spacer(Modifier.weight(1f))
+                                                        }
+                                                    }
+
+                                                    AllAppsDivider(modifier = Modifier.padding(bottom = 20.dp))
                                                 }
                                             }
-                                            repeat(recentCount - displayRecent.size) {
-                                                Spacer(Modifier.weight(1f))
-                                            }
                                         }
-
-                                        AllAppsDivider(modifier = Modifier.padding(bottom = 20.dp))
                                     }
                                 }
-                            }
 
-                            items(filteredApps) { app ->
-                                var itemPos by remember { mutableStateOf(Offset.Zero) }
-                                
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(16.dp))
-                                        .onGloballyPositioned { itemPos = it.positionInRoot() }
-                                        .pointerInput(Unit) {
-                                            detectTapGestures(
-                                                onTap = {
-                                                    onAppClick(app.packageName)
-                                                    onDismiss()
-                                                }
+                                items(filteredApps) { app ->
+                                    var itemPos by remember { mutableStateOf(Offset.Zero) }
+
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(16.dp))
+                                            .onGloballyPositioned { itemPos = it.positionInRoot() }
+                                            .pointerInput(Unit) {
+                                                detectTapGestures(
+                                                    onTap = {
+                                                        onAppClick(app.packageName)
+                                                        onDismiss()
+                                                    }
+                                                )
+                                            }
+                                            .pointerInput(Unit) {
+                                                detectDragGesturesAfterLongPress(
+                                                    onDragStart = { offset ->
+                                                        dragDropState.startDrag(app, itemPos + offset)
+                                                    },
+                                                    onDrag = { change, dragAmount ->
+                                                        change.consume()
+                                                        dragDropState.dragOffset += dragAmount
+
+                                                        if (dragDropState.dockBounds.contains(dragDropState.dragOffset)) {
+                                                            val relativeX =
+                                                                dragDropState.dragOffset.x - dragDropState.dockBounds.left
+                                                            val itemWidth = with(density) { 52.dp.toPx() }
+                                                            dragDropState.targetIndex =
+                                                                (relativeX / itemWidth).toInt()
+                                                                    .coerceIn(0, 100)
+                                                        } else {
+                                                            dragDropState.targetIndex = -1
+                                                        }
+                                                    },
+                                                    onDragEnd = {
+                                                        val finalPos = dragDropState.dragOffset
+                                                        val verticalDist =
+                                                            if (finalPos.y < dragDropState.dockBounds.top) {
+                                                                dragDropState.dockBounds.top - finalPos.y
+                                                            } else if (finalPos.y > dragDropState.dockBounds.bottom) {
+                                                                finalPos.y - dragDropState.dockBounds.bottom
+                                                            } else 0f
+
+                                                        val hitThreshold = with(density) { 80.dp.toPx() }
+
+                                                        if (dragDropState.dockBounds.contains(finalPos) || verticalDist < hitThreshold) {
+                                                            onPinApp(
+                                                                app.packageName,
+                                                                dragDropState.targetIndex
+                                                            )
+                                                        }
+                                                        dragDropState.stopDrag()
+                                                    },
+                                                    onDragCancel = { dragDropState.stopDrag() }
+                                                )
+                                            }
+                                            .padding(horizontal = 8.dp, vertical = 8.dp)
+                                    ) {
+                                        app.icon?.let { icon ->
+                                            Image(
+                                                bitmap = icon.toBitmap().asImageBitmap(),
+                                                contentDescription = app.name,
+                                                modifier = Modifier.size(48.dp)
                                             )
                                         }
-                                        .pointerInput(Unit) {
-                                            detectDragGesturesAfterLongPress(
-                                                onDragStart = { offset ->
-                                                    dragDropState.startDrag(app, itemPos + offset)
-                                                },
-                                                onDrag = { change, dragAmount ->
-                                                    change.consume()
-                                                    dragDropState.dragOffset += dragAmount
-                                                    
-                                                    if (dragDropState.dockBounds.contains(dragDropState.dragOffset)) {
-                                                        val relativeX = dragDropState.dragOffset.x - dragDropState.dockBounds.left
-                                                        val itemWidth = with(density) { 52.dp.toPx() }
-                                                        dragDropState.targetIndex = (relativeX / itemWidth).toInt().coerceIn(0, 100)
-                                                    } else {
-                                                        dragDropState.targetIndex = -1
-                                                    }
-                                                },
-                                                onDragEnd = {
-                                                    val finalPos = dragDropState.dragOffset
-                                                    val verticalDist = if (finalPos.y < dragDropState.dockBounds.top) {
-                                                        dragDropState.dockBounds.top - finalPos.y
-                                                    } else if (finalPos.y > dragDropState.dockBounds.bottom) {
-                                                        finalPos.y - dragDropState.dockBounds.bottom
-                                                    } else 0f
-                                                    
-                                                    val hitThreshold = with(density) { 80.dp.toPx() }
-                                                    
-                                                    if (dragDropState.dockBounds.contains(finalPos) || verticalDist < hitThreshold) {
-                                                        onPinApp(app.packageName, dragDropState.targetIndex)
-                                                    }
-                                                    dragDropState.stopDrag()
-                                                },
-                                                onDragCancel = { dragDropState.stopDrag() }
-                                            )
-                                        }
-                                        .padding(horizontal = 8.dp, vertical = 8.dp)
-                                ) {
-                                    app.icon?.let { icon ->
-                                        Image(
-                                            bitmap = icon.toBitmap().asImageBitmap(),
-                                            contentDescription = app.name,
-                                            modifier = Modifier.size(48.dp)
+                                        Spacer(Modifier.width(16.dp))
+                                        Text(
+                                            app.name,
+                                            color = colorScheme.onSurface,
+                                            fontSize = 16.sp,
+                                            maxLines = 1
                                         )
                                     }
-                                    Spacer(Modifier.width(16.dp))
-                                    Text(
-                                        app.name,
-                                        color = colorScheme.onSurface,
-                                        fontSize = 16.sp,
-                                        maxLines = 1
-                                    )
+                                }
+                            } else {
+                                item {
+                                    Box(
+                                        modifier = Modifier.fillMaxWidth().padding(top = 80.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            "Search ${selectedSearchType.name} Placeholder",
+                                            style = typography.bodyLarge,
+                                            color = colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -1512,104 +1581,143 @@ fun AppDrawer(
                         )
                     }
 
-                    Row(
+                    Column(
                         modifier = Modifier
                             .align(Alignment.TopCenter)
                             .fillMaxWidth()
+                            .animateContentSize(animationSpec = tween(300))
                             .onSizeChanged { barHeightPx = it.height }
-                            .clip(RoundedCornerShape(100f))
-                            .hazeEffect(state = hazeState, style = HazeMaterials.ultraThin())
-                            .background(colorScheme.surfaceContainer.copy(alpha = 0.4f))
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null
-                            ) { /* Block touches to list behind */ },
-                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        IconButton(onClick = { closeSearchOrDismiss() }, Modifier.padding(4.dp)) {
-                            Icon(
-                                Icons.AutoMirrored.Rounded.ArrowBack,
-                                tint = colorScheme.onSurface,
-                                contentDescription = if (isSearchFocused || searchQuery.isNotEmpty())
-                                    "Close search" else "Close"
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(100f))
+                                .hazeEffect(state = hazeState, style = HazeMaterials.ultraThin())
+                                .background(colorScheme.surfaceContainer.copy(alpha = 0.4f))
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null
+                                ) { /* Block touches to list behind */ },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(onClick = { closeSearchOrDismiss() }, Modifier.padding(4.dp)) {
+                                Icon(
+                                    Icons.AutoMirrored.Rounded.ArrowBack,
+                                    tint = colorScheme.onSurface,
+                                    contentDescription = if (isSearchFocused || searchQuery.isNotEmpty())
+                                        "Close search" else "Close"
+                                )
+                            }
+
+                            val textStyle = typography.titleLarge.merge(
+                                TextStyle(
+                                    fontFamily = QuicksandTitleVariable,
+                                    textAlign = TextAlign.Center,
+                                    color = colorScheme.onSurface
+                                )
                             )
+
+                            BasicTextField(
+                                value = searchQuery,
+                                onValueChange = { searchQuery = it },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .focusRequester(focusRequester)
+                                    .onFocusChanged { isSearchFocused = it.isFocused },
+                                singleLine = true,
+                                textStyle = textStyle,
+                                cursorBrush = SolidColor(colorScheme.primary),
+                                decorationBox = { innerTextField ->
+                                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                        if (searchQuery.isEmpty() && !isSearchFocused) {
+                                            Text(
+                                                text = "Search",
+                                                style = textStyle,
+                                                color = colorScheme.onSurface.copy(alpha = 0.6f),
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
+                                        }
+                                        innerTextField()
+                                    }
+                                }
+                            )
+
+                            Box {
+                                IconButton(
+                                    onClick = { showMenu = !showMenu },
+                                    modifier = Modifier.padding(4.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Rounded.MoreVert,
+                                        tint = colorScheme.onSurface,
+                                        contentDescription = "More options"
+                                    )
+                                }
+                                XenonDropDown(
+                                    expanded = showMenu,
+                                    onDismissRequest = { showMenu = false },
+                                    items = listOf(
+                                        MenuItem(
+                                            text = if (isGridLayout) "List view" else "Grid view",
+                                            onClick = onToggleLayout,
+                                            dismissOnClick = true,
+                                            leadingIcon = {
+                                                Icon(
+                                                    if (isGridLayout) Icons.AutoMirrored.Rounded.ViewList
+                                                    else Icons.Rounded.GridView,
+                                                    contentDescription = "Toggle layout"
+                                                )
+                                            }
+                                        ),
+                                        MenuItem(
+                                            text = "Show Keyboard",
+                                            onClick = onToggleOpenKeyboard,
+                                            dismissOnClick = false,
+                                            leadingIcon = {
+                                                Icon(
+                                                    if (openKeyboard) Icons.Rounded.Visibility
+                                                    else Icons.Rounded.VisibilityOff,
+                                                    contentDescription = null
+                                                )
+                                            }
+                                        ),
+                                        MenuItem(
+                                            text = "Settings",
+                                            onClick = { onSettingsClick() },
+                                            dismissOnClick = true,
+                                            leadingIcon = {
+                                                Icon(
+                                                    Icons.Rounded.Settings,
+                                                    contentDescription = "Settings"
+                                                )
+                                            }
+                                        )
+                                    ),
+                                    hazeState = hazeState
+                                )
+                            }
                         }
 
-                        val textStyle = typography.titleLarge.merge(
-                            TextStyle(fontFamily = QuicksandTitleVariable, textAlign = TextAlign.Center, color = colorScheme.onSurface)
-                        )
-
-                        BasicTextField(
-                            value = searchQuery,
-                            onValueChange = { searchQuery = it },
-                            modifier = Modifier
-                                .weight(1f)
-                                .focusRequester(focusRequester)
-                                .onFocusChanged { isSearchFocused = it.isFocused },
-                            singleLine = true,
-                            textStyle = textStyle,
-                            cursorBrush = SolidColor(colorScheme.primary),
-                            decorationBox = { innerTextField ->
-                                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                    if (searchQuery.isEmpty() && !isSearchFocused) {
-                                        Text(
-                                            text = "Search",
-                                            style = textStyle,
-                                            color = colorScheme.onSurface.copy(alpha = 0.6f),
-                                            modifier = Modifier.fillMaxWidth()
-                                        )
-                                    }
-                                    innerTextField()
-                                }
+                        Box(modifier = Modifier.clip(RectangleShape)) {
+                            androidx.compose.animation.AnimatedVisibility(
+                                visible = searchQuery.isNotEmpty(),
+                                enter = slideInVertically { -it } + fadeIn(),
+                                exit = slideOutVertically { -it } + fadeOut()
+                            ) {
+                            CompositionLocalProvider(LocalTextStyle provides typography.labelMedium) {
+                                XenonSingleChoiceButtonGroup(
+                                    options = SearchType.entries,
+                                    selectedOption = selectedSearchType,
+                                    onOptionSelect = { selectedSearchType = it },
+                                    label = { it.name },
+                                    icon = { _, _ -> },
+                                    buttonHeight = 36.dp,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 8.dp)
+                                )
                             }
-                        )
-
-                        Box {
-                            IconButton(onClick = { showMenu = !showMenu }, modifier = Modifier.padding(4.dp)) {
-                                Icon(Icons.Rounded.MoreVert, tint = colorScheme.onSurface, contentDescription = "More options")
                             }
-                            XenonDropDown(
-                                expanded = showMenu,
-                                onDismissRequest = { showMenu = false },
-                                items = listOf(
-                                    MenuItem(
-                                        text = if (isGridLayout) "List view" else "Grid view",
-                                        onClick = onToggleLayout,
-                                        dismissOnClick = true,
-                                        leadingIcon = {
-                                            Icon(
-                                                if (isGridLayout) Icons.AutoMirrored.Rounded.ViewList
-                                                else Icons.Rounded.GridView,
-                                                contentDescription = "Toggle layout"
-                                            )
-                                        }
-                                    ),
-                                    MenuItem(
-                                        text = "Show Keyboard",
-                                        onClick = onToggleOpenKeyboard,
-                                        dismissOnClick = false,
-                                        leadingIcon = {
-                                            Icon(
-                                                if (openKeyboard) Icons.Rounded.Visibility
-                                                else Icons.Rounded.VisibilityOff,
-                                                contentDescription = null
-                                            )
-                                        }
-                                    ),
-                                    MenuItem(
-                                        text = "Settings",
-                                        onClick = { onSettingsClick() },
-                                        dismissOnClick = true,
-                                        leadingIcon = {
-                                            Icon(
-                                                Icons.Rounded.Settings,
-                                                contentDescription = "Settings"
-                                            )
-                                        }
-                                    )
-                                ),
-                                hazeState = hazeState
-                            )
                         }
                     }
                 }

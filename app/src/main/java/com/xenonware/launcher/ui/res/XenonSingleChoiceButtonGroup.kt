@@ -1,22 +1,28 @@
 package com.xenonware.launcher.ui.res
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.ToggleButton
-import androidx.compose.material3.ToggleButtonColors
-import androidx.compose.material3.ToggleButtonDefaults
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -24,7 +30,10 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlin.math.abs
@@ -38,12 +47,11 @@ fun <T> XenonSingleChoiceButtonGroup(
     onOptionSelect: (T) -> Unit,
     label: @Composable (T) -> String,
     modifier: Modifier = Modifier,
-    colors: ToggleButtonColors = ToggleButtonDefaults.toggleButtonColors(
-        containerColor = colorScheme.surfaceDim,
-        checkedContainerColor = colorScheme.primary,
-        contentColor = colorScheme.onSurface,
-        checkedContentColor = colorScheme.onPrimary
-    ),
+    buttonHeight: Dp = 40.dp,
+    containerColor: Color = colorScheme.surfaceDim,
+    selectedContainerColor: Color = colorScheme.primary,
+    contentColor: Color = colorScheme.onSurface,
+    selectedContentColor: Color = colorScheme.onPrimary,
     icon: @Composable (T, Boolean) -> Unit = { _, isSelected ->
         if (isSelected) {
             Icon(
@@ -91,12 +99,13 @@ fun <T> XenonSingleChoiceButtonGroup(
     val pressedIndex = pressedStates.indexOfFirst { it }
 
     Row(
-        modifier = modifier,
+        modifier = modifier.height(buttonHeight),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         options.forEachIndexed { index, option ->
             val isSelected = selectedOption == option
+            val isPressed = pressedStates[index]
 
             val targetWeight = if (pressedIndex == -1) {
                 1f
@@ -115,20 +124,63 @@ fun <T> XenonSingleChoiceButtonGroup(
             val weight by animateFloatAsState(
                 targetValue = targetWeight,
                 label = "weight",
-                animationSpec = spring(stiffness = Spring.StiffnessMedium)
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMedium
+                )
             )
 
-            ToggleButton(
-                checked = isSelected,
-                onCheckedChange = { if (it) onOptionSelect(option) },
-                modifier = Modifier.weight(weight),
-                colors = colors,
-                interactionSource = interactionSources[index]
-            ) {
-                icon(option, isSelected)
-                Text(
-                    text = label(option), maxLines = 1, overflow = TextOverflow.Ellipsis
+            val targetRadius = when {
+                isPressed -> 4.dp
+                isSelected -> 12.dp
+                else -> 100.dp
+            }
+
+            val cornerRadius by animateDpAsState(
+                targetValue = targetRadius,
+                label = "cornerRadius",
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMedium
                 )
+            )
+
+            val animatedContainerColor by animateColorAsState(
+                targetValue = if (isSelected) selectedContainerColor else containerColor,
+                label = "containerColor"
+            )
+
+            val animatedContentColor by animateColorAsState(
+                targetValue = if (isSelected) selectedContentColor else contentColor,
+                label = "contentColor"
+            )
+
+            Box(
+                modifier = Modifier
+                    .weight(weight)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(cornerRadius.coerceAtLeast(0.dp)))
+                    .background(animatedContainerColor)
+                    .clickable(
+                        interactionSource = interactionSources[index],
+                        indication = ripple(),
+                        onClick = { if (!isSelected) onOptionSelect(option) }
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                ) {
+                    icon(option, isSelected)
+                    Text(
+                        text = label(option),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = animatedContentColor
+                    )
+                }
             }
         }
     }
