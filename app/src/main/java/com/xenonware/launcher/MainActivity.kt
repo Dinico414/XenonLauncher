@@ -201,6 +201,7 @@ fun LauncherScreen(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     AppDrawer(
+                        viewModel = viewModel,
                         apps = apps,
                         recentlyOpened = recentlyOpened,
                         containerColor = if (blurAvailable) {

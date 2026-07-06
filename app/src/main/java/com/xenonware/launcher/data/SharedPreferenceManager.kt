@@ -46,6 +46,14 @@ class SharedPreferenceManager(context: Context) {
         get() = prefs.getString("widget_layout_wide", "") ?: ""
         set(value) = prefs.edit().putString("widget_layout_wide", value).apply()
 
+    var advancedSearchEnabled: Boolean
+        get() = prefs.getBoolean("advanced_search_enabled", true)
+        set(value) = prefs.edit().putBoolean("advanced_search_enabled", value).apply()
+
+    var searchHistory: String
+        get() = prefs.getString("search_history", "") ?: ""
+        set(value) = prefs.edit().putString("search_history", value).apply()
+
     fun registerListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
         prefs.registerOnSharedPreferenceChangeListener(listener)
     }

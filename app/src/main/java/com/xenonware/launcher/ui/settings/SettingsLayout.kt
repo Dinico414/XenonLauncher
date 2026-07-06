@@ -7,6 +7,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material.icons.rounded.Language
+import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -36,6 +39,7 @@ fun SettingsLayout(
     val blackedOutEnabled by viewModel.blackedOutModeEnabled.collectAsState()
     val isGridLayout by viewModel.isGridLayout.collectAsState()
     val openKeyboard by viewModel.openKeyboard.collectAsState()
+    val advancedSearchEnabled by viewModel.advancedSearchEnabled.collectAsState()
 
     val innerRadius = 4.dp
     val outerRadius = 24.dp
@@ -115,6 +119,26 @@ fun SettingsLayout(
                         backgroundColor = tileColor,
                         shape = bottomShape,
                         onClick = { viewModel.onThemeSettingClicked() }
+                    )
+                }
+
+                Text(
+                    "SEARCH",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(start = 12.dp)
+                )
+
+                Column {
+                    SettingsSwitchTile(
+                        title = "Advanced Search",
+                        subtitle = "Include contacts, files and web results",
+                        checked = advancedSearchEnabled,
+                        onCheckedChange = { viewModel.setAdvancedSearchEnabled(it) },
+                        icon = { Icon(Icons.Default.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                        backgroundColor = tileColor,
+                        shape = standaloneShape
                     )
                 }
 

@@ -2,8 +2,13 @@ package com.xenonware.launcher.ui
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.os.Environment
 import android.provider.Settings
 import androidx.activity.compose.PredictiveBackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
@@ -29,6 +34,7 @@ import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -60,16 +66,27 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.InsertDriveFile
 import androidx.compose.material.icons.automirrored.rounded.ViewList
+import androidx.compose.material.icons.rounded.Android
 import androidx.compose.material.icons.rounded.Apps
+import androidx.compose.material.icons.rounded.AudioFile
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material.icons.rounded.FolderZip
 import androidx.compose.material.icons.rounded.GridView
+import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.Visibility
@@ -87,6 +104,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -108,6 +126,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.LinearGradientShader
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shader
@@ -134,6 +153,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
@@ -146,9 +166,11 @@ import com.xenonware.launcher.R
 import com.xenonware.launcher.accessibility.XenonAccessibilityService
 import com.xenonware.launcher.media.MediaState
 import com.xenonware.launcher.model.AppInfo
+import com.xenonware.launcher.model.SearchResult
 import com.xenonware.launcher.ui.res.MenuItem
 import com.xenonware.launcher.ui.res.XenonDropDown
 import com.xenonware.launcher.ui.res.XenonSingleChoiceButtonGroup
+import com.xenonware.launcher.viewmodel.LauncherViewModel
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
@@ -1022,13 +1044,15 @@ fun MediaSection(
                     color = contentColor,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    maxLines = 1
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     mediaState.artist ?: "Unknown Artist",
                     color = contentColor.copy(0.7f),
                     fontSize = 10.sp,
-                    maxLines = 1
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
             Row {
@@ -1140,6 +1164,7 @@ fun AppDrawerGridItem(
             color = colorScheme.onSurface,
             fontSize = 12.sp,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center
         )
     }
@@ -1152,6 +1177,7 @@ enum class SearchType {
 @OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
 fun AppDrawer(
+    viewModel: LauncherViewModel,
     apps: List<AppInfo>,
     recentlyOpened: List<AppInfo>,
     containerColor: Color,
@@ -1166,6 +1192,7 @@ fun AppDrawer(
     onProgress: (Float) -> Unit = {},
 ) {
     val dragDropState = LocalDragDropState.current
+    val context = LocalContext.current
     val configuration = LocalConfiguration.current
     val isWideScreen = configuration.screenWidthDp >= 640
     val density = LocalDensity.current
@@ -1174,13 +1201,70 @@ fun AppDrawer(
 
     val hazeState = remember { HazeState() }
     val focusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
+    val searchInteractionSource = remember { MutableInteractionSource() }
+    val isSearchPressed by searchInteractionSource.collectIsPressedAsState()
 
     val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
     val listState = rememberLazyListState()
 
     var searchQuery by remember { mutableStateOf("") }
+    val searchResults by viewModel.searchResults.collectAsState()
+    val searchHistory by viewModel.searchHistory.collectAsState()
+    val advancedSearchEnabled by viewModel.advancedSearchEnabled.collectAsState()
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { }
+
+    LaunchedEffect(advancedSearchEnabled) {
+        if (advancedSearchEnabled) {
+            val permissions = mutableListOf<String>()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                permissions.add(android.Manifest.permission.READ_MEDIA_AUDIO)
+            } else {
+                permissions.add(android.Manifest.permission.READ_EXTERNAL_STORAGE)
+            }
+            permissions.add(android.Manifest.permission.READ_CONTACTS)
+
+            permissionLauncher.launch(permissions.toTypedArray())
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                if (!Environment.isExternalStorageManager()) {
+                    try {
+                        val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                            data = "package:${context.packageName}".toUri()
+                        }
+                        context.startActivity(intent)
+                    } catch (_: Exception) {
+                        val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                        context.startActivity(intent)
+                    }
+                }
+            }
+        }
+    }
+
     var selectedSearchType by remember { mutableStateOf(SearchType.Apps) }
+
+    LaunchedEffect(advancedSearchEnabled) {
+        if (!advancedSearchEnabled) {
+            selectedSearchType = SearchType.Apps
+        }
+    }
+
     var isSearchFocused by remember { mutableStateOf(false) }
+    var isSearchActive by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isSearchFocused, searchQuery, selectedSearchType, openKeyboard, isSearchPressed) {
+        if (selectedSearchType != SearchType.Apps ||
+            searchQuery.isNotEmpty() ||
+            isSearchPressed ||
+            (!openKeyboard && isSearchFocused)
+        ) {
+            isSearchActive = true
+        }
+    }
+
     var showMenu by remember { mutableStateOf(false) }
     var barHeightPx by remember { mutableIntStateOf(0) }
 
@@ -1214,14 +1298,64 @@ fun AppDrawer(
         }
     }
 
+    LaunchedEffect(searchQuery) {
+        viewModel.performSearch(searchQuery)
+    }
+
+    val filteredResults = remember(searchResults, selectedSearchType, searchQuery) {
+        if (searchQuery.isBlank()) emptyList<SearchResult>()
+        else searchResults.filter { result ->
+            when (selectedSearchType) {
+                SearchType.Apps -> result is SearchResult.App
+                SearchType.Contacts -> result is SearchResult.Contact
+                SearchType.Files -> result is SearchResult.File
+                SearchType.Web -> result is SearchResult.Web
+            }
+        }
+    }
+
     val filteredApps = remember(apps, searchQuery) {
         if (searchQuery.isBlank()) apps
         else apps.filter { it.name.contains(searchQuery.trim(), ignoreCase = true) }
     }
 
+    fun handleSearchResultClick(result: SearchResult) {
+        when (result) {
+            is SearchResult.App -> {
+                onAppClick(result.appInfo.packageName)
+                onDismiss()
+            }
+            is SearchResult.Contact -> {
+                val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${result.phoneNumber}"))
+                context.startActivity(intent)
+                onDismiss()
+            }
+            is SearchResult.File -> {
+                val intent = Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(result.uri, result.mimeType)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(Intent.createChooser(intent, "Open File"))
+                onDismiss()
+            }
+            is SearchResult.Web -> {
+                val url = if (result.isUrl) {
+                    if (result.query.startsWith("http")) result.query else "https://${result.query}"
+                } else {
+                    "https://www.google.com/search?q=${result.query}"
+                }
+                viewModel.addToSearchHistory(result.query)
+                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                onDismiss()
+            }
+        }
+    }
+
     fun closeSearchOrDismiss() {
-        if (isSearchFocused || searchQuery.isNotEmpty()) {
+        if (isSearchFocused || searchQuery.isNotEmpty() || isSearchActive) {
             searchQuery = ""
+            selectedSearchType = SearchType.Apps
+            isSearchActive = false
             focusManager.clearFocus()
             keyboardController?.hide()
         } else {
@@ -1237,14 +1371,16 @@ fun AppDrawer(
     PredictiveBackHandler(enabled = true) { progress ->
         try {
             progress.collect { backEvent ->
-                val searchActive = isSearchFocused || searchQuery.isNotEmpty()
+                val searchActive = isSearchFocused || searchQuery.isNotEmpty() || isSearchActive
                 // While searching, back just closes search — no dismiss preview.
                 val eased = FastOutSlowInEasing.transform(backEvent.progress)
                 backProgress.snapTo(if (searchActive) 0f else eased)
             }
             // Committed.
-            if (isSearchFocused || searchQuery.isNotEmpty()) {
+            if (isSearchFocused || searchQuery.isNotEmpty() || isSearchActive) {
                 searchQuery = ""
+                selectedSearchType = SearchType.Apps
+                isSearchActive = false
                 focusManager.clearFocus()
                 keyboardController?.hide()
             } else {
@@ -1370,7 +1506,7 @@ fun AppDrawer(
                 ) {
                     val contentTopPadding = with(density) { barHeightPx.toDp() } + 16.dp
 
-                    if (isGridLayout) {
+                    if (isGridLayout && selectedSearchType == SearchType.Apps) {
                         LazyVerticalGrid(
                             columns = GridCells.Fixed(if (isWideScreen) 6 else 4),
                             state = gridState,
@@ -1384,72 +1520,55 @@ fun AppDrawer(
                             verticalArrangement = Arrangement.spacedBy(24.dp),
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            if (selectedSearchType == SearchType.Apps) {
-                                item(span = { GridItemSpan(maxLineSpan) }) {
-                                    Box {
-                                        androidx.compose.animation.AnimatedVisibility(
-                                            visible = searchQuery.isEmpty(),
-                                            enter = fadeIn(animationSpec = tween(300)) + expandVertically(animationSpec = tween(300)),
-                                            exit = fadeOut(animationSpec = tween(200)) + shrinkVertically(animationSpec = tween(50))
-                                        ) {
-                                            if (recentApps.isNotEmpty()) {
-                                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                                    Row(
-                                                        modifier = Modifier.fillMaxWidth(),
-                                                        horizontalArrangement = Arrangement.spacedBy(
-                                                            16.dp
-                                                        )
-                                                    ) {
-                                                        recentApps.forEach { app ->
-                                                            Box(
-                                                                modifier = Modifier.weight(1f),
-                                                                contentAlignment = Alignment.Center
-                                                            ) {
-                                                                AppDrawerGridItem(
-                                                                    app = app,
-                                                                    onAppClick = onAppClick,
-                                                                    onDismiss = onDismiss,
-                                                                    onPinApp = onPinApp,
-                                                                    dragDropState = dragDropState
-                                                                )
-                                                            }
-                                                        }
-                                                        repeat(recentCount - recentApps.size) {
-                                                            Spacer(Modifier.weight(1f))
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                Box {
+                                    androidx.compose.animation.AnimatedVisibility(
+                                        visible = searchQuery.isEmpty(),
+                                        enter = fadeIn(animationSpec = tween(300)) + expandVertically(animationSpec = tween(300)),
+                                        exit = fadeOut(animationSpec = tween(200)) + shrinkVertically(animationSpec = tween(50))
+                                    ) {
+                                        if (recentApps.isNotEmpty()) {
+                                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.spacedBy(
+                                                        16.dp
+                                                    )
+                                                ) {
+                                                    recentApps.forEach { app ->
+                                                        Box(
+                                                            modifier = Modifier.weight(1f),
+                                                            contentAlignment = Alignment.Center
+                                                        ) {
+                                                            AppDrawerGridItem(
+                                                                app = app,
+                                                                onAppClick = onAppClick,
+                                                                onDismiss = onDismiss,
+                                                                onPinApp = onPinApp,
+                                                                dragDropState = dragDropState
+                                                            )
                                                         }
                                                     }
-
-                                                    AllAppsDivider()
+                                                    repeat(recentCount - recentApps.size) {
+                                                        Spacer(Modifier.weight(1f))
+                                                    }
                                                 }
+
+                                                AllAppsDivider()
                                             }
                                         }
                                     }
                                 }
+                            }
 
-                                items(filteredApps) { app ->
-                                    AppDrawerGridItem(
-                                        app = app,
-                                        onAppClick = onAppClick,
-                                        onDismiss = onDismiss,
-                                        onPinApp = onPinApp,
-                                        dragDropState = dragDropState
-                                    )
-                                }
-                            } else {
-                                item(span = { GridItemSpan(maxLineSpan) }) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(top = 80.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            "Search ${selectedSearchType.name} Placeholder",
-                                            style = typography.bodyLarge,
-                                            color = colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                        )
-                                    }
-                                }
+                            items(filteredApps) { app ->
+                                AppDrawerGridItem(
+                                    app = app,
+                                    onAppClick = onAppClick,
+                                    onDismiss = onDismiss,
+                                    onPinApp = onPinApp,
+                                    dragDropState = dragDropState
+                                )
                             }
                         }
                     } else {
@@ -1462,7 +1581,7 @@ fun AppDrawer(
                             contentPadding = PaddingValues(
                                 top = contentTopPadding, bottom = 120.dp
                             ),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             if (selectedSearchType == SearchType.Apps) {
                                 item {
@@ -1586,30 +1705,68 @@ fun AppDrawer(
                                             app.name,
                                             color = colorScheme.onSurface,
                                             fontSize = 16.sp,
-                                            maxLines = 1
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
                                         )
                                     }
                                 }
                             } else {
                                 item {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(top = 80.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            "Search ${selectedSearchType.name} Placeholder",
-                                            style = typography.bodyLarge,
-                                            color = colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                        )
+                                    Text(
+                                        text = selectedSearchType.name,
+                                        style = typography.titleMedium,
+                                        color = colorScheme.onSurface,
+                                        modifier = Modifier.padding(start = 12.dp, top = 8.dp, bottom = 16.dp)
+                                    )
+                                }
+
+                                if (selectedSearchType == SearchType.Web) {
+                                    if (searchQuery.isNotEmpty()) {
+                                        items(filteredResults) { result ->
+                                            SearchResultItem(result) { handleSearchResultClick(it) }
+                                        }
+                                    }
+                                    if (searchHistory.isNotEmpty()) {
+                                        item {
+                                            Column {
+                                                Text(
+                                                    "Search History",
+                                                    style = typography.labelMedium,
+                                                    color = colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                                    modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+                                                )
+                                                Column(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .clip(RoundedCornerShape(20.dp))
+                                                        .background(colorScheme.surfaceContainer.copy(alpha = 0.8f))
+                                                ) {
+                                                    searchHistory.forEachIndexed { index, history ->
+                                                        SearchHistoryItem(history) {
+                                                            searchQuery = it
+                                                            viewModel.performSearch(it)
+                                                        }
+                                                        if (index < searchHistory.size - 1) {
+                                                            HorizontalDivider(
+                                                                modifier = Modifier.padding(horizontal = 16.dp),
+                                                                color = colorScheme.onSurface.copy(alpha = 0.05f)
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    items(filteredResults) { result ->
+                                        SearchResultItem(result) { handleSearchResultClick(it) }
                                     }
                                 }
                             }
                         }
                     }
 
-                    if (filteredApps.isEmpty() && searchQuery.isNotBlank()) {
+                    if (filteredApps.isEmpty() && searchQuery.isNotBlank() && selectedSearchType == SearchType.Apps) {
                         Text(
                             "No apps found",
                             color = colorScheme.onSurfaceVariant,
@@ -1632,7 +1789,10 @@ fun AppDrawer(
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = null
-                                ) { /* Block touches to list behind */ },
+                                ) {
+                                    isSearchActive = true
+                                    focusRequester.requestFocus()
+                                },
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             IconButton(
@@ -1660,6 +1820,7 @@ fun AppDrawer(
                                     .weight(1f)
                                     .focusRequester(focusRequester)
                                     .onFocusChanged { isSearchFocused = it.isFocused },
+                                interactionSource = searchInteractionSource,
                                 singleLine = true,
                                 textStyle = textStyle,
                                 cursorBrush = SolidColor(colorScheme.primary),
@@ -1704,7 +1865,8 @@ fun AppDrawer(
                                                 else Icons.Rounded.GridView,
                                                 contentDescription = "Toggle layout"
                                             )
-                                        }), MenuItem(
+                                        }),
+                                        MenuItem(
                                         text = "Show Keyboard",
                                         onClick = onToggleOpenKeyboard,
                                         dismissOnClick = false,
@@ -1714,7 +1876,14 @@ fun AppDrawer(
                                                 else Icons.Rounded.VisibilityOff,
                                                 contentDescription = null
                                             )
-                                        }), MenuItem(
+                                        }),
+                                        MenuItem(
+                                            text = "Advanced Search",
+                                            onClick = { viewModel.setAdvancedSearchEnabled(!advancedSearchEnabled) },
+                                            dismissOnClick = false,
+                                            leadingIcon = { Icon(if (advancedSearchEnabled) Icons.Rounded.Search else Icons.Rounded.SearchOff, null) }
+                                        ),
+                                        MenuItem(
                                         text = "Settings",
                                         onClick = { onSettingsClick() },
                                         dismissOnClick = true,
@@ -1723,14 +1892,15 @@ fun AppDrawer(
                                                 Icons.Rounded.Settings,
                                                 contentDescription = "Settings"
                                             )
-                                        })),
+                                        })
+                                    ),
                                     hazeState = hazeState)
                             }
                         }
 
                         Box(modifier = Modifier.clip(RectangleShape)) {
                             androidx.compose.animation.AnimatedVisibility(
-                                visible = searchQuery.isNotEmpty(),
+                                visible = isSearchActive && advancedSearchEnabled,
                                 enter = slideInVertically { -it } + fadeIn(),
                                 exit = slideOutVertically { -it } + shrinkVertically() + fadeOut()) {
                                 CompositionLocalProvider(LocalTextStyle provides typography.labelMedium) {
@@ -1752,5 +1922,183 @@ fun AppDrawer(
                 }
             }
         }
+    }
+}
+
+@Composable
+fun SearchHistoryItem(history: String, onClick: (String) -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick(history) }
+            .padding(12.dp)
+    ) {
+        Icon(Icons.Rounded.History, null, tint = colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
+        Spacer(Modifier.width(16.dp))
+        Text(
+            history,
+            color = colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+fun SearchResultItem(result: SearchResult, onClick: (SearchResult) -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(colorScheme.surfaceContainer.copy(alpha = 0.8f))
+            .clickable { onClick(result) }
+            .padding(12.dp)
+    ) {
+        Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+            when (result) {
+                is SearchResult.App -> {
+                    result.appInfo.icon?.let { icon ->
+                        Image(bitmap = icon.toBitmap().asImageBitmap(), contentDescription = null, modifier = Modifier.fillMaxSize())
+                    }
+                }
+                is SearchResult.Contact -> {
+                    if (result.photoUri != null) {
+                        Image(
+                            painter = coil.compose.rememberAsyncImagePainter(result.photoUri),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize().clip(CircleShape)
+                        )
+                    } else {
+                        ContactAvatar(name = result.name, modifier = Modifier.fillMaxSize())
+                    }
+                }
+                is SearchResult.File -> {
+                    val isTextFile = result.mimeType.startsWith("text/")
+                    val isPdf = result.mimeType == "application/pdf"
+                    val fileTypeInfo = when {
+                        result.mimeType.startsWith("image/") -> Icons.Rounded.Image to Color(0xFFB39DDB)
+                        result.mimeType.startsWith("video/") -> Icons.Rounded.Movie to Color(0xFFEF5350)
+                        result.mimeType.startsWith("audio/") -> Icons.Rounded.AudioFile to Color(0xFFFFB74D)
+                        result.mimeType == "application/vnd.android.package-archive" -> Icons.Rounded.Android to Color(0xFF3DDC84)
+                        isPdf -> Icons.Rounded.Description to Color(0xFFD32F2F)
+                        isTextFile -> Icons.Rounded.Description to Color(0xFF81D4FA)
+                        result.mimeType.contains("zip") || result.mimeType.contains("rar") || result.mimeType.contains("7z") -> Icons.Rounded.FolderZip to Color(0xFF9E9E9E)
+                        else -> Icons.AutoMirrored.Rounded.InsertDriveFile to colorScheme.surfaceContainerHighest
+                    }
+                    val (fileIcon, bgColor) = fileTypeInfo
+
+                    Surface(
+                        modifier = Modifier.size(48.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (result.preview != null && !isTextFile) Color.Transparent else bgColor.copy(alpha = 0.8f)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            if (result.preview != null && !isTextFile) {
+                                Image(
+                                    bitmap = result.preview.asImageBitmap(),
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomStart)
+                                        .padding(4.dp)
+                                        .size(24.dp)
+                                        .background(
+                                            Color.Black.copy(alpha = 0.4f),
+                                            CircleShape
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        fileIcon,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp),
+                                        tint = bgColor
+                                    )
+                                }
+                            } else {
+                                Icon(
+                                    fileIcon,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(28.dp),
+                                    tint = if (bgColor == colorScheme.surfaceContainerHighest) colorScheme.onSurfaceVariant else Color.White
+                                )
+                            }
+                        }
+                    }
+                }
+                is SearchResult.Web -> {
+                    Icon(if (result.isUrl) Icons.Rounded.Language else Icons.Rounded.Search, null, modifier = Modifier.size(32.dp))
+                }
+            }
+        }
+        Spacer(Modifier.width(16.dp))
+        Column {
+            val title = when (result) {
+                is SearchResult.App -> result.appInfo.name
+                is SearchResult.Contact -> result.name
+                is SearchResult.File -> result.name
+                is SearchResult.Web -> if (result.isUrl) "Open Website" else "Web Search"
+            }
+            val subtitle = when (result) {
+                is SearchResult.App -> result.appInfo.packageName
+                is SearchResult.Contact -> result.phoneNumber
+                is SearchResult.File -> result.path
+                is SearchResult.Web -> result.query
+            }
+            Text(
+                title,
+                color = colorScheme.onSurface,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                subtitle,
+                color = colorScheme.onSurfaceVariant,
+                fontSize = 12.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+fun ContactAvatar(name: String, modifier: Modifier = Modifier) {
+    val firstLetter = name.firstOrNull()?.uppercaseChar() ?: '?'
+
+    // Generates a unique pastel color based on the name's hash
+    val pastelBackground = remember(name) {
+        val hash = name.hashCode()
+        val hue = (hash % 360).toFloat().let { if (it < 0) it + 360 else it }
+        Color.hsl(hue = hue, saturation = 0.5f, lightness = 0.80f)
+    }
+
+    // Generates a darker version of the same hue for the text
+    val textColor = remember(name) {
+        val hash = name.hashCode()
+        val hue = (hash % 360).toFloat().let { if (it < 0) it + 360 else it }
+        Color.hsl(hue = hue, saturation = 0.6f, lightness = 0.25f)
+    }
+
+    Box(
+        modifier = modifier
+            .size(48.dp)
+            .clip(RoundedCornerShape(50))
+            .background(pastelBackground),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = firstLetter.toString(),
+            fontSize = 28.sp,
+            fontFamily = QuicksandTitleVariable,
+            fontWeight = FontWeight.SemiBold,
+            color = textColor
+        )
     }
 }

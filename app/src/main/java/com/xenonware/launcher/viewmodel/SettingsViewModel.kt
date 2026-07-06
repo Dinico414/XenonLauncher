@@ -29,6 +29,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _openKeyboard = MutableStateFlow(sharedPreferenceManager.openKeyboard)
     val openKeyboard = _openKeyboard.asStateFlow()
 
+    private val _advancedSearchEnabled = MutableStateFlow(sharedPreferenceManager.advancedSearchEnabled)
+    val advancedSearchEnabled = _advancedSearchEnabled.asStateFlow()
+
     private val _hasWallpaperAccess = MutableStateFlow(checkWallpaperAccess())
     val hasWallpaperAccess = _hasWallpaperAccess.asStateFlow()
 
@@ -68,6 +71,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setOpenKeyboard(enabled: Boolean) {
         sharedPreferenceManager.openKeyboard = enabled
         _openKeyboard.value = enabled
+    }
+
+    fun setAdvancedSearchEnabled(enabled: Boolean) {
+        sharedPreferenceManager.advancedSearchEnabled = enabled
+        _advancedSearchEnabled.value = enabled
     }
 
     fun onLanguageSettingClicked() { /* TODO */ }

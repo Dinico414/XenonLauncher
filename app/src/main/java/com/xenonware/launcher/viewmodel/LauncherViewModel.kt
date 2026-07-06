@@ -9,8 +9,14 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.location.Location
+import android.net.Uri
 import android.os.BatteryManager
+import android.provider.ContactsContract
+import android.provider.MediaStore
+import android.util.Patterns
+import android.util.Size
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -22,7 +28,9 @@ import com.xenonware.launcher.data.SharedPreferenceManager
 import com.xenonware.launcher.media.MediaControllerManager
 import com.xenonware.launcher.media.MediaState
 import com.xenonware.launcher.model.AppInfo
+import com.xenonware.launcher.model.SearchResult
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -49,6 +57,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 _widgetColumns.value = if (_isWide.value) prefManager.widgetColumnsWide else prefManager.widgetColumnsNormal
             }
             "widget_layout_normal", "widget_layout_wide" -> loadWidgets()
+            "advanced_search_enabled" -> _advancedSearchEnabled.value = prefManager.advancedSearchEnabled
+            "search_history" -> _searchHistory.value = loadSearchHistory()
         }
     }
 
@@ -78,6 +88,17 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private val _installedWidgets = MutableStateFlow<Map<AppWidgetGroup, List<android.appwidget.AppWidgetProviderInfo>>>(emptyMap())
     val installedWidgets: StateFlow<Map<AppWidgetGroup, List<android.appwidget.AppWidgetProviderInfo>>> = _installedWidgets
+
+    private val _advancedSearchEnabled = MutableStateFlow(prefManager.advancedSearchEnabled)
+    val advancedSearchEnabled: StateFlow<Boolean> = _advancedSearchEnabled
+
+    private val _searchHistory = MutableStateFlow<List<String>>(loadSearchHistory())
+    val searchHistory: StateFlow<List<String>> = _searchHistory
+
+    private val _searchResults = MutableStateFlow<List<SearchResult>>(emptyList())
+    val searchResults: StateFlow<List<SearchResult>> = _searchResults
+
+    private var searchJob: Job? = null
 
     data class AppWidgetGroup(
         val appName: String,
@@ -389,6 +410,133 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         } else {
             prefManager.widgetColumnsNormal = cols
         }
+    }
+
+    fun setAdvancedSearchEnabled(enabled: Boolean) {
+        _advancedSearchEnabled.value = enabled
+        prefManager.advancedSearchEnabled = enabled
+    }
+
+    private fun loadSearchHistory(): List<String> {
+        return prefManager.searchHistory.split(",").filter { it.isNotEmpty() }
+    }
+
+    fun addToSearchHistory(query: String) {
+        val current = loadSearchHistory().toMutableList()
+        current.remove(query)
+        current.add(0, query)
+        val limited = current.take(10)
+        _searchHistory.value = limited
+        prefManager.searchHistory = limited.joinToString(",")
+    }
+
+    fun performSearch(query: String) {
+        searchJob?.cancel()
+        if (query.isBlank()) {
+            _searchResults.value = emptyList()
+            return
+        }
+
+        searchJob = viewModelScope.launch(Dispatchers.IO) {
+            val results = mutableListOf<SearchResult>()
+
+            // 1. Search Apps
+            val appResults = _apps.value.filter { it.name.contains(query, ignoreCase = true) }
+                .map { SearchResult.App(it) }
+            results.addAll(appResults)
+
+            if (_advancedSearchEnabled.value) {
+                // 2. Search Contacts
+                results.addAll(searchContacts(query))
+
+                // 3. Search Files
+                results.addAll(searchFiles(query))
+
+                // 4. Web Search and Website suggestions
+                results.add(SearchResult.Web(query, false))
+                results.add(SearchResult.Web(query, true))
+            }
+
+            _searchResults.value = results
+        }
+    }
+
+    private fun searchContacts(query: String): List<SearchResult.Contact> {
+        val context = getApplication<Application>()
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+            return emptyList()
+        }
+
+        val results = mutableListOf<SearchResult.Contact>()
+        val uri = ContactsContract.CommonDataKinds.Phone.CONTENT_URI
+        val projection = arrayOf(
+            ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
+            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+            ContactsContract.CommonDataKinds.Phone.NUMBER,
+            ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI
+        )
+        val selection = "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} LIKE ?"
+        val selectionArgs = arrayOf("%$query%")
+
+        context.contentResolver.query(uri, projection, selection, selectionArgs, null)?.use { cursor ->
+            val idIdx = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
+            val nameIdx = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
+            val numberIdx = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+            val photoIdx = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI)
+
+            while (cursor.moveToNext() && results.size < 20) {
+                val id = cursor.getString(idIdx)
+                val name = cursor.getString(nameIdx)
+                val number = cursor.getString(numberIdx)
+                val photoUriStr = cursor.getString(photoIdx)
+                results.add(SearchResult.Contact(id, name, number, photoUriStr?.let { Uri.parse(it) }))
+            }
+        }
+        return results
+    }
+
+    private fun searchFiles(query: String): List<SearchResult.File> {
+        val context = getApplication<Application>()
+        val results = mutableListOf<SearchResult.File>()
+
+        val externalUri = MediaStore.Files.getContentUri("external")
+        val projection = arrayOf(
+            MediaStore.Files.FileColumns.DISPLAY_NAME,
+            MediaStore.Files.FileColumns.DATA,
+            MediaStore.Files.FileColumns.MIME_TYPE,
+            MediaStore.Files.FileColumns._ID
+        )
+        val selection = "${MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ?"
+        val selectionArgs = arrayOf("%$query%")
+
+        context.contentResolver.query(externalUri, projection, selection, selectionArgs, null)?.use { cursor ->
+            val nameIdx = cursor.getColumnIndex(MediaStore.Files.FileColumns.DISPLAY_NAME)
+            val dataIdx = cursor.getColumnIndex(MediaStore.Files.FileColumns.DATA)
+            val mimeIdx = cursor.getColumnIndex(MediaStore.Files.FileColumns.MIME_TYPE)
+            val idIdx = cursor.getColumnIndex(MediaStore.Files.FileColumns._ID)
+
+            while (cursor.moveToNext() && results.size < 20) {
+                val name = cursor.getString(nameIdx)
+                val path = cursor.getString(dataIdx)
+                val mimeType = cursor.getString(mimeIdx) ?: "application/octet-stream"
+
+                // Filter out directories
+                if (path != null && java.io.File(path).isDirectory) continue
+
+                val id = cursor.getLong(idIdx)
+                val uri = Uri.withAppendedPath(externalUri, id.toString())
+
+                var preview: Bitmap? = null
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                    try {
+                        preview = context.contentResolver.loadThumbnail(uri, Size(128, 128), null)
+                    } catch (e: Exception) {}
+                }
+
+                results.add(SearchResult.File(name, path, uri, mimeType, preview))
+            }
+        }
+        return results
     }
 
     private fun loadInstalledWidgets() {
