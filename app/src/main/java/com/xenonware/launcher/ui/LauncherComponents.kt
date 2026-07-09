@@ -1431,26 +1431,39 @@ fun AppDrawer(
 
     val scope = rememberCoroutineScope()
     val backProgress = remember { Animatable(0f) }
+    val searchBackProgress = remember { Animatable(0f) }
     val currentOnDismiss by rememberUpdatedState(onDismiss)
 
-    PredictiveBackHandler(enabled = true) { progress ->
+    val isSearchUIActive = isSearchFocused || searchQuery.isNotEmpty() || isSearchActive
+
+    // 1. Search Back Handler: Handles dismissing search/categories
+    PredictiveBackHandler(enabled = isSearchUIActive) { progress ->
         try {
             progress.collect { backEvent ->
-                val searchActive = isSearchFocused || searchQuery.isNotEmpty() || isSearchActive
-                // While searching, back just closes search — no dismiss preview.
                 val eased = FastOutSlowInEasing.transform(backEvent.progress)
-                backProgress.snapTo(if (searchActive) 0f else eased)
+                searchBackProgress.snapTo(eased)
             }
-            // Committed.
-            if (isSearchFocused || searchQuery.isNotEmpty() || isSearchActive) {
-                searchQuery = ""
-                selectedSearchType = SearchType.Apps
-                isSearchActive = false
-                focusManager.clearFocus()
-                keyboardController?.hide()
-            } else {
-                currentOnDismiss()
+            // Committed: Close search
+            searchQuery = ""
+            selectedSearchType = SearchType.Apps
+            isSearchActive = false
+            focusManager.clearFocus()
+            keyboardController?.hide()
+            scope.launch { searchBackProgress.animateTo(0f, tween(220)) }
+        } catch (_: CancellationException) {
+            scope.launch { searchBackProgress.animateTo(0f, tween(220)) }
+        }
+    }
+
+    // 2. Drawer Back Handler: Handles dismissing the whole drawer
+    PredictiveBackHandler(enabled = !isSearchUIActive) { progress ->
+        try {
+            progress.collect { backEvent ->
+                val eased = FastOutSlowInEasing.transform(backEvent.progress)
+                backProgress.snapTo(eased)
             }
+            // Committed: Close drawer
+            currentOnDismiss()
         } catch (_: CancellationException) {
             scope.launch { backProgress.animateTo(0f, tween(220)) }
         }
@@ -1866,6 +1879,11 @@ fun AppDrawer(
                                 .fillMaxWidth()
                                 .padding(top = with(density) { searchBarHeightPx.toDp() })
                                 .zIndex(0f)
+                                .graphicsLayer {
+                                    // Progressive back gesture support for search categories
+                                    translationY = -searchBackProgress.value * 20.dp.toPx()
+                                    alpha = 1f - searchBackProgress.value
+                                }
                                 .graphicsLayer(clip = false)
                         ) {
                             CompositionLocalProvider(LocalTextStyle provides typography.labelMedium) {
