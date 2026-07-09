@@ -1606,8 +1606,8 @@ fun AppDrawer(
                                 Box {
                                     androidx.compose.animation.AnimatedVisibility(
                                         visible = searchQuery.isEmpty(),
-                                        enter = fadeIn(animationSpec = tween(300)) + slideInVertically(animationSpec = tween(300)) { -it } + expandVertically(animationSpec = tween(300)),
-                                        exit = fadeOut(animationSpec = tween(300)) + slideOutVertically(animationSpec = tween(300)) { -it } + shrinkVertically(animationSpec = tween(300)),
+                                        enter = fadeIn(animationSpec = tween(300)) + slideInVertically(animationSpec = tween(300)) { -it } + expandVertically(animationSpec = tween(300), clip = false),
+                                        exit = fadeOut(animationSpec = tween(300)) + slideOutVertically(animationSpec = tween(300)) { -it } + shrinkVertically(animationSpec = tween(300), clip = false),
                                         modifier = Modifier.graphicsLayer(clip = false)
                                     ) {
                                         if (recentApps.isNotEmpty()) {
@@ -1672,8 +1672,8 @@ fun AppDrawer(
                                     Box {
                                         androidx.compose.animation.AnimatedVisibility(
                                             visible = searchQuery.isEmpty(),
-                                            enter = fadeIn(animationSpec = tween(300)) + slideInVertically(animationSpec = tween(300)) { -it } + expandVertically(animationSpec = tween(300)),
-                                            exit = fadeOut(animationSpec = tween(300)) + slideOutVertically(animationSpec = tween(300)) { -it } + shrinkVertically(animationSpec = tween(300)),
+                                            enter = fadeIn(animationSpec = tween(300)) + slideInVertically(animationSpec = tween(300)) { -it } + expandVertically(animationSpec = tween(300), clip = false),
+                                            exit = fadeOut(animationSpec = tween(300)) + slideOutVertically(animationSpec = tween(300)) { -it } + shrinkVertically(animationSpec = tween(300), clip = false),
                                             modifier = Modifier.graphicsLayer(clip = false)
                                         ) {
                                             if (recentApps.isNotEmpty()) {
