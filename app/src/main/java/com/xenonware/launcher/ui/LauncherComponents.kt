@@ -899,9 +899,28 @@ fun FixedAppSection(
                 color = LocalContentColor.current.copy(alpha = 0.5f)
             )
         } else {
+            val fadeWidthPx = with(density) { 24.dp.toPx() }
             LazyRow(
                 state = listState,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                    .drawWithContent {
+                        drawContent()
+                        val width = size.width
+                        if (width > 0 && fadeWidthPx > 0) {
+                            val fadeStop = (fadeWidthPx / width).coerceAtMost(0.5f)
+                            drawRect(
+                                brush = Brush.horizontalGradient(
+                                    0f to if (listState.canScrollBackward) Color.Transparent else Color.Black,
+                                    fadeStop to Color.Black,
+                                    (1f - fadeStop) to Color.Black,
+                                    1.2f to if (listState.canScrollForward) Color.Transparent else Color.Black
+                                ),
+                                blendMode = BlendMode.DstIn
+                            )
+                        }
+                    },
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically,
                 contentPadding = PaddingValues(horizontal = 10.dp)
