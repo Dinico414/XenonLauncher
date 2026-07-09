@@ -132,7 +132,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.LinearGradientShader
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shader
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.SolidColor
@@ -163,6 +162,7 @@ import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.toSize
+import androidx.compose.ui.zIndex
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
 import com.xenon.mylibrary.theme.QuicksandTitleVariable
@@ -1331,6 +1331,7 @@ fun AppDrawer(
 
     var showMenu by remember { mutableStateOf(false) }
     var barHeightPx by remember { mutableIntStateOf(0) }
+    var searchBarHeightPx by remember { mutableIntStateOf(0) }
 
     val recentCount = if (isWideScreen) 6 else 4
     val recentApps = remember(recentlyOpened) { recentlyOpened.take(recentCount) }
@@ -1565,10 +1566,13 @@ fun AppDrawer(
                         .weight(1f)
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
-                        .clip(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp))
-
                 ) {
-                    val contentTopPadding = with(density) { barHeightPx.toDp() } + 16.dp
+                    val animatedBarHeight by animateFloatAsState(
+                        targetValue = barHeightPx.toFloat(),
+                        animationSpec = tween(500),
+                        label = "barHeight"
+                    )
+                    val contentTopPadding = with(density) { animatedBarHeight.toDp() } + 16.dp
 
                     if (isGridLayout && selectedSearchType == SearchType.Apps) {
                         LazyVerticalGrid(
@@ -1577,7 +1581,8 @@ fun AppDrawer(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .nestedScroll(sheetDragConnection)
-                                .hazeSource(hazeState),
+                                .hazeSource(hazeState)
+                                .clip(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)),
                             contentPadding = PaddingValues(
                                 top = contentTopPadding, bottom = 120.dp
                             ),
@@ -1641,7 +1646,8 @@ fun AppDrawer(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .nestedScroll(sheetDragConnection)
-                                .hazeSource(hazeState),
+                                .hazeSource(hazeState)
+                                .clip(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)),
                             contentPadding = PaddingValues(
                                 top = contentTopPadding, bottom = 120.dp
                             ),
@@ -1838,15 +1844,50 @@ fun AppDrawer(
                         )
                     }
 
-                    Column(
+                    Box(
                         modifier = Modifier
                             .align(Alignment.TopCenter)
                             .fillMaxWidth()
                             .animateContentSize(animationSpec = tween(300))
-                            .onSizeChanged { barHeightPx = it.height }) {
-                        Row(
+                            .onSizeChanged { barHeightPx = it.height }
+                            .graphicsLayer(clip = false)
+                    ) {
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = isSearchActive && advancedSearchEnabled,
+                            enter = slideInVertically(animationSpec = tween(300, 500)) { -it } + expandVertically(
+                                expandFrom = Alignment.Top,
+                                animationSpec = tween(200)
+                            ) + fadeIn(animationSpec = tween(300)),
+                            exit = slideOutVertically(animationSpec = tween(300)) { -it } + shrinkVertically(
+                                shrinkTowards = Alignment.Top,
+                                animationSpec = tween(300)
+                            ) + fadeOut(animationSpec = tween(300)),
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .padding(top = with(density) { searchBarHeightPx.toDp() })
+                                .zIndex(0f)
+                                .graphicsLayer(clip = false)
+                        ) {
+                            CompositionLocalProvider(LocalTextStyle provides typography.labelMedium) {
+                                XenonSingleChoiceButtonGroup(
+                                    options = SearchType.entries,
+                                    selectedOption = selectedSearchType,
+                                    onOptionSelect = { selectedSearchType = it },
+                                    label = { it.name },
+                                    icon = { _, _ -> },
+                                    buttonHeight = 36.dp,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 8.dp)
+                                )
+                            }
+                        }
+
+                        Row(
+                            modifier = Modifier
+                                .zIndex(1f)
+                                .fillMaxWidth()
+                                .onSizeChanged { searchBarHeightPx = it.height }
                                 .clip(RoundedCornerShape(100f))
                                 .hazeEffect(state = hazeState, style = HazeMaterials.ultraThin())
                                 .background(colorScheme.surfaceContainer.copy(alpha = 0.4f))
@@ -1959,27 +2000,6 @@ fun AppDrawer(
                                         })
                                     ),
                                     hazeState = hazeState)
-                            }
-                        }
-
-                        Box(modifier = Modifier.clip(RectangleShape)) {
-                            androidx.compose.animation.AnimatedVisibility(
-                                visible = isSearchActive && advancedSearchEnabled,
-                                enter = slideInVertically { -it } + fadeIn(),
-                                exit = slideOutVertically { -it } + shrinkVertically() + fadeOut()) {
-                                CompositionLocalProvider(LocalTextStyle provides typography.labelMedium) {
-                                    XenonSingleChoiceButtonGroup(
-                                        options = SearchType.entries,
-                                        selectedOption = selectedSearchType,
-                                        onOptionSelect = { selectedSearchType = it },
-                                        label = { it.name },
-                                        icon = { _, _ -> },
-                                        buttonHeight = 36.dp,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(top = 8.dp)
-                                    )
-                                }
                             }
                         }
                     }
