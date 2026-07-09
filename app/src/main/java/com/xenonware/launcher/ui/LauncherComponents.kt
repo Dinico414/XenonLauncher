@@ -1606,8 +1606,9 @@ fun AppDrawer(
                                 Box {
                                     androidx.compose.animation.AnimatedVisibility(
                                         visible = searchQuery.isEmpty(),
-                                        enter = fadeIn(animationSpec = tween(300)) + expandVertically(animationSpec = tween(300)),
-                                        exit = fadeOut(animationSpec = tween(200)) + shrinkVertically(animationSpec = tween(50))
+                                        enter = fadeIn(animationSpec = tween(300)) + slideInVertically(animationSpec = tween(300)) { -it } + expandVertically(animationSpec = tween(300)),
+                                        exit = fadeOut(animationSpec = tween(300)) + slideOutVertically(animationSpec = tween(300)) { -it } + shrinkVertically(animationSpec = tween(300)),
+                                        modifier = Modifier.graphicsLayer(clip = false)
                                     ) {
                                         if (recentApps.isNotEmpty()) {
                                             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -1671,8 +1672,9 @@ fun AppDrawer(
                                     Box {
                                         androidx.compose.animation.AnimatedVisibility(
                                             visible = searchQuery.isEmpty(),
-                                            enter = fadeIn(animationSpec = tween(300)) + expandVertically(animationSpec = tween(300)),
-                                            exit = fadeOut(animationSpec = tween(200)) + shrinkVertically(animationSpec = tween(50))
+                                            enter = fadeIn(animationSpec = tween(300)) + slideInVertically(animationSpec = tween(300)) { -it } + expandVertically(animationSpec = tween(300)),
+                                            exit = fadeOut(animationSpec = tween(300)) + slideOutVertically(animationSpec = tween(300)) { -it } + shrinkVertically(animationSpec = tween(300)),
+                                            modifier = Modifier.graphicsLayer(clip = false)
                                         ) {
                                             if (recentApps.isNotEmpty()) {
                                                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
