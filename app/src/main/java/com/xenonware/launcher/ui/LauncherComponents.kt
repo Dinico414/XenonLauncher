@@ -29,6 +29,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -119,14 +120,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.LinearGradientShader
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shader
@@ -1027,44 +1031,85 @@ fun MediaSection(
                 Surface(
                     modifier = Modifier.size(44.dp),
                     shape = CircleShape,
-                    color = colorScheme.onSurfaceVariant.copy(alpha = if (isSystemInDarkTheme()) 0.35f else 1f)
+                    color = colorScheme.surfaceVariant
                 ) {
                     Icon(
                         Icons.Rounded.MusicNote,
                         null,
-                        tint = colorScheme.onSurface,
+                        tint = colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(10.dp)
                     )
                 }
             }
-            Spacer(Modifier.width(8.dp))
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                    .drawWithContent {
+                        drawContent()
+                        drawRect(
+                            brush = Brush.horizontalGradient(
+                                0.92f to Color.Black,
+                                1f to Color.Transparent
+                            ),
+                            blendMode = BlendMode.DstIn
+                        )
+                    }
+            ) {
                 Text(
                     mediaState.title ?: "No Media",
                     color = contentColor,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    modifier = Modifier.basicMarquee()
                 )
                 Text(
                     mediaState.artist ?: "Unknown Artist",
                     color = contentColor.copy(0.7f),
                     fontSize = 10.sp,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    modifier = Modifier.basicMarquee()
                 )
             }
-            Row {
-                IconButton(onClick = onPlayPause, modifier = Modifier.size(28.dp)) {
-                    Icon(
-                        if (mediaState.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                        null,
-                        tint = contentColor,
-                        modifier = Modifier.size(20.dp)
-                    )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val playInteractionSource = remember { MutableInteractionSource() }
+                val isPlayPressed by playInteractionSource.collectIsPressedAsState()
+                val playRadius by animateDpAsState(
+                    targetValue = when {
+                        isPlayPressed -> 8.dp
+                        mediaState.isPlaying -> 12.dp
+                        else -> 16.dp
+                    },
+                    label = "playRadius"
+                )
+
+                Surface(
+                    onClick = onPlayPause,
+                    interactionSource = playInteractionSource,
+                    shape = RoundedCornerShape(playRadius),
+                    color = colorScheme.primaryContainer,
+                    contentColor = colorScheme.onPrimaryContainer,
+                    modifier = Modifier
+                        .size(width = 28.dp, height = 36.dp)
+                ) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            if (mediaState.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                            null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
-                IconButton(onClick = onSkipNext, modifier = Modifier.size(28.dp)) {
+
+                Spacer(Modifier.width(4.dp))
+
+                IconButton(
+                    onClick = onSkipNext,
+                    modifier = Modifier.size(width = 28.dp, height = 36.dp)
+                ) {
                     Icon(
                         Icons.Rounded.SkipNext,
                         null,
