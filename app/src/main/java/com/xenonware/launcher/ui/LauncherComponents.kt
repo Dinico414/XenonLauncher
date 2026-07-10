@@ -18,7 +18,11 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.keyframes
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -294,6 +298,51 @@ fun DockPill(
         animationSpec = tween(500)
     )
     val buttonAlpha = if (isSystemInDarkTheme()) 0.35f else 1f
+
+    val infiniteTransition = rememberInfiniteTransition(label = "musicNoteAnim")
+    val musicNoteRotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = keyframes {
+                durationMillis = 2500
+                0f at 0
+                15f at 150 // Shake
+                -15f at 300
+                15f at 450
+                0f at 600
+                0f at 1200 // Pause
+                15f at 1350 // Shake again
+                -15f at 1500
+                15f at 1650
+                0f at 1800
+                0f at 2500 // Pause
+            }
+        ),
+        label = "musicNoteRotation"
+    )
+
+    val musicNoteScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = keyframes {
+                durationMillis = 2500
+                1f at 0
+                1.2f at 700 // Twitch
+                0.8f at 850
+                1.1f at 1000
+                1f at 1150
+                1f at 2500
+            }
+        ),
+        label = "musicNoteScale"
+    )
+
+    val musicNotePlayingFactor by animateFloatAsState(
+        targetValue = if (mediaState.isPlaying) 1f else 0f,
+        label = "musicNotePlayingFactor"
+    )
 
     Row(
         modifier = modifier
@@ -607,14 +656,23 @@ fun DockPill(
                                         isPermissionGranted = isMediaPermissionGranted,
                                         onPlayPause = onMediaPlayPause,
                                         onSkipNext = onMediaSkipNext,
-                                        onRequestPermission = onOpenMediaPermission
+                                        onRequestPermission = onOpenMediaPermission,
+                                        musicNoteRotation = { musicNoteRotation },
+                                        musicNoteScale = { musicNoteScale },
+                                        musicNotePlayingFactor = { musicNotePlayingFactor }
                                     )
                                 } else {
                                     Box(contentAlignment = Alignment.Center) {
                                         Icon(
                                             Icons.Rounded.MusicNote,
                                             null,
-                                            modifier = Modifier.size(24.dp)
+                                            modifier = Modifier
+                                                .size(24.dp)
+                                                .graphicsLayer {
+                                                    rotationZ = musicNoteRotation * musicNotePlayingFactor
+                                                    scaleX = 1f + (musicNoteScale - 1f) * musicNotePlayingFactor
+                                                    scaleY = 1f + (musicNoteScale - 1f) * musicNotePlayingFactor
+                                                }
                                         )
                                     }
                                 }
@@ -1064,6 +1122,9 @@ fun MediaSection(
     onPlayPause: () -> Unit,
     onSkipNext: () -> Unit,
     onRequestPermission: () -> Unit,
+    musicNoteRotation: () -> Float = { 0f },
+    musicNoteScale: () -> Float = { 1f },
+    musicNotePlayingFactor: () -> Float = { 0f },
 ) {
     val contentColor = LocalContentColor.current
     Row(
@@ -1111,7 +1172,13 @@ fun MediaSection(
                         Icons.Rounded.MusicNote,
                         null,
                         tint = colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(10.dp)
+                        modifier = Modifier
+                            .padding(10.dp)
+                            .graphicsLayer {
+                                rotationZ = musicNoteRotation() * musicNotePlayingFactor()
+                                scaleX = 1f + (musicNoteScale() - 1f) * musicNotePlayingFactor()
+                                scaleY = 1f + (musicNoteScale() - 1f) * musicNotePlayingFactor()
+                            }
                     )
                 }
             }
