@@ -2,6 +2,7 @@ package com.xenonware.launcher.ui
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -520,9 +521,61 @@ fun DockPill(
                     val verticalPadding by animateDpAsState(
                         targetValue = if (isExpanded) 4.dp else 12.dp, label = "mediaPadding"
                     )
-                    val backgroundColor =
-                        colorScheme.surfaceContainerLowest.copy(alpha = buttonAlpha)
-                    val contentColor = colorScheme.onSurface
+
+                    val albumArt = mediaState.albumArt
+                    val isDark = isSystemInDarkTheme()
+                    val currentColorScheme = colorScheme
+
+                    val mediaTheme = remember(albumArt, isDark, currentColorScheme) {
+                        if (albumArt != null) {
+                            try {
+                                val scaled = Bitmap.createScaledBitmap(albumArt, 1, 1, true)
+                                val colorInt = scaled.getPixel(0, 0)
+                                scaled.recycle()
+                                val seed = Color(colorInt)
+
+                                val bg = if (isDark) {
+                                    lerp(seed, Color.Black, 0.85f)
+                                } else {
+                                    lerp(seed, Color.White, 0.92f)
+                                }
+
+                                val text = if (isDark) {
+                                    lerp(seed, Color.White, 0.85f)
+                                } else {
+                                    lerp(seed, Color.Black, 0.7f)
+                                }
+
+                                val pc = if (isDark) {
+                                    lerp(seed, Color.White, 0.3f).copy(alpha = 0.6f)
+                                } else {
+                                    lerp(seed, Color.Black, 0.15f).copy(alpha = 0.3f)
+                                }
+
+                                Triple(bg, text, currentColorScheme.copy(
+                                    primaryContainer = pc,
+                                    onPrimaryContainer = text,
+                                    onSurface = text
+                                ))
+                            } catch (e: Exception) {
+                                Triple(
+                                    currentColorScheme.surfaceContainerLowest,
+                                    currentColorScheme.onSurface,
+                                    currentColorScheme
+                                )
+                            }
+                        } else {
+                            Triple(
+                                currentColorScheme.surfaceContainerLowest,
+                                currentColorScheme.onSurface,
+                                currentColorScheme
+                            )
+                        }
+                    }
+
+                    val backgroundColor = mediaTheme.first.copy(alpha = buttonAlpha)
+                    val contentColor = mediaTheme.second
+                    val localScheme = mediaTheme.third
 
                     Surface(
                         onClick = {
@@ -540,28 +593,30 @@ fun DockPill(
                         color = backgroundColor,
                         contentColor = contentColor
                     ) {
-                        AnimatedContent(
-                            targetState = isExpanded, transitionSpec = {
-                                fadeIn(animationSpec = tween(300)) togetherWith fadeOut(
-                                    animationSpec = tween(300)
-                                )
-                            }, label = "mediaTransition"
-                        ) { targetExpanded ->
-                            if (targetExpanded) {
-                                MediaSection(
-                                    mediaState = mediaState,
-                                    isPermissionGranted = isMediaPermissionGranted,
-                                    onPlayPause = onMediaPlayPause,
-                                    onSkipNext = onMediaSkipNext,
-                                    onRequestPermission = onOpenMediaPermission
-                                )
-                            } else {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        Icons.Rounded.MusicNote,
-                                        null,
-                                        modifier = Modifier.size(24.dp)
+                        androidx.compose.material3.MaterialTheme(colorScheme = localScheme) {
+                            AnimatedContent(
+                                targetState = isExpanded, transitionSpec = {
+                                    fadeIn(animationSpec = tween(300)) togetherWith fadeOut(
+                                        animationSpec = tween(300)
                                     )
+                                }, label = "mediaTransition"
+                            ) { targetExpanded ->
+                                if (targetExpanded) {
+                                    MediaSection(
+                                        mediaState = mediaState,
+                                        isPermissionGranted = isMediaPermissionGranted,
+                                        onPlayPause = onMediaPlayPause,
+                                        onSkipNext = onMediaSkipNext,
+                                        onRequestPermission = onOpenMediaPermission
+                                    )
+                                } else {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            Icons.Rounded.MusicNote,
+                                            null,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
                                 }
                             }
                         }
