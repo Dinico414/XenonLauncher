@@ -1444,12 +1444,19 @@ fun AppDrawer(
                 searchBackProgress.snapTo(eased)
             }
             // Committed: Close search
-            searchQuery = ""
-            selectedSearchType = SearchType.Apps
-            isSearchActive = false
-            focusManager.clearFocus()
-            keyboardController?.hide()
-            scope.launch { searchBackProgress.animateTo(0f, tween(220)) }
+            scope.launch {
+                // Simultaneously start the layout shrink and finish the fade
+                isSearchActive = false
+                searchQuery = ""
+                selectedSearchType = SearchType.Apps
+                focusManager.clearFocus()
+                keyboardController?.hide()
+                
+                // Animate to 1.0 (fully dismissed) to sync with the current gesture progress
+                searchBackProgress.animateTo(1f, tween(300))
+                // Reset for next time
+                searchBackProgress.snapTo(0f)
+            }
         } catch (_: CancellationException) {
             scope.launch { searchBackProgress.animateTo(0f, tween(220)) }
         }
@@ -1579,6 +1586,7 @@ fun AppDrawer(
                         .weight(1f)
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
+                        .graphicsLayer(clip = false)
                 ) {
                     val animatedBarHeight by animateFloatAsState(
                         targetValue = barHeightPx.toFloat(),
@@ -1607,7 +1615,7 @@ fun AppDrawer(
                                     androidx.compose.animation.AnimatedVisibility(
                                         visible = searchQuery.isEmpty(),
                                         enter = fadeIn(animationSpec = tween(300)) + slideInVertically(animationSpec = tween(300)) { -it } + expandVertically(animationSpec = tween(300), clip = false),
-                                        exit = fadeOut(animationSpec = tween(300)) + slideOutVertically(animationSpec = tween(300)) { -it } + shrinkVertically(animationSpec = tween(300), clip = false),
+                                        exit = fadeOut(animationSpec = tween(300)) + slideOutVertically(animationSpec = tween(600)) { -it } + shrinkVertically(animationSpec = tween(600), clip = false),
                                         modifier = Modifier.graphicsLayer(clip = false)
                                     ) {
                                         if (recentApps.isNotEmpty()) {
@@ -1871,11 +1879,13 @@ fun AppDrawer(
                             visible = isSearchActive && advancedSearchEnabled,
                             enter = slideInVertically(animationSpec = tween(300, 500)) { -it } + expandVertically(
                                 expandFrom = Alignment.Top,
-                                animationSpec = tween(200)
-                            ) + fadeIn(animationSpec = tween(300)),
+                                animationSpec = tween(200),
+                                clip = false
+                            ) + fadeIn(animationSpec = tween(300, 500)),
                             exit = slideOutVertically(animationSpec = tween(300)) { -it } + shrinkVertically(
                                 shrinkTowards = Alignment.Top,
-                                animationSpec = tween(300)
+                                animationSpec = tween(300),
+                                clip = false
                             ) + fadeOut(animationSpec = tween(300)),
                             modifier = Modifier
                                 .fillMaxWidth()
