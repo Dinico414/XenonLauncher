@@ -344,6 +344,59 @@ fun DockPill(
         label = "musicNotePlayingFactor"
     )
 
+    val albumArt = mediaState.albumArt
+    val isDark = isSystemInDarkTheme()
+    val currentColorScheme = colorScheme
+
+    val mediaTheme = remember(albumArt, isDark, currentColorScheme) {
+        if (albumArt != null) {
+            try {
+                val scaled = Bitmap.createScaledBitmap(albumArt, 1, 1, true)
+                val colorInt = scaled.getPixel(0, 0)
+                scaled.recycle()
+                val seed = Color(colorInt)
+
+                val bg = if (isDark) {
+                    lerp(seed, Color.Black, 0.82f)
+                } else {
+                    lerp(seed, Color.White, 0.90f)
+                }
+
+                val text = if (isDark) {
+                    lerp(seed, Color.White, 0.85f)
+                } else {
+                    lerp(seed, Color.Black, 0.7f)
+                }
+
+                val pc = if (isDark) {
+                    lerp(seed, Color.White, 0.3f).copy(alpha = 0.6f)
+                } else {
+                    lerp(seed, Color.Black, 0.15f).copy(alpha = 0.3f)
+                }
+
+                Triple(bg, text, currentColorScheme.copy(
+                    primaryContainer = pc,
+                    onPrimaryContainer = text,
+                    onSurface = text
+                ))
+            } catch (e: Exception) {
+                Triple(
+                    currentColorScheme.surfaceContainerLowest,
+                    currentColorScheme.onSurface,
+                    currentColorScheme
+                )
+            }
+        } else {
+            Triple(
+                currentColorScheme.surfaceContainerLowest,
+                currentColorScheme.onSurface,
+                currentColorScheme
+            )
+        }
+    }
+
+    val baseDockColor = colorScheme.surfaceContainer
+
     Row(
         modifier = modifier
             .width(finalMaxDockWidth)
@@ -354,7 +407,6 @@ fun DockPill(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
-        val baseDockColor = colorScheme.surfaceContainer
         Box(
             modifier = Modifier
                 .height(72.dp)
@@ -571,58 +623,11 @@ fun DockPill(
                         targetValue = if (isExpanded) 4.dp else 12.dp, label = "mediaPadding"
                     )
 
-                    val albumArt = mediaState.albumArt
-                    val isDark = isSystemInDarkTheme()
-                    val currentColorScheme = colorScheme
-
-                    val mediaTheme = remember(albumArt, isDark, currentColorScheme) {
-                        if (albumArt != null) {
-                            try {
-                                val scaled = Bitmap.createScaledBitmap(albumArt, 1, 1, true)
-                                val colorInt = scaled.getPixel(0, 0)
-                                scaled.recycle()
-                                val seed = Color(colorInt)
-
-                                val bg = if (isDark) {
-                                    lerp(seed, Color.Black, 0.85f)
-                                } else {
-                                    lerp(seed, Color.White, 0.92f)
-                                }
-
-                                val text = if (isDark) {
-                                    lerp(seed, Color.White, 0.85f)
-                                } else {
-                                    lerp(seed, Color.Black, 0.7f)
-                                }
-
-                                val pc = if (isDark) {
-                                    lerp(seed, Color.White, 0.3f).copy(alpha = 0.6f)
-                                } else {
-                                    lerp(seed, Color.Black, 0.15f).copy(alpha = 0.3f)
-                                }
-
-                                Triple(bg, text, currentColorScheme.copy(
-                                    primaryContainer = pc,
-                                    onPrimaryContainer = text,
-                                    onSurface = text
-                                ))
-                            } catch (e: Exception) {
-                                Triple(
-                                    currentColorScheme.surfaceContainerLowest,
-                                    currentColorScheme.onSurface,
-                                    currentColorScheme
-                                )
-                            }
-                        } else {
-                            Triple(
-                                currentColorScheme.surfaceContainerLowest,
-                                currentColorScheme.onSurface,
-                                currentColorScheme
-                            )
-                        }
+                    val backgroundColor = if (albumArt != null) {
+                        mediaTheme.first.copy(alpha = if (isExpanded) 0.8f else buttonAlpha)
+                    } else {
+                        colorScheme.surfaceContainerLowest.copy(alpha = buttonAlpha)
                     }
-
-                    val backgroundColor = mediaTheme.first.copy(alpha = buttonAlpha)
                     val contentColor = mediaTheme.second
                     val localScheme = mediaTheme.third
 
