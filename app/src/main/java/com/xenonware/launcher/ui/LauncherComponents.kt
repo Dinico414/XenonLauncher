@@ -359,7 +359,7 @@ fun DockPill(
                 val bg = if (isDark) {
                     lerp(seed, Color.Black, 0.82f)
                 } else {
-                    lerp(seed, Color.White, 0.90f)
+                    lerp(seed, Color.White, 0.96f)
                 }
 
                 val text = if (isDark) {
