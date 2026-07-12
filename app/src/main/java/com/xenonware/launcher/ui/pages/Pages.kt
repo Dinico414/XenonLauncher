@@ -315,7 +315,7 @@ fun MainHomePage(
                                 appColor = appColor,
                                 contrastColor = contrastColor,
                                 onClick = { selectedPackage = pkg },
-                                modifier = Modifier.widthIn(min = 82.dp)
+                                modifier = Modifier.widthIn(min = 64.dp)
                             )
                         }
                     }
