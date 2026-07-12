@@ -39,15 +39,38 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Apps
+import androidx.compose.material.icons.rounded.AspectRatio
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Wallpaper
+import androidx.compose.material.icons.rounded.Widgets
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -69,12 +92,12 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.zIndex
 import androidx.core.graphics.drawable.toBitmap
+import com.xenon.mylibrary.theme.QuicksandTitleVariable
 import com.xenonware.launcher.ui.res.MenuItem
 import com.xenonware.launcher.ui.res.XenonDropDown
 import com.xenonware.launcher.viewmodel.LauncherViewModel
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -90,19 +113,70 @@ fun MediaPage() {
 }
 
 @Composable
-fun MainHomePage() {
+fun MainHomePage(
+    notificationCount: Int,
+    currentDate: String
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(top = 100.dp),
+            .statusBarsPadding()
+            .padding(top = 80.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("12:45", fontSize = 80.sp, fontWeight = FontWeight.Light, color = Color.White)
-        Text("Tuesday, October 24", fontSize = 20.sp, color = Color.White.copy(alpha = 0.8f))
+        // At a Glance section
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.Start
+        ) {
+            Text(
+                text = currentDate,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.White
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "No upcoming events",
+                fontSize = 16.sp,
+                color = Color.White
+            )
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        if (notificationCount == 0) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.padding(bottom = 40.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.EmojiEvents,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(36.dp)
+                )
+                Text(
+                    text = "You're up to date",
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    fontFamily = QuicksandTitleVariable,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        } else {
+            // Placeholder for notification list
+            Text(
+                "You have $notificationCount notifications",
+                color = Color.White.copy(alpha = 0.5f),
+                modifier = Modifier.padding(bottom = 40.dp)
+            )
+        }
         
-        Spacer(Modifier.height(48.dp))
-        
-        Text("Notifications Placeholder", color = Color.White.copy(alpha = 0.6f))
+        Spacer(modifier = Modifier.weight(1.2f)) // Extra weight at bottom for dock space
     }
 }
 

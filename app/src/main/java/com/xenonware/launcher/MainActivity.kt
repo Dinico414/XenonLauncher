@@ -184,7 +184,10 @@ fun LauncherScreen(
                     ) { page ->
                         when (page) {
                             0 -> MediaPage()
-                            1 -> MainHomePage()
+                            1 -> MainHomePage(
+                                notificationCount = notificationCount,
+                                currentDate = currentDate
+                            )
                             2 -> WidgetPage(
                                 viewModel = viewModel,
                                 onOpenSettings = onOpenSettings
