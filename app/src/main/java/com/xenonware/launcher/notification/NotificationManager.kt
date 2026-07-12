@@ -45,31 +45,89 @@ object NotificationManager {
                 val ranking = Ranking()
                 val hasRanking = rankingMap?.getRanking(sbn.key, ranking) ?: false
 
-                val isOngoing = sbn.isOngoing
-                val isMuted = if (hasRanking) {
-                    ranking.importance < 3 // IMPORTANCE_DEFAULT is 3
-                } else {
-                    @Suppress("DEPRECATION")
-                    sbn.notification.defaults == 0 && sbn.notification.sound == null && sbn.notification.vibrate == null
+                // 1. Core System Filters
+                if (sbn.packageName == ownPackageName) return@filter false
+                if (sbn.isOngoing) return@filter false
+                
+                // 2. Ranking/Importance Filters
+                if (hasRanking) {
+                    // IMPORTANCE_MIN = 1, IMPORTANCE_LOW = 2, IMPORTANCE_DEFAULT = 3
+                    // Show anything that isn't MIN importance (min is usually completely hidden/silent)
+                    if (ranking.importance <= 1) return@filter false
+                    if (ranking.isSuspended) return@filter false
                 }
 
-                !isOngoing && !isMuted && sbn.packageName != ownPackageName
+                // 3. Content Filters
+                val notification = sbn.notification
+                val extras = notification.extras
+                
+                val title = extras.getCharSequence("android.title")
+                val text = extras.getCharSequence("android.text")
+                val bigText = extras.getCharSequence("android.bigText")
+                val messages = extras.get("android.messages")
+                
+                // Permissive content check
+                if (title.isNullOrBlank() && text.isNullOrBlank() && bigText.isNullOrBlank() && messages == null) {
+                    return@filter false
+                }
+
+                true
             }
 
-            _notificationCount.value = filtered.size
-            _notifications.value = filtered.map { sbn ->
+            // 4. Improved Grouping Logic
+            // Instead of grouping by package, group by the actual notification group key.
+            // This ensures that if an app has multiple different groups (e.g. different email accounts),
+            // we handle summaries correctly for each group.
+            val groupedByGroup = filtered.groupBy { it.groupKey ?: (it.packageName + it.id) }
+            
+            val finalNotifications = groupedByGroup.flatMap { (_, sbnList) ->
+                val summaries = sbnList.filter { (it.notification.flags and android.app.Notification.FLAG_GROUP_SUMMARY) != 0 }
+                val children = sbnList.filter { (it.notification.flags and android.app.Notification.FLAG_GROUP_SUMMARY) == 0 }
+                
+                if (children.isNotEmpty()) {
+                    children // Prefer individual notifications
+                } else {
+                    summaries // Fallback to summary if no children (rare but possible)
+                }
+            }
+
+            _notifications.value = finalNotifications.map { sbn ->
                 val extras = sbn.notification.extras
+                
+                // Extracting title
+                val title = extras.getCharSequence("android.title")?.toString() ?: ""
+                
+                // Extracting text body - prioritizing standard fields
+                var body = extras.getCharSequence("android.text")?.toString()
+                    ?: extras.getCharSequence("android.bigText")?.toString()
+                    ?: ""
+                
+                // 5. Special handling for MessagingStyle (WhatsApp, Telegram, etc.)
+                // These often have a list of messages in the extras.
+                if (body.isBlank() || (sbn.notification.flags and android.app.Notification.FLAG_GROUP_SUMMARY) != 0) {
+                    val messages = extras.get("android.messages") as? Array<*>
+                    if (!messages.isNullOrEmpty()) {
+                        // Get the last message's text
+                        val lastMessage = messages.last() as? android.os.Bundle
+                        val messageText = lastMessage?.getCharSequence("text")
+                        if (messageText != null) {
+                            body = messageText.toString()
+                        }
+                    }
+                }
                 
                 LauncherNotification(
                     key = sbn.key,
                     packageName = sbn.packageName,
-                    title = extras.getString("android.title"),
-                    text = extras.getCharSequence("android.text")?.toString(),
+                    title = title,
+                    text = body,
                     postTime = sbn.postTime,
                     icon = sbn.notification.smallIcon?.loadDrawable(context),
                     contentIntent = sbn.notification.contentIntent
                 )
             }.sortedByDescending { it.postTime }
+            
+            _notificationCount.value = _notifications.value.size
         } catch (e: Exception) {
             e.printStackTrace()
         }

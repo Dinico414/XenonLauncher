@@ -44,7 +44,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.VerticalPager
@@ -222,8 +221,6 @@ fun MainHomePage(
                 }
             }
         } else {
-//            Spacer(modifier = Modifier.weight(1f))
-
             // Notification List
             selectedPackage?.let { pkg ->
                 val app = apps.find { it.packageName == pkg }
@@ -255,37 +252,49 @@ fun MainHomePage(
 
             // Notification Tabs
             val scrollState = rememberScrollState()
+            val configuration = LocalConfiguration.current
+            val screenWidth = configuration.screenWidthDp.dp
+            val horizontalPadding = 24.dp
+            val availableWidth = screenWidth - (horizontalPadding * 2)
+            
+            val tabCount = sortedAppPackages.size
+            val deleteSpacing = 8.dp
+            val tabSpacing = 4.dp
+            val totalItems = tabCount + 1
+            
+            // Calculate item width sharing space equally if they fit, otherwise min 64dp
+            val sumGaps = (tabCount - 1).coerceAtLeast(0) * tabSpacing.value + deleteSpacing.value
+            val calculatedWidth = (availableWidth.value - sumGaps) / totalItems
+            val itemWidth = calculatedWidth.coerceAtLeast(64f).dp
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 110.dp)
-                    .padding(horizontal = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    .padding(horizontal = horizontalPadding),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
                     modifier = Modifier
-                        .weight(1f, fill = false)
+                        .weight(1f)
                         .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
                         .drawWithContent {
                             drawContent()
                             val fadeWidth = 16.dp.toPx()
-                            if (scrollState.value > 0) {
+                            if (scrollState.value > 0.5f) {
                                 drawRect(
                                     brush = Brush.horizontalGradient(
-                                        0f to Color.Transparent,
-                                        1f to Color.Black,
+                                        colors = listOf(Color.Transparent, Color.Black),
                                         startX = 0f,
                                         endX = fadeWidth
                                     ),
                                     blendMode = BlendMode.DstIn
                                 )
                             }
-                            if (scrollState.value < scrollState.maxValue) {
+                            if (scrollState.value < scrollState.maxValue - 0.5f) {
                                 drawRect(
                                     brush = Brush.horizontalGradient(
-                                        0f to Color.Black,
-                                        1f to Color.Transparent,
+                                        colors = listOf(Color.Black, Color.Transparent),
                                         startX = size.width - fadeWidth,
                                         endX = size.width
                                     ),
@@ -296,7 +305,7 @@ fun MainHomePage(
                 ) {
                     Row(
                         modifier = Modifier.horizontalScroll(scrollState),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(tabSpacing),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         sortedAppPackages.forEach { pkg ->
@@ -315,11 +324,13 @@ fun MainHomePage(
                                 appColor = appColor,
                                 contrastColor = contrastColor,
                                 onClick = { selectedPackage = pkg },
-                                modifier = Modifier.widthIn(min = 64.dp)
+                                modifier = Modifier.width(itemWidth)
                             )
                         }
                     }
                 }
+
+                Spacer(Modifier.width(deleteSpacing))
 
                 // Delete All Button
                 val deleteInteractionSource = remember { MutableInteractionSource() }
@@ -333,7 +344,7 @@ fun MainHomePage(
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier
                         .height(40.dp)
-                        .widthIn(min = 64.dp)
+                        .width(itemWidth)
                 ) {
                     Box(modifier = Modifier.padding(horizontal = 12.dp), contentAlignment = Alignment.Center) {
                         Icon(
@@ -427,8 +438,16 @@ fun NotificationTabButton(
         }
     )
 
-    val backgroundColor = if (isSelected) appColor else MaterialTheme.colorScheme.surfaceDim.copy(alpha = 0.4f)
-    val iconColor = if (isSelected) contrastColor else MaterialTheme.colorScheme.onSurface
+    val finalAppColor = if (appColor == Color.Unspecified) MaterialTheme.colorScheme.primary else appColor
+    val finalContrastColor = if (appColor == Color.Unspecified) {
+        val luminance = 0.2126 * finalAppColor.red + 0.7152 * finalAppColor.green + 0.0722 * finalAppColor.blue
+        if (luminance > 0.72) Color.Black else Color.White
+    } else {
+        contrastColor
+    }
+
+    val backgroundColor = if (isSelected) finalAppColor else MaterialTheme.colorScheme.surfaceDim.copy(alpha = 0.4f)
+    val iconColor = if (isSelected) finalContrastColor else MaterialTheme.colorScheme.onSurface
     
     Surface(
         onClick = onClick,
@@ -482,7 +501,7 @@ fun NotificationTabButton(
 }
 
 private fun getDominantColor(drawable: Drawable?): Color {
-    if (drawable == null) return Color.Gray
+    if (drawable == null) return Color.Unspecified
     return try {
         val bitmap = drawable.toBitmap()
         
@@ -534,7 +553,7 @@ private fun getDominantColor(drawable: Drawable?): Color {
 
         Color(android.graphics.Color.HSVToColor(hsv)).copy(alpha = 1f)
     } catch (e: Exception) {
-        Color.Gray
+        Color.Unspecified
     }
 }
 
