@@ -11,10 +11,12 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -81,11 +83,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
@@ -247,56 +254,92 @@ fun MainHomePage(
             } ?: Spacer(modifier = Modifier.weight(1f))
 
             // Notification Tabs
+            val scrollState = rememberScrollState()
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 110.dp)
-                    .horizontalScroll(rememberScrollState())
                     .padding(horizontal = 24.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                sortedAppPackages.forEach { pkg ->
-                    val app = apps.find { it.packageName == pkg }
-                    val notificationsForApp = groupedNotifications[pkg] ?: emptyList()
-                    val latestNotification = notificationsForApp.firstOrNull()
-                    val isSelected = selectedPackage == pkg
-                    val appColor = remember(app) { getDominantColor(app?.icon) }
-                    val contrastColor = remember(appColor) { getContrastColor(appColor) }
-                    
-                    NotificationTabButton(
-                        app = app,
-                        notificationIcon = latestNotification?.icon,
-                        isSelected = isSelected,
-                        appColor = appColor,
-                        contrastColor = contrastColor,
-                        onClick = { selectedPackage = pkg },
-                        modifier = Modifier
-                            .weight(1f)
-                            .widthIn(min = 120.dp)
-                    )
+                Box(
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                        .drawWithContent {
+                            drawContent()
+                            val fadeWidth = 16.dp.toPx()
+                            if (scrollState.value > 0) {
+                                drawRect(
+                                    brush = Brush.horizontalGradient(
+                                        0f to Color.Transparent,
+                                        1f to Color.Black,
+                                        startX = 0f,
+                                        endX = fadeWidth
+                                    ),
+                                    blendMode = BlendMode.DstIn
+                                )
+                            }
+                            if (scrollState.value < scrollState.maxValue) {
+                                drawRect(
+                                    brush = Brush.horizontalGradient(
+                                        0f to Color.Black,
+                                        1f to Color.Transparent,
+                                        startX = size.width - fadeWidth,
+                                        endX = size.width
+                                    ),
+                                    blendMode = BlendMode.DstIn
+                                )
+                            }
+                        }
+                ) {
+                    Row(
+                        modifier = Modifier.horizontalScroll(scrollState),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        sortedAppPackages.forEach { pkg ->
+                            val app = apps.find { it.packageName == pkg }
+                            val notificationsForApp = groupedNotifications[pkg] ?: emptyList()
+                            val latestNotification = notificationsForApp.firstOrNull()
+                            val isSelected = selectedPackage == pkg
+                            val appColor = remember(app) { getDominantColor(app?.icon) }
+                            val contrastColor = remember(appColor) { getContrastColor(appColor) }
+                            
+                            NotificationTabButton(
+                                app = app,
+                                notificationIcon = latestNotification?.icon,
+                                notificationCount = notificationsForApp.size,
+                                isSelected = isSelected,
+                                appColor = appColor,
+                                contrastColor = contrastColor,
+                                onClick = { selectedPackage = pkg },
+                                modifier = Modifier.widthIn(min = 82.dp)
+                            )
+                        }
+                    }
                 }
 
-                // Delete All Button as a tab
+                // Delete All Button
                 val deleteInteractionSource = remember { MutableInteractionSource() }
                 val isDeletePressed by deleteInteractionSource.collectIsPressedAsState()
-                val deleteCornerRadius by animateDpAsState(if (isDeletePressed) 4.dp else 100.dp)
+                val deleteCornerRadius by animateDpAsState(if (isDeletePressed) 4.dp else 12.dp, label = "delete_corner")
 
                 Surface(
                     onClick = onDismissAllNotifications,
                     interactionSource = deleteInteractionSource,
                     shape = RoundedCornerShape(deleteCornerRadius),
-                    color = MaterialTheme.colorScheme.surfaceDim.copy(alpha = 0.4f),
+                    color = MaterialTheme.colorScheme.error,
                     modifier = Modifier
-                        .height(36.dp)
-                        .widthIn(min = 120.dp)
-                        .weight(1f)
+                        .height(40.dp)
+                        .widthIn(min = 64.dp)
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.padding(horizontal = 12.dp), contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = Icons.Rounded.Delete,
                             contentDescription = "Clear All",
-                            tint = MaterialTheme.colorScheme.onSurface,
+                            tint = MaterialTheme.colorScheme.onError,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -366,6 +409,7 @@ fun NotificationItem(
 fun NotificationTabButton(
     app: AppInfo?,
     notificationIcon: Drawable?,
+    notificationCount: Int,
     isSelected: Boolean,
     appColor: Color,
     contrastColor: Color,
@@ -393,11 +437,12 @@ fun NotificationTabButton(
         color = backgroundColor,
         modifier = modifier.height(40.dp)
     ) {
-        Box(
+        Row(
             modifier = Modifier
                 .padding(horizontal = 12.dp)
                 .fillMaxHeight(),
-            contentAlignment = Alignment.Center
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
         ) {
             val iconToDraw = notificationIcon ?: app?.icon
             if (iconToDraw != null) {
@@ -414,6 +459,23 @@ fun NotificationTabButton(
                     modifier = Modifier.size(20.dp),
                     tint = iconColor
                 )
+            }
+
+            AnimatedVisibility(
+                visible = notificationCount > 1,
+                enter = fadeIn() + expandHorizontally(),
+                exit = fadeOut() + shrinkHorizontally()
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = if (notificationCount > 99) "99+" else notificationCount.toString(),
+                        color = iconColor,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = QuicksandTitleVariable
+                    )
+                }
             }
         }
     }
