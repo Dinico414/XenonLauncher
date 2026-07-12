@@ -4,6 +4,7 @@ import android.graphics.drawable.Drawable
 import android.service.notification.NotificationListenerService.Ranking
 import android.service.notification.NotificationListenerService.RankingMap
 import android.service.notification.StatusBarNotification
+import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -14,7 +15,14 @@ data class LauncherNotification(
     val text: String?,
     val postTime: Long,
     val icon: Drawable? = null,
-    val contentIntent: android.app.PendingIntent? = null
+    val contentIntent: android.app.PendingIntent? = null,
+    val actions: List<LauncherNotificationAction> = emptyList()
+)
+
+data class LauncherNotificationAction(
+    val title: String,
+    val actionIntent: android.app.PendingIntent?,
+    val remoteInput: android.app.RemoteInput? = null
 )
 
 object NotificationManager {
@@ -97,22 +105,30 @@ object NotificationManager {
                 // Extracting title
                 val title = extras.getCharSequence("android.title")?.toString() ?: ""
                 
-                // Extracting text body - prioritizing standard fields
+                // Extracting text body
                 var body = extras.getCharSequence("android.text")?.toString()
                     ?: extras.getCharSequence("android.bigText")?.toString()
                     ?: ""
                 
-                // 5. Special handling for MessagingStyle (WhatsApp, Telegram, etc.)
-                // These often have a list of messages in the extras.
-                if (body.isBlank() || (sbn.notification.flags and android.app.Notification.FLAG_GROUP_SUMMARY) != 0) {
+                // 5. Advanced text extraction for MessagingStyle/InboxStyle
+                // If it's a summary or the body is generic, try to get more specific content
+                val isSummary = (sbn.notification.flags and android.app.Notification.FLAG_GROUP_SUMMARY) != 0
+                
+                if (isSummary || body.isBlank() || body.contains("new messages", ignoreCase = true) || body.contains("nachrichten", ignoreCase = true)) {
+                    // Try MessagingStyle messages
                     @Suppress("DEPRECATION")
                     val messages = extras.get("android.messages") as? Array<*>
                     if (!messages.isNullOrEmpty()) {
-                        // Get the last message's text
                         val lastMessage = messages.last() as? android.os.Bundle
                         val messageText = lastMessage?.getCharSequence("text")
                         if (messageText != null) {
                             body = messageText.toString()
+                        }
+                    } else {
+                        // Try InboxStyle lines
+                        val lines = extras.getCharSequenceArray("android.textLines")
+                        if (!lines.isNullOrEmpty()) {
+                            body = lines.last().toString()
                         }
                     }
                 }
@@ -124,8 +140,18 @@ object NotificationManager {
                     text = body,
                     postTime = sbn.postTime,
                     icon = sbn.notification.smallIcon?.loadDrawable(context),
-                    contentIntent = sbn.notification.contentIntent
-                )
+                    contentIntent = sbn.notification.contentIntent,
+                    actions = sbn.notification.actions?.map { action ->
+                        Log.d("NotificationManager", "Parsing action: ${action.title}, hasIntent=${action.actionIntent != null}")
+                        LauncherNotificationAction(
+                            title = action.title.toString(),
+                            actionIntent = action.actionIntent,
+                            remoteInput = action.remoteInputs?.firstOrNull()
+                        )
+                    } ?: emptyList()
+                ).also {
+                    Log.d("NotificationManager", "Parsed notification from ${it.packageName}: title=${it.title}, hasContentIntent=${it.contentIntent != null}, actionCount=${it.actions.size}")
+                }
             }.sortedByDescending { it.postTime }
             
             _notificationCount.value = _notifications.value.size

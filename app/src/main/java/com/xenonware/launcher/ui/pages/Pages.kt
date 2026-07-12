@@ -1,10 +1,15 @@
 package com.xenonware.launcher.ui.pages
 
+import android.app.ActivityOptions
+import android.app.RemoteInput
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
 import android.content.Intent
 import android.graphics.drawable.Drawable
+import android.os.Build
+import android.os.Bundle
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -12,11 +17,13 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -51,7 +58,9 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.AspectRatio
@@ -68,6 +77,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -101,6 +112,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -113,6 +125,7 @@ import androidx.palette.graphics.Palette
 import com.xenon.mylibrary.theme.QuicksandTitleVariable
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.notification.LauncherNotification
+import com.xenonware.launcher.notification.LauncherNotificationAction
 import com.xenonware.launcher.ui.res.MenuItem
 import com.xenonware.launcher.ui.res.XenonDropDown
 import com.xenonware.launcher.viewmodel.LauncherViewModel
@@ -238,14 +251,31 @@ fun MainHomePage(
                     contentPadding = PaddingValues(bottom = 16.dp)
                 ) {
                     items(groupedNotifications[pkg] ?: emptyList(), key = { it.key }) { notification ->
+                        val context = LocalContext.current
                         NotificationItem(
                             notification = notification,
                             appColor = appColor,
                             onOpen = { 
                                 try {
-                                    notification.contentIntent?.send()
+                                    Log.d("XenonNotification", "Opening notification: pkg=${notification.packageName}, title=${notification.title}")
+                                    
+                                    val options = ActivityOptions.makeBasic()
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                                        options.setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
+                                    }
+                                    
+                                    notification.contentIntent?.let { intent ->
+                                        Log.d("XenonNotification", "Sending contentIntent with context: $intent")
+                                        intent.send(context, 0, null, null, null, null, options.toBundle())
+                                    } ?: Log.w("XenonNotification", "No contentIntent found for notification")
                                 } catch (e: Exception) {
-                                    e.printStackTrace()
+                                    Log.e("XenonNotification", "Failed to send contentIntent with context", e)
+                                    try {
+                                        Log.d("XenonNotification", "Retrying contentIntent without context")
+                                        notification.contentIntent?.send()
+                                    } catch (e2: Exception) {
+                                        Log.e("XenonNotification", "Failed to send contentIntent without context", e2)
+                                    }
                                 }
                             }
                         )
@@ -403,44 +433,244 @@ fun NotificationItem(
     appColor: Color,
     onOpen: () -> Unit
 ) {
+    val finalAppColor = if (appColor == Color.Unspecified) MaterialTheme.colorScheme.primary else appColor
+    val finalContrastColor = remember(finalAppColor) { getContrastColor(finalAppColor) }
+    var expanded by remember { mutableStateOf(false) }
+
     Surface(
         onClick = onOpen,
         shape = RoundedCornerShape(20.dp),
         color = Color.White.copy(alpha = 0.1f),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            val iconToDraw = notification.icon
-            if (iconToDraw != null) {
-                Image(
-                    bitmap = iconToDraw.toBitmap().asImageBitmap(),
-                    contentDescription = null,
-                    modifier = Modifier.size(32.dp),
-                    colorFilter = ColorFilter.tint(appColor)
-                )
-            }
-            
-            Column(modifier = Modifier.weight(1f)) {
-                notification.title?.let {
-                    Text(
-                        text = it,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
-                    )
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                val iconToDraw = notification.icon
+                if (iconToDraw != null) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(finalAppColor, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Image(
+                            bitmap = iconToDraw.toBitmap().asImageBitmap(),
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                            colorFilter = ColorFilter.tint(finalContrastColor)
+                        )
+                    }
                 }
-                notification.text?.let {
-                    Text(
-                        text = it,
-                        color = Color.White.copy(alpha = 0.7f),
-                        fontSize = 13.sp,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        notification.title?.let {
+                            Text(
+                                text = it,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
+                            )
+                        }
+                        
+                        if (notification.actions.isNotEmpty()) {
+                            Surface(
+                                onClick = { expanded = !expanded },
+                                shape = RoundedCornerShape(8.dp),
+                                color = Color.White.copy(alpha = 0.1f),
+                                modifier = Modifier.height(26.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 8.dp)
+                                ) {
+                                    Text(
+                                        text = formatNotificationTime(notification.postTime),
+                                        color = Color.White.copy(alpha = 0.6f),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Icon(
+                                        imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                                        contentDescription = if (expanded) "Collapse" else "Expand",
+                                        tint = Color.White.copy(alpha = 0.6f),
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                        } else {
+                            Text(
+                                text = formatNotificationTime(notification.postTime),
+                                color = Color.White.copy(alpha = 0.5f),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+
+                    notification.text?.let {
+                        Text(
+                            text = it,
+                            color = Color.White.copy(alpha = 0.7f),
+                            fontSize = 13.sp,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+
+            AnimatedVisibility(
+                visible = expanded && notification.actions.isNotEmpty(),
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                Column(modifier = Modifier.padding(top = 12.dp)) {
+                    var selectedActionForReply by remember { mutableStateOf<LauncherNotificationAction?>(null) }
+                    var replyTextValue by remember { mutableStateOf("") }
+                    val context = LocalContext.current
+
+                    AnimatedVisibility(
+                        visible = selectedActionForReply != null,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            TextField(
+                                value = replyTextValue,
+                                onValueChange = { replyTextValue = it },
+                                modifier = Modifier.weight(1f),
+                                placeholder = { Text("Type a message...", fontSize = 13.sp) },
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color.White.copy(alpha = 0.05f),
+                                    unfocusedContainerColor = Color.White.copy(alpha = 0.05f),
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent
+                                ),
+                                shape = RoundedCornerShape(16.dp),
+                                textStyle = MaterialTheme.typography.bodyMedium.copy(color = Color.White),
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send)
+                            )
+                            
+                            Surface(
+                                onClick = {
+                                    selectedActionForReply?.let { action ->
+                                        Log.d("XenonNotification", "Replying to action: ${action.title}, text: $replyTextValue")
+                                        if (replyTextValue.isNotBlank() && action.remoteInput != null) {
+                                            val results = Bundle().apply {
+                                                putString(action.remoteInput.resultKey, replyTextValue)
+                                            }
+                                            val fillInIntent = Intent().apply {
+                                                RemoteInput.addResultsToIntent(arrayOf(action.remoteInput), this, results)
+                                            }
+                                            try {
+                                                Log.d("XenonNotification", "Sending reply intent: ${action.actionIntent}")
+                                                
+                                                val options = ActivityOptions.makeBasic()
+                                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                                                    options.setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
+                                                }
+                                                
+                                                action.actionIntent?.send(context, 0, fillInIntent, null, null, null, options.toBundle())
+                                            } catch (e: Exception) {
+                                                Log.e("XenonNotification", "Failed to send reply intent", e)
+                                            }
+                                            selectedActionForReply = null
+                                            replyTextValue = ""
+                                        }
+                                    }
+                                },
+                                shape = CircleShape,
+                                color = finalAppColor,
+                                modifier = Modifier.size(40.dp),
+                                enabled = replyTextValue.isNotBlank()
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Rounded.Send,
+                                        contentDescription = "Send",
+                                        tint = finalContrastColor,
+                                        modifier = Modifier.size(24.dp).padding(start = 3.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        notification.actions.forEach { action ->
+                            Surface(
+                                onClick = {
+                                    if (action.remoteInput != null) {
+                                        Log.d("XenonNotification", "Action clicked (Reply): ${action.title}")
+                                        if (selectedActionForReply == action) {
+                                            selectedActionForReply = null
+                                        } else {
+                                            selectedActionForReply = action
+                                            replyTextValue = ""
+                                        }
+                                    } else {
+                                        Log.d("XenonNotification", "Action clicked: ${action.title}")
+                                        try {
+                                            val options = ActivityOptions.makeBasic()
+                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                                                options.setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
+                                            }
+                                            
+                                            action.actionIntent?.let { intent ->
+                                                Log.d("XenonNotification", "Sending actionIntent with context: $intent")
+                                                intent.send(context, 0, null, null, null, null, options.toBundle())
+                                            } ?: Log.w("XenonNotification", "No actionIntent found for action")
+                                        } catch (e: Exception) {
+                                            Log.e("XenonNotification", "Failed to send actionIntent with context", e)
+                                            try {
+                                                Log.d("XenonNotification", "Retrying actionIntent without context")
+                                                action.actionIntent?.send()
+                                            } catch (e2: Exception) {
+                                                Log.e("XenonNotification", "Failed to send actionIntent without context", e2)
+                                            }
+                                        }
+                                    }
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (selectedActionForReply == action) finalAppColor.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.1f),
+                                modifier = Modifier.height(32.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier.padding(horizontal = 12.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = action.title,
+                                        color = if (selectedActionForReply == action) finalAppColor else Color.White,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -595,6 +825,15 @@ private fun getContrastColor(color: Color): Color {
     // Increased threshold (0.72) to favor white icons on brand colors (like WhatsApp green)
     // even after they have been muted/de-saturated.
     return if (luminance > 0.72) Color.Black else Color.White
+}
+
+private fun formatNotificationTime(postTime: Long): String {
+    val diffMinutes = (System.currentTimeMillis() - postTime) / 60000
+    return when {
+        diffMinutes < 1 -> "now"
+        diffMinutes < 60 -> "${diffMinutes}m"
+        else -> "${diffMinutes / 60}h"
+    }
 }
 
 @Composable
