@@ -433,9 +433,8 @@ private fun getDominantColor(drawable: Drawable?): Color {
             ?: palette.lightVibrantSwatch
             ?: palette.dominantSwatch
 
-        if (swatch != null) {
-            // Ensure the color is fully opaque
-            Color(swatch.rgb).copy(alpha = 1f)
+        val rawColor = if (swatch != null) {
+            swatch.rgb
         } else {
             // 2. Fallback center logic
             val width = bitmap.width
@@ -459,8 +458,19 @@ private fun getDominantColor(drawable: Drawable?): Color {
                     }
                 }
             }
-            Color(bestColor ?: pixels[height/2 * width + width/2]).copy(alpha = 1f)
+            bestColor ?: pixels[height/2 * width + width/2]
         }
+
+        // Tone down the color to avoid "eye-burning" intensity
+        val hsv = FloatArray(3)
+        android.graphics.Color.colorToHSV(rawColor, hsv)
+
+        // Cap saturation (max 70%) and brightness (max 80%)
+        // This keeps the brand identity but makes it much more comfortable to look at
+        hsv[1] = hsv[1].coerceAtMost(0.7f)
+        hsv[2] = hsv[2].coerceAtMost(0.8f)
+
+        Color(android.graphics.Color.HSVToColor(hsv)).copy(alpha = 1f)
     } catch (e: Exception) {
         Color.Gray
     }
@@ -470,9 +480,9 @@ private fun getContrastColor(color: Color): Color {
     // Standard relative luminance formula
     val luminance = 0.2126 * color.red + 0.7152 * color.green + 0.0722 * color.blue
     
-    // Higher threshold (0.65) to favor white icons on most brand colors (like WhatsApp green)
-    // Only very bright colors (like White background YouTube) will get a black icon.
-    return if (luminance > 0.65) Color.Black else Color.White
+    // Increased threshold (0.72) to favor white icons on brand colors (like WhatsApp green)
+    // even after they have been muted/de-saturated.
+    return if (luminance > 0.72) Color.Black else Color.White
 }
 
 @Composable
