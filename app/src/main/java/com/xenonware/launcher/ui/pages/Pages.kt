@@ -89,15 +89,17 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -141,6 +143,7 @@ fun MainHomePage(
     onDismissAllNotifications: () -> Unit
 ) {
     var selectedPackage by remember { mutableStateOf<String?>(null) }
+    val view = LocalView.current
     
     val groupedNotifications = remember(notifications) {
         notifications.groupBy { it.packageName }
@@ -267,6 +270,34 @@ fun MainHomePage(
             val calculatedWidth = (availableWidth.value - sumGaps) / totalItems
             val itemWidth = calculatedWidth.coerceAtLeast(64f).dp
 
+            // Block parent pager from hijacking horizontal swipes
+            // and ensure overscroll stays local
+            val blockPagerScroll = remember {
+                object : NestedScrollConnection {
+                    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                        // Disallow parent pager from starting a scroll if we are interacting with tabs
+                        if (source == NestedScrollSource.UserInput && Math.abs(available.x) > Math.abs(available.y)) {
+                            view.parent?.requestDisallowInterceptTouchEvent(true)
+                        }
+                        return Offset.Zero
+                    }
+
+                    override fun onPostScroll(
+                        consumed: Offset,
+                        available: Offset,
+                        source: NestedScrollSource
+                    ): Offset {
+                        // Consume horizontal delta to stop Pager from switching pages or stretching
+                        // This allows the local Row's internal overscroll to show the stretch.
+                        return if (source == NestedScrollSource.UserInput) {
+                            Offset(x = available.x, y = 0f)
+                        } else {
+                            Offset.Zero
+                        }
+                    }
+                }
+            }
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -277,7 +308,7 @@ fun MainHomePage(
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                        .nestedScroll(blockPagerScroll)
                         .drawWithContent {
                             drawContent()
                             val fadeWidth = 16.dp.toPx()

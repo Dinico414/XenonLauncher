@@ -105,6 +105,7 @@ object NotificationManager {
                 // 5. Special handling for MessagingStyle (WhatsApp, Telegram, etc.)
                 // These often have a list of messages in the extras.
                 if (body.isBlank() || (sbn.notification.flags and android.app.Notification.FLAG_GROUP_SUMMARY) != 0) {
+                    @Suppress("DEPRECATION")
                     val messages = extras.get("android.messages") as? Array<*>
                     if (!messages.isNullOrEmpty()) {
                         // Get the last message's text
