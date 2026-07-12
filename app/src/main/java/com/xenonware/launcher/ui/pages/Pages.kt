@@ -4,6 +4,7 @@ import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
 import android.content.Intent
+import android.graphics.drawable.Drawable
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -21,6 +22,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -38,9 +42,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -77,6 +84,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -85,6 +93,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -92,7 +101,10 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.zIndex
 import androidx.core.graphics.drawable.toBitmap
+import androidx.palette.graphics.Palette
 import com.xenon.mylibrary.theme.QuicksandTitleVariable
+import com.xenonware.launcher.model.AppInfo
+import com.xenonware.launcher.notification.LauncherNotification
 import com.xenonware.launcher.ui.res.MenuItem
 import com.xenonware.launcher.ui.res.XenonDropDown
 import com.xenonware.launcher.viewmodel.LauncherViewModel
@@ -115,8 +127,31 @@ fun MediaPage() {
 @Composable
 fun MainHomePage(
     notificationCount: Int,
-    currentDate: String
+    currentDate: String,
+    notifications: List<LauncherNotification>,
+    apps: List<AppInfo>,
+    calendarEvents: List<com.xenonware.launcher.viewmodel.CalendarEvent>,
+    onDismissNotification: (String) -> Unit,
+    onDismissAllNotifications: () -> Unit
 ) {
+    var selectedPackage by remember { mutableStateOf<String?>(null) }
+    
+    val groupedNotifications = remember(notifications) {
+        notifications.groupBy { it.packageName }
+    }
+    
+    val sortedAppPackages = remember(groupedNotifications) {
+        groupedNotifications.keys.sortedByDescending { pkg ->
+            groupedNotifications[pkg]?.maxOfOrNull { it.postTime } ?: 0L
+        }
+    }
+    
+    LaunchedEffect(sortedAppPackages) {
+        if (selectedPackage == null || !sortedAppPackages.contains(selectedPackage)) {
+            selectedPackage = sortedAppPackages.firstOrNull()
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -138,46 +173,306 @@ fun MainHomePage(
                 color = Color.White
             )
             Spacer(Modifier.height(4.dp))
-            Text(
-                text = "No upcoming events",
-                fontSize = 16.sp,
-                color = Color.White
-            )
+            if (calendarEvents.isEmpty()) {
+                Text(
+                    text = "No upcoming events",
+                    fontSize = 16.sp,
+                    color = Color.White.copy(alpha = 0.7f)
+                )
+            } else {
+                calendarEvents.take(2).forEach { event ->
+                    Text(
+                        text = event.title,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
         }
-
-        Spacer(modifier = Modifier.weight(1f))
 
         if (notificationCount == 0) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.padding(bottom = 40.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.EmojiEvents,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(36.dp)
-                )
-                Text(
-                    text = "You're up to date",
-                    color = Color.White,
-                    fontSize = 18.sp,
-                    fontFamily = QuicksandTitleVariable,
-                    fontWeight = FontWeight.Medium
-                )
+            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.EmojiEvents,
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.8f),
+                        modifier = Modifier.size(64.dp)
+                    )
+                    Text(
+                        text = "You're up to date",
+                        color = Color.White.copy(alpha = 0.8f),
+                        fontSize = 18.sp,
+                        fontFamily = QuicksandTitleVariable,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
         } else {
-            // Placeholder for notification list
-            Text(
-                "You have $notificationCount notifications",
-                color = Color.White.copy(alpha = 0.5f),
-                modifier = Modifier.padding(bottom = 40.dp)
-            )
+//            Spacer(modifier = Modifier.weight(1f))
+
+            // Notification List
+            selectedPackage?.let { pkg ->
+                val app = apps.find { it.packageName == pkg }
+                val appColor = remember(app) { getDominantColor(app?.icon) }
+                
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(bottom = 16.dp)
+                ) {
+                    items(groupedNotifications[pkg] ?: emptyList(), key = { it.key }) { notification ->
+                        NotificationItem(
+                            notification = notification,
+                            appColor = appColor,
+                            onOpen = { 
+                                try {
+                                    notification.contentIntent?.send()
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                }
+                            }
+                        )
+                    }
+                }
+            } ?: Spacer(modifier = Modifier.weight(1f))
+
+            // Notification Tabs
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 110.dp)
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                sortedAppPackages.forEach { pkg ->
+                    val app = apps.find { it.packageName == pkg }
+                    val notificationsForApp = groupedNotifications[pkg] ?: emptyList()
+                    val latestNotification = notificationsForApp.firstOrNull()
+                    val isSelected = selectedPackage == pkg
+                    val appColor = remember(app) { getDominantColor(app?.icon) }
+                    val contrastColor = remember(appColor) { getContrastColor(appColor) }
+                    
+                    NotificationTabButton(
+                        app = app,
+                        notificationIcon = latestNotification?.icon,
+                        isSelected = isSelected,
+                        appColor = appColor,
+                        contrastColor = contrastColor,
+                        onClick = { selectedPackage = pkg },
+                        modifier = Modifier
+                            .weight(1f)
+                            .widthIn(min = 120.dp)
+                    )
+                }
+
+                // Delete All Button as a tab
+                val deleteInteractionSource = remember { MutableInteractionSource() }
+                val isDeletePressed by deleteInteractionSource.collectIsPressedAsState()
+                val deleteCornerRadius by animateDpAsState(if (isDeletePressed) 4.dp else 100.dp)
+
+                Surface(
+                    onClick = onDismissAllNotifications,
+                    interactionSource = deleteInteractionSource,
+                    shape = RoundedCornerShape(deleteCornerRadius),
+                    color = MaterialTheme.colorScheme.surfaceDim.copy(alpha = 0.4f),
+                    modifier = Modifier
+                        .height(36.dp)
+                        .widthIn(min = 120.dp)
+                        .weight(1f)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Rounded.Delete,
+                            contentDescription = "Clear All",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
         }
         
-        Spacer(modifier = Modifier.weight(1.2f)) // Extra weight at bottom for dock space
+        if (notificationCount > 0) {
+            Spacer(modifier = Modifier.weight(0.2f)) // Space above dock
+        } else {
+            Spacer(modifier = Modifier.weight(1f))
+        }
     }
+}
+
+@Composable
+fun NotificationItem(
+    notification: LauncherNotification,
+    appColor: Color,
+    onOpen: () -> Unit
+) {
+    Surface(
+        onClick = onOpen,
+        shape = RoundedCornerShape(20.dp),
+        color = Color.White.copy(alpha = 0.1f),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            val iconToDraw = notification.icon
+            if (iconToDraw != null) {
+                Image(
+                    bitmap = iconToDraw.toBitmap().asImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier.size(32.dp),
+                    colorFilter = ColorFilter.tint(appColor)
+                )
+            }
+            
+            Column(modifier = Modifier.weight(1f)) {
+                notification.title?.let {
+                    Text(
+                        text = it,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+                }
+                notification.text?.let {
+                    Text(
+                        text = it,
+                        color = Color.White.copy(alpha = 0.7f),
+                        fontSize = 13.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun NotificationTabButton(
+    app: AppInfo?,
+    notificationIcon: Drawable?,
+    isSelected: Boolean,
+    appColor: Color,
+    contrastColor: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    
+    val cornerRadius by animateDpAsState(
+        targetValue = when {
+            isPressed -> 4.dp
+            isSelected -> 12.dp
+            else -> 20.dp
+        }
+    )
+
+    val backgroundColor = if (isSelected) appColor else MaterialTheme.colorScheme.surfaceDim.copy(alpha = 0.4f)
+    val iconColor = if (isSelected) contrastColor else MaterialTheme.colorScheme.onSurface
+    
+    Surface(
+        onClick = onClick,
+        interactionSource = interactionSource,
+        shape = RoundedCornerShape(cornerRadius),
+        color = backgroundColor,
+        modifier = modifier.height(40.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .padding(horizontal = 12.dp)
+                .fillMaxHeight(),
+            contentAlignment = Alignment.Center
+        ) {
+            val iconToDraw = notificationIcon ?: app?.icon
+            if (iconToDraw != null) {
+                Image(
+                    bitmap = iconToDraw.toBitmap().asImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    colorFilter = ColorFilter.tint(iconColor)
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Rounded.Apps,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = iconColor
+                )
+            }
+        }
+    }
+}
+
+private fun getDominantColor(drawable: Drawable?): Color {
+    if (drawable == null) return Color.Gray
+    return try {
+        val bitmap = drawable.toBitmap()
+        
+        // 1. Use Palette for brand-aware color extraction
+        val palette = Palette.from(bitmap).generate()
+        
+        // YouTube/Reddit fix: Prioritize vibrant brand colors
+        val swatch = palette.darkVibrantSwatch
+            ?: palette.vibrantSwatch
+            ?: palette.lightVibrantSwatch
+            ?: palette.dominantSwatch
+
+        if (swatch != null) {
+            // Ensure the color is fully opaque
+            Color(swatch.rgb).copy(alpha = 1f)
+        } else {
+            // 2. Fallback center logic
+            val width = bitmap.width
+            val height = bitmap.height
+            val pixels = IntArray(width * height)
+            bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
+            var bestColor: Int? = null
+            var maxSaturation = -1f
+            val steps = 5
+            for (i in 1 until steps) {
+                for (j in 1 until steps) {
+                    val x = (width * i) / steps
+                    val y = (height * j) / steps
+                    val pixel = pixels[y * width + x]
+                    val hsv = FloatArray(3)
+                    android.graphics.Color.colorToHSV(pixel, hsv)
+                    val score = hsv[1] * hsv[2]
+                    if (score > maxSaturation && hsv[2] > 0.1f && hsv[2] < 0.95f) {
+                        maxSaturation = score
+                        bestColor = pixel
+                    }
+                }
+            }
+            Color(bestColor ?: pixels[height/2 * width + width/2]).copy(alpha = 1f)
+        }
+    } catch (e: Exception) {
+        Color.Gray
+    }
+}
+
+private fun getContrastColor(color: Color): Color {
+    // Standard relative luminance formula
+    val luminance = 0.2126 * color.red + 0.7152 * color.green + 0.0722 * color.blue
+    
+    // Higher threshold (0.65) to favor white icons on most brand colors (like WhatsApp green)
+    // Only very bright colors (like White background YouTube) will get a black icon.
+    return if (luminance > 0.65) Color.Black else Color.White
 }
 
 @Composable

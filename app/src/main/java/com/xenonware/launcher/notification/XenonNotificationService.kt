@@ -5,6 +5,18 @@ import android.service.notification.StatusBarNotification
 
 class XenonNotificationService : NotificationListenerService() {
 
+    companion object {
+        private var instance: XenonNotificationService? = null
+
+        fun dismissNotification(key: String) {
+            instance?.cancelNotification(key)
+        }
+
+        fun dismissAllNotifications() {
+            instance?.cancelAllNotifications()
+        }
+    }
+
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
         updateNotificationCount()
     }
@@ -14,11 +26,18 @@ class XenonNotificationService : NotificationListenerService() {
     }
 
     override fun onListenerConnected() {
+        instance = this
         updateNotificationCount()
+    }
+
+    override fun onListenerDisconnected() {
+        instance = null
+        super.onListenerDisconnected()
     }
 
     private fun updateNotificationCount() {
         NotificationManager.updateFromNotifications(
+            context = this,
             activeNotifications = activeNotifications,
             rankingMap = currentRanking,
             ownPackageName = packageName

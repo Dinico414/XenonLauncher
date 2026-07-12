@@ -66,7 +66,8 @@ class MainActivity : ComponentActivity() {
                 val permissions = mutableListOf(
                     android.Manifest.permission.ACCESS_COARSE_LOCATION,
                     android.Manifest.permission.ACCESS_FINE_LOCATION,
-                    android.Manifest.permission.READ_EXTERNAL_STORAGE
+                    android.Manifest.permission.READ_EXTERNAL_STORAGE,
+                    android.Manifest.permission.READ_CALENDAR
                 )
 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -88,7 +89,9 @@ class MainActivity : ComponentActivity() {
                 val currentTime by viewModel.currentTime.collectAsState()
                 val weatherState by viewModel.weatherState.collectAsState()
                 val notificationCount by viewModel.notificationCount.collectAsState()
+                val notifications by viewModel.notifications.collectAsState()
                 val batteryLevel by viewModel.batteryLevel.collectAsState()
+                val calendarEvents by viewModel.calendarEvents.collectAsState()
 
                 LauncherScreen(
                     viewModel = viewModel,
@@ -102,7 +105,9 @@ class MainActivity : ComponentActivity() {
                     weatherTemp = weatherState.temperature,
                     weatherCondition = weatherState.condition,
                     notificationCount = notificationCount,
+                    notifications = notifications,
                     batteryLevel = batteryLevel,
+                    calendarEvents = calendarEvents,
                     onAppClick = { viewModel.launchApp(it) },
                     onOpenSettings = {
                         startActivity(Intent(this, SettingsActivity::class.java))
@@ -126,7 +131,9 @@ fun LauncherScreen(
     weatherTemp: String,
     weatherCondition: String,
     notificationCount: Int,
+    notifications: List<com.xenonware.launcher.notification.LauncherNotification>,
     batteryLevel: Float,
+    calendarEvents: List<com.xenonware.launcher.viewmodel.CalendarEvent>,
     onAppClick: (String) -> Unit,
     onOpenSettings: () -> Unit
 ) {
@@ -186,7 +193,12 @@ fun LauncherScreen(
                             0 -> MediaPage()
                             1 -> MainHomePage(
                                 notificationCount = notificationCount,
-                                currentDate = currentDate
+                                currentDate = currentDate,
+                                notifications = notifications,
+                                apps = apps,
+                                calendarEvents = calendarEvents,
+                                onDismissNotification = { viewModel.dismissNotification(it) },
+                                onDismissAllNotifications = { viewModel.dismissAllNotifications() }
                             )
                             2 -> WidgetPage(
                                 viewModel = viewModel,

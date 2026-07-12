@@ -46,6 +46,13 @@ data class WeatherState(
     val condition: String = "Sunny"
 )
 
+data class CalendarEvent(
+    val title: String,
+    val startTime: Long,
+    val endTime: Long,
+    val location: String?
+)
+
 class LauncherViewModel(application: Application) : AndroidViewModel(application) {
     private val prefManager = SharedPreferenceManager(application)
 
@@ -130,6 +137,15 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         LocationServices.getFusedLocationProviderClient(application)
 
     val notificationCount = com.xenonware.launcher.notification.NotificationManager.notificationCount
+    val notifications = com.xenonware.launcher.notification.NotificationManager.notifications
+
+    fun dismissNotification(key: String) {
+        com.xenonware.launcher.notification.XenonNotificationService.dismissNotification(key)
+    }
+
+    fun dismissAllNotifications() {
+        com.xenonware.launcher.notification.XenonNotificationService.dismissAllNotifications()
+    }
 
     private val _currentTime = MutableStateFlow(LocalDateTime.now())
     val currentTime: StateFlow<LocalDateTime> = _currentTime
@@ -139,6 +155,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private val _batteryLevel = MutableStateFlow(1f)
     val batteryLevel: StateFlow<Float> = _batteryLevel
+
+    private val _calendarEvents = MutableStateFlow<List<CalendarEvent>>(emptyList())
+    val calendarEvents: StateFlow<List<CalendarEvent>> = _calendarEvents
 
     val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
     val dateFormatter = DateTimeFormatter.ofPattern("EEE, MMM d")
@@ -151,6 +170,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         startMediaUpdates()
         startTimeUpdates()
         startWeatherUpdates()
+        loadCalendarEvents()
 
         val packageFilter = IntentFilter().apply {
             addAction(Intent.ACTION_PACKAGE_ADDED)
@@ -618,6 +638,48 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             current[index] = com.xenonware.launcher.model.WidgetItem(id, page, x, y, w, h)
             _widgets.value = current
             saveWidgets()
+        }
+    }
+
+    fun loadCalendarEvents() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val context = getApplication<Application>()
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
+                return@launch
+            }
+
+            val events = mutableListOf<CalendarEvent>()
+            val uri = android.provider.CalendarContract.Events.CONTENT_URI
+            val projection = arrayOf(
+                android.provider.CalendarContract.Events.TITLE,
+                android.provider.CalendarContract.Events.DTSTART,
+                android.provider.CalendarContract.Events.DTEND,
+                android.provider.CalendarContract.Events.EVENT_LOCATION
+            )
+            val now = System.currentTimeMillis()
+            val tomorrow = now + 24 * 60 * 60 * 1000
+            val selection = "${android.provider.CalendarContract.Events.DTSTART} >= ? AND ${android.provider.CalendarContract.Events.DTSTART} <= ?"
+            val selectionArgs = arrayOf(now.toString(), tomorrow.toString())
+            val sortOrder = "${android.provider.CalendarContract.Events.DTSTART} ASC"
+
+            context.contentResolver.query(uri, projection, selection, selectionArgs, sortOrder)?.use { cursor ->
+                val titleIdx = cursor.getColumnIndex(android.provider.CalendarContract.Events.TITLE)
+                val startIdx = cursor.getColumnIndex(android.provider.CalendarContract.Events.DTSTART)
+                val endIdx = cursor.getColumnIndex(android.provider.CalendarContract.Events.DTEND)
+                val locIdx = cursor.getColumnIndex(android.provider.CalendarContract.Events.EVENT_LOCATION)
+
+                while (cursor.moveToNext() && events.size < 5) {
+                    events.add(
+                        CalendarEvent(
+                            title = cursor.getString(titleIdx),
+                            startTime = cursor.getLong(startIdx),
+                            endTime = cursor.getLong(endIdx),
+                            location = cursor.getString(locIdx)
+                        )
+                    )
+                }
+            }
+            _calendarEvents.value = events
         }
     }
 
