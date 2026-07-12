@@ -16,12 +16,12 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -299,42 +299,26 @@ fun DockPill(
     )
     val buttonAlpha = if (isSystemInDarkTheme()) 0.35f else 1f
 
+    val surfaceContainerLowest = colorScheme.surfaceContainerLowest
+    val onSurface = colorScheme.onSurface
+
     val infiniteTransition = rememberInfiniteTransition(label = "musicNoteAnim")
     val musicNoteRotation by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 0f,
+        initialValue = -5f,
+        targetValue = 5f,
         animationSpec = infiniteRepeatable(
-            animation = keyframes {
-                durationMillis = 2500
-                0f at 0
-                15f at 150 // Shake
-                -15f at 300
-                15f at 450
-                0f at 600
-                0f at 1200 // Pause
-                15f at 1350 // Shake again
-                -15f at 1500
-                15f at 1650
-                0f at 1800
-                0f at 2500 // Pause
-            }
+            animation = tween(durationMillis = 1000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
         ),
         label = "musicNoteRotation"
     )
 
     val musicNoteScale by infiniteTransition.animateFloat(
         initialValue = 1f,
-        targetValue = 1f,
+        targetValue = 1.15f,
         animationSpec = infiniteRepeatable(
-            animation = keyframes {
-                durationMillis = 2500
-                1f at 0
-                1.2f at 700 // Twitch
-                0.8f at 850
-                1.1f at 1000
-                1f at 1150
-                1f at 2500
-            }
+            animation = tween(durationMillis = 500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
         ),
         label = "musicNoteScale"
     )
@@ -348,7 +332,13 @@ fun DockPill(
     val isDark = isSystemInDarkTheme()
     val currentColorScheme = colorScheme
 
-    val mediaTheme = remember(albumArt, isDark, currentColorScheme) {
+    val defaultTheme = remember(currentColorScheme, surfaceContainerLowest, onSurface) {
+        Triple(surfaceContainerLowest, onSurface, currentColorScheme.primaryContainer)
+    }
+
+    var mediaThemeBase by remember { mutableStateOf(defaultTheme) }
+
+    LaunchedEffect(albumArt, isDark, currentColorScheme) {
         if (albumArt != null) {
             try {
                 val scaled = Bitmap.createScaledBitmap(albumArt, 1, 1, true)
@@ -357,42 +347,50 @@ fun DockPill(
                 val seed = Color(colorInt)
 
                 val bg = if (isDark) {
-                    lerp(seed, Color.Black, 0.82f)
+                    lerp(seed, surfaceContainerLowest, 0.52f)
                 } else {
-                    lerp(seed, Color.White, 0.96f)
+                    lerp(seed, surfaceContainerLowest, 0.95f)
                 }
 
                 val text = if (isDark) {
-                    lerp(seed, Color.White, 0.85f)
+                    lerp(seed, onSurface, 0.85f)
                 } else {
-                    lerp(seed, Color.Black, 0.7f)
+                    lerp(seed, onSurface, 0.7f)
                 }
 
                 val pc = if (isDark) {
-                    lerp(seed, Color.White, 0.3f).copy(alpha = 0.6f)
+                    lerp(seed, Color.Black, 0.3f).copy(alpha = 0.6f)
                 } else {
-                    lerp(seed, Color.Black, 0.15f).copy(alpha = 0.3f)
+                    lerp(seed, Color.White, 0.15f).copy(alpha = 0.3f)
                 }
 
-                Triple(bg, text, currentColorScheme.copy(
-                    primaryContainer = pc,
-                    onPrimaryContainer = text,
-                    onSurface = text
-                ))
+                mediaThemeBase = Triple(bg, text, pc)
             } catch (e: Exception) {
-                Triple(
-                    currentColorScheme.surfaceContainerLowest,
-                    currentColorScheme.onSurface,
-                    currentColorScheme
-                )
+                mediaThemeBase = defaultTheme
             }
         } else {
-            Triple(
-                currentColorScheme.surfaceContainerLowest,
-                currentColorScheme.onSurface,
-                currentColorScheme
-            )
+            // Debounce returning to default theme to prevent flickering during track changes
+            delay(500)
+            if (mediaState.albumArt == null) {
+                mediaThemeBase = defaultTheme
+            }
         }
+    }
+
+    val animatedBg by animateColorAsState(targetValue = mediaThemeBase.first, label = "mediaBg", animationSpec = tween(500))
+    val animatedText by animateColorAsState(targetValue = mediaThemeBase.second, label = "mediaText", animationSpec = tween(500))
+    val animatedPc by animateColorAsState(targetValue = mediaThemeBase.third, label = "mediaPc", animationSpec = tween(500))
+
+    val mediaTheme = remember(animatedBg, animatedText, animatedPc, currentColorScheme) {
+        Triple(
+            animatedBg,
+            animatedText,
+            currentColorScheme.copy(
+                primaryContainer = animatedPc,
+                onPrimaryContainer = animatedText,
+                onSurface = animatedText
+            )
+        )
     }
 
     val baseDockColor = colorScheme.surfaceContainer
@@ -623,12 +621,8 @@ fun DockPill(
                         targetValue = if (isExpanded) 4.dp else 12.dp, label = "mediaPadding"
                     )
 
-                    val backgroundColor = if (albumArt != null) {
-                        mediaTheme.first.copy(alpha = if (isExpanded) 0.8f else buttonAlpha)
-                    } else {
-                        colorScheme.surfaceContainerLowest.copy(alpha = buttonAlpha)
-                    }
-                    val contentColor = mediaTheme.second
+                    val backgroundColor = animatedBg.copy(alpha = buttonAlpha)
+                    val contentColor = animatedText
                     val localScheme = mediaTheme.third
 
                     Surface(
