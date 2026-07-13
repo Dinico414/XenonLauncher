@@ -96,6 +96,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -175,7 +176,7 @@ fun MainHomePage(
 ) {
     var selectedPackage by remember { mutableStateOf<String?>(null) }
     val view = LocalView.current
-    val offsets = remember { androidx.compose.runtime.mutableStateMapOf<String, Float>() }
+    val offsets = remember { mutableStateMapOf<String, Float>() }
     
     val groupedNotifications = remember(notifications) {
         notifications.groupBy { it.packageName }
@@ -322,14 +323,19 @@ fun MainHomePage(
             val availableWidth = screenWidth - (horizontalPadding * 2)
             
             val tabCount = sortedAppPackages.size
-            val deleteSpacing = 8.dp
             val tabSpacing = 4.dp
+            val deleteSpacing = 8.dp
             val totalItems = tabCount + 1
+            val maxVisible = 5
             
-            // Calculate item width sharing space equally if they fit, otherwise min 72dp
-            val sumGaps = (tabCount - 1).coerceAtLeast(0) * tabSpacing.value + deleteSpacing.value
-            val calculatedWidth = (availableWidth.value - sumGaps) / totalItems
-            val itemWidth = calculatedWidth.coerceAtLeast(72f).dp
+            val isScrollable = totalItems > maxVisible
+
+            // Calculate item width for the scrollable case to show exactly 'maxVisible' items
+            val itemWidth = if (isScrollable) {
+                (availableWidth - (tabSpacing * (maxVisible - 1)) - deleteSpacing) / maxVisible
+            } else {
+                0.dp
+            }
 
             // Block parent pager from hijacking horizontal swipes
             // and ensure overscroll stays local
@@ -337,7 +343,7 @@ fun MainHomePage(
                 object : NestedScrollConnection {
                     override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                         // Disallow parent pager from starting a scroll if we are interacting with tabs
-                        if (source == NestedScrollSource.UserInput && Math.abs(available.x) > Math.abs(available.y)) {
+                        if (source == NestedScrollSource.UserInput && abs(available.x) > abs(available.y)) {
                             view.parent?.requestDisallowInterceptTouchEvent(true)
                         }
                         return Offset.Zero
@@ -348,8 +354,6 @@ fun MainHomePage(
                         available: Offset,
                         source: NestedScrollSource
                     ): Offset {
-                        // Consume horizontal delta to stop Pager from switching pages or stretching
-                        // This allows the local Row's internal overscroll to show the stretch.
                         return if (source == NestedScrollSource.UserInput) {
                             Offset(x = available.x, y = 0f)
                         } else {
@@ -359,6 +363,10 @@ fun MainHomePage(
                 }
             }
 
+            val deleteInteractionSource = remember { MutableInteractionSource() }
+            val isDeletePressed by deleteInteractionSource.collectIsPressedAsState()
+            val deleteCornerRadius by animateDpAsState(if (isDeletePressed) 4.dp else 12.dp, label = "delete_corner")
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -366,85 +374,126 @@ fun MainHomePage(
                     .padding(horizontal = horizontalPadding),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .nestedScroll(blockPagerScroll)
-                        .drawWithContent {
-                            drawContent()
-                            val fadeWidth = 16.dp.toPx()
-                            if (scrollState.value > 0.5f) {
-                                drawRect(
-                                    brush = Brush.horizontalGradient(
-                                        colors = listOf(Color.Transparent, Color.Black),
-                                        startX = 0f,
-                                        endX = fadeWidth
-                                    ),
-                                    blendMode = BlendMode.DstIn
-                                )
-                            }
-                            if (scrollState.value < scrollState.maxValue - 0.5f) {
-                                drawRect(
-                                    brush = Brush.horizontalGradient(
-                                        colors = listOf(Color.Black, Color.Transparent),
-                                        startX = size.width - fadeWidth,
-                                        endX = size.width
-                                    ),
-                                    blendMode = BlendMode.DstIn
-                                )
-                            }
-                        }
-                ) {
-                    Row(
-                        modifier = Modifier.horizontalScroll(scrollState),
-                        horizontalArrangement = Arrangement.spacedBy(tabSpacing),
-                        verticalAlignment = Alignment.CenterVertically
+                if (!isScrollable) {
+                    // Reliable non-scrollable Row using weights
+                    sortedAppPackages.forEach { pkg ->
+                        val app = apps.find { it.packageName == pkg }
+                        val notificationsForApp = groupedNotifications[pkg] ?: emptyList()
+                        val latestNotification = notificationsForApp.firstOrNull()
+                        val isSelected = selectedPackage == pkg
+                        val appColor = remember(app) { getDominantColor(app?.icon) }
+                        val contrastColor = remember(appColor) { getContrastColor(appColor) }
+                        
+                        NotificationTabButton(
+                            app = app,
+                            notificationIcon = latestNotification?.icon,
+                            notificationCount = notificationsForApp.size,
+                            isSelected = isSelected,
+                            appColor = appColor,
+                            contrastColor = contrastColor,
+                            onClick = { selectedPackage = pkg },
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(Modifier.width(tabSpacing))
+                    }
+
+                    Spacer(Modifier.width(deleteSpacing - tabSpacing))
+
+                    Surface(
+                        onClick = onDismissAllNotifications,
+                        interactionSource = deleteInteractionSource,
+                        shape = RoundedCornerShape(deleteCornerRadius),
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier
+                            .height(40.dp)
+                            .weight(1f)
                     ) {
-                        sortedAppPackages.forEach { pkg ->
-                            val app = apps.find { it.packageName == pkg }
-                            val notificationsForApp = groupedNotifications[pkg] ?: emptyList()
-                            val latestNotification = notificationsForApp.firstOrNull()
-                            val isSelected = selectedPackage == pkg
-                            val appColor = remember(app) { getDominantColor(app?.icon) }
-                            val contrastColor = remember(appColor) { getContrastColor(appColor) }
-                            
-                            NotificationTabButton(
-                                app = app,
-                                notificationIcon = latestNotification?.icon,
-                                notificationCount = notificationsForApp.size,
-                                isSelected = isSelected,
-                                appColor = appColor,
-                                contrastColor = contrastColor,
-                                onClick = { selectedPackage = pkg },
-                                modifier = Modifier.width(itemWidth)
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Rounded.Delete,
+                                contentDescription = "Clear All",
+                                tint = MaterialTheme.colorScheme.onError,
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }
-                }
+                } else {
+                    // Scrollable Tabs
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .nestedScroll(blockPagerScroll)
+                            .drawWithContent {
+                                drawContent()
+                                val fadeWidth = 16.dp.toPx()
+                                if (scrollState.value > 0.5f) {
+                                    drawRect(
+                                        brush = Brush.horizontalGradient(
+                                            colors = listOf(Color.Transparent, Color.Black),
+                                            startX = 0f,
+                                            endX = fadeWidth
+                                        ),
+                                        blendMode = BlendMode.DstIn
+                                    )
+                                }
+                                if (scrollState.value < scrollState.maxValue - 0.5f) {
+                                    drawRect(
+                                        brush = Brush.horizontalGradient(
+                                            colors = listOf(Color.Black, Color.Transparent),
+                                            startX = size.width - fadeWidth,
+                                            endX = size.width
+                                        ),
+                                        blendMode = BlendMode.DstIn
+                                    )
+                                }
+                            }
+                    ) {
+                        Row(
+                            modifier = Modifier.horizontalScroll(scrollState),
+                            horizontalArrangement = Arrangement.spacedBy(tabSpacing),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            sortedAppPackages.forEach { pkg ->
+                                val app = apps.find { it.packageName == pkg }
+                                val notificationsForApp = groupedNotifications[pkg] ?: emptyList()
+                                val latestNotification = notificationsForApp.firstOrNull()
+                                val isSelected = selectedPackage == pkg
+                                val appColor = remember(app) { getDominantColor(app?.icon) }
+                                val contrastColor = remember(appColor) { getContrastColor(appColor) }
+                                
+                                NotificationTabButton(
+                                    app = app,
+                                    notificationIcon = latestNotification?.icon,
+                                    notificationCount = notificationsForApp.size,
+                                    isSelected = isSelected,
+                                    appColor = appColor,
+                                    contrastColor = contrastColor,
+                                    onClick = { selectedPackage = pkg },
+                                    modifier = Modifier.width(itemWidth)
+                                )
+                            }
+                        }
+                    }
 
-                Spacer(Modifier.width(deleteSpacing))
+                    Spacer(Modifier.width(deleteSpacing))
 
-                // Delete All Button
-                val deleteInteractionSource = remember { MutableInteractionSource() }
-                val isDeletePressed by deleteInteractionSource.collectIsPressedAsState()
-                val deleteCornerRadius by animateDpAsState(if (isDeletePressed) 4.dp else 12.dp, label = "delete_corner")
-
-                Surface(
-                    onClick = onDismissAllNotifications,
-                    interactionSource = deleteInteractionSource,
-                    shape = RoundedCornerShape(deleteCornerRadius),
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier
-                        .height(40.dp)
-                        .width(itemWidth)
-                ) {
-                    Box(modifier = Modifier.padding(horizontal = 12.dp), contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Rounded.Delete,
-                            contentDescription = "Clear All",
-                            tint = MaterialTheme.colorScheme.onError,
-                            modifier = Modifier.size(20.dp)
-                        )
+                    Surface(
+                        onClick = onDismissAllNotifications,
+                        interactionSource = deleteInteractionSource,
+                        shape = RoundedCornerShape(deleteCornerRadius),
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier
+                            .height(40.dp)
+                            .width(itemWidth)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Rounded.Delete,
+                                contentDescription = "Clear All",
+                                tint = MaterialTheme.colorScheme.onError,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -581,7 +630,7 @@ fun NotificationItem(
                             val isDismiss = !isStuck || abs(velocity) > 4000f
                             if (isDismiss) {
                                 isDismissing = true
-                                val target = if (offsetX.value > 0) stretchLimit * 8 else -stretchLimit * 8
+                                val target = if (offsetX.value > 0) stretchLimit * 8 else -stretchLimit * 4
                                 offsetX.animateTo(
                                     targetValue = target,
                                     animationSpec = tween(
