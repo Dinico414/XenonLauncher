@@ -38,6 +38,7 @@ android {
 }
 
 dependencies {
+    implementation(libs.androidx.compose.remote.creation.compose)
     implementation(libs.material3)
     implementation(libs.xenon.commons)
     implementation(platform(libs.androidx.compose.bom))

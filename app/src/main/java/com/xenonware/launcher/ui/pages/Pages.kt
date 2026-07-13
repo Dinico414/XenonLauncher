@@ -1,6 +1,6 @@
 package com.xenonware.launcher.ui.pages
 
-import android.app.ActivityOptions
+ import android.app.ActivityOptions
 import android.app.RemoteInput
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetManager
@@ -13,9 +13,12 @@ import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -29,8 +32,11 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -52,7 +58,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
@@ -83,8 +89,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -101,6 +109,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -114,7 +123,9 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
@@ -132,7 +143,10 @@ import com.xenonware.launcher.viewmodel.LauncherViewModel
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.launch
+import kotlin.math.abs
+import kotlin.math.pow
 import kotlin.math.roundToInt
+import kotlin.math.sign
 
 @Composable
 fun MediaPage() {
@@ -250,11 +264,14 @@ fun MainHomePage(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(bottom = 16.dp)
                 ) {
-                    items(groupedNotifications[pkg] ?: emptyList(), key = { it.key }) { notification ->
+                    val notificationsInGroup = groupedNotifications[pkg] ?: emptyList()
+                    itemsIndexed(notificationsInGroup, key = { _, it -> it.key }) { index, notification ->
                         val context = LocalContext.current
                         NotificationItem(
                             notification = notification,
                             appColor = appColor,
+                            isFirst = index == 0,
+                            isLast = index == notificationsInGroup.size - 1,
                             onOpen = { 
                                 try {
                                     Log.d("XenonNotification", "Opening notification: pkg=${notification.packageName}, title=${notification.title}")
@@ -277,6 +294,9 @@ fun MainHomePage(
                                         Log.e("XenonNotification", "Failed to send contentIntent without context", e2)
                                     }
                                 }
+                            },
+                            onDismiss = {
+                                onDismissNotification(notification.key)
                             }
                         )
                     }
@@ -295,10 +315,10 @@ fun MainHomePage(
             val tabSpacing = 4.dp
             val totalItems = tabCount + 1
             
-            // Calculate item width sharing space equally if they fit, otherwise min 64dp
+            // Calculate item width sharing space equally if they fit, otherwise min 72dp
             val sumGaps = (tabCount - 1).coerceAtLeast(0) * tabSpacing.value + deleteSpacing.value
             val calculatedWidth = (availableWidth.value - sumGaps) / totalItems
-            val itemWidth = calculatedWidth.coerceAtLeast(64f).dp
+            val itemWidth = calculatedWidth.coerceAtLeast(72f).dp
 
             // Block parent pager from hijacking horizontal swipes
             // and ensure overscroll stays local
@@ -431,242 +451,403 @@ fun MainHomePage(
 fun NotificationItem(
     notification: LauncherNotification,
     appColor: Color,
-    onOpen: () -> Unit
+    isFirst: Boolean,
+    isLast: Boolean,
+    onOpen: () -> Unit,
+    onDismiss: () -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
+    val coroutineScope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    val view = LocalView.current
+
+    val offsetX = remember { Animatable(0f) }
+    var rawDragOffset by remember { mutableFloatStateOf(0f) }
+    var isStuck by remember { mutableStateOf(true) }
+    var isDismissing by remember { mutableStateOf(false) }
+
+    val dismissThreshold = with(density) { 100.dp.toPx() }
+    val stretchLimit = with(density) { 120.dp.toPx() }
+
     val finalAppColor = if (appColor == Color.Unspecified) MaterialTheme.colorScheme.primary else appColor
     val finalContrastColor = remember(finalAppColor) { getContrastColor(finalAppColor) }
     var expanded by remember { mutableStateOf(false) }
 
-    Surface(
-        onClick = onOpen,
-        shape = RoundedCornerShape(20.dp),
-        color = Color.White.copy(alpha = 0.1f),
-        modifier = Modifier.fillMaxWidth()
+    val swipeProgress by remember {
+        derivedStateOf { (abs(offsetX.value) / dismissThreshold).coerceIn(0f, 1f) }
+    }
+
+    val animatedProgress by animateFloatAsState(
+        targetValue = swipeProgress,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium),
+        label = "swipeProgress"
+    )
+
+    val largeRadius = 24.dp
+    val smallRadius = 6.dp
+
+    val showActions = expanded && notification.actions.isNotEmpty()
+
+    val topRadiusMain by animateDpAsState(
+        targetValue = if (isFirst || animatedProgress > 0.01f) largeRadius else smallRadius,
+        label = "topRadiusMain"
+    )
+
+    val bottomRadiusMain by animateDpAsState(
+        targetValue = if ((isLast && !showActions) || animatedProgress > 0.01f) {
+            largeRadius
+        } else if (showActions) {
+            lerp(smallRadius, largeRadius, animatedProgress)
+        } else {
+            smallRadius
+        },
+        label = "bottomRadiusMain"
+    )
+
+    val topRadiusActions by animateDpAsState(
+        targetValue = if (animatedProgress > 0.01f) {
+            largeRadius
+        } else {
+            smallRadius
+        },
+        label = "topRadiusActions"
+    )
+
+    val bottomRadiusActions by animateDpAsState(
+        targetValue = if (isLast || animatedProgress > 0.01f) largeRadius else smallRadius,
+        label = "bottomRadiusActions"
+    )
+
+    val mainShape = RoundedCornerShape(
+        topStart = topRadiusMain, topEnd = topRadiusMain,
+        bottomStart = bottomRadiusMain, bottomEnd = bottomRadiusMain
+    )
+
+    val actionsShape = RoundedCornerShape(
+        topStart = topRadiusActions, topEnd = topRadiusActions,
+        bottomStart = bottomRadiusActions, bottomEnd = bottomRadiusActions
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                if (isDismissing) alpha = 1f - animatedProgress
+            }
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                val iconToDraw = notification.icon
-                if (iconToDraw != null) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(finalAppColor, CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Image(
-                            bitmap = iconToDraw.toBitmap().asImageBitmap(),
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp),
-                            colorFilter = ColorFilter.tint(finalContrastColor)
-                        )
+        Surface(
+            onClick = onOpen,
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+                .draggable(
+                    orientation = Orientation.Horizontal,
+                    onDragStarted = {
+                        view.parent?.requestDisallowInterceptTouchEvent(true)
+                        rawDragOffset = offsetX.value
+                        isStuck = abs(rawDragOffset) < dismissThreshold
+                    },
+                    state = rememberDraggableState { delta ->
+                        coroutineScope.launch {
+                            val unstickDist = dismissThreshold
+                            val restickDist = dismissThreshold * 0.8f
+
+                            var newRawDrag = rawDragOffset + delta
+                            val newStuck = if (isStuck) {
+                                abs(newRawDrag) < unstickDist
+                            } else {
+                                abs(newRawDrag) < restickDist
+                            }
+
+                            if (newStuck != isStuck) {
+                                haptic.performHapticFeedback(if (newStuck) HapticFeedbackType.GestureThresholdActivate else HapticFeedbackType.Confirm)
+                                isStuck = newStuck
+                            }
+
+                            rawDragOffset = newRawDrag
+                            val friction = 1.6f
+                            val intendedOffset = rawDragOffset / if (isStuck) friction else 1f
+
+                            val targetDrag = applyStretch(intendedOffset, dismissThreshold, 0.6f)
+                                .coerceIn(-stretchLimit, stretchLimit)
+
+                            offsetX.snapTo(targetDrag)
+                        }
+                    },
+                    onDragStopped = { velocity ->
+                        coroutineScope.launch {
+                            val isDismiss = !isStuck || abs(velocity) > 3000f
+                            if (isDismiss) {
+                                isDismissing = true
+                                val target = if (offsetX.value > 0) stretchLimit * 4 else -stretchLimit * 4
+                                offsetX.animateTo(target, tween(250))
+                                onDismiss()
+                            } else {
+                                offsetX.animateTo(0f, spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessMedium))
+                            }
+                            isStuck = true
+                        }
                     }
-                }
-                
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        notification.title?.let {
+                ),
+            shape = mainShape,
+            color = Color.White.copy(alpha = 0.1f),
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    val iconToDraw = notification.icon
+                    if (iconToDraw != null) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(finalAppColor, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Image(
+                                bitmap = iconToDraw.toBitmap().asImageBitmap(),
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp),
+                                colorFilter = ColorFilter.tint(finalContrastColor)
+                            )
+                        }
+                    }
+                    
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            notification.title?.let {
+                                Text(
+                                    text = it,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f, fill = false)
+                                )
+                            }
+                            
+                            if (notification.actions.isNotEmpty()) {
+                                Surface(
+                                    onClick = { expanded = !expanded },
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = Color.White.copy(alpha = 0.1f),
+                                    modifier = Modifier.height(26.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(horizontal = 8.dp)
+                                    ) {
+                                        Text(
+                                            text = formatNotificationTime(notification.postTime),
+                                            color = Color.White.copy(alpha = 0.6f),
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Icon(
+                                            imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                                            contentDescription = if (expanded) "Collapse" else "Expand",
+                                            tint = Color.White.copy(alpha = 0.6f),
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            } else {
+                                Text(
+                                    text = formatNotificationTime(notification.postTime),
+                                    color = Color.White.copy(alpha = 0.5f),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+
+                        notification.text?.let {
                             Text(
                                 text = it,
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f, fill = false)
+                                color = Color.White.copy(alpha = 0.7f),
+                                fontSize = 13.sp,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
-                        
-                        if (notification.actions.isNotEmpty()) {
-                            Surface(
-                                onClick = { expanded = !expanded },
-                                shape = RoundedCornerShape(8.dp),
-                                color = Color.White.copy(alpha = 0.1f),
-                                modifier = Modifier.height(26.dp)
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(horizontal = 8.dp)
-                                ) {
-                                    Text(
-                                        text = formatNotificationTime(notification.postTime),
-                                        color = Color.White.copy(alpha = 0.6f),
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Icon(
-                                        imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
-                                        contentDescription = if (expanded) "Collapse" else "Expand",
-                                        tint = Color.White.copy(alpha = 0.6f),
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-                            }
-                        } else {
-                            Text(
-                                text = formatNotificationTime(notification.postTime),
-                                color = Color.White.copy(alpha = 0.5f),
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    }
-
-                    notification.text?.let {
-                        Text(
-                            text = it,
-                            color = Color.White.copy(alpha = 0.7f),
-                            fontSize = 13.sp,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
                     }
                 }
-            }
 
-            AnimatedVisibility(
-                visible = expanded && notification.actions.isNotEmpty(),
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically()
-            ) {
-                Column(modifier = Modifier.padding(top = 12.dp)) {
-                    var selectedActionForReply by remember { mutableStateOf<LauncherNotificationAction?>(null) }
-                    var replyTextValue by remember { mutableStateOf("") }
-                    val context = LocalContext.current
-
-                    AnimatedVisibility(
-                        visible = selectedActionForReply != null,
-                        enter = fadeIn() + expandVertically(),
-                        exit = fadeOut() + shrinkVertically()
+                AnimatedVisibility(
+                    visible = expanded && notification.actions.isNotEmpty(),
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically()
+                ) {
+                    Surface(
+                        shape = actionsShape,
+                        color = Color.White.copy(alpha = 0.05f),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .offset { IntOffset(offsetX.value.roundToInt(), 0) }
                     ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                        var selectedActionForReply by remember { mutableStateOf<LauncherNotificationAction?>(null) }
+                        var replyTextValue by remember { mutableStateOf("") }
+                        val context = LocalContext.current
+
+                        AnimatedVisibility(
+                            visible = selectedActionForReply != null,
+                            enter = fadeIn() + expandVertically(),
+                            exit = fadeOut() + shrinkVertically()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                TextField(
+                                    value = replyTextValue,
+                                    onValueChange = { replyTextValue = it },
+                                    modifier = Modifier.weight(1f),
+                                    placeholder = { Text("Type a message...", fontSize = 13.sp) },
+                                    colors = TextFieldDefaults.colors(
+                                        focusedContainerColor = Color.White.copy(alpha = 0.05f),
+                                        unfocusedContainerColor = Color.White.copy(alpha = 0.05f),
+                                        focusedIndicatorColor = Color.Transparent,
+                                        unfocusedIndicatorColor = Color.Transparent
+                                    ),
+                                    shape = RoundedCornerShape(16.dp),
+                                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = Color.White),
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send)
+                                )
+                                
+                                Surface(
+                                    onClick = {
+                                        selectedActionForReply?.let { action ->
+                                            Log.d("XenonNotification", "Replying to action: ${action.title}, text: $replyTextValue")
+                                            if (replyTextValue.isNotBlank() && action.remoteInput != null) {
+                                                val results = Bundle().apply {
+                                                    putString(action.remoteInput.resultKey, replyTextValue)
+                                                }
+                                                val fillInIntent = Intent().apply {
+                                                    RemoteInput.addResultsToIntent(arrayOf(action.remoteInput), this, results)
+                                                }
+                                                try {
+                                                    Log.d("XenonNotification", "Sending reply intent: ${action.actionIntent}")
+                                                    
+                                                    val options = ActivityOptions.makeBasic()
+                                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                                                        options.setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
+                                                    }
+                                                    
+                                                    action.actionIntent?.send(context, 0, fillInIntent, null, null, null, options.toBundle())
+                                                } catch (e: Exception) {
+                                                    Log.e("XenonNotification", "Failed to send reply intent", e)
+                                                }
+                                                selectedActionForReply = null
+                                                replyTextValue = ""
+                                            }
+                                        }
+                                    },
+                                    shape = CircleShape,
+                                    color = finalAppColor,
+                                    modifier = Modifier.size(40.dp),
+                                    enabled = replyTextValue.isNotBlank()
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Rounded.Send,
+                                            contentDescription = "Send",
+                                            tint = finalContrastColor,
+                                            modifier = Modifier.size(24.dp).padding(start = 3.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        val blockPagerScrollActions = remember {
+                            object : NestedScrollConnection {
+                                override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                                    if (source == NestedScrollSource.UserInput && abs(available.x) > abs(available.y)) {
+                                        view.parent?.requestDisallowInterceptTouchEvent(true)
+                                    }
+                                    return Offset.Zero
+                                }
+
+                                override fun onPostScroll(
+                                    consumed: Offset,
+                                    available: Offset,
+                                    source: NestedScrollSource
+                                ): Offset {
+                                    return if (source == NestedScrollSource.UserInput) {
+                                        Offset(x = available.x, y = 0f)
+                                    } else {
+                                        Offset.Zero
+                                    }
+                                }
+                            }
+                        }
+
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(bottom = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
+                                .nestedScroll(blockPagerScrollActions)
+                                .horizontalScroll(rememberScrollState()),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            TextField(
-                                value = replyTextValue,
-                                onValueChange = { replyTextValue = it },
-                                modifier = Modifier.weight(1f),
-                                placeholder = { Text("Type a message...", fontSize = 13.sp) },
-                                colors = TextFieldDefaults.colors(
-                                    focusedContainerColor = Color.White.copy(alpha = 0.05f),
-                                    unfocusedContainerColor = Color.White.copy(alpha = 0.05f),
-                                    focusedIndicatorColor = Color.Transparent,
-                                    unfocusedIndicatorColor = Color.Transparent
-                                ),
-                                shape = RoundedCornerShape(16.dp),
-                                textStyle = MaterialTheme.typography.bodyMedium.copy(color = Color.White),
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send)
-                            )
-                            
-                            Surface(
-                                onClick = {
-                                    selectedActionForReply?.let { action ->
-                                        Log.d("XenonNotification", "Replying to action: ${action.title}, text: $replyTextValue")
-                                        if (replyTextValue.isNotBlank() && action.remoteInput != null) {
-                                            val results = Bundle().apply {
-                                                putString(action.remoteInput.resultKey, replyTextValue)
+                            notification.actions.forEach { action ->
+                                Surface(
+                                    onClick = {
+                                        if (action.remoteInput != null) {
+                                            Log.d("XenonNotification", "Action clicked (Reply): ${action.title}")
+                                            if (selectedActionForReply == action) {
+                                                selectedActionForReply = null
+                                            } else {
+                                                selectedActionForReply = action
+                                                replyTextValue = ""
                                             }
-                                            val fillInIntent = Intent().apply {
-                                                RemoteInput.addResultsToIntent(arrayOf(action.remoteInput), this, results)
-                                            }
+                                        } else {
+                                            Log.d("XenonNotification", "Action clicked: ${action.title}")
                                             try {
-                                                Log.d("XenonNotification", "Sending reply intent: ${action.actionIntent}")
-                                                
                                                 val options = ActivityOptions.makeBasic()
                                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                                                     options.setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
                                                 }
                                                 
-                                                action.actionIntent?.send(context, 0, fillInIntent, null, null, null, options.toBundle())
+                                                action.actionIntent?.let { intent ->
+                                                    Log.d("XenonNotification", "Sending actionIntent with context: $intent")
+                                                    intent.send(context, 0, null, null, null, null, options.toBundle())
+                                                } ?: Log.w("XenonNotification", "No actionIntent found for action")
                                             } catch (e: Exception) {
-                                                Log.e("XenonNotification", "Failed to send reply intent", e)
-                                            }
-                                            selectedActionForReply = null
-                                            replyTextValue = ""
-                                        }
-                                    }
-                                },
-                                shape = CircleShape,
-                                color = finalAppColor,
-                                modifier = Modifier.size(40.dp),
-                                enabled = replyTextValue.isNotBlank()
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Rounded.Send,
-                                        contentDescription = "Send",
-                                        tint = finalContrastColor,
-                                        modifier = Modifier.size(24.dp).padding(start = 3.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        notification.actions.forEach { action ->
-                            Surface(
-                                onClick = {
-                                    if (action.remoteInput != null) {
-                                        Log.d("XenonNotification", "Action clicked (Reply): ${action.title}")
-                                        if (selectedActionForReply == action) {
-                                            selectedActionForReply = null
-                                        } else {
-                                            selectedActionForReply = action
-                                            replyTextValue = ""
-                                        }
-                                    } else {
-                                        Log.d("XenonNotification", "Action clicked: ${action.title}")
-                                        try {
-                                            val options = ActivityOptions.makeBasic()
-                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                                                options.setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
-                                            }
-                                            
-                                            action.actionIntent?.let { intent ->
-                                                Log.d("XenonNotification", "Sending actionIntent with context: $intent")
-                                                intent.send(context, 0, null, null, null, null, options.toBundle())
-                                            } ?: Log.w("XenonNotification", "No actionIntent found for action")
-                                        } catch (e: Exception) {
-                                            Log.e("XenonNotification", "Failed to send actionIntent with context", e)
-                                            try {
-                                                Log.d("XenonNotification", "Retrying actionIntent without context")
-                                                action.actionIntent?.send()
-                                            } catch (e2: Exception) {
-                                                Log.e("XenonNotification", "Failed to send actionIntent without context", e2)
+                                                Log.e("XenonNotification", "Failed to send actionIntent with context", e)
+                                                try {
+                                                    Log.d("XenonNotification", "Retrying actionIntent without context")
+                                                    action.actionIntent?.send()
+                                                } catch (e2: Exception) {
+                                                    Log.e("XenonNotification", "Failed to send actionIntent without context", e2)
+                                                }
                                             }
                                         }
-                                    }
-                                },
-                                shape = RoundedCornerShape(12.dp),
-                                color = if (selectedActionForReply == action) finalAppColor.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.1f),
-                                modifier = Modifier.height(32.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier.padding(horizontal = 12.dp),
-                                    contentAlignment = Alignment.Center
+                                    },
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = if (selectedActionForReply == action) finalAppColor.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.1f),
+                                    modifier = Modifier.height(32.dp)
                                 ) {
-                                    Text(
-                                        text = action.title,
-                                        color = if (selectedActionForReply == action) finalAppColor else Color.White,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Medium
-                                    )
+                                    Box(
+                                        modifier = Modifier.padding(horizontal = 12.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = action.title,
+                                            color = if (selectedActionForReply == action) finalAppColor else Color.White,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -675,6 +856,7 @@ fun NotificationItem(
             }
         }
     }
+}
 }
 
 @Composable
@@ -759,6 +941,19 @@ fun NotificationTabButton(
             }
         }
     }
+}
+
+private fun applyStretch(offset: Float, threshold: Float, stretchFactor: Float = 0.5f): Float {
+    val s = sign(offset)
+    val a = abs(offset)
+
+    if (a <= threshold) {
+        return offset
+    }
+
+    val overscroll = a - threshold
+    val stretchedOverscroll = overscroll.pow(1f - stretchFactor)
+    return s * (threshold + stretchedOverscroll)
 }
 
 private fun getDominantColor(drawable: Drawable?): Color {

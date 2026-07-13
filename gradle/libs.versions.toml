@@ -16,6 +16,7 @@ accompanist = "0.37.3"
 playServicesLocation = "21.4.0"
 xenon-commons = "2.5.3"
 material3comp = "1.5.0-alpha23"
+remoteCreationCompose = "1.0.0-alpha14"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -44,6 +45,7 @@ accompanist-permissions = { group = "com.google.accompanist", name = "accompanis
 play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "playServicesLocation" }
 xenon-commons = { group = "com.github.Dinico414", name = "Xenon-Commons", version.ref = "xenon-commons" }
 material3 = { module = "androidx.compose.material3:material3", version.ref = "material3comp" }
+androidx-compose-remote-creation-compose = { group = "androidx.compose.remote", name = "remote-creation-compose", version.ref = "remoteCreationCompose" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
