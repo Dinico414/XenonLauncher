@@ -5,9 +5,7 @@ plugins {
 
 android {
     namespace = "com.xenonware.launcher"
-    compileSdk {
-        version = release(37)
-    }
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.xenonware.launcher"
