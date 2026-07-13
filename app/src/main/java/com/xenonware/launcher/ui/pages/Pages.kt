@@ -144,6 +144,7 @@ import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import kotlin.math.max
 import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sign
@@ -171,6 +172,7 @@ fun MainHomePage(
 ) {
     var selectedPackage by remember { mutableStateOf<String?>(null) }
     val view = LocalView.current
+    val offsets = remember { androidx.compose.runtime.mutableStateMapOf<String, Float>() }
     
     val groupedNotifications = remember(notifications) {
         notifications.groupBy { it.packageName }
@@ -267,11 +269,17 @@ fun MainHomePage(
                     val notificationsInGroup = groupedNotifications[pkg] ?: emptyList()
                     itemsIndexed(notificationsInGroup, key = { _, it -> it.key }) { index, notification ->
                         val context = LocalContext.current
+                        val offsetAbove = if (index > 0) offsets[notificationsInGroup[index - 1].key] ?: 0f else 0f
+                        val offsetBelow = if (index < notificationsInGroup.size - 1) offsets[notificationsInGroup[index + 1].key] ?: 0f else 0f
+                        
                         NotificationItem(
                             notification = notification,
                             appColor = appColor,
                             isFirst = index == 0,
                             isLast = index == notificationsInGroup.size - 1,
+                            offsetAbove = offsetAbove,
+                            offsetBelow = offsetBelow,
+                            onOffsetChanged = { offsets[notification.key] = it },
                             onOpen = { 
                                 try {
                                     Log.d("XenonNotification", "Opening notification: pkg=${notification.packageName}, title=${notification.title}")
@@ -308,7 +316,7 @@ fun MainHomePage(
             val configuration = LocalConfiguration.current
             val screenWidth = configuration.screenWidthDp.dp
             val horizontalPadding = 24.dp
-            val availableWidth = screenWidth - (horizontalPadding * 2) - 0.5.dp // Subtract small margin to prevent rounding-induced scroll
+            val availableWidth = screenWidth - (horizontalPadding * 2)
             
             val tabCount = sortedAppPackages.size
             val deleteSpacing = 8.dp
@@ -453,6 +461,9 @@ fun NotificationItem(
     appColor: Color,
     isFirst: Boolean,
     isLast: Boolean,
+    offsetAbove: Float = 0f,
+    offsetBelow: Float = 0f,
+    onOffsetChanged: (Float) -> Unit = {},
     onOpen: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -486,46 +497,26 @@ fun NotificationItem(
     val largeRadius = 24.dp
     val smallRadius = 6.dp
 
-    val showActions = expanded && notification.actions.isNotEmpty()
-
-    val topRadiusMain by animateDpAsState(
-        targetValue = if (isFirst || animatedProgress > 0.01f) largeRadius else smallRadius,
-        label = "topRadiusMain"
+    val topStartRadius by animateDpAsState(
+        targetValue = if (isFirst) largeRadius else lerp(smallRadius, largeRadius, max(animatedProgress, (offsetAbove / dismissThreshold).coerceIn(0f, 1f))),
+        label = "topStart"
     )
-
-    val bottomRadiusMain by animateDpAsState(
-        targetValue = if ((isLast && !showActions) || animatedProgress > 0.01f) {
-            largeRadius
-        } else if (showActions) {
-            lerp(smallRadius, largeRadius, animatedProgress)
-        } else {
-            smallRadius
-        },
-        label = "bottomRadiusMain"
+    val topEndRadius by animateDpAsState(
+        targetValue = if (isFirst) largeRadius else lerp(smallRadius, largeRadius, max(animatedProgress, (-offsetAbove / dismissThreshold).coerceIn(0f, 1f))),
+        label = "topEnd"
     )
-
-    val topRadiusActions by animateDpAsState(
-        targetValue = if (animatedProgress > 0.01f) {
-            largeRadius
-        } else {
-            smallRadius
-        },
-        label = "topRadiusActions"
+    val bottomStartRadius by animateDpAsState(
+        targetValue = if (isLast) largeRadius else lerp(smallRadius, largeRadius, max(animatedProgress, (offsetBelow / dismissThreshold).coerceIn(0f, 1f))),
+        label = "bottomStart"
     )
-
-    val bottomRadiusActions by animateDpAsState(
-        targetValue = if (isLast || animatedProgress > 0.01f) largeRadius else smallRadius,
-        label = "bottomRadiusActions"
+    val bottomEndRadius by animateDpAsState(
+        targetValue = if (isLast) largeRadius else lerp(smallRadius, largeRadius, max(animatedProgress, (-offsetBelow / dismissThreshold).coerceIn(0f, 1f))),
+        label = "bottomEnd"
     )
 
     val mainShape = RoundedCornerShape(
-        topStart = topRadiusMain, topEnd = topRadiusMain,
-        bottomStart = bottomRadiusMain, bottomEnd = bottomRadiusMain
-    )
-
-    val actionsShape = RoundedCornerShape(
-        topStart = topRadiusActions, topEnd = topRadiusActions,
-        bottomStart = bottomRadiusActions, bottomEnd = bottomRadiusActions
+        topStart = topStartRadius, topEnd = topEndRadius,
+        bottomStart = bottomStartRadius, bottomEnd = bottomEndRadius
     )
 
     Column(
@@ -572,6 +563,7 @@ fun NotificationItem(
                                 .coerceIn(-stretchLimit, stretchLimit)
 
                             offsetX.snapTo(targetDrag)
+                            onOffsetChanged(offsetX.value)
                         }
                     },
                     onDragStopped = { velocity ->
@@ -582,8 +574,10 @@ fun NotificationItem(
                                 val target = if (offsetX.value > 0) stretchLimit * 4 else -stretchLimit * 4
                                 offsetX.animateTo(target, tween(250))
                                 onDismiss()
+                                onOffsetChanged(0f)
                             } else {
                                 offsetX.animateTo(0f, spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessMedium))
+                                onOffsetChanged(0f)
                             }
                             isStuck = true
                         }
@@ -684,14 +678,7 @@ fun NotificationItem(
                     enter = fadeIn() + expandVertically(),
                     exit = fadeOut() + shrinkVertically()
                 ) {
-                    Surface(
-                        shape = actionsShape,
-                        color = Color.White.copy(alpha = 0.05f),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .offset { IntOffset(offsetX.value.roundToInt(), 0) }
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
+                    Column(modifier = Modifier.padding(top = 16.dp)) {
                         var selectedActionForReply by remember { mutableStateOf<LauncherNotificationAction?>(null) }
                         var replyTextValue by remember { mutableStateOf("") }
                         val context = LocalContext.current
@@ -855,179 +842,6 @@ fun NotificationItem(
                 }
             }
         }
-    }
-}
-}
-
-@Composable
-fun NotificationTabButton(
-    app: AppInfo?,
-    notificationIcon: Drawable?,
-    notificationCount: Int,
-    isSelected: Boolean,
-    appColor: Color,
-    contrastColor: Color,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    
-    val cornerRadius by animateDpAsState(
-        targetValue = when {
-            isPressed -> 4.dp
-            isSelected -> 12.dp
-            else -> 20.dp
-        }
-    )
-
-    val finalAppColor = if (appColor == Color.Unspecified) MaterialTheme.colorScheme.primary else appColor
-    val finalContrastColor = if (appColor == Color.Unspecified) {
-        val luminance = 0.2126 * finalAppColor.red + 0.7152 * finalAppColor.green + 0.0722 * finalAppColor.blue
-        if (luminance > 0.72) Color.Black else Color.White
-    } else {
-        contrastColor
-    }
-
-    val backgroundColor = if (isSelected) finalAppColor else MaterialTheme.colorScheme.surfaceDim.copy(alpha = 0.4f)
-    val iconColor = if (isSelected) finalContrastColor else MaterialTheme.colorScheme.onSurface
-    
-    Surface(
-        onClick = onClick,
-        interactionSource = interactionSource,
-        shape = RoundedCornerShape(cornerRadius),
-        color = backgroundColor,
-        modifier = modifier.height(40.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .padding(horizontal = 12.dp)
-                .fillMaxHeight(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            val iconToDraw = notificationIcon ?: app?.icon
-            if (iconToDraw != null) {
-                Image(
-                    bitmap = iconToDraw.toBitmap().asImageBitmap(),
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                    colorFilter = ColorFilter.tint(iconColor)
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Rounded.Apps,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                    tint = iconColor
-                )
-            }
-
-            AnimatedVisibility(
-                visible = notificationCount > 1,
-                enter = fadeIn() + expandHorizontally(),
-                exit = fadeOut() + shrinkHorizontally()
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        text = if (notificationCount > 99) "99+" else notificationCount.toString(),
-                        color = iconColor,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = QuicksandTitleVariable
-                    )
-                }
-            }
-        }
-    }
-}
-
-private fun applyStretch(offset: Float, threshold: Float, stretchFactor: Float = 0.5f): Float {
-    val s = sign(offset)
-    val a = abs(offset)
-
-    if (a <= threshold) {
-        return offset
-    }
-
-    val overscroll = a - threshold
-    val stretchedOverscroll = overscroll.pow(1f - stretchFactor)
-    return s * (threshold + stretchedOverscroll)
-}
-
-private fun getDominantColor(drawable: Drawable?): Color {
-    if (drawable == null) return Color.Unspecified
-    return try {
-        val bitmap = drawable.toBitmap()
-        
-        // 1. Use Palette for brand-aware color extraction
-        val palette = Palette.from(bitmap).generate()
-        
-        // YouTube/Reddit fix: Prioritize vibrant brand colors
-        val swatch = palette.darkVibrantSwatch
-            ?: palette.vibrantSwatch
-            ?: palette.lightVibrantSwatch
-            ?: palette.dominantSwatch
-
-        val rawColor = if (swatch != null) {
-            swatch.rgb
-        } else {
-            // 2. Fallback center logic
-            val width = bitmap.width
-            val height = bitmap.height
-            val pixels = IntArray(width * height)
-            bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
-            var bestColor: Int? = null
-            var maxSaturation = -1f
-            val steps = 5
-            for (i in 1 until steps) {
-                for (j in 1 until steps) {
-                    val x = (width * i) / steps
-                    val y = (height * j) / steps
-                    val pixel = pixels[y * width + x]
-                    val hsv = FloatArray(3)
-                    android.graphics.Color.colorToHSV(pixel, hsv)
-                    val score = hsv[1] * hsv[2]
-                    if (score > maxSaturation && hsv[2] > 0.1f && hsv[2] < 0.95f) {
-                        maxSaturation = score
-                        bestColor = pixel
-                    }
-                }
-            }
-            bestColor ?: pixels[height/2 * width + width/2]
-        }
-
-        // Tone down the color to avoid "eye-burning" intensity
-        val hsv = FloatArray(3)
-        android.graphics.Color.colorToHSV(rawColor, hsv)
-
-        // Cap saturation (max 70%) and brightness (max 80%)
-        // This keeps the brand identity but makes it much more comfortable to look at
-        hsv[1] = hsv[1].coerceAtMost(0.7f)
-        hsv[2] = hsv[2].coerceAtMost(0.8f)
-
-        Color(android.graphics.Color.HSVToColor(hsv)).copy(alpha = 1f)
-    } catch (e: Exception) {
-        Color.Unspecified
-    }
-}
-
-private fun getContrastColor(color: Color): Color {
-    // Standard relative luminance formula
-    val luminance = 0.2126 * color.red + 0.7152 * color.green + 0.0722 * color.blue
-    
-    // Increased threshold (0.72) to favor white icons on brand colors (like WhatsApp green)
-    // even after they have been muted/de-saturated.
-    return if (luminance > 0.72) Color.Black else Color.White
-}
-
-private fun formatNotificationTime(postTime: Long): String {
-    val diffMinutes = (System.currentTimeMillis() - postTime) / 60000
-    return when {
-        diffMinutes < 1 -> "now"
-        diffMinutes < 60 -> "${diffMinutes}m"
-        else -> "${diffMinutes / 60}h"
     }
 }
 
@@ -1651,4 +1465,176 @@ fun BoxScope.PixelResizeHandle(
                 }
             }
     )
+}
+
+@Composable
+fun NotificationTabButton(
+    app: AppInfo?,
+    notificationIcon: Drawable?,
+    notificationCount: Int,
+    isSelected: Boolean,
+    appColor: Color,
+    contrastColor: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    
+    val cornerRadius by animateDpAsState(
+        targetValue = when {
+            isPressed -> 4.dp
+            isSelected -> 12.dp
+            else -> 20.dp
+        }
+    )
+
+    val finalAppColor = if (appColor == Color.Unspecified) MaterialTheme.colorScheme.primary else appColor
+    val finalContrastColor = if (appColor == Color.Unspecified) {
+        val luminance = 0.2126 * finalAppColor.red + 0.7152 * finalAppColor.green + 0.0722 * finalAppColor.blue
+        if (luminance > 0.72) Color.Black else Color.White
+    } else {
+        contrastColor
+    }
+
+    val backgroundColor = if (isSelected) finalAppColor else MaterialTheme.colorScheme.surfaceDim.copy(alpha = 0.4f)
+    val iconColor = if (isSelected) finalContrastColor else MaterialTheme.colorScheme.onSurface
+    
+    Surface(
+        onClick = onClick,
+        interactionSource = interactionSource,
+        shape = RoundedCornerShape(cornerRadius),
+        color = backgroundColor,
+        modifier = modifier.height(40.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(horizontal = 12.dp)
+                .fillMaxHeight(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            val iconToDraw = notificationIcon ?: app?.icon
+            if (iconToDraw != null) {
+                Image(
+                    bitmap = iconToDraw.toBitmap().asImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    colorFilter = ColorFilter.tint(iconColor)
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Rounded.Apps,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = iconColor
+                )
+            }
+
+            AnimatedVisibility(
+                visible = notificationCount > 1,
+                enter = fadeIn() + expandHorizontally(),
+                exit = fadeOut() + shrinkHorizontally()
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = if (notificationCount > 99) "99+" else notificationCount.toString(),
+                        color = iconColor,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = QuicksandTitleVariable
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun applyStretch(offset: Float, threshold: Float, stretchFactor: Float = 0.5f): Float {
+    val s = sign(offset)
+    val a = abs(offset)
+
+    if (a <= threshold) {
+        return offset
+    }
+
+    val overscroll = a - threshold
+    val stretchedOverscroll = overscroll.pow(1f - stretchFactor)
+    return s * (threshold + stretchedOverscroll)
+}
+
+private fun getDominantColor(drawable: Drawable?): Color {
+    if (drawable == null) return Color.Unspecified
+    return try {
+        val bitmap = drawable.toBitmap()
+        
+        // 1. Use Palette for brand-aware color extraction
+        val palette = Palette.from(bitmap).generate()
+        
+        // YouTube/Reddit fix: Prioritize vibrant brand colors
+        val swatch = palette.darkVibrantSwatch
+            ?: palette.vibrantSwatch
+            ?: palette.lightVibrantSwatch
+            ?: palette.dominantSwatch
+
+        val rawColor = if (swatch != null) {
+            swatch.rgb
+        } else {
+            // 2. Fallback center logic
+            val width = bitmap.width
+            val height = bitmap.height
+            val pixels = IntArray(width * height)
+            bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
+            var bestColor: Int? = null
+            var maxSaturation = -1f
+            val steps = 5
+            for (i in 1 until steps) {
+                for (j in 1 until steps) {
+                    val x = (width * i) / steps
+                    val y = (height * j) / steps
+                    val pixel = pixels[y * width + x]
+                    val hsv = FloatArray(3)
+                    android.graphics.Color.colorToHSV(pixel, hsv)
+                    val score = hsv[1] * hsv[2]
+                    if (score > maxSaturation && hsv[2] > 0.1f && hsv[2] < 0.95f) {
+                        maxSaturation = score
+                        bestColor = pixel
+                    }
+                }
+            }
+            bestColor ?: pixels[height/2 * width + width/2]
+        }
+
+        // Tone down the color to avoid "eye-burning" intensity
+        val hsv = FloatArray(3)
+        android.graphics.Color.colorToHSV(rawColor, hsv)
+
+        // Cap saturation (max 70%) and brightness (max 80%)
+        // This keeps the brand identity but makes it much more comfortable to look at
+        hsv[1] = hsv[1].coerceAtMost(0.7f)
+        hsv[2] = hsv[2].coerceAtMost(0.8f)
+
+        Color(android.graphics.Color.HSVToColor(hsv)).copy(alpha = 1f)
+    } catch (e: Exception) {
+        Color.Unspecified
+    }
+}
+
+private fun getContrastColor(color: Color): Color {
+    // Standard relative luminance formula
+    val luminance = 0.2126 * color.red + 0.7152 * color.green + 0.0722 * color.blue
+    
+    // Increased threshold (0.72) to favor white icons on brand colors (like WhatsApp green)
+    // even after they have been muted/de-saturated.
+    return if (luminance > 0.72) Color.Black else Color.White
+}
+
+private fun formatNotificationTime(postTime: Long): String {
+    val diffMinutes = (System.currentTimeMillis() - postTime) / 60000
+    return when {
+        diffMinutes < 1 -> "now"
+        diffMinutes < 60 -> "${diffMinutes}m"
+        else -> "${diffMinutes / 60}h"
+    }
 }
