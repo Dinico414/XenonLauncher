@@ -308,7 +308,7 @@ fun MainHomePage(
             val configuration = LocalConfiguration.current
             val screenWidth = configuration.screenWidthDp.dp
             val horizontalPadding = 24.dp
-            val availableWidth = screenWidth - (horizontalPadding * 2)
+            val availableWidth = screenWidth - (horizontalPadding * 2) - 0.5.dp // Subtract small margin to prevent rounding-induced scroll
             
             val tabCount = sortedAppPackages.size
             val deleteSpacing = 8.dp
