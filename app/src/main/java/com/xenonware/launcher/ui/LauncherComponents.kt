@@ -284,7 +284,7 @@ fun DockPill(
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp.dp
-    val finalMaxDockWidth = (screenWidth).coerceAtMost(538.dp)
+    val finalMaxDockWidth = (screenWidth).coerceAtMost(540.dp)
 
     var currentPage by remember { mutableIntStateOf(1) }
     val dockAlpha by animateFloatAsState(

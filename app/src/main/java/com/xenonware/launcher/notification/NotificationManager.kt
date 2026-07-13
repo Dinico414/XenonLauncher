@@ -52,10 +52,18 @@ object NotificationManager {
             val filtered = activeNotifications.filter { sbn ->
                 val ranking = Ranking()
                 val hasRanking = rankingMap?.getRanking(sbn.key, ranking) ?: false
+                val notification = sbn.notification
 
                 // 1. Core System Filters
                 if (sbn.packageName == ownPackageName) return@filter false
                 if (sbn.isOngoing) return@filter false
+
+                // 1.5 Media Filter - Exclude media playback notifications
+                val isMedia = notification.category == android.app.Notification.CATEGORY_TRANSPORT ||
+                             notification.extras.containsKey(android.app.Notification.EXTRA_MEDIA_SESSION) ||
+                             notification.extras.getString(android.app.Notification.EXTRA_TEMPLATE)?.contains("MediaStyle") == true
+                
+                if (isMedia) return@filter false
                 
                 // 2. Ranking/Importance Filters
                 if (hasRanking) {
@@ -66,7 +74,6 @@ object NotificationManager {
                 }
 
                 // 3. Content Filters
-                val notification = sbn.notification
                 val extras = notification.extras
                 
                 val title = extras.getCharSequence("android.title")
