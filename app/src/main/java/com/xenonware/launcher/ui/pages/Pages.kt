@@ -14,6 +14,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -81,6 +82,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -97,6 +99,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -262,8 +265,8 @@ fun MainHomePage(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth()
-                        .padding(horizontal = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
                     contentPadding = PaddingValues(bottom = 16.dp)
                 ) {
                     val notificationsInGroup = groupedNotifications[pkg] ?: emptyList()
@@ -315,7 +318,7 @@ fun MainHomePage(
             val scrollState = rememberScrollState()
             val configuration = LocalConfiguration.current
             val screenWidth = configuration.screenWidthDp.dp
-            val horizontalPadding = 24.dp
+            val horizontalPadding = 16.dp
             val availableWidth = screenWidth - (horizontalPadding * 2)
             
             val tabCount = sortedAppPackages.size
@@ -488,32 +491,32 @@ fun NotificationItem(
         derivedStateOf { (abs(offsetX.value) / dismissThreshold).coerceIn(0f, 1f) }
     }
 
-    val animatedProgress by animateFloatAsState(
-        targetValue = swipeProgress,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium),
-        label = "swipeProgress"
-    )
-
     val largeRadius = 24.dp
     val smallRadius = 6.dp
 
-    val topStartRadius by animateDpAsState(
-        targetValue = if (isFirst) largeRadius else lerp(smallRadius, largeRadius, max(animatedProgress, (offsetAbove / dismissThreshold).coerceIn(0f, 1f))),
-        label = "topStart"
-    )
-    val topEndRadius by animateDpAsState(
-        targetValue = if (isFirst) largeRadius else lerp(smallRadius, largeRadius, max(animatedProgress, (-offsetAbove / dismissThreshold).coerceIn(0f, 1f))),
-        label = "topEnd"
-    )
-    val bottomStartRadius by animateDpAsState(
-        targetValue = if (isLast) largeRadius else lerp(smallRadius, largeRadius, max(animatedProgress, (offsetBelow / dismissThreshold).coerceIn(0f, 1f))),
-        label = "bottomStart"
-    )
-    val bottomEndRadius by animateDpAsState(
-        targetValue = if (isLast) largeRadius else lerp(smallRadius, largeRadius, max(animatedProgress, (-offsetBelow / dismissThreshold).coerceIn(0f, 1f))),
-        label = "bottomEnd"
-    )
+    val currentOffsetAbove by rememberUpdatedState(offsetAbove)
+    val currentOffsetBelow by rememberUpdatedState(offsetBelow)
 
+    val topStartRadius by remember {
+        derivedStateOf {
+            if (isFirst) largeRadius else lerp(smallRadius, largeRadius, max(swipeProgress, (currentOffsetAbove / dismissThreshold).coerceIn(0f, 1f)))
+        }
+    }
+    val topEndRadius by remember {
+        derivedStateOf {
+            if (isFirst) largeRadius else lerp(smallRadius, largeRadius, max(swipeProgress, (-currentOffsetAbove / dismissThreshold).coerceIn(0f, 1f)))
+        }
+    }
+    val bottomStartRadius by remember {
+        derivedStateOf {
+            if (isLast) largeRadius else lerp(smallRadius, largeRadius, max(swipeProgress, (currentOffsetBelow / dismissThreshold).coerceIn(0f, 1f)))
+        }
+    }
+    val bottomEndRadius by remember {
+        derivedStateOf {
+            if (isLast) largeRadius else lerp(smallRadius, largeRadius, max(swipeProgress, (-currentOffsetBelow / dismissThreshold).coerceIn(0f, 1f)))
+        }
+    }
     val mainShape = RoundedCornerShape(
         topStart = topStartRadius, topEnd = topEndRadius,
         bottomStart = bottomStartRadius, bottomEnd = bottomEndRadius
@@ -523,7 +526,7 @@ fun NotificationItem(
         modifier = Modifier
             .fillMaxWidth()
             .graphicsLayer {
-                if (isDismissing) alpha = 1f - animatedProgress
+                if (isDismissing) alpha = 1f - swipeProgress
             }
     ) {
         Surface(
@@ -556,27 +559,50 @@ fun NotificationItem(
                             }
 
                             rawDragOffset = newRawDrag
-                            val friction = 1.6f
+                            val friction = 1.8f
                             val intendedOffset = rawDragOffset / if (isStuck) friction else 1f
 
-                            val targetDrag = applyStretch(intendedOffset, dismissThreshold, 0.6f)
+                            val targetDrag = applyStretch(intendedOffset, dismissThreshold, 1f)
                                 .coerceIn(-stretchLimit, stretchLimit)
 
-                            offsetX.snapTo(targetDrag)
-                            onOffsetChanged(offsetX.value)
+                            offsetX.animateTo(
+                                targetValue = targetDrag,
+                                animationSpec = spring(
+                                    dampingRatio = 0.65f,
+                                    stiffness = 1500f
+                                )
+                            ) {
+                                onOffsetChanged(value)
+                            }
                         }
                     },
                     onDragStopped = { velocity ->
                         coroutineScope.launch {
-                            val isDismiss = !isStuck || abs(velocity) > 3000f
+                            val isDismiss = !isStuck || abs(velocity) > 4000f
                             if (isDismiss) {
                                 isDismissing = true
-                                val target = if (offsetX.value > 0) stretchLimit * 4 else -stretchLimit * 4
-                                offsetX.animateTo(target, tween(250))
+                                val target = if (offsetX.value > 0) stretchLimit * 8 else -stretchLimit * 8
+                                offsetX.animateTo(
+                                    targetValue = target,
+                                    animationSpec = tween(
+                                        durationMillis = 280,
+                                        easing = CubicBezierEasing(0.4f, -0.15f, 0.2f, 1f)
+                                    )
+                                ) {
+                                    onOffsetChanged(value)
+                                }
                                 onDismiss()
                                 onOffsetChanged(0f)
                             } else {
-                                offsetX.animateTo(0f, spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessMedium))
+                                offsetX.animateTo(
+                                    targetValue = 0f,
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                        stiffness = Spring.StiffnessLow
+                                    )
+                                ) {
+                                    onOffsetChanged(value)
+                                }
                                 onOffsetChanged(0f)
                             }
                             isStuck = true
@@ -584,7 +610,7 @@ fun NotificationItem(
                     }
                 ),
             shape = mainShape,
-            color = Color.White.copy(alpha = 0.1f),
+            color = colorScheme.surfaceBright.copy(alpha = 0.5f),
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(
@@ -617,7 +643,7 @@ fun NotificationItem(
                             notification.title?.let {
                                 Text(
                                     text = it,
-                                    color = Color.White,
+                                    color = colorScheme.onSurface,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 14.sp,
                                     maxLines = 1,
@@ -630,7 +656,7 @@ fun NotificationItem(
                                 Surface(
                                     onClick = { expanded = !expanded },
                                     shape = RoundedCornerShape(8.dp),
-                                    color = Color.White.copy(alpha = 0.1f),
+                                    color = colorScheme.surfaceContainerHighest,
                                     modifier = Modifier.height(26.dp)
                                 ) {
                                     Row(
@@ -639,14 +665,14 @@ fun NotificationItem(
                                     ) {
                                         Text(
                                             text = formatNotificationTime(notification.postTime),
-                                            color = Color.White.copy(alpha = 0.6f),
+                                            color = colorScheme.onSurface.copy(alpha = 0.6f),
                                             fontSize = 11.sp,
                                             fontWeight = FontWeight.Bold
                                         )
                                         Icon(
                                             imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
                                             contentDescription = if (expanded) "Collapse" else "Expand",
-                                            tint = Color.White.copy(alpha = 0.6f),
+                                            tint = colorScheme.onSurface.copy(alpha = 0.6f),
                                             modifier = Modifier.size(16.dp)
                                         )
                                     }
@@ -654,7 +680,7 @@ fun NotificationItem(
                             } else {
                                 Text(
                                     text = formatNotificationTime(notification.postTime),
-                                    color = Color.White.copy(alpha = 0.5f),
+                                    color = colorScheme.onSurface.copy(alpha = 0.5f),
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Medium
                                 )
@@ -664,7 +690,7 @@ fun NotificationItem(
                         notification.text?.let {
                             Text(
                                 text = it,
-                                color = Color.White.copy(alpha = 0.7f),
+                                color = colorScheme.onSurface.copy(alpha = 0.7f),
                                 fontSize = 13.sp,
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis
@@ -701,13 +727,13 @@ fun NotificationItem(
                                     modifier = Modifier.weight(1f),
                                     placeholder = { Text("Type a message...", fontSize = 13.sp) },
                                     colors = TextFieldDefaults.colors(
-                                        focusedContainerColor = Color.White.copy(alpha = 0.05f),
-                                        unfocusedContainerColor = Color.White.copy(alpha = 0.05f),
+                                        focusedContainerColor = colorScheme.surfaceContainerLowest.copy(alpha = 0.2f),
+                                        unfocusedContainerColor = colorScheme.surfaceContainerLowest.copy(alpha = 0.2f),
                                         focusedIndicatorColor = Color.Transparent,
                                         unfocusedIndicatorColor = Color.Transparent
                                     ),
                                     shape = RoundedCornerShape(16.dp),
-                                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = Color.White),
+                                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = colorScheme.onSurface),
                                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send)
                                 )
                                 
@@ -821,7 +847,7 @@ fun NotificationItem(
                                         }
                                     },
                                     shape = RoundedCornerShape(12.dp),
-                                    color = if (selectedActionForReply == action) finalAppColor.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.1f),
+                                    color = if (selectedActionForReply == action) finalAppColor.copy(alpha = 0.2f) else Color.Transparent,
                                     modifier = Modifier.height(32.dp)
                                 ) {
                                     Box(
@@ -830,7 +856,7 @@ fun NotificationItem(
                                     ) {
                                         Text(
                                             text = action.title,
-                                            color = if (selectedActionForReply == action) finalAppColor else Color.White,
+                                            color = if (selectedActionForReply == action) finalAppColor else colorScheme.onSurface,
                                             fontSize = 12.sp,
                                             fontWeight = FontWeight.Medium
                                         )
