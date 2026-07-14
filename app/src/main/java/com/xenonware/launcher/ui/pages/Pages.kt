@@ -284,6 +284,13 @@ fun MainHomePage(
                             offsetAbove = offsetAbove,
                             offsetBelow = offsetBelow,
                             onOffsetChanged = { offsets[notification.key] = it },
+                            modifier = Modifier.animateItem(
+                                fadeInSpec = tween(durationMillis = 400, delayMillis = 150),
+                                placementSpec = spring(
+                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                    stiffness = Spring.StiffnessLow
+                                )
+                            ),
                             onOpen = { 
                                 try {
                                     Log.d("XenonNotification", "Opening notification: pkg=${notification.packageName}, title=${notification.title}")
@@ -516,6 +523,7 @@ fun NotificationItem(
     offsetAbove: Float = 0f,
     offsetBelow: Float = 0f,
     onOffsetChanged: (Float) -> Unit = {},
+    modifier: Modifier = Modifier,
     onOpen: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -546,33 +554,35 @@ fun NotificationItem(
     val currentOffsetAbove by rememberUpdatedState(offsetAbove)
     val currentOffsetBelow by rememberUpdatedState(offsetBelow)
 
-    val topStartRadius by remember {
-        derivedStateOf {
-            if (isFirst) largeRadius else lerp(smallRadius, largeRadius, max(swipeProgress, (currentOffsetAbove / dismissThreshold).coerceIn(0f, 1f)))
-        }
-    }
-    val topEndRadius by remember {
-        derivedStateOf {
-            if (isFirst) largeRadius else lerp(smallRadius, largeRadius, max(swipeProgress, (-currentOffsetAbove / dismissThreshold).coerceIn(0f, 1f)))
-        }
-    }
-    val bottomStartRadius by remember {
-        derivedStateOf {
-            if (isLast) largeRadius else lerp(smallRadius, largeRadius, max(swipeProgress, (currentOffsetBelow / dismissThreshold).coerceIn(0f, 1f)))
-        }
-    }
-    val bottomEndRadius by remember {
-        derivedStateOf {
-            if (isLast) largeRadius else lerp(smallRadius, largeRadius, max(swipeProgress, (-currentOffsetBelow / dismissThreshold).coerceIn(0f, 1f)))
-        }
-    }
+    val topStartRadius by animateDpAsState(
+        targetValue = if (isFirst) largeRadius else lerp(smallRadius, largeRadius, max(swipeProgress, (currentOffsetAbove / dismissThreshold).coerceIn(0f, 1f))),
+        label = "topStartRadius"
+    )
+    val topEndRadius by animateDpAsState(
+        targetValue = if (isFirst) largeRadius else lerp(smallRadius, largeRadius, max(swipeProgress, (-currentOffsetAbove / dismissThreshold).coerceIn(0f, 1f))),
+        label = "topEndRadius"
+    )
+    val bottomStartRadius by animateDpAsState(
+        targetValue = if (isLast) largeRadius else lerp(smallRadius, largeRadius, max(swipeProgress, (currentOffsetBelow / dismissThreshold).coerceIn(0f, 1f))),
+        label = "bottomStartRadius"
+    )
+    val bottomEndRadius by animateDpAsState(
+        targetValue = if (isLast) largeRadius else lerp(smallRadius, largeRadius, max(swipeProgress, (-currentOffsetBelow / dismissThreshold).coerceIn(0f, 1f))),
+        label = "bottomEndRadius"
+    )
     val mainShape = RoundedCornerShape(
         topStart = topStartRadius, topEnd = topEndRadius,
         bottomStart = bottomStartRadius, bottomEnd = bottomEndRadius
     )
 
+    DisposableEffect(notification.key) {
+        onDispose {
+            onOffsetChanged(0f)
+        }
+    }
+
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .graphicsLayer {
                 if (isDismissing) alpha = 1f - swipeProgress
