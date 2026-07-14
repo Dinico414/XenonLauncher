@@ -256,6 +256,7 @@ fun MainHomePage(
                     )
                 }
             }
+            Spacer(Modifier.height(110.dp)) // Accounts for dock area to center correctly
         } else {
             // Notification List
             selectedPackage?.let { pkg ->
@@ -508,8 +509,6 @@ fun MainHomePage(
         
         if (notificationCount > 0) {
             Spacer(modifier = Modifier.weight(0.2f)) // Space above dock
-        } else {
-            Spacer(modifier = Modifier.weight(1f))
         }
     }
 }
