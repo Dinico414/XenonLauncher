@@ -142,7 +142,7 @@ fun LauncherScreen(
     var isAppDrawerVisible by remember { mutableStateOf(false) }
     var drawerInteractiveProgress by remember { mutableFloatStateOf(1f) }
 
-    val blurProgress by animateFloatAsState(
+    val appDrawerBlurProgress by animateFloatAsState(
         targetValue = if (isAppDrawerVisible) drawerInteractiveProgress else 0f,
         animationSpec = if (drawerInteractiveProgress < 0.99f && isAppDrawerVisible) {
             snap()
@@ -151,6 +151,9 @@ fun LauncherScreen(
         },
         label = "blurProgress"
     )
+
+    val mediaBlurProgress = 1f - (pagerState.currentPage + pagerState.currentPageOffsetFraction).coerceIn(0f, 1f)
+    val blurProgress = appDrawerBlurProgress.coerceAtLeast(mediaBlurProgress)
 
     val blurAvailable = rememberBlurAvailable()
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
@@ -178,7 +181,7 @@ fun LauncherScreen(
                         .fillMaxSize()
                         .then(
                             if (blurAvailable) {
-                                Modifier.blur(radius = (20 * blurProgress).dp)
+                                Modifier.blur(radius = (20 * appDrawerBlurProgress).dp)
                             } else {
                                 Modifier
                             }
