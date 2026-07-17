@@ -1,5 +1,6 @@
 package com.xenonware.launcher.ui.settings
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -7,6 +8,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.Person
@@ -25,6 +27,7 @@ import com.xenon.mylibrary.res.SettingsTile
 import com.xenon.mylibrary.values.LargestPadding
 import com.xenon.mylibrary.values.MediumPadding
 import com.xenon.mylibrary.values.NoSpacing
+import com.xenonware.launcher.ui.res.XenonSingleChoiceButtonGroup
 import com.xenonware.launcher.viewmodel.SettingsViewModel
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
@@ -119,6 +122,56 @@ fun SettingsLayout(
                         backgroundColor = tileColor,
                         shape = bottomShape,
                         onClick = { viewModel.onThemeSettingClicked() }
+                    )
+                }
+
+                Text(
+                    "NOTIFICATIONS",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(start = 12.dp)
+                )
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(tileColor, standaloneShape)
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        "Notification Badges",
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+                    val badgeType by viewModel.notificationBadgeType.collectAsState()
+                    XenonSingleChoiceButtonGroup(
+                        options = listOf(0, 1, 2),
+                        selectedOption = badgeType,
+                        onOptionSelect = { viewModel.setNotificationBadgeType(it) },
+                        label = { type ->
+                            when (type) {
+                                0 -> "None"
+                                1 -> "Dot"
+                                2 -> "Number"
+                                else -> ""
+                            }
+                        },
+                        unselectedIcon = { type ->
+                            Icon(
+                                imageVector = when (type) {
+                                    0 -> Icons.Default.NotificationsOff
+                                    1 -> Icons.Default.Circle
+                                    else -> Icons.Default.Numbers
+                                },
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
 

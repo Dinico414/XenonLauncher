@@ -59,6 +59,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val preferenceListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         when (key) {
             "is_grid_layout" -> _isGridLayout.value = prefManager.isGridLayout
+            "notification_badge_type" -> _notificationBadgeType.value = prefManager.notificationBadgeType
             "open_keyboard" -> _openKeyboard.value = prefManager.openKeyboard
             "widget_columns_normal", "widget_columns_wide" -> {
                 _widgetColumns.value = if (_isWide.value) prefManager.widgetColumnsWide else prefManager.widgetColumnsNormal
@@ -77,6 +78,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private val _isGridLayout = MutableStateFlow(prefManager.isGridLayout)
     val isGridLayout: StateFlow<Boolean> = _isGridLayout
+
+    private val _notificationBadgeType = MutableStateFlow(prefManager.notificationBadgeType)
+    val notificationBadgeType: StateFlow<Int> = _notificationBadgeType
 
     private val _openKeyboard = MutableStateFlow(prefManager.openKeyboard)
     val openKeyboard: StateFlow<Boolean> = _openKeyboard

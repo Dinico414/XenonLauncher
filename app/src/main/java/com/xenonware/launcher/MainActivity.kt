@@ -90,6 +90,7 @@ class MainActivity : ComponentActivity() {
                 val weatherState by viewModel.weatherState.collectAsState()
                 val notificationCount by viewModel.notificationCount.collectAsState()
                 val notifications by viewModel.notifications.collectAsState()
+                val badgeType by viewModel.notificationBadgeType.collectAsState()
                 val batteryLevel by viewModel.batteryLevel.collectAsState()
                 val calendarEvents by viewModel.calendarEvents.collectAsState()
 
@@ -106,6 +107,7 @@ class MainActivity : ComponentActivity() {
                     weatherCondition = weatherState.condition,
                     notificationCount = notificationCount,
                     notifications = notifications,
+                    badgeType = badgeType,
                     batteryLevel = batteryLevel,
                     calendarEvents = calendarEvents,
                     onAppClick = { viewModel.launchApp(it) },
@@ -132,6 +134,7 @@ fun LauncherScreen(
     weatherCondition: String,
     notificationCount: Int,
     notifications: List<com.xenonware.launcher.notification.LauncherNotification>,
+    badgeType: Int,
     batteryLevel: Float,
     calendarEvents: List<com.xenonware.launcher.viewmodel.CalendarEvent>,
     onAppClick: (String) -> Unit,
@@ -245,6 +248,8 @@ fun LauncherScreen(
             DockPill(
                 modifier = Modifier.align(Alignment.BottomCenter),
                 apps = pinnedApps,
+                notifications = notifications,
+                badgeType = badgeType,
                 mediaState = viewModel.mediaState,
                 isMediaPermissionGranted = viewModel.isMediaPermissionGranted,
                 notificationCount = notificationCount,

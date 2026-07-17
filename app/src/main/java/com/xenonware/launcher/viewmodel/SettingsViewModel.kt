@@ -32,6 +32,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _advancedSearchEnabled = MutableStateFlow(sharedPreferenceManager.advancedSearchEnabled)
     val advancedSearchEnabled = _advancedSearchEnabled.asStateFlow()
 
+    private val _notificationBadgeType = MutableStateFlow(sharedPreferenceManager.notificationBadgeType)
+    val notificationBadgeType = _notificationBadgeType.asStateFlow()
+
     private val _hasWallpaperAccess = MutableStateFlow(checkWallpaperAccess())
     val hasWallpaperAccess = _hasWallpaperAccess.asStateFlow()
 
@@ -76,6 +79,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setAdvancedSearchEnabled(enabled: Boolean) {
         sharedPreferenceManager.advancedSearchEnabled = enabled
         _advancedSearchEnabled.value = enabled
+    }
+
+    fun setNotificationBadgeType(type: Int) {
+        sharedPreferenceManager.notificationBadgeType = type
+        _notificationBadgeType.value = type
     }
 
     fun onLanguageSettingClicked() { /* TODO */ }

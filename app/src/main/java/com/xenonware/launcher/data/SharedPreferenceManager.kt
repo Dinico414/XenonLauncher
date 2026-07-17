@@ -50,6 +50,10 @@ class SharedPreferenceManager(context: Context) {
         get() = prefs.getBoolean("advanced_search_enabled", true)
         set(value) = prefs.edit().putBoolean("advanced_search_enabled", value).apply()
 
+    var notificationBadgeType: Int
+        get() = prefs.getInt("notification_badge_type", 1) // 0: None, 1: Dot, 2: Number
+        set(value) = prefs.edit().putInt("notification_badge_type", value).apply()
+
     var searchHistory: String
         get() = prefs.getString("search_history", "") ?: ""
         set(value) = prefs.edit().putString("search_history", value).apply()

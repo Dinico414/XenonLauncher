@@ -3,6 +3,7 @@ package com.xenonware.launcher.ui
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -98,6 +99,7 @@ import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.Button
+import androidx.palette.graphics.Palette
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -176,6 +178,8 @@ import com.xenonware.launcher.accessibility.XenonAccessibilityService
 import com.xenonware.launcher.media.MediaState
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.model.SearchResult
+import com.xenonware.launcher.notification.LauncherNotification
+import com.xenonware.launcher.ui.res.NotificationBadge
 import com.xenonware.launcher.ui.res.MenuItem
 import com.xenonware.launcher.ui.res.XenonDropDown
 import com.xenonware.launcher.ui.res.XenonSingleChoiceButtonGroup
@@ -261,6 +265,8 @@ fun LauncherDragLayer(
 fun DockPill(
     modifier: Modifier = Modifier,
     apps: List<AppInfo>,
+    notifications: List<LauncherNotification>,
+    badgeType: Int,
     mediaState: MediaState,
     isMediaPermissionGranted: Boolean,
     notificationCount: Int,
@@ -590,7 +596,13 @@ fun DockPill(
                         ) { targetExpanded ->
                             if (targetExpanded) {
                                 FixedAppSection(
-                                    apps, onAppClick, onPinApp, onReorderApp, onUnpinApp
+                                    apps,
+                                    notifications,
+                                    badgeType,
+                                    onAppClick,
+                                    onPinApp,
+                                    onReorderApp,
+                                    onUnpinApp
                                 )
                             } else {
                                 Box(contentAlignment = Alignment.Center) {
@@ -900,6 +912,8 @@ fun StatusSection(
 @Composable
 fun FixedAppSection(
     apps: List<AppInfo>,
+    notifications: List<LauncherNotification>,
+    badgeType: Int,
     onAppClick: (String) -> Unit,
     onPinApp: (String, Int) -> Unit,
     onReorderApp: (Int, Int) -> Unit,
@@ -908,6 +922,10 @@ fun FixedAppSection(
     val dragDropState = LocalDragDropState.current
     val density = LocalDensity.current
     val listState = rememberLazyListState()
+
+    val groupedNotifications = remember(notifications) {
+        notifications.groupBy { it.packageName }
+    }
 
     val itemWidthPx = with(density) { 52.dp.toPx() }
     val contentPaddingPx = with(density) { 10.dp.toPx() }
@@ -1053,58 +1071,66 @@ fun FixedAppSection(
                             .graphicsLayer {
                                 alpha = if (isBeingDragged) 0f else 1f
                             }) {
-                        app.icon?.let { icon ->
-                            Image(
-                                bitmap = icon.toBitmap().asImageBitmap(),
-                                contentDescription = app.name,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(CircleShape)
-                                    .pointerInput(Unit) {
-                                        detectTapGestures(onTap = { onAppClick(app.packageName) })
-                                    }
-                                    .pointerInput(Unit) {
-                                        detectDragGesturesAfterLongPress(onDragStart = { offset ->
-                                            val originalIndex = apps.indexOf(app)
-                                            dragDropState.startDrag(
-                                                app, itemPos + offset, originalIndex
-                                            )
-                                        }, onDrag = { change, dragAmount ->
-                                            change.consume()
-                                            dragDropState.dragOffset += dragAmount
-                                        }, onDragEnd = {
-                                            val finalPos = dragDropState.dragOffset
-                                            val sourceIdx = dragDropState.sourceIndex
-                                            val targetIdx = dragDropState.targetIndex
+                        Box(contentAlignment = Alignment.TopEnd) {
+                            app.icon?.let { icon ->
+                                Image(
+                                    bitmap = icon.toBitmap().asImageBitmap(),
+                                    contentDescription = app.name,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(CircleShape)
+                                        .pointerInput(Unit) {
+                                            detectTapGestures(onTap = { onAppClick(app.packageName) })
+                                        }
+                                        .pointerInput(Unit) {
+                                            detectDragGesturesAfterLongPress(onDragStart = { offset ->
+                                                val originalIndex = apps.indexOf(app)
+                                                dragDropState.startDrag(
+                                                    app, itemPos + offset, originalIndex
+                                                )
+                                            }, onDrag = { change, dragAmount ->
+                                                change.consume()
+                                                dragDropState.dragOffset += dragAmount
+                                            }, onDragEnd = {
+                                                val finalPos = dragDropState.dragOffset
+                                                val sourceIdx = dragDropState.sourceIndex
+                                                val targetIdx = dragDropState.targetIndex
 
-                                            val verticalDist =
-                                                if (finalPos.y < dragDropState.dockBounds.top) {
-                                                    dragDropState.dockBounds.top - finalPos.y
-                                                } else if (finalPos.y > dragDropState.dockBounds.bottom) {
-                                                    finalPos.y - dragDropState.dockBounds.bottom
-                                                } else 0f
+                                                val verticalDist =
+                                                    if (finalPos.y < dragDropState.dockBounds.top) {
+                                                        dragDropState.dockBounds.top - finalPos.y
+                                                    } else if (finalPos.y > dragDropState.dockBounds.bottom) {
+                                                        finalPos.y - dragDropState.dockBounds.bottom
+                                                    } else 0f
 
-                                            val unpinThreshold = with(density) { 80.dp.toPx() }
-                                            val isOutside =
-                                                !dragDropState.dockBounds.contains(finalPos) && verticalDist > unpinThreshold
+                                                val unpinThreshold = with(density) { 80.dp.toPx() }
+                                                val isOutside =
+                                                    !dragDropState.dockBounds.contains(finalPos) && verticalDist > unpinThreshold
 
-                                            if (isOutside) {
-                                                if (sourceIdx != -1) {
-                                                    onUnpinApp(app.packageName)
-                                                }
-                                            } else {
-                                                if (sourceIdx == -1) {
-                                                    if (targetIdx != -1) {
-                                                        onPinApp(app.packageName, targetIdx)
+                                                if (isOutside) {
+                                                    if (sourceIdx != -1) {
+                                                        onUnpinApp(app.packageName)
                                                     }
-                                                } else if (targetIdx != -1 && targetIdx != sourceIdx) {
-                                                    onReorderApp(sourceIdx, targetIdx)
+                                                } else {
+                                                    if (sourceIdx == -1) {
+                                                        if (targetIdx != -1) {
+                                                            onPinApp(app.packageName, targetIdx)
+                                                        }
+                                                    } else if (targetIdx != -1 && targetIdx != sourceIdx) {
+                                                        onReorderApp(sourceIdx, targetIdx)
+                                                    }
                                                 }
-                                            }
-                                            dragDropState.stopDrag()
-                                        }, onDragCancel = { dragDropState.stopDrag() })
-                                    },
-                                contentScale = ContentScale.Fit
+                                                dragDropState.stopDrag()
+                                            }, onDragCancel = { dragDropState.stopDrag() })
+                                        },
+                                    contentScale = ContentScale.Fit
+                                )
+                            }
+                            NotificationBadge(
+                                count = groupedNotifications[app.packageName]?.size ?: 0,
+                                badgeType = badgeType,
+                                appIcon = app.icon,
+                                modifier = Modifier.offset(x = 2.dp, y = (-2).dp)
                             )
                         }
                     }
@@ -1286,6 +1312,8 @@ fun AllAppsDivider(modifier: Modifier = Modifier) {
 @Composable
 fun AppDrawerGridItem(
     app: AppInfo,
+    notificationCount: Int,
+    badgeType: Int,
     onAppClick: (String) -> Unit,
     onDismiss: () -> Unit,
     onPinApp: (String, Int) -> Unit,
@@ -1336,11 +1364,19 @@ fun AppDrawerGridItem(
                     dragDropState.stopDrag()
                 }, onDragCancel = { dragDropState.stopDrag() })
             }) {
-        app.icon?.let { icon ->
-            Image(
-                bitmap = icon.toBitmap().asImageBitmap(),
-                contentDescription = app.name,
-                modifier = Modifier.size(56.dp)
+        Box(contentAlignment = Alignment.TopEnd) {
+            app.icon?.let { icon ->
+                Image(
+                    bitmap = icon.toBitmap().asImageBitmap(),
+                    contentDescription = app.name,
+                    modifier = Modifier.size(56.dp)
+                )
+            }
+            NotificationBadge(
+                count = notificationCount,
+                badgeType = badgeType,
+                appIcon = app.icon,
+                modifier = Modifier.offset(x = 2.dp, y = (-2).dp)
             )
         }
         Spacer(Modifier.height(4.dp))
@@ -1395,6 +1431,13 @@ fun AppDrawer(
     var searchQuery by remember { mutableStateOf("") }
     val searchResults by viewModel.searchResults.collectAsState()
     val searchHistory by viewModel.searchHistory.collectAsState()
+
+    val notifications by viewModel.notifications.collectAsState()
+    val badgeType by viewModel.notificationBadgeType.collectAsState()
+
+    val groupedNotifications = remember(notifications) {
+        notifications.groupBy { it.packageName }
+    }
     val advancedSearchEnabled by viewModel.advancedSearchEnabled.collectAsState()
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -1754,6 +1797,8 @@ fun AppDrawer(
                                                         ) {
                                                             AppDrawerGridItem(
                                                                 app = app,
+                                                                notificationCount = groupedNotifications[app.packageName]?.size ?: 0,
+                                                                badgeType = badgeType,
                                                                 onAppClick = onAppClick,
                                                                 onDismiss = onDismiss,
                                                                 onPinApp = onPinApp,
@@ -1776,6 +1821,8 @@ fun AppDrawer(
                             items(filteredApps) { app ->
                                 AppDrawerGridItem(
                                     app = app,
+                                    notificationCount = groupedNotifications[app.packageName]?.size ?: 0,
+                                    badgeType = badgeType,
                                     onAppClick = onAppClick,
                                     onDismiss = onDismiss,
                                     onPinApp = onPinApp,
@@ -1820,6 +1867,8 @@ fun AppDrawer(
                                                             ) {
                                                                 AppDrawerGridItem(
                                                                     app = app,
+                                                                    notificationCount = groupedNotifications[app.packageName]?.size ?: 0,
+                                                                    badgeType = badgeType,
                                                                     onAppClick = onAppClick,
                                                                     onDismiss = onDismiss,
                                                                     onPinApp = onPinApp,
@@ -1907,11 +1956,19 @@ fun AppDrawer(
                                                 }, onDragCancel = { dragDropState.stopDrag() })
                                             }
                                             .padding(horizontal = 8.dp, vertical = 8.dp)) {
-                                        app.icon?.let { icon ->
-                                            Image(
-                                                bitmap = icon.toBitmap().asImageBitmap(),
-                                                contentDescription = app.name,
-                                                modifier = Modifier.size(48.dp)
+                                        Box(contentAlignment = Alignment.TopEnd) {
+                                            app.icon?.let { icon ->
+                                                Image(
+                                                    bitmap = icon.toBitmap().asImageBitmap(),
+                                                    contentDescription = app.name,
+                                                    modifier = Modifier.size(48.dp)
+                                                )
+                                            }
+                                            NotificationBadge(
+                                                count = groupedNotifications[app.packageName]?.size ?: 0,
+                                                badgeType = badgeType,
+                                                appIcon = app.icon,
+                                                modifier = Modifier.offset(x = 2.dp, y = (-2).dp)
                                             )
                                         }
                                         Spacer(Modifier.width(16.dp))

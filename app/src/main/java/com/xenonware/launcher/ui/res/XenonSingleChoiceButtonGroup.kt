@@ -52,15 +52,25 @@ fun <T> XenonSingleChoiceButtonGroup(
     selectedContainerColor: Color = colorScheme.primary,
     contentColor: Color = colorScheme.onSurface,
     selectedContentColor: Color = colorScheme.onPrimary,
-    icon: @Composable (T, Boolean) -> Unit = { _, isSelected ->
+    selectedIcon: @Composable ((T) -> Unit)? = {
+        Icon(
+            imageVector = Icons.Rounded.Check,
+            contentDescription = "Selected",
+            tint = selectedContentColor,
+            modifier = Modifier
+                .size(18.dp)
+        )
+    },
+    unselectedIcon: @Composable ((T) -> Unit)? = null,
+    icon: @Composable (T, Boolean) -> Unit = { option, isSelected ->
         if (isSelected) {
-            Icon(
-                imageVector = Icons.Rounded.Check,
-                contentDescription = "Selected",
-                modifier = Modifier
-                    .padding(end = 8.dp)
-                    .size(18.dp)
-            )
+            Box(modifier = Modifier.padding(end = 8.dp)) {
+                selectedIcon?.invoke(option)
+            }
+        } else if (unselectedIcon != null) {
+            Box(modifier = Modifier.padding(end = 8.dp)) {
+                unselectedIcon.invoke(option)
+            }
         }
     },
 ) {
