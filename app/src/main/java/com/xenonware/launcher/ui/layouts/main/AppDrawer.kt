@@ -122,13 +122,13 @@ import androidx.core.net.toUri
 import com.xenon.mylibrary.theme.QuicksandTitleVariable
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.model.SearchResult
+import com.xenonware.launcher.ui.res.AllAppsDivider
 import com.xenonware.launcher.ui.res.MenuItem
 import com.xenonware.launcher.ui.res.XenonDropDown
 import com.xenonware.launcher.ui.res.XenonSingleChoiceButtonGroup
 import com.xenonware.launcher.ui.res.notification.NotificationBadge
 import com.xenonware.launcher.ui.res.search.SearchHistoryItem
 import com.xenonware.launcher.ui.res.search.SearchResultItem
-import com.xenonware.launcher.util.DragDropState
 import com.xenonware.launcher.util.LocalDragDropState
 import com.xenonware.launcher.viewmodel.LauncherViewModel
 import dev.chrisbanes.haze.HazeState
@@ -141,108 +141,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 
-@Composable
-fun AllAppsDivider(modifier: Modifier = Modifier) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier.padding(top = 20.dp, bottom = 16.dp)
-    ) {
-        HorizontalDivider(
-            modifier = Modifier.weight(1f), color = colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
-        )
-        Text(
-            text = "All apps",
-            modifier = Modifier.padding(horizontal = 16.dp),
-            style = typography.labelMedium,
-            color = colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-        )
-        HorizontalDivider(
-            modifier = Modifier.weight(1f), color = colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
-        )
-    }
-}
 
-@Composable
-fun AppDrawerGridItem(
-    app: AppInfo,
-    notificationCount: Int,
-    badgeType: Int,
-    onAppClick: (String) -> Unit,
-    onDismiss: () -> Unit,
-    onPinApp: (String, Int) -> Unit,
-    dragDropState: DragDropState,
-    modifier: Modifier = Modifier,
-) {
-    var itemPos by remember { mutableStateOf(Offset.Zero) }
-    val density = LocalDensity.current
-
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier
-            .onGloballyPositioned { itemPos = it.positionInRoot() }
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onTap = {
-                        onAppClick(app.packageName)
-                        onDismiss()
-                    })
-            }
-            .pointerInput(Unit) {
-                detectDragGesturesAfterLongPress(onDragStart = { offset ->
-                    dragDropState.startDrag(app, itemPos + offset)
-                }, onDrag = { change, dragAmount ->
-                    change.consume()
-                    dragDropState.dragOffset += dragAmount
-
-                    if (dragDropState.dockBounds.contains(dragDropState.dragOffset)) {
-                        val relativeX = dragDropState.dragOffset.x - dragDropState.dockBounds.left
-                        val itemWidth = with(density) { 52.dp.toPx() }
-                        dragDropState.targetIndex = (relativeX / itemWidth).toInt().coerceIn(0, 100)
-                    } else {
-                        dragDropState.targetIndex = -1
-                    }
-                }, onDragEnd = {
-                    val finalPos = dragDropState.dragOffset
-                    val verticalDist = if (finalPos.y < dragDropState.dockBounds.top) {
-                        dragDropState.dockBounds.top - finalPos.y
-                    } else if (finalPos.y > dragDropState.dockBounds.bottom) {
-                        finalPos.y - dragDropState.dockBounds.bottom
-                    } else 0f
-
-                    val hitThreshold = with(density) { 80.dp.toPx() }
-
-                    if (dragDropState.dockBounds.contains(finalPos) || verticalDist < hitThreshold) {
-                        onPinApp(app.packageName, dragDropState.targetIndex)
-                    }
-                    dragDropState.stopDrag()
-                }, onDragCancel = { dragDropState.stopDrag() })
-            }) {
-        Box(contentAlignment = Alignment.TopEnd) {
-            app.icon?.let { icon ->
-                Image(
-                    bitmap = icon.toBitmap().asImageBitmap(),
-                    contentDescription = app.name,
-                    modifier = Modifier.size(56.dp)
-                )
-            }
-            NotificationBadge(
-                count = notificationCount,
-                badgeType = badgeType,
-                appIcon = app.icon,
-                modifier = Modifier.offset(x = 2.dp, y = (-2).dp)
-            )
-        }
-        Spacer(Modifier.height(4.dp))
-        Text(
-            app.name,
-            color = colorScheme.onSurface,
-            fontSize = 12.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center
-        )
-    }
-}
 
 enum class SearchType {
     Apps, Contacts, Files, Web
@@ -648,7 +547,7 @@ fun AppDrawer(
                                                             modifier = Modifier.weight(1f),
                                                             contentAlignment = Alignment.Center
                                                         ) {
-                                                            AppDrawerGridItem(
+                                                            AppDrawerGridLayout(
                                                                 app = app,
                                                                 notificationCount = groupedNotifications[app.packageName]?.size ?: 0,
                                                                 badgeType = badgeType,
@@ -672,7 +571,7 @@ fun AppDrawer(
                             }
 
                             items(filteredApps) { app ->
-                                AppDrawerGridItem(
+                                AppDrawerGridLayout(
                                     app = app,
                                     notificationCount = groupedNotifications[app.packageName]?.size ?: 0,
                                     badgeType = badgeType,
@@ -718,7 +617,7 @@ fun AppDrawer(
                                                                 modifier = Modifier.weight(1f),
                                                                 contentAlignment = Alignment.Center
                                                             ) {
-                                                                AppDrawerGridItem(
+                                                                AppDrawerGridLayout(
                                                                     app = app,
                                                                     notificationCount = groupedNotifications[app.packageName]?.size ?: 0,
                                                                     badgeType = badgeType,
