@@ -38,13 +38,13 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
-import com.xenonware.launcher.ui.AppDrawer
-import com.xenonware.launcher.ui.DockPill
-import com.xenonware.launcher.ui.LauncherDragLayer
+import com.xenonware.launcher.ui.layouts.main.AppDrawer
 import com.xenonware.launcher.ui.pages.MainHomePage
 import com.xenonware.launcher.ui.pages.MediaPage
 import com.xenonware.launcher.ui.pages.WidgetPage
+import com.xenonware.launcher.ui.res.dock.DockPill
 import com.xenonware.launcher.ui.theme.XenonLauncherTheme
+import com.xenonware.launcher.util.DragHandler
 import com.xenonware.launcher.util.WindowBlurBehind
 import com.xenonware.launcher.util.rememberBlurAvailable
 import com.xenonware.launcher.viewmodel.LauncherViewModel
@@ -172,7 +172,7 @@ fun LauncherScreen(
 
     WindowBlurBehind(radiusPx = (30 * blurProgress).toInt())
 
-    LauncherDragLayer {
+    DragHandler {
         Box(modifier = Modifier.fillMaxSize()) {
             Box(
                 modifier = Modifier

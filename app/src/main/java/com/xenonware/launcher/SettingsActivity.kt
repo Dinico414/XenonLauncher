@@ -6,7 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.runtime.remember
-import com.xenonware.launcher.ui.settings.SettingsLayout
+import com.xenonware.launcher.ui.layouts.settings.SettingsLayout
 import com.xenonware.launcher.ui.theme.XenonLauncherTheme
 import com.xenonware.launcher.viewmodel.SettingsViewModel
 import dev.chrisbanes.haze.HazeState

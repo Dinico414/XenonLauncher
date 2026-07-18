@@ -1,4 +1,4 @@
-package com.xenonware.launcher.ui.res
+package com.xenonware.launcher.ui.res.notification
 
 import android.graphics.drawable.Drawable
 import androidx.compose.foundation.background
@@ -14,12 +14,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.graphics.toArgb
 import androidx.core.graphics.drawable.toBitmap
+import androidx.core.graphics.get
 import androidx.palette.graphics.Palette
 import com.xenon.mylibrary.theme.QuicksandTitleVariable
 
@@ -28,7 +29,7 @@ fun NotificationBadge(
     count: Int,
     badgeType: Int,
     appIcon: Drawable?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     if (badgeType == 0 || count <= 0) return
 
@@ -88,7 +89,7 @@ private fun getDominantColor(drawable: Drawable?): Color {
         val rawColor = swatch?.rgb ?: run {
             val width = bitmap.width
             val height = bitmap.height
-            bitmap.getPixel(width / 2, height / 2)
+            bitmap[width / 2, height / 2]
         }
 
         val hsv = FloatArray(3)
@@ -97,7 +98,7 @@ private fun getDominantColor(drawable: Drawable?): Color {
         hsv[2] = hsv[2].coerceAtMost(0.8f)
 
         Color(android.graphics.Color.HSVToColor(hsv)).copy(alpha = 1f)
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         Color.Unspecified
     }
 }

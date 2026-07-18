@@ -114,8 +114,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -412,7 +411,7 @@ fun MainHomePage(
                         onClick = onDismissAllNotifications,
                         interactionSource = deleteInteractionSource,
                         shape = RoundedCornerShape(deleteCornerRadius),
-                        color = MaterialTheme.colorScheme.error,
+                        color = colorScheme.error,
                         modifier = Modifier
                             .height(40.dp)
                             .weight(1f)
@@ -421,7 +420,7 @@ fun MainHomePage(
                             Icon(
                                 imageVector = Icons.Rounded.Delete,
                                 contentDescription = "Clear All",
-                                tint = MaterialTheme.colorScheme.onError,
+                                tint = colorScheme.onError,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -490,7 +489,7 @@ fun MainHomePage(
                         onClick = onDismissAllNotifications,
                         interactionSource = deleteInteractionSource,
                         shape = RoundedCornerShape(deleteCornerRadius),
-                        color = MaterialTheme.colorScheme.error,
+                        color = colorScheme.error,
                         modifier = Modifier
                             .height(40.dp)
                             .width(itemWidth)
@@ -499,7 +498,7 @@ fun MainHomePage(
                             Icon(
                                 imageVector = Icons.Rounded.Delete,
                                 contentDescription = "Clear All",
-                                tint = MaterialTheme.colorScheme.onError,
+                                tint = colorScheme.onError,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -516,6 +515,7 @@ fun MainHomePage(
 
 @Composable
 fun NotificationItem(
+    modifier: Modifier = Modifier,
     notification: LauncherNotification,
     appColor: Color,
     isFirst: Boolean,
@@ -523,7 +523,6 @@ fun NotificationItem(
     offsetAbove: Float = 0f,
     offsetBelow: Float = 0f,
     onOffsetChanged: (Float) -> Unit = {},
-    modifier: Modifier = Modifier,
     onOpen: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -540,7 +539,7 @@ fun NotificationItem(
     val dismissThreshold = with(density) { 100.dp.toPx() }
     val stretchLimit = with(density) { 120.dp.toPx() }
 
-    val finalAppColor = if (appColor == Color.Unspecified) MaterialTheme.colorScheme.primary else appColor
+    val finalAppColor = if (appColor == Color.Unspecified) colorScheme.primary else appColor
     val finalContrastColor = remember(finalAppColor) { getContrastColor(finalAppColor) }
     var expanded by remember { mutableStateOf(false) }
 
@@ -602,12 +601,11 @@ fun NotificationItem(
                     },
                     state = rememberDraggableState { delta ->
                         coroutineScope.launch {
-                            val unstickDist = dismissThreshold
                             val restickDist = dismissThreshold * 0.8f
 
-                            var newRawDrag = rawDragOffset + delta
+                            val newRawDrag = rawDragOffset + delta
                             val newStuck = if (isStuck) {
-                                abs(newRawDrag) < unstickDist
+                                abs(newRawDrag) < dismissThreshold
                             } else {
                                 abs(newRawDrag) < restickDist
                             }
@@ -1085,11 +1083,11 @@ fun WidgetPage(
 
                         Box(
                             modifier = Modifier
-                                .offset(x = animX, y = animY)
                                 .size(width = animW, height = animH)
                                 .padding(4.dp)
                                 .scale(liftScale)
                                 .zIndex(if (isSelected) 1f else 0f)
+                                .offset(x = animX, y = animY)
                         ) {
                             // Widget Content Box
                             Box(
@@ -1113,7 +1111,7 @@ fun WidgetPage(
                                         .fillMaxSize()
                                         .border(
                                             width = 2.dp,
-                                            color = MaterialTheme.colorScheme.primary.copy(alpha = selectionProgress),
+                                            color = colorScheme.primary.copy(alpha = selectionProgress),
                                             shape = RoundedCornerShape(24.dp)
                                         )
                                 )
@@ -1192,10 +1190,10 @@ fun WidgetPage(
                                 val cellPx = with(density) { cellSizeDp.toPx() }
 
                                 // Handles
-                                val topAcc = remember { mutableStateOf(0f) }
+                                val topAcc = remember { mutableFloatStateOf(0f) }
                                 PixelResizeHandle(Alignment.TopCenter) { dragAmount ->
-                                    topAcc.value += dragAmount.y
-                                    val dy = (topAcc.value / cellPx).roundToInt()
+                                    topAcc.floatValue += dragAmount.y
+                                    val dy = (topAcc.floatValue / cellPx).roundToInt()
                                     if (dy != 0) {
                                         val maxY = (widget.y + widget.height - minH).coerceAtLeast(0)
                                         val newY = (widget.y + dy).coerceIn(0, maxY)
@@ -1203,29 +1201,29 @@ fun WidgetPage(
                                         if (newY != widget.y || newH != widget.height) {
                                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                             viewModel.updateWidget(widget.id, widget.page, widget.x, newY, widget.width, newH)
-                                            topAcc.value -= (newY - widget.y) * cellPx
+                                            topAcc.floatValue -= (newY - widget.y) * cellPx
                                         }
                                     }
                                 }
 
-                                val botAcc = remember { mutableStateOf(0f) }
+                                val botAcc = remember { mutableFloatStateOf(0f) }
                                 PixelResizeHandle(Alignment.BottomCenter) { dragAmount ->
-                                    botAcc.value += dragAmount.y
-                                    val dh = (botAcc.value / cellPx).roundToInt()
+                                    botAcc.floatValue += dragAmount.y
+                                    val dh = (botAcc.floatValue / cellPx).roundToInt()
                                     if (dh != 0) {
                                         val newH = (widget.height + dh).coerceIn(minH, (rowCount - widget.y).coerceAtLeast(minH))
                                         if (newH != widget.height) {
                                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                             viewModel.updateWidget(widget.id, widget.page, widget.x, widget.y, widget.width, newH)
-                                            botAcc.value -= (newH - widget.height) * cellPx
+                                            botAcc.floatValue -= (newH - widget.height) * cellPx
                                         }
                                     }
                                 }
 
-                                val leftAcc = remember { mutableStateOf(0f) }
+                                val leftAcc = remember { mutableFloatStateOf(0f) }
                                 PixelResizeHandle(Alignment.CenterStart) { dragAmount ->
-                                    leftAcc.value += dragAmount.x
-                                    val dx = (leftAcc.value / cellPx).roundToInt()
+                                    leftAcc.floatValue += dragAmount.x
+                                    val dx = (leftAcc.floatValue / cellPx).roundToInt()
                                     if (dx != 0) {
                                         val maxX = (widget.x + widget.width - minW).coerceAtLeast(0)
                                         val newX = (widget.x + dx).coerceIn(0, maxX)
@@ -1233,22 +1231,22 @@ fun WidgetPage(
                                         if (newX != widget.x || newW != widget.width) {
                                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                             viewModel.updateWidget(widget.id, widget.page, newX, widget.y, newW, widget.height)
-                                            leftAcc.value -= (newX - widget.x) * cellPx
+                                            leftAcc.floatValue -= (newX - widget.x) * cellPx
                                         }
                                     }
                                 }
 
-                                val rightAcc = remember { mutableStateOf(0f) }
+                                val rightAcc = remember { mutableFloatStateOf(0f) }
                                 PixelResizeHandle(Alignment.CenterEnd) { dragAmount ->
-                                    rightAcc.value += dragAmount.x
-                                    val dw = (rightAcc.value / cellPx).roundToInt()
+                                    rightAcc.floatValue += dragAmount.x
+                                    val dw = (rightAcc.floatValue / cellPx).roundToInt()
                                     if (dw != 0) {
                                         val maxAllowedW = (widgetColumns - widget.x).coerceAtLeast(minW)
                                         val newW = (widget.width + dw).coerceIn(minW, maxAllowedW)
                                         if (newW != widget.width) {
                                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                             viewModel.updateWidget(widget.id, widget.page, widget.x, widget.y, newW, widget.height)
-                                            rightAcc.value -= (newW - widget.width) * cellPx
+                                            rightAcc.floatValue -= (newW - widget.width) * cellPx
                                         }
                                     }
                                 }
@@ -1275,8 +1273,8 @@ fun WidgetPage(
                     selectedWidgetId = -1
                 },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                    containerColor = colorScheme.errorContainer,
+                    contentColor = colorScheme.onErrorContainer
                 ),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
                 shape = RoundedCornerShape(20.dp),
@@ -1292,7 +1290,7 @@ fun WidgetPage(
             val dropDownOffsetDpX = with(density) { dropDownOffset.x.toDp() }
             val dropDownOffsetDpY = with(density) { dropDownOffset.y.toDp() }
             val gridOptions = if (isWide) listOf(6, 8, 10) else listOf(3, 4, 5)
-            val primaryColor = MaterialTheme.colorScheme.primary
+            val primaryColor = colorScheme.primary
             
             val menuItems = remember(isWide, widgetColumns, primaryColor) {
                 listOf(
@@ -1399,7 +1397,7 @@ fun WidgetSelectorDialog(
                 .fillMaxHeight(0.8f)
                 .padding(16.dp),
             shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.surface,
+            color = colorScheme.surface,
             tonalElevation = 6.dp
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
@@ -1420,7 +1418,7 @@ fun WidgetSelectorDialog(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                                    .background(colorScheme.surfaceVariant.copy(alpha = 0.3f))
                                     .clickable { expanded = !expanded }
                                     .padding(12.dp)
                             ) {
@@ -1499,10 +1497,10 @@ fun WidgetPickerItem(
             Box(
                 modifier = Modifier
                     .size(64.dp)
-                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp)),
+                    .background(colorScheme.surfaceVariant, RoundedCornerShape(8.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Rounded.Widgets, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(Icons.Rounded.Widgets, null, tint = colorScheme.onSurfaceVariant)
             }
         }
         
@@ -1514,7 +1512,7 @@ fun WidgetPickerItem(
         Text(
             "${info.minWidth / 40}x${info.minHeight / 40}", // Rough estimation
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            color = colorScheme.onSurface.copy(alpha = 0.6f)
         )
     }
 }
@@ -1541,8 +1539,8 @@ fun BoxScope.PixelResizeHandle(
             .align(alignment)
             .offset(x = xOffset, y = yOffset)
             .size(handleSize)
-            .background(MaterialTheme.colorScheme.primary, CircleShape)
-            .border(2.dp, MaterialTheme.colorScheme.surface, CircleShape)
+            .background(colorScheme.primary, CircleShape)
+            .border(2.dp, colorScheme.surface, CircleShape)
             .pointerInput(Unit) {
                 detectDragGestures { change, dragAmount ->
                     change.consume()
@@ -1574,7 +1572,7 @@ fun NotificationTabButton(
         }
     )
 
-    val finalAppColor = if (appColor == Color.Unspecified) MaterialTheme.colorScheme.primary else appColor
+    val finalAppColor = if (appColor == Color.Unspecified) colorScheme.primary else appColor
     val finalContrastColor = if (appColor == Color.Unspecified) {
         val luminance = 0.2126 * finalAppColor.red + 0.7152 * finalAppColor.green + 0.0722 * finalAppColor.blue
         if (luminance > 0.72) Color.Black else Color.White
@@ -1582,10 +1580,9 @@ fun NotificationTabButton(
         contrastColor
     }
 
-    val backgroundColor = if (isSelected) finalAppColor else MaterialTheme.colorScheme.surfaceDim.copy(alpha = 0.4f)
-    val iconColor = if (isSelected) finalContrastColor else MaterialTheme.colorScheme.onSurface
-    val tertiaryColor = remember(finalAppColor) { getTertiaryColor(finalAppColor) }
-    
+    val backgroundColor = if (isSelected) finalAppColor else colorScheme.surfaceDim.copy(alpha = 0.4f)
+    val iconColor = if (isSelected) finalContrastColor else colorScheme.onSurface
+
     Surface(
         onClick = onClick,
         interactionSource = interactionSource,
@@ -1702,16 +1699,9 @@ private fun getDominantColor(drawable: Drawable?): Color {
         hsv[2] = hsv[2].coerceAtMost(0.8f)
 
         Color(android.graphics.Color.HSVToColor(hsv)).copy(alpha = 1f)
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         Color.Unspecified
     }
-}
-
-private fun getTertiaryColor(color: Color): Color {
-    val hsv = FloatArray(3)
-    android.graphics.Color.colorToHSV(color.toArgb(), hsv)
-    hsv[0] = (hsv[0] + 60f) % 360f // Material 3 tertiary hue shift
-    return Color(android.graphics.Color.HSVToColor(hsv))
 }
 
 private fun getContrastColor(color: Color): Color {
