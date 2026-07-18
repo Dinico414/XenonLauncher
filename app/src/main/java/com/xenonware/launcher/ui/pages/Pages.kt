@@ -114,6 +114,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -1583,6 +1584,7 @@ fun NotificationTabButton(
 
     val backgroundColor = if (isSelected) finalAppColor else MaterialTheme.colorScheme.surfaceDim.copy(alpha = 0.4f)
     val iconColor = if (isSelected) finalContrastColor else MaterialTheme.colorScheme.onSurface
+    val tertiaryColor = remember(finalAppColor) { getTertiaryColor(finalAppColor) }
     
     Surface(
         onClick = onClick,
@@ -1703,6 +1705,13 @@ private fun getDominantColor(drawable: Drawable?): Color {
     } catch (e: Exception) {
         Color.Unspecified
     }
+}
+
+private fun getTertiaryColor(color: Color): Color {
+    val hsv = FloatArray(3)
+    android.graphics.Color.colorToHSV(color.toArgb(), hsv)
+    hsv[0] = (hsv[0] + 60f) % 360f // Material 3 tertiary hue shift
+    return Color(android.graphics.Color.HSVToColor(hsv))
 }
 
 private fun getContrastColor(color: Color): Color {
