@@ -17,6 +17,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -55,6 +56,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -110,7 +112,7 @@ fun WidgetPage(
 
     val density = LocalDensity.current
     val cellSizeDp = screenWidth / widgetColumns
-    val rowCount = (pageHeight / cellSizeDp).roundToInt().coerceAtLeast(1)
+    val rowCount = (pageHeight / cellSizeDp).toInt().coerceAtLeast(1)
 
     val appWidgetManager = remember { AppWidgetManager.getInstance(context) }
     val appWidgetHost = remember { AppWidgetHost(context, 1024) }
@@ -123,6 +125,21 @@ fun WidgetPage(
     val hazeState = rememberHazeState()
 
     val isEditing = selectedWidgetId != -1
+
+    // Helper to check for collisions and boundaries
+    val isAreaVacant = remember(widgets, widgetColumns, rowCount) {
+        { widgetId: Int, page: Int, x: Int, y: Int, width: Int, height: Int ->
+            if (x < 0 || y < 0 || x + width > widgetColumns || y + height > rowCount) false
+            else widgets.none { other ->
+                other.id != widgetId &&
+                        other.page == page &&
+                        x < other.x + other.width &&
+                        x + width > other.x &&
+                        y < other.y + other.height &&
+                        y + height > other.y
+            }
+        }
+    }
 
     // Pages only exist if they have content, plus one extra if in edit mode
     val pageCount = remember(widgets, isEditing) {
@@ -206,6 +223,12 @@ fun WidgetPage(
                     key(widget.id) {
                         val isSelected = selectedWidgetId == widget.id
                         val widgetInfo = remember(widget.id) { appWidgetManager.getAppWidgetInfo(widget.id) }
+                        
+                        val currentWidget by rememberUpdatedState(widget)
+                        val currentWidgetColumns by rememberUpdatedState(widgetColumns)
+                        val currentRowCount by rememberUpdatedState(rowCount)
+                        val currentIsEditing by rememberUpdatedState(isEditing)
+                        val currentIsSelected by rememberUpdatedState(isSelected)
 
                         val minW = if (widgetInfo != null) (widgetInfo.minWidth / cellSizeDp.value).roundToInt().coerceIn(1, widgetColumns) else 1
                         val minH = if (widgetInfo != null) (widgetInfo.minHeight / cellSizeDp.value).roundToInt().coerceIn(1, rowCount) else 1
@@ -237,11 +260,11 @@ fun WidgetPage(
 
                         Box(
                             modifier = Modifier
+                                .offset(x = animX, y = animY)
                                 .size(width = animW, height = animH)
                                 .padding(4.dp)
                                 .scale(liftScale)
                                 .zIndex(if (isSelected) 1f else 0f)
-                                .offset(x = animX, y = animY)
                         ) {
                             // Widget Content Box
                             Box(
@@ -253,6 +276,12 @@ fun WidgetPage(
                                     factory = { ctx ->
                                         appWidgetHost.createView(ctx, widget.id, widgetInfo).apply {
                                             setPadding(0, 0, 0, 0)
+                                            setOnLongClickListener { 
+                                                // Handle long click to enter edit mode
+                                                selectedWidgetId = widget.id
+                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                true 
+                                            }
                                         }
                                     },
                                     update = { _ -> },
@@ -271,74 +300,78 @@ fun WidgetPage(
                                 )
                             }
 
-                            // Interaction Overlay
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .pointerInput(widget.id, isSelected) {
-                                        if (isSelected) {
+                            // Interaction Overlay (ONLY visible when selected or in global edit mode)
+                            if (currentIsEditing) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .pointerInput(widget.id, currentIsSelected) {
                                             var moveAccumulated = Offset.Zero
                                             var lastPageTurnTime = 0L
-                                            detectDragGestures(
-                                                onDragStart = {
-                                                    isDraggingBody = true
-                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                    moveAccumulated = Offset.Zero
-                                                },
-                                                onDragEnd = { isDraggingBody = false },
-                                                onDragCancel = { isDraggingBody = false },
-                                                onDrag = { change, dragAmount ->
-                                                    change.consume()
-                                                    moveAccumulated += dragAmount
-                                                    val cellPx = with(density) { cellSizeDp.toPx() }
-                                                    val dx = (moveAccumulated.x / cellPx).roundToInt()
-                                                    val dy = (moveAccumulated.y / cellPx).roundToInt()
 
-                                                    val touchY = change.position.y
-                                                    val screenHeightPx = with(density) { pageHeight.toPx() }
-                                                    val edgeThreshold = with(density) { 50.dp.toPx() }
-                                                    val now = System.currentTimeMillis()
+                                            val handleDrag = { change: androidx.compose.ui.input.pointer.PointerInputChange, dragAmount: Offset ->
+                                                change.consume()
+                                                moveAccumulated += dragAmount
+                                                val cellPx = with(density) { cellSizeDp.toPx() }
+                                                val dx = (moveAccumulated.x / cellPx).roundToInt()
+                                                val dy = (moveAccumulated.y / cellPx).roundToInt()
 
-                                                    // Vertical Page Moving Logic
-                                                    if (touchY < edgeThreshold && pagerState.currentPage > 0 && now - lastPageTurnTime > 1000) {
+                                                val touchYInPager = change.position.y + with(density) { animY.toPx() }
+                                                val pagerHeightPx = with(density) { pageHeight.toPx() }
+                                                val edgeThreshold = with(density) { 60.dp.toPx() }
+                                                val now = System.currentTimeMillis()
+
+                                                if (touchYInPager < edgeThreshold && pagerState.currentPage > 0 && now - lastPageTurnTime > 1000) {
+                                                    val newPage = pagerState.currentPage - 1
+                                                    if (isAreaVacant(currentWidget.id, newPage, currentWidget.x, currentWidget.y, currentWidget.width, currentWidget.height)) {
                                                         scope.launch {
-                                                            pagerState.animateScrollToPage(pagerState.currentPage - 1)
-                                                            viewModel.updateWidget(widget.id, pagerState.currentPage - 1, widget.x, widget.y, widget.width, widget.height)
-                                                        }
-                                                        lastPageTurnTime = now
-                                                    } else if (touchY > screenHeightPx - edgeThreshold && pagerState.currentPage < pageCount - 1 && now - lastPageTurnTime > 1000) {
-                                                        scope.launch {
-                                                            pagerState.animateScrollToPage(pagerState.currentPage + 1)
-                                                            viewModel.updateWidget(widget.id, pagerState.currentPage + 1, widget.x, widget.y, widget.width, widget.height)
+                                                            pagerState.animateScrollToPage(newPage)
+                                                            viewModel.updateWidget(currentWidget.id, newPage, currentWidget.x, currentWidget.y, currentWidget.width, currentWidget.height)
                                                         }
                                                         lastPageTurnTime = now
                                                     }
-
-                                                    if (dx != 0 || dy != 0) {
-                                                        val newX = (widget.x + dx).coerceIn(0, (widgetColumns - widget.width).coerceAtLeast(0))
-                                                        val newY = (widget.y + dy).coerceIn(0, (rowCount - widget.height).coerceAtLeast(0))
-                                                        if (newX != widget.x || newY != widget.y) {
-                                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                                            viewModel.updateWidget(widget.id, widget.page, newX, newY, widget.width, widget.height)
-                                                            moveAccumulated = Offset(moveAccumulated.x - (newX - widget.x) * cellPx, moveAccumulated.y - (newY - widget.y) * cellPx)
+                                                } else if (touchYInPager > pagerHeightPx - edgeThreshold && pagerState.currentPage < pageCount - 1 && now - lastPageTurnTime > 1000) {
+                                                    val newPage = pagerState.currentPage + 1
+                                                    if (isAreaVacant(currentWidget.id, newPage, currentWidget.x, currentWidget.y, currentWidget.width, currentWidget.height)) {
+                                                        scope.launch {
+                                                            pagerState.animateScrollToPage(newPage)
+                                                            viewModel.updateWidget(currentWidget.id, newPage, currentWidget.x, currentWidget.y, currentWidget.width, currentWidget.height)
                                                         }
+                                                        lastPageTurnTime = now
                                                     }
                                                 }
-                                            )
-                                        } else {
-                                            detectTapGestures(
-                                                onTap = {
-                                                    selectedWidgetId = widget.id
-                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                },
-                                                onLongPress = {
-                                                    selectedWidgetId = widget.id
-                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+
+                                                if (dx != 0 || dy != 0) {
+                                                    val newX = (currentWidget.x + dx).coerceIn(0, (currentWidgetColumns - currentWidget.width).coerceAtLeast(0))
+                                                    val newY = (currentWidget.y + dy).coerceIn(0, (currentRowCount - currentWidget.height).coerceAtLeast(0))
+                                                    
+                                                    if ((newX != currentWidget.x || newY != currentWidget.y) && isAreaVacant(currentWidget.id, currentWidget.page, newX, newY, currentWidget.width, currentWidget.height)) {
+                                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                        viewModel.updateWidget(currentWidget.id, currentWidget.page, newX, newY, currentWidget.width, currentWidget.height)
+                                                        moveAccumulated = Offset(
+                                                            moveAccumulated.x - (newX - currentWidget.x) * cellPx,
+                                                            moveAccumulated.y - (newY - currentWidget.y) * cellPx
+                                                        )
+                                                    }
                                                 }
-                                            )
+                                            }
+
+                                            if (currentIsSelected) {
+                                                detectDragGestures(
+                                                    onDragStart = {
+                                                        isDraggingBody = true
+                                                        moveAccumulated = Offset.Zero
+                                                    },
+                                                    onDragEnd = { isDraggingBody = false },
+                                                    onDragCancel = { isDraggingBody = false },
+                                                    onDrag = { change, dragAmount -> handleDrag(change, dragAmount) }
+                                                )
+                                            } else {
+                                                detectTapGestures(onTap = { selectedWidgetId = widget.id })
+                                            }
                                         }
-                                    }
-                            )
+                                )
+                            }
 
                             if (isSelected) {
                                 val cellPx = with(density) { cellSizeDp.toPx() }
@@ -349,13 +382,13 @@ fun WidgetPage(
                                     topAcc.floatValue += dragAmount.y
                                     val dy = (topAcc.floatValue / cellPx).roundToInt()
                                     if (dy != 0) {
-                                        val maxY = (widget.y + widget.height - minH).coerceAtLeast(0)
-                                        val newY = (widget.y + dy).coerceIn(0, maxY)
-                                        val newH = (widget.height - (newY - widget.y)).coerceAtLeast(minH)
-                                        if (newY != widget.y || newH != widget.height) {
+                                        val maxY = (currentWidget.y + currentWidget.height - minH).coerceAtLeast(0)
+                                        val newY = (currentWidget.y + dy).coerceIn(0, maxY)
+                                        val newH = (currentWidget.height - (newY - currentWidget.y)).coerceAtLeast(minH)
+                                        if ((newY != currentWidget.y || newH != currentWidget.height) && isAreaVacant(currentWidget.id, currentWidget.page, currentWidget.x, newY, currentWidget.width, newH)) {
                                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                            viewModel.updateWidget(widget.id, widget.page, widget.x, newY, widget.width, newH)
-                                            topAcc.floatValue -= (newY - widget.y) * cellPx
+                                            viewModel.updateWidget(currentWidget.id, currentWidget.page, currentWidget.x, newY, currentWidget.width, newH)
+                                            topAcc.floatValue -= (newY - currentWidget.y) * cellPx
                                         }
                                     }
                                 }
@@ -365,11 +398,11 @@ fun WidgetPage(
                                     botAcc.floatValue += dragAmount.y
                                     val dh = (botAcc.floatValue / cellPx).roundToInt()
                                     if (dh != 0) {
-                                        val newH = (widget.height + dh).coerceIn(minH, (rowCount - widget.y).coerceAtLeast(minH))
-                                        if (newH != widget.height) {
+                                        val newH = (currentWidget.height + dh).coerceIn(minH, (currentRowCount - currentWidget.y).coerceAtLeast(minH))
+                                        if (newH != currentWidget.height && isAreaVacant(currentWidget.id, currentWidget.page, currentWidget.x, currentWidget.y, currentWidget.width, newH)) {
                                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                            viewModel.updateWidget(widget.id, widget.page, widget.x, widget.y, widget.width, newH)
-                                            botAcc.floatValue -= (newH - widget.height) * cellPx
+                                            viewModel.updateWidget(currentWidget.id, currentWidget.page, currentWidget.x, currentWidget.y, currentWidget.width, newH)
+                                            botAcc.floatValue -= (newH - currentWidget.height) * cellPx
                                         }
                                     }
                                 }
@@ -379,13 +412,13 @@ fun WidgetPage(
                                     leftAcc.floatValue += dragAmount.x
                                     val dx = (leftAcc.floatValue / cellPx).roundToInt()
                                     if (dx != 0) {
-                                        val maxX = (widget.x + widget.width - minW).coerceAtLeast(0)
-                                        val newX = (widget.x + dx).coerceIn(0, maxX)
-                                        val newW = (widget.width - (newX - widget.x)).coerceAtLeast(minW)
-                                        if (newX != widget.x || newW != widget.width) {
+                                        val maxX = (currentWidget.x + currentWidget.width - minW).coerceAtLeast(0)
+                                        val newX = (currentWidget.x + dx).coerceIn(0, maxX)
+                                        val newW = (currentWidget.width - (newX - currentWidget.x)).coerceAtLeast(minW)
+                                        if ((newX != currentWidget.x || newW != currentWidget.width) && isAreaVacant(currentWidget.id, currentWidget.page, newX, currentWidget.y, newW, currentWidget.height)) {
                                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                            viewModel.updateWidget(widget.id, widget.page, newX, widget.y, newW, widget.height)
-                                            leftAcc.floatValue -= (newX - widget.x) * cellPx
+                                            viewModel.updateWidget(currentWidget.id, currentWidget.page, newX, currentWidget.y, newW, currentWidget.height)
+                                            leftAcc.floatValue -= (newX - currentWidget.x) * cellPx
                                         }
                                     }
                                 }
@@ -395,12 +428,12 @@ fun WidgetPage(
                                     rightAcc.floatValue += dragAmount.x
                                     val dw = (rightAcc.floatValue / cellPx).roundToInt()
                                     if (dw != 0) {
-                                        val maxAllowedW = (widgetColumns - widget.x).coerceAtLeast(minW)
-                                        val newW = (widget.width + dw).coerceIn(minW, maxAllowedW)
-                                        if (newW != widget.width) {
+                                        val maxAllowedW = (currentWidgetColumns - currentWidget.x).coerceAtLeast(minW)
+                                        val newW = (currentWidget.width + dw).coerceIn(minW, maxAllowedW)
+                                        if (newW != currentWidget.width && isAreaVacant(currentWidget.id, currentWidget.page, currentWidget.x, currentWidget.y, newW, currentWidget.height)) {
                                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                            viewModel.updateWidget(widget.id, widget.page, widget.x, widget.y, newW, widget.height)
-                                            rightAcc.floatValue -= (newW - widget.width) * cellPx
+                                            viewModel.updateWidget(currentWidget.id, currentWidget.page, currentWidget.x, currentWidget.y, newW, currentWidget.height)
+                                            rightAcc.floatValue -= (newW - currentWidget.width) * cellPx
                                         }
                                     }
                                 }
@@ -418,25 +451,41 @@ fun WidgetPage(
             exit = fadeOut() + scaleOut(),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 80.dp)
+                .padding(bottom = 120.dp) // Lifted higher
         ) {
-            Button(
-                onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    viewModel.removeWidget(selectedWidgetId)
-                    selectedWidgetId = -1
-                },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = colorScheme.errorContainer,
-                    contentColor = colorScheme.onErrorContainer
-                ),
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
-                shape = RoundedCornerShape(20.dp),
-                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
-            ) {
-                Icon(Icons.Rounded.Delete, null, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Remove", fontWeight = FontWeight.SemiBold)
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Button(
+                    onClick = {
+                        selectedWidgetId = -1
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colorScheme.secondaryContainer,
+                        contentColor = colorScheme.onSecondaryContainer
+                    ),
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                ) {
+                    Text("Done", fontWeight = FontWeight.SemiBold)
+                }
+                
+                Button(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        viewModel.removeWidget(selectedWidgetId)
+                        selectedWidgetId = -1
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colorScheme.errorContainer,
+                        contentColor = colorScheme.onErrorContainer
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
+                ) {
+                    Icon(Icons.Rounded.Delete, null, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Remove", fontWeight = FontWeight.SemiBold)
+                }
             }
         }
 
@@ -446,8 +495,8 @@ fun WidgetPage(
             val gridOptions = if (isWide) listOf(6, 8, 10) else listOf(3, 4, 5)
             val primaryColor = colorScheme.primary
 
-            val menuItems = remember(isWide, widgetColumns, primaryColor) {
-                listOf(
+            val menuItems = remember(isWide, widgetColumns, primaryColor, isEditing) {
+                listOfNotNull(
                     MenuItem(
                         text = "Wallpaper",
                         onClick = {
@@ -465,7 +514,12 @@ fun WidgetPage(
                         text = "Add Widget",
                         onClick = { showWidgetSelector = true },
                         leadingIcon = { Icon(Icons.Rounded.Add, null) }
-                    )
+                    ),
+                    if (!isEditing) MenuItem(
+                        text = "Edit Layout",
+                        onClick = { selectedWidgetId = -2 }, // -2 means "edit mode enabled but no widget selected"
+                        leadingIcon = { Icon(Icons.Rounded.Settings, null) }
+                    ) else null
                 ) + gridOptions.map { cols ->
                     MenuItem(
                         text = "Grid Size ${cols}x$rowCount",
