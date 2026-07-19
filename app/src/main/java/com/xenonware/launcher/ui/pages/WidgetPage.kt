@@ -52,7 +52,6 @@ import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -66,13 +65,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
@@ -257,7 +259,7 @@ fun WidgetPage(
             val topIndicatorHeight = statusBarHeight + verticalPadding + (cellSizeDp / 2)
             val bottomIndicatorHeight = totalDockAreaHeight + verticalPadding + (cellSizeDp / 2)
             val primaryColor = colorScheme.primary
-            
+
             Box(modifier = Modifier.fillMaxSize()) {
                 if (pagerState.currentPage > 0) {
                     Box(
@@ -318,11 +320,12 @@ fun WidgetPage(
             }
         }
 
-        // Main Content Layer with Status Bar Padding
-        Box(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
+        // Main Content Layer
+        Box(modifier = Modifier.fillMaxSize()) {
             // Pixel-style Dot Grid
             Canvas(modifier = Modifier
                 .fillMaxSize()
+                .statusBarsPadding()
                 .padding(horizontal = horizontalPadding, vertical = verticalPadding)
                 .padding(bottom = totalDockAreaHeight - navBarHeight) // Adjust for dock
             ) {
@@ -339,18 +342,37 @@ fun WidgetPage(
                 }
             }
 
-            VerticalPager(
-                state = pagerState,
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(bottom = totalDockAreaHeight),
-                userScrollEnabled = !isEditing
-            ) { pageIndex ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = horizontalPadding, vertical = verticalPadding)
-                ) {
+                    .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                    .drawWithContent {
+                        drawContent()
+                        val topFadeHeight = (statusBarHeight + verticalPadding).toPx()
+                        val bottomFadeHeight = (totalDockAreaHeight + verticalPadding).toPx()
+                        val totalHeight = size.height
+                        
+                        if (totalHeight > 0) {
+                            drawRect(
+                                brush = Brush.verticalGradient(
+                                    0f to Color.Transparent,
+                                    (topFadeHeight / totalHeight).coerceIn(0f, 1f) to Color.Black,
+                                    ((totalHeight - bottomFadeHeight) / totalHeight).coerceIn(0f, 1f) to Color.Black,
+                                    1f to Color.Transparent
+                                ),
+                                blendMode = BlendMode.DstIn
+                            )
+                        }
+                    }
+            ) {
+                VerticalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize(),
+                    userScrollEnabled = !isEditing
+                ) { pageIndex ->
+                    Box(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
                     widgets.filter { it.page == pageIndex }.forEach { widget ->
                         key(widget.id) {
                             val isSelected = selectedWidgetId == widget.id
@@ -391,7 +413,7 @@ fun WidgetPage(
 
                             Box(
                                 modifier = Modifier
-                                    .offset(x = animX, y = animY)
+                                    .offset(x = animX + horizontalPadding, y = animY + verticalPadding + statusBarHeight)
                                     .size(width = animW, height = animH)
                                     .padding(4.dp)
                                     .scale(liftScale)
@@ -688,6 +710,8 @@ fun WidgetPage(
                     offsetY = dropDownOffsetDpY,
                     alignment = Alignment.TopStart
                 )
+            }
+
             }
 
             // Vertical Page Indicator - Fixed sibling to pager
