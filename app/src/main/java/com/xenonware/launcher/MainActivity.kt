@@ -39,7 +39,7 @@ import androidx.compose.ui.unit.dp
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.xenonware.launcher.ui.layouts.main.AppDrawer
-import com.xenonware.launcher.ui.pages.MainHomePage
+import com.xenonware.launcher.ui.pages.NotificationPage
 import com.xenonware.launcher.ui.pages.MediaPage
 import com.xenonware.launcher.ui.pages.WidgetPage
 import com.xenonware.launcher.ui.res.dock.DockPill
@@ -197,7 +197,7 @@ fun LauncherScreen(
                     ) { page ->
                         when (page) {
                             0 -> MediaPage()
-                            1 -> MainHomePage(
+                            1 -> NotificationPage(
                                 notificationCount = notificationCount,
                                 currentDate = currentDate,
                                 notifications = notifications,
