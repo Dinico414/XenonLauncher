@@ -17,7 +17,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -141,6 +140,40 @@ fun WidgetPage(
         }
     }
 
+    // Helper to find first available space
+    val findFirstAvailableSpace = remember(widgets, widgetColumns, rowCount, isAreaVacant) {
+        { width: Int, height: Int, startPage: Int ->
+            var found: Triple<Int, Int, Int>? = null
+            for (p in startPage until 5) {
+                for (y in 0..rowCount - height) {
+                    for (x in 0..widgetColumns - width) {
+                        if (isAreaVacant(-1, p, x, y, width, height)) {
+                            found = Triple(p, x, y)
+                            break
+                        }
+                    }
+                    if (found != null) break
+                }
+                if (found != null) break
+            }
+            if (found == null) {
+                for (p in 0 until startPage) {
+                    for (y in 0..rowCount - height) {
+                        for (x in 0..widgetColumns - width) {
+                            if (isAreaVacant(-1, p, x, y, width, height)) {
+                                found = Triple(p, x, y)
+                                break
+                            }
+                        }
+                        if (found != null) break
+                    }
+                    if (found != null) break
+                }
+            }
+            found
+        }
+    }
+
     // Pages only exist if they have content, plus one extra if in edit mode
     val pageCount = remember(widgets, isEditing) {
         val maxWidgetPage = widgets.maxOfOrNull { it.page } ?: 0
@@ -157,7 +190,14 @@ fun WidgetPage(
             val data = result.data
             val appWidgetId = data?.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1) ?: -1
             if (appWidgetId != -1) {
-                viewModel.addWidget(appWidgetId, pagerState.currentPage, 0, 0, 2.coerceAtMost(widgetColumns), 2)
+                val w = 2.coerceAtMost(widgetColumns)
+                val h = 2
+                val space = findFirstAvailableSpace(w, h, pagerState.currentPage)
+                if (space != null) {
+                    viewModel.addWidget(appWidgetId, space.first, space.second, space.third, w, h)
+                } else {
+                    viewModel.addWidget(appWidgetId, pagerState.currentPage, 0, 0, w, h)
+                }
             }
         }
     }
@@ -318,24 +358,46 @@ fun WidgetPage(
 
                                                 val touchYInPager = change.position.y + with(density) { animY.toPx() }
                                                 val pagerHeightPx = with(density) { pageHeight.toPx() }
-                                                val edgeThreshold = with(density) { 60.dp.toPx() }
+                                                val edgeThreshold = with(density) { 80.dp.toPx() }
                                                 val now = System.currentTimeMillis()
 
                                                 if (touchYInPager < edgeThreshold && pagerState.currentPage > 0 && now - lastPageTurnTime > 1000) {
                                                     val newPage = pagerState.currentPage - 1
-                                                    if (isAreaVacant(currentWidget.id, newPage, currentWidget.x, currentWidget.y, currentWidget.width, currentWidget.height)) {
+                                                    var targetX = currentWidget.x
+                                                    var targetY = currentWidget.y
+
+                                                    if (!isAreaVacant(currentWidget.id, newPage, targetX, targetY, currentWidget.width, currentWidget.height)) {
+                                                        val space = findFirstAvailableSpace(currentWidget.width, currentWidget.height, newPage)
+                                                        if (space != null && space.first == newPage) {
+                                                            targetX = space.second
+                                                            targetY = space.third
+                                                        }
+                                                    }
+
+                                                    if (isAreaVacant(currentWidget.id, newPage, targetX, targetY, currentWidget.width, currentWidget.height)) {
                                                         scope.launch {
                                                             pagerState.animateScrollToPage(newPage)
-                                                            viewModel.updateWidget(currentWidget.id, newPage, currentWidget.x, currentWidget.y, currentWidget.width, currentWidget.height)
+                                                            viewModel.updateWidget(currentWidget.id, newPage, targetX, targetY, currentWidget.width, currentWidget.height)
                                                         }
                                                         lastPageTurnTime = now
                                                     }
                                                 } else if (touchYInPager > pagerHeightPx - edgeThreshold && pagerState.currentPage < pageCount - 1 && now - lastPageTurnTime > 1000) {
                                                     val newPage = pagerState.currentPage + 1
-                                                    if (isAreaVacant(currentWidget.id, newPage, currentWidget.x, currentWidget.y, currentWidget.width, currentWidget.height)) {
+                                                    var targetX = currentWidget.x
+                                                    var targetY = currentWidget.y
+
+                                                    if (!isAreaVacant(currentWidget.id, newPage, targetX, targetY, currentWidget.width, currentWidget.height)) {
+                                                        val space = findFirstAvailableSpace(currentWidget.width, currentWidget.height, newPage)
+                                                        if (space != null && space.first == newPage) {
+                                                            targetX = space.second
+                                                            targetY = space.third
+                                                        }
+                                                    }
+
+                                                    if (isAreaVacant(currentWidget.id, newPage, targetX, targetY, currentWidget.width, currentWidget.height)) {
                                                         scope.launch {
                                                             pagerState.animateScrollToPage(newPage)
-                                                            viewModel.updateWidget(currentWidget.id, newPage, currentWidget.x, currentWidget.y, currentWidget.width, currentWidget.height)
+                                                            viewModel.updateWidget(currentWidget.id, newPage, targetX, targetY, currentWidget.width, currentWidget.height)
                                                         }
                                                         lastPageTurnTime = now
                                                     }
@@ -574,8 +636,13 @@ fun WidgetPage(
             onWidgetSelected = { info ->
                 val appWidgetId = appWidgetHost.allocateAppWidgetId()
                 val success = appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)
+                val w = 2.coerceAtMost(widgetColumns)
+                val h = 2
+                val space = findFirstAvailableSpace(w, h, pagerState.currentPage)
+                val (targetPage, targetX, targetY) = space ?: Triple(pagerState.currentPage, 0, 0)
+
                 if (success) {
-                    viewModel.addWidget(appWidgetId, pagerState.currentPage, 0, 0, 2.coerceAtMost(widgetColumns), 2)
+                    viewModel.addWidget(appWidgetId, targetPage, targetX, targetY, w, h)
                 } else {
                     val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_BIND).apply {
                         putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
