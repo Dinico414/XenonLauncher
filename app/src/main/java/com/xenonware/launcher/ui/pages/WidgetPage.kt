@@ -108,7 +108,7 @@ fun WidgetPage(
     val isWide = configuration.screenWidthDp >= 640
 
     // Grid layout constants
-    val horizontalPadding = 24.dp
+    val horizontalPadding = 16.dp
     val screenWidth = configuration.screenWidthDp.dp - (horizontalPadding * 2)
 
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -121,14 +121,16 @@ fun WidgetPage(
     val widgetColumns by viewModel.widgetColumns.collectAsState()
     val widgets by viewModel.widgets.collectAsState()
 
-    val cellSizeDp = screenWidth / widgetColumns
+    // Split cell width and height to keep vertical layout stable when horizontal padding changes
+    val cellWidthDp = screenWidth / widgetColumns
+    val cellHeightDp = (configuration.screenWidthDp.dp - (24.dp * 2)) / widgetColumns
     
     // Optimized row calculation to fit maximum widgets (e.g., 4x7)
     val gridAreaHeight = configuration.screenHeightDp.dp - statusBarHeight - totalDockAreaHeight
-    val rowCount = (gridAreaHeight / cellSizeDp).toInt().coerceAtLeast(1)
+    val rowCount = (gridAreaHeight / cellHeightDp).toInt().coerceAtLeast(1)
     
     // Calculate precise vertical padding to center the grid rows
-    val verticalPadding = (gridAreaHeight - (cellSizeDp * rowCount)) / 2
+    val verticalPadding = (gridAreaHeight - (cellHeightDp * rowCount)) / 2
 
     val appWidgetManager = remember { AppWidgetManager.getInstance(context) }
     val appWidgetHost = remember { AppWidgetHost(context, 1024) }
@@ -256,8 +258,8 @@ fun WidgetPage(
             modifier = Modifier.fillMaxSize()
         ) {
             // Precision indicator heights to cover exactly 50% of first/last rows
-            val topIndicatorHeight = statusBarHeight + verticalPadding + (cellSizeDp / 2)
-            val bottomIndicatorHeight = totalDockAreaHeight + verticalPadding + (cellSizeDp / 2)
+            val topIndicatorHeight = statusBarHeight + verticalPadding + (cellHeightDp / 2)
+            val bottomIndicatorHeight = totalDockAreaHeight + verticalPadding + (cellHeightDp / 2)
             val primaryColor = colorScheme.primary
 
             Box(modifier = Modifier.fillMaxSize()) {
@@ -330,13 +332,14 @@ fun WidgetPage(
                 .padding(bottom = totalDockAreaHeight - navBarHeight) // Adjust for dock
             ) {
                 if (gridAlpha > 0f) {
-                    val cellPx = cellSizeDp.toPx()
+                    val cellWidthPx = cellWidthDp.toPx()
+                    val cellHeightPx = cellHeightDp.toPx()
                     val dotRadius = 0.8.dp.toPx()
                     val color = Color.White.copy(alpha = gridAlpha)
 
                     for (i in 0..widgetColumns) {
                         for (j in 0..rowCount) {
-                            drawCircle(color, dotRadius, Offset(i * cellPx, j * cellPx))
+                            drawCircle(color, dotRadius, Offset(i * cellWidthPx, j * cellHeightPx))
                         }
                     }
                 }
@@ -384,26 +387,26 @@ fun WidgetPage(
                             val currentIsEditing by rememberUpdatedState(isEditing)
                             val currentIsSelected by rememberUpdatedState(isSelected)
 
-                            val minW = if (widgetInfo != null) (widgetInfo.minWidth / cellSizeDp.value).roundToInt().coerceIn(1, widgetColumns) else 1
-                            val minH = if (widgetInfo != null) (widgetInfo.minHeight / cellSizeDp.value).roundToInt().coerceIn(1, rowCount) else 1
+                            val minW = if (widgetInfo != null) (widgetInfo.minWidth / cellWidthDp.value).roundToInt().coerceIn(1, widgetColumns) else 1
+                            val minH = if (widgetInfo != null) (widgetInfo.minHeight / cellHeightDp.value).roundToInt().coerceIn(1, rowCount) else 1
 
                             val animX by animateDpAsState(
-                                targetValue = (widget.x * cellSizeDp.value).dp,
+                                targetValue = (widget.x * cellWidthDp.value).dp,
                                 animationSpec = spring(stiffness = 500f, dampingRatio = 0.8f),
                                 label = "animX"
                             )
                             val animY by animateDpAsState(
-                                targetValue = (widget.y * cellSizeDp.value).dp,
+                                targetValue = (widget.y * cellHeightDp.value).dp,
                                 animationSpec = spring(stiffness = 500f, dampingRatio = 0.8f),
                                 label = "animY"
                             )
                             val animW by animateDpAsState(
-                                targetValue = (widget.width * cellSizeDp.value).dp,
+                                targetValue = (widget.width * cellWidthDp.value).dp,
                                 animationSpec = spring(stiffness = 500f, dampingRatio = 0.8f),
                                 label = "animW"
                             )
                             val animH by animateDpAsState(
-                                targetValue = (widget.height * cellSizeDp.value).dp,
+                                targetValue = (widget.height * cellHeightDp.value).dp,
                                 animationSpec = spring(stiffness = 500f, dampingRatio = 0.8f),
                                 label = "animH"
                             )
@@ -415,7 +418,7 @@ fun WidgetPage(
                                 modifier = Modifier
                                     .offset(x = animX + horizontalPadding, y = animY + verticalPadding + statusBarHeight)
                                     .size(width = animW, height = animH)
-                                    .padding(4.dp)
+                                    .padding(horizontal = 2.dp, vertical = 4.dp)
                                     .scale(liftScale)
                                     .zIndex(if (isSelected) 1f else 0f)
                             ) {
@@ -462,9 +465,10 @@ fun WidgetPage(
                                                 val handleDrag = { change: androidx.compose.ui.input.pointer.PointerInputChange, dragAmount: Offset ->
                                                     change.consume()
                                                     moveAccumulated += dragAmount
-                                                    val cellPx = with(density) { cellSizeDp.toPx() }
-                                                    val dx = (moveAccumulated.x / cellPx).roundToInt()
-                                                    val dy = (moveAccumulated.y / cellPx).roundToInt()
+                                                    val cellWidthPx = with(density) { cellWidthDp.toPx() }
+                                                    val cellHeightPx = with(density) { cellHeightDp.toPx() }
+                                                    val dx = (moveAccumulated.x / cellWidthPx).roundToInt()
+                                                    val dy = (moveAccumulated.y / cellHeightPx).roundToInt()
 
                                                     val touchYInPager = change.position.y + with(density) { animY.toPx() }
                                                     val pagerHeightPx = with(density) { gridAreaHeight.toPx() }
@@ -523,8 +527,8 @@ fun WidgetPage(
                                                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                                             viewModel.updateWidget(currentWidget.id, currentWidget.page, newX, newY, currentWidget.width, currentWidget.height)
                                                             moveAccumulated = Offset(
-                                                                moveAccumulated.x - (newX - currentWidget.x) * cellPx,
-                                                                moveAccumulated.y - (newY - currentWidget.y) * cellPx
+                                                                moveAccumulated.x - (newX - currentWidget.x) * cellWidthPx,
+                                                                moveAccumulated.y - (newY - currentWidget.y) * cellHeightPx
                                                             )
                                                         }
                                                     }
@@ -548,12 +552,13 @@ fun WidgetPage(
                                 }
 
                                 if (isSelected) {
-                                    val cellPx = with(density) { cellSizeDp.toPx() }
+                                    val cellWidthPx = with(density) { cellWidthDp.toPx() }
+                                    val cellHeightPx = with(density) { cellHeightDp.toPx() }
 
                                     val topAcc = remember { mutableFloatStateOf(0f) }
                                     WidgetEditBorder (Alignment.TopCenter) { dragAmount ->
                                         topAcc.floatValue += dragAmount.y
-                                        val dy = (topAcc.floatValue / cellPx).roundToInt()
+                                        val dy = (topAcc.floatValue / cellHeightPx).roundToInt()
                                         if (dy != 0) {
                                             val maxY = (currentWidget.y + currentWidget.height - minH).coerceAtLeast(0)
                                             val newY = (currentWidget.y + dy).coerceIn(0, maxY)
@@ -561,7 +566,7 @@ fun WidgetPage(
                                             if ((newY != currentWidget.y || newH != currentWidget.height) && isAreaVacant(currentWidget.id, currentWidget.page, currentWidget.x, newY, currentWidget.width, newH)) {
                                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                                 viewModel.updateWidget(currentWidget.id, currentWidget.page, currentWidget.x, newY, currentWidget.width, newH)
-                                                topAcc.floatValue -= (newY - currentWidget.y) * cellPx
+                                                topAcc.floatValue -= (newY - currentWidget.y) * cellHeightPx
                                             }
                                         }
                                     }
@@ -569,13 +574,13 @@ fun WidgetPage(
                                     val botAcc = remember { mutableFloatStateOf(0f) }
                                     WidgetEditBorder(Alignment.BottomCenter) { dragAmount ->
                                         botAcc.floatValue += dragAmount.y
-                                        val dh = (botAcc.floatValue / cellPx).roundToInt()
+                                        val dh = (botAcc.floatValue / cellHeightPx).roundToInt()
                                         if (dh != 0) {
                                             val newH = (currentWidget.height + dh).coerceIn(minH, (currentRowCount - currentWidget.y).coerceAtLeast(minH))
                                             if (newH != currentWidget.height && isAreaVacant(currentWidget.id, currentWidget.page, currentWidget.x, currentWidget.y, currentWidget.width, newH)) {
                                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                                 viewModel.updateWidget(currentWidget.id, currentWidget.page, currentWidget.x, currentWidget.y, currentWidget.width, newH)
-                                                botAcc.floatValue -= (newH - currentWidget.height) * cellPx
+                                                botAcc.floatValue -= (newH - currentWidget.height) * cellHeightPx
                                             }
                                         }
                                     }
@@ -583,7 +588,7 @@ fun WidgetPage(
                                     val leftAcc = remember { mutableFloatStateOf(0f) }
                                     WidgetEditBorder(Alignment.CenterStart) { dragAmount ->
                                         leftAcc.floatValue += dragAmount.x
-                                        val dx = (leftAcc.floatValue / cellPx).roundToInt()
+                                        val dx = (leftAcc.floatValue / cellWidthPx).roundToInt()
                                         if (dx != 0) {
                                             val maxX = (currentWidget.x + currentWidget.width - minW).coerceAtLeast(0)
                                             val newX = (currentWidget.x + dx).coerceIn(0, maxX)
@@ -591,7 +596,7 @@ fun WidgetPage(
                                             if ((newX != currentWidget.x || newW != currentWidget.width) && isAreaVacant(currentWidget.id, currentWidget.page, newX, currentWidget.y, newW, currentWidget.height)) {
                                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                                 viewModel.updateWidget(currentWidget.id, currentWidget.page, newX, currentWidget.y, newW, currentWidget.height)
-                                                leftAcc.floatValue -= (newX - currentWidget.x) * cellPx
+                                                leftAcc.floatValue -= (newX - currentWidget.x) * cellWidthPx
                                             }
                                         }
                                     }
@@ -599,14 +604,14 @@ fun WidgetPage(
                                     val rightAcc = remember { mutableFloatStateOf(0f) }
                                     WidgetEditBorder(Alignment.CenterEnd) { dragAmount ->
                                         rightAcc.floatValue += dragAmount.x
-                                        val dw = (rightAcc.floatValue / cellPx).roundToInt()
+                                        val dw = (rightAcc.floatValue / cellWidthPx).roundToInt()
                                         if (dw != 0) {
                                             val maxAllowedW = (currentWidgetColumns - currentWidget.x).coerceAtLeast(minW)
                                             val newW = (currentWidget.width + dw).coerceIn(minW, maxAllowedW)
                                             if (newW != currentWidget.width && isAreaVacant(currentWidget.id, currentWidget.page, currentWidget.x, currentWidget.y, newW, currentWidget.height)) {
                                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                                 viewModel.updateWidget(currentWidget.id, currentWidget.page, currentWidget.x, currentWidget.y, newW, currentWidget.height)
-                                                rightAcc.floatValue -= (newW - currentWidget.width) * cellPx
+                                                rightAcc.floatValue -= (newW - currentWidget.width) * cellWidthPx
                                             }
                                         }
                                     }
@@ -719,7 +724,7 @@ fun WidgetPage(
                 Column(
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
-                        .padding(end = 8.dp)
+                        .padding(end = 6.dp)
                         .padding(bottom = totalDockAreaHeight),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
