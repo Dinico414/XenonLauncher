@@ -245,7 +245,7 @@ fun NotificationItem(
                     }
                 ),
             shape = mainShape,
-            color = colorScheme.surfaceBright.copy(alpha = 0.5f),
+            color = colorScheme.surfaceBright.copy(alpha = 0.8f),
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(
