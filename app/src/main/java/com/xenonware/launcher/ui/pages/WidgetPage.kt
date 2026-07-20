@@ -33,7 +33,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -109,28 +108,41 @@ fun WidgetPage(
 
     // Grid layout constants
     val horizontalPadding = 16.dp
+    val topGridPadding = 8.dp
+    val bottomGridPadding = 8.dp
+    
     val screenWidth = configuration.screenWidthDp.dp - (horizontalPadding * 2)
 
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val navBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     
     // Dock area implementation: safe draw (nav bar) + base dock area
-    val dockBaseHeight = 110.dp
-    val totalDockAreaHeight = navBarHeight + dockBaseHeight
+    // Dock top is at: navBarHeight + 8.dp (dock bottom padding) + 72.dp (dock height)
+    val totalDockAreaHeight = navBarHeight + 72.dp + 8.dp
     
     val widgetColumns by viewModel.widgetColumns.collectAsState()
     val widgets by viewModel.widgets.collectAsState()
 
-    // Split cell width and height to keep vertical layout stable when horizontal padding changes
+    // Grid area boundaries
+    val gridTopOffset = statusBarHeight + topGridPadding
+    val gridBottomOffset = totalDockAreaHeight + bottomGridPadding
+    
+    val gridAreaHeight = configuration.screenHeightDp.dp - gridTopOffset - gridBottomOffset
+
+    // Cell width is strictly determined by horizontal padding and columns
     val cellWidthDp = screenWidth / widgetColumns
-    val cellHeightDp = (configuration.screenWidthDp.dp - (24.dp * 2)) / widgetColumns
     
-    // Optimized row calculation to fit maximum widgets (e.g., 4x7)
-    val gridAreaHeight = configuration.screenHeightDp.dp - statusBarHeight - totalDockAreaHeight
-    val rowCount = (gridAreaHeight / cellHeightDp).toInt().coerceAtLeast(1)
+    // Dynamic Row Calculation:
+    // We want as many rows as possible while keeping the cell aspect ratio
+    // between 75% and 125% of the width, but the row count must be even.
+    val maxPossibleRows = (gridAreaHeight / (cellWidthDp * 0.75f)).toInt()
+    val rowCount = (if (maxPossibleRows % 2 == 0) maxPossibleRows else maxPossibleRows - 1).coerceAtLeast(2)
     
-    // Calculate precise vertical padding to center the grid rows
-    val verticalPadding = (gridAreaHeight - (cellHeightDp * rowCount)) / 2
+    // Actual cell height to fill the available space exactly
+    val cellHeightDp = gridAreaHeight / rowCount
+    
+    // The grid starts exactly at the calculated gridTopOffset
+    val firstRowTopOffset = gridTopOffset
 
     val appWidgetManager = remember { AppWidgetManager.getInstance(context) }
     val appWidgetHost = remember { AppWidgetHost(context, 1024) }
@@ -258,8 +270,8 @@ fun WidgetPage(
             modifier = Modifier.fillMaxSize()
         ) {
             // Precision indicator heights to cover exactly 50% of first/last rows
-            val topIndicatorHeight = statusBarHeight + verticalPadding + (cellHeightDp / 2)
-            val bottomIndicatorHeight = totalDockAreaHeight + verticalPadding + (cellHeightDp / 2)
+            val topIndicatorHeight = gridTopOffset + (cellHeightDp / 2)
+            val bottomIndicatorHeight = gridBottomOffset + (cellHeightDp / 2)
             val primaryColor = colorScheme.primary
 
             Box(modifier = Modifier.fillMaxSize()) {
@@ -325,21 +337,18 @@ fun WidgetPage(
         // Main Content Layer
         Box(modifier = Modifier.fillMaxSize()) {
             // Pixel-style Dot Grid
-            Canvas(modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-                .padding(horizontal = horizontalPadding, vertical = verticalPadding)
-                .padding(bottom = totalDockAreaHeight - navBarHeight) // Adjust for dock
-            ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
                 if (gridAlpha > 0f) {
                     val cellWidthPx = cellWidthDp.toPx()
                     val cellHeightPx = cellHeightDp.toPx()
+                    val startXPx = horizontalPadding.toPx()
+                    val startYPx = firstRowTopOffset.toPx()
                     val dotRadius = 0.8.dp.toPx()
                     val color = Color.White.copy(alpha = gridAlpha)
 
                     for (i in 0..widgetColumns) {
                         for (j in 0..rowCount) {
-                            drawCircle(color, dotRadius, Offset(i * cellWidthPx, j * cellHeightPx))
+                            drawCircle(color, dotRadius, Offset(startXPx + i * cellWidthPx, startYPx + j * cellHeightPx))
                         }
                     }
                 }
@@ -351,8 +360,8 @@ fun WidgetPage(
                     .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
                     .drawWithContent {
                         drawContent()
-                        val topFadeHeight = (statusBarHeight + verticalPadding).toPx()
-                        val bottomFadeHeight = (totalDockAreaHeight + verticalPadding).toPx()
+                        val topFadeHeight = gridTopOffset.toPx()
+                        val bottomFadeHeight = gridBottomOffset.toPx()
                         val totalHeight = size.height
                         
                         if (totalHeight > 0) {
@@ -416,7 +425,7 @@ fun WidgetPage(
 
                             Box(
                                 modifier = Modifier
-                                    .offset(x = animX + horizontalPadding, y = animY + verticalPadding + statusBarHeight)
+                                    .offset(x = animX + horizontalPadding, y = animY + firstRowTopOffset)
                                     .size(width = animW, height = animH)
                                     .padding(horizontal = 2.dp, vertical = 4.dp)
                                     .scale(liftScale)
@@ -668,7 +677,7 @@ fun WidgetPage(
             if (showDropDown) {
                 val dropDownOffsetDpX = with(density) { dropDownOffset.x.toDp() }
                 val dropDownOffsetDpY = with(density) { dropDownOffset.y.toDp() }
-                val gridOptions = if (isWide) listOf(6, 8, 10) else listOf(3, 4, 5)
+                val gridOptions = if (isWide) listOf(6, 8, 10) else listOf(4, 5)
                 val primaryColor = colorScheme.primary
 
                 val menuItems = remember(isWide, widgetColumns, primaryColor, isEditing) {
@@ -725,7 +734,7 @@ fun WidgetPage(
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
                         .padding(end = 6.dp)
-                        .padding(bottom = totalDockAreaHeight),
+                        .padding(bottom = gridBottomOffset + 4.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {

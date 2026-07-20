@@ -22,11 +22,16 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -207,11 +212,13 @@ fun DockPill(
     }
 
     val baseDockColor = colorScheme.surfaceContainer
+    val safeDrawBottom = WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom).asPaddingValues().calculateBottomPadding()
+    val bottomPadding = if (safeDrawBottom < 16.dp) {16.dp} else {safeDrawBottom + 8.dp}
 
     Row(
         modifier = modifier
             .width(finalMaxDockWidth)
-            .padding(bottom = 32.dp, start = 16.dp, end = 16.dp)
+            .padding(bottom = bottomPadding, start = 16.dp, end = 16.dp)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() }, indication = null
             ) { /* Block touches */ },

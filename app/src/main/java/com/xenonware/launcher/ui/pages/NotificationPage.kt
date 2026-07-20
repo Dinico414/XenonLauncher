@@ -26,6 +26,9 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -98,6 +101,11 @@ fun NotificationPage(
         }
     }
 
+    val context = LocalContext.current
+    val navBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    // 72dp (dock) + 8dp (dock padding) + 8dp (gap) + 4dp (to match widget vertical padding)
+    val dockAreaHeight = 72.dp + navBarHeight + 8.dp + 8.dp + 4.dp
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -160,7 +168,7 @@ fun NotificationPage(
                     )
                 }
             }
-            Spacer(Modifier.height(110.dp)) // Accounts for dock area to center correctly
+            Spacer(Modifier.height(dockAreaHeight)) // Accounts for dock area to center correctly
         } else {
             // Notification List
             selectedPackage?.let { pkg ->
@@ -312,7 +320,7 @@ fun NotificationPage(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 110.dp)
+                    .padding(bottom = dockAreaHeight)
                     .padding(horizontal = horizontalPadding),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -439,10 +447,6 @@ fun NotificationPage(
                     }
                 }
             }
-        }
-
-        if (notificationCount > 0) {
-            Spacer(modifier = Modifier.weight(0.2f)) // Space above dock
         }
     }
 }
