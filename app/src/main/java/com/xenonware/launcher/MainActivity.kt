@@ -92,6 +92,7 @@ class MainActivity : ComponentActivity() {
                 val notifications by viewModel.notifications.collectAsState()
                 val badgeType by viewModel.notificationBadgeType.collectAsState()
                 val batteryLevel by viewModel.batteryLevel.collectAsState()
+                val isCharging by viewModel.isCharging.collectAsState()
                 val calendarEvents by viewModel.calendarEvents.collectAsState()
 
                 LauncherScreen(
@@ -109,6 +110,7 @@ class MainActivity : ComponentActivity() {
                     notifications = notifications,
                     badgeType = badgeType,
                     batteryLevel = batteryLevel,
+                    isCharging = isCharging,
                     calendarEvents = calendarEvents,
                     onAppClick = { viewModel.launchApp(it) },
                     onOpenSettings = {
@@ -136,6 +138,7 @@ fun LauncherScreen(
     notifications: List<com.xenonware.launcher.notification.LauncherNotification>,
     badgeType: Int,
     batteryLevel: Float,
+    isCharging: Boolean,
     calendarEvents: List<com.xenonware.launcher.viewmodel.CalendarEvent>,
     onAppClick: (String) -> Unit,
     onOpenSettings: () -> Unit
@@ -266,6 +269,7 @@ fun LauncherScreen(
                 isAppDrawerVisible = isAppDrawerVisible,
                 hazeState = hazeState,
                 progress = batteryLevel,
+                isCharging = isCharging,
                 onUnpinApp = { viewModel.unpinApp(it) },
                 onPinApp = { pkg, index -> viewModel.pinApp(pkg, index) },
                 onReorderApp = { from, to -> viewModel.reorderPinnedApp(from, to) }

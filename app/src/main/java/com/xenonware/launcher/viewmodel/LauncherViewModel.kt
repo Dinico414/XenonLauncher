@@ -131,6 +131,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             if (level != -1 && scale != -1) {
                 _batteryLevel.value = level.toFloat() / scale.toFloat()
             }
+            val status = intent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+            _isCharging.value = status == BatteryManager.BATTERY_STATUS_CHARGING ||
+                    status == BatteryManager.BATTERY_STATUS_FULL
         }
     }
     
@@ -159,6 +162,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private val _batteryLevel = MutableStateFlow(1f)
     val batteryLevel: StateFlow<Float> = _batteryLevel
+
+    private val _isCharging = MutableStateFlow(false)
+    val isCharging: StateFlow<Boolean> = _isCharging
 
     private val _calendarEvents = MutableStateFlow<List<CalendarEvent>>(emptyList())
     val calendarEvents: StateFlow<List<CalendarEvent>> = _calendarEvents
