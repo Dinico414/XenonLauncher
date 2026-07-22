@@ -31,9 +31,13 @@ import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.model.SearchResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
+import com.xenonware.launcher.util.matches
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import com.xenonware.launcher.util.matches
+import com.xenonware.launcher.util.matchesSearch
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -471,7 +475,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             val results = mutableListOf<SearchResult>()
 
             // 1. Search Apps
-            val appResults = _apps.value.filter { it.name.contains(query, ignoreCase = true) }
+            val appResults = _apps.value.filter { it.matches(query) }
                 .map { SearchResult.App(it) }
             results.addAll(appResults)
 
@@ -505,8 +509,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             ContactsContract.CommonDataKinds.Phone.NUMBER,
             ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI
         )
-        val selection = "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} LIKE ?"
-        val selectionArgs = arrayOf("%$query%")
+        val selection = null
+        val selectionArgs = null
 
         context.contentResolver.query(uri, projection, selection, selectionArgs, null)?.use { cursor ->
             val idIdx = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
@@ -516,10 +520,13 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
             while (cursor.moveToNext() && results.size < 20) {
                 val id = cursor.getString(idIdx)
-                val name = cursor.getString(nameIdx)
+                val name = cursor.getString(nameIdx) ?: ""
                 val number = cursor.getString(numberIdx)
                 val photoUriStr = cursor.getString(photoIdx)
-                results.add(SearchResult.Contact(id, name, number, photoUriStr?.let { Uri.parse(it) }))
+                
+                if (name.matchesSearch(query)) {
+                    results.add(SearchResult.Contact(id, name, number, photoUriStr?.let { Uri.parse(it) }))
+                }
             }
         }
         return results
@@ -536,8 +543,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             MediaStore.Files.FileColumns.MIME_TYPE,
             MediaStore.Files.FileColumns._ID
         )
-        val selection = "${MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ?"
-        val selectionArgs = arrayOf("%$query%")
+        val selection = null
+        val selectionArgs = null
 
         context.contentResolver.query(externalUri, projection, selection, selectionArgs, null)?.use { cursor ->
             val nameIdx = cursor.getColumnIndex(MediaStore.Files.FileColumns.DISPLAY_NAME)
@@ -546,9 +553,11 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             val idIdx = cursor.getColumnIndex(MediaStore.Files.FileColumns._ID)
 
             while (cursor.moveToNext() && results.size < 20) {
-                val name = cursor.getString(nameIdx)
+                val name = cursor.getString(nameIdx) ?: ""
                 val path = cursor.getString(dataIdx)
                 val mimeType = cursor.getString(mimeIdx) ?: "application/octet-stream"
+
+                if (!name.matchesSearch(query)) continue
 
                 // Filter out directories
                 if (path != null && java.io.File(path).isDirectory) continue

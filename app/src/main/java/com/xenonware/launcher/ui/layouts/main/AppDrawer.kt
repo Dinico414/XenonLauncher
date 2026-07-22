@@ -130,6 +130,7 @@ import com.xenonware.launcher.ui.res.notification.NotificationBadge
 import com.xenonware.launcher.ui.res.search.SearchHistoryItem
 import com.xenonware.launcher.ui.res.search.SearchResultItem
 import com.xenonware.launcher.util.LocalDragDropState
+import com.xenonware.launcher.util.matches
 import com.xenonware.launcher.viewmodel.LauncherViewModel
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
@@ -297,7 +298,7 @@ fun AppDrawer(
 
     val filteredApps = remember(apps, searchQuery) {
         if (searchQuery.isBlank()) apps
-        else apps.filter { it.name.contains(searchQuery.trim(), ignoreCase = true) }
+        else apps.filter { it.matches(searchQuery) }
     }
 
     fun handleSearchResultClick(result: SearchResult) {
