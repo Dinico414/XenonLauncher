@@ -16,6 +16,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -220,6 +221,23 @@ fun DockPill(
         modifier = modifier
             .width(finalMaxDockWidth)
             .padding(bottom = bottomPadding, start = 16.dp, end = 16.dp)
+            .pointerInput(isAppDrawerVisible) {
+                var totalVerticalDrag = 0f
+                detectVerticalDragGestures(
+                    onVerticalDrag = { _, dragAmount ->
+                        totalVerticalDrag += dragAmount
+                    },
+                    onDragEnd = {
+                        if (totalVerticalDrag < -50f && !isAppDrawerVisible) {
+                            onFabClick()
+                        }
+                        totalVerticalDrag = 0f
+                    },
+                    onDragCancel = {
+                        totalVerticalDrag = 0f
+                    }
+                )
+            }
             .clickable(
                 interactionSource = remember { MutableInteractionSource() }, indication = null
             ) { /* Block touches */ },
