@@ -15,6 +15,14 @@ class XenonNotificationService : NotificationListenerService() {
         fun dismissAllNotifications() {
             instance?.cancelAllNotifications()
         }
+
+        fun dismissNotificationsByPackage(packageName: String) {
+            instance?.activeNotifications?.forEach { sbn ->
+                if (sbn.packageName == packageName) {
+                    instance?.cancelNotification(sbn.key)
+                }
+            }
+        }
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {

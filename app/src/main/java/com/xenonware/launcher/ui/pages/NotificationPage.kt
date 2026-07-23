@@ -71,8 +71,14 @@ import com.xenonware.launcher.ui.res.notification.NotificationItem
 import com.xenonware.launcher.ui.res.notification.NotificationTabButton
 import kotlin.math.abs
 
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import com.xenonware.launcher.viewmodel.LauncherViewModel
+
 @Composable
 fun NotificationPage(
+    viewModel: LauncherViewModel,
     notificationCount: Int,
     currentDate: String,
     notifications: List<LauncherNotification>,
@@ -84,6 +90,7 @@ fun NotificationPage(
     var selectedPackage by remember { mutableStateOf<String?>(null) }
     val view = LocalView.current
     val offsets = remember { mutableStateMapOf<String, Float>() }
+    var deleteButtonBounds by remember { mutableStateOf(Rect.Zero) }
 
     val groupedNotifications = remember(notifications) {
         notifications.groupBy { it.packageName }
@@ -342,6 +349,15 @@ fun NotificationPage(
                             appColor = appColor,
                             contrastColor = contrastColor,
                             onClick = { selectedPackage = pkg },
+                            onDismiss = { viewModel.dismissNotificationsByPackage(pkg) },
+                            isOverDelete = { tabRect ->
+                                val intersection = deleteButtonBounds.intersect(tabRect)
+                                val overlapRatio = if (intersection.isEmpty) 0f else {
+                                    (intersection.width * intersection.height) / (deleteButtonBounds.width * deleteButtonBounds.height)
+                                }
+                                // Deletes if 50% overlap OR if the tab is dragged past the start of the delete button
+                                overlapRatio >= 0.5f || tabRect.center.x >= deleteButtonBounds.left
+                            },
                             modifier = Modifier.weight(1f)
                         )
                         Spacer(Modifier.width(tabSpacing))
@@ -357,6 +373,7 @@ fun NotificationPage(
                         modifier = Modifier
                             .height(40.dp)
                             .weight(1f)
+                            .onGloballyPositioned { deleteButtonBounds = it.boundsInRoot() }
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
@@ -419,6 +436,15 @@ fun NotificationPage(
                                     appColor = appColor,
                                     contrastColor = contrastColor,
                                     onClick = { selectedPackage = pkg },
+                                    onDismiss = { viewModel.dismissNotificationsByPackage(pkg) },
+                                    isOverDelete = { tabRect ->
+                                        val intersection = deleteButtonBounds.intersect(tabRect)
+                                        val overlapRatio = if (intersection.isEmpty) 0f else {
+                                            (intersection.width * intersection.height) / (deleteButtonBounds.width * deleteButtonBounds.height)
+                                        }
+                                        // Deletes if 50% overlap OR if the tab is dragged past the start of the delete button
+                                        overlapRatio >= 0.5f || tabRect.center.x >= deleteButtonBounds.left
+                                    },
                                     modifier = Modifier.width(itemWidth)
                                 )
                             }
@@ -435,6 +461,7 @@ fun NotificationPage(
                         modifier = Modifier
                             .height(40.dp)
                             .width(itemWidth)
+                            .onGloballyPositioned { deleteButtonBounds = it.boundsInRoot() }
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(

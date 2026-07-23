@@ -201,6 +201,7 @@ fun LauncherScreen(
                         when (page) {
                             0 -> MediaPage()
                             1 -> NotificationPage(
+                                viewModel = viewModel,
                                 notificationCount = notificationCount,
                                 currentDate = currentDate,
                                 notifications = notifications,

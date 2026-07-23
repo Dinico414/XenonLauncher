@@ -158,6 +158,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         com.xenonware.launcher.notification.XenonNotificationService.dismissAllNotifications()
     }
 
+    fun dismissNotificationsByPackage(packageName: String) {
+        com.xenonware.launcher.notification.XenonNotificationService.dismissNotificationsByPackage(packageName)
+    }
+
     private val _currentTime = MutableStateFlow(LocalDateTime.now())
     val currentTime: StateFlow<LocalDateTime> = _currentTime
 

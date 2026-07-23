@@ -39,9 +39,24 @@ import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import com.xenon.mylibrary.theme.QuicksandTitleVariable
 import com.xenonware.launcher.model.AppInfo
-import kotlin.math.abs
-import kotlin.math.pow
-import kotlin.math.sign
+import kotlin.math.roundToInt
+
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.VectorConverter
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.layout.offset
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.unit.IntOffset
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 @Composable
 fun NotificationTabButton(
@@ -52,17 +67,27 @@ fun NotificationTabButton(
     appColor: Color,
     contrastColor: Color,
     onClick: () -> Unit,
+    onDismiss: () -> Unit = {},
+    isOverDelete: (androidx.compose.ui.geometry.Rect) -> Boolean = { false },
     modifier: Modifier = Modifier
 ) {
+    val scope = rememberCoroutineScope()
+    val view = androidx.compose.ui.platform.LocalView.current
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
+    var itemPos by remember { mutableStateOf(Offset.Zero) }
+    var itemSize by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
+    val dragOffset = remember { Animatable(Offset.Zero, Offset.VectorConverter) }
+    var isDragging by remember { mutableStateOf(false) }
+
     val cornerRadius by animateDpAsState(
         targetValue = when {
-            isPressed -> 4.dp
+            isDragging || isPressed -> 4.dp
             isSelected -> 12.dp
             else -> 20.dp
-        }
+        },
+        label = "corner_radius"
     )
 
     val finalAppColor = if (appColor == Color.Unspecified) colorScheme.primary else appColor
@@ -80,8 +105,63 @@ fun NotificationTabButton(
         onClick = onClick,
         interactionSource = interactionSource,
         shape = RoundedCornerShape(cornerRadius),
-        color = backgroundColor,
-        modifier = modifier.height(40.dp)
+        color = if (isDragging) backgroundColor.copy(alpha = 0.9f) else backgroundColor,
+        modifier = modifier
+            .height(40.dp)
+            .onGloballyPositioned { 
+                itemPos = it.positionInRoot()
+                itemSize = it.size
+            }
+            .offset {
+                IntOffset(
+                    dragOffset.value.x.roundToInt(),
+                    dragOffset.value.y.roundToInt()
+                )
+            }
+            .pointerInput(Unit) {
+                detectDragGesturesAfterLongPress(
+                    onDragStart = { 
+                        isDragging = true
+                        view.parent?.requestDisallowInterceptTouchEvent(true)
+                    },
+                    onDrag = { change, dragAmount ->
+                        change.consume()
+                        scope.launch {
+                            // Only update X for horizontal movement
+                            dragOffset.snapTo(dragOffset.value.copy(x = dragOffset.value.x + dragAmount.x))
+                        }
+                    },
+                    onDragEnd = {
+                        isDragging = false
+                        val currentRect = androidx.compose.ui.geometry.Rect(
+                            itemPos + dragOffset.value,
+                            androidx.compose.ui.geometry.Size(itemSize.width.toFloat(), itemSize.height.toFloat())
+                        )
+                        if (isOverDelete(currentRect)) {
+                            onDismiss()
+                            scope.launch {
+                                dragOffset.snapTo(Offset.Zero)
+                            }
+                        } else {
+                            scope.launch {
+                                dragOffset.animateTo(
+                                    Offset.Zero,
+                                    spring(
+                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                        stiffness = Spring.StiffnessLow
+                                    )
+                                )
+                            }
+                        }
+                    },
+                    onDragCancel = {
+                        isDragging = false
+                        scope.launch {
+                            dragOffset.animateTo(Offset.Zero)
+                        }
+                    }
+                )
+            }
     ) {
         Row(
             modifier = Modifier
