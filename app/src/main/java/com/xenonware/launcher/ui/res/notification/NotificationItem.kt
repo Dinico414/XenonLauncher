@@ -482,7 +482,7 @@ fun NotificationItem(
                                         }
                                     },
                                     shape = RoundedCornerShape(12.dp),
-                                    color = if (selectedActionForReply == action) finalAppColor.copy(alpha = 0.2f) else Color.Transparent,
+                                    color = if (selectedActionForReply == action) finalAppColor else Color.Transparent,
                                     modifier = Modifier.height(32.dp)
                                 ) {
                                     Box(
@@ -491,7 +491,7 @@ fun NotificationItem(
                                     ) {
                                         Text(
                                             text = action.title,
-                                            color = if (selectedActionForReply == action) finalAppColor else colorScheme.onSurface,
+                                            color = if (selectedActionForReply == action) finalContrastColor else colorScheme.onSurface,
                                             fontSize = 12.sp,
                                             fontWeight = FontWeight.Medium
                                         )

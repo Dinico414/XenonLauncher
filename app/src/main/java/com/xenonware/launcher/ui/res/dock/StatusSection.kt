@@ -47,6 +47,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.LinearGradientShader
 import androidx.compose.ui.graphics.Shader
 import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.font.FontWeight
@@ -261,6 +262,7 @@ fun StatusSection(
                                             .size(20.dp)
                                             .graphicsLayer {
                                                 rotationZ = bellRotation
+                                                transformOrigin = TransformOrigin(0.5f, 0.25f)
                                             }
                                     )
                                 }
