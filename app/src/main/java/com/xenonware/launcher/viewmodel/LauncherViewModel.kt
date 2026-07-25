@@ -151,14 +151,17 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     val notifications = com.xenonware.launcher.notification.NotificationManager.notifications
 
     fun dismissNotification(key: String) {
+        com.xenonware.launcher.notification.NotificationManager.removeNotificationOptimistically(key)
         com.xenonware.launcher.notification.XenonNotificationService.dismissNotification(key)
     }
 
     fun dismissAllNotifications() {
+        com.xenonware.launcher.notification.NotificationManager.removeAllNotificationsOptimistically()
         com.xenonware.launcher.notification.XenonNotificationService.dismissAllNotifications()
     }
 
     fun dismissNotificationsByPackage(packageName: String) {
+        com.xenonware.launcher.notification.NotificationManager.removeNotificationsByPackageOptimistically(packageName)
         com.xenonware.launcher.notification.XenonNotificationService.dismissNotificationsByPackage(packageName)
     }
 
@@ -320,12 +323,16 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 addCategory(Intent.CATEGORY_LAUNCHER)
             }
             val resolvedInfos = pm.queryIntentActivities(intent, 0)
-            val appList = resolvedInfos.map {
-                AppInfo(
-                    name = it.loadLabel(pm).toString(),
-                    packageName = it.activityInfo.packageName,
-                    icon = it.loadIcon(pm)
-                )
+            val appList = resolvedInfos.mapNotNull {
+                try {
+                    AppInfo(
+                        name = it.loadLabel(pm).toString(),
+                        packageName = it.activityInfo.packageName,
+                        icon = it.loadIcon(pm)
+                    )
+                } catch (e: Exception) {
+                    null
+                }
             }.sortedBy { it.name.lowercase() }
             _apps.value = appList
 
@@ -692,9 +699,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 val locIdx = cursor.getColumnIndex(android.provider.CalendarContract.Events.EVENT_LOCATION)
 
                 while (cursor.moveToNext() && events.size < 5) {
+                    val title = cursor.getString(titleIdx) ?: "No Title"
                     events.add(
                         CalendarEvent(
-                            title = cursor.getString(titleIdx),
+                            title = title,
                             startTime = cursor.getLong(startIdx),
                             endTime = cursor.getLong(endIdx),
                             location = cursor.getString(locIdx)

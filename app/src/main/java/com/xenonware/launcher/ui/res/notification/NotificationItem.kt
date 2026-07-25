@@ -83,7 +83,7 @@ import androidx.core.graphics.drawable.toBitmap
 import com.xenonware.launcher.notification.LauncherNotification
 import com.xenonware.launcher.notification.LauncherNotificationAction
  import com.xenonware.launcher.ui.pages.getContrastColor
- import kotlinx.coroutines.launch
+import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.pow
@@ -114,7 +114,10 @@ fun NotificationItem(
     var isStuck by remember { mutableStateOf(true) }
     var isDismissing by remember { mutableStateOf(false) }
 
-    val dismissThreshold = with(density) { 100.dp.toPx() }
+    val dismissThreshold = remember(density) { 
+        val threshold = with(density) { 100.dp.toPx() }
+        if (threshold <= 0f) 1f else threshold
+    }
     val stretchLimit = with(density) { 120.dp.toPx() }
 
     val finalAppColor = if (appColor == Color.Unspecified) colorScheme.primary else appColor
@@ -217,17 +220,20 @@ fun NotificationItem(
                             if (isDismiss) {
                                 isDismissing = true
                                 val target = if (offsetX.value > 0) stretchLimit * 8 else -stretchLimit * 4
+                                
+                                // Optimistically dismiss immediately so the list starts collapsing
+                                onDismiss()
+                                
+                                // Animate the flight off screen
                                 offsetX.animateTo(
                                     targetValue = target,
                                     animationSpec = tween(
-                                        durationMillis = 280,
-                                        easing = CubicBezierEasing(0.4f, -0.15f, 0.2f, 1f)
+                                        durationMillis = 200,
+                                        easing = CubicBezierEasing(0.3f, 0f, 0.1f, 1f)
                                     )
                                 ) {
                                     onOffsetChanged(value)
                                 }
-                                onDismiss()
-                                onOffsetChanged(0f)
                             } else {
                                 offsetX.animateTo(
                                     targetValue = 0f,
@@ -254,18 +260,31 @@ fun NotificationItem(
                 ) {
                     val iconToDraw = notification.icon
                     if (iconToDraw != null) {
+                        val iconBitmap = remember(iconToDraw) {
+                            try {
+                                iconToDraw.toBitmap(
+                                    width = (40 * density.density).toInt().coerceAtLeast(1),
+                                    height = (40 * density.density).toInt().coerceAtLeast(1)
+                                ).asImageBitmap()
+                            } catch (e: Exception) {
+                                null
+                            }
+                        }
+                        
                         Box(
                             modifier = Modifier
                                 .size(40.dp)
                                 .background(finalAppColor, CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
-                            Image(
-                                bitmap = iconToDraw.toBitmap().asImageBitmap(),
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp),
-                                colorFilter = ColorFilter.tint(finalContrastColor)
-                            )
+                            if (iconBitmap != null) {
+                                Image(
+                                    bitmap = iconBitmap,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp),
+                                    colorFilter = ColorFilter.tint(finalContrastColor)
+                                )
+                            }
                         }
                     }
 
@@ -336,8 +355,8 @@ fun NotificationItem(
 
                 AnimatedVisibility(
                     visible = expanded && notification.actions.isNotEmpty(),
-                    enter = fadeIn() + expandVertically(),
-                    exit = fadeOut() + shrinkVertically()
+                    enter = fadeIn() + expandVertically(animationSpec = spring(stiffness = 800f)),
+                    exit = fadeOut() + shrinkVertically(animationSpec = spring(stiffness = 800f))
                 ) {
                     Column(modifier = Modifier.padding(top = 16.dp)) {
                         var selectedActionForReply by remember { mutableStateOf<LauncherNotificationAction?>(null) }
@@ -346,8 +365,8 @@ fun NotificationItem(
 
                         AnimatedVisibility(
                             visible = selectedActionForReply != null,
-                            enter = fadeIn() + expandVertically(),
-                            exit = fadeOut() + shrinkVertically()
+                            enter = fadeIn() + expandVertically(animationSpec = spring(stiffness = 800f)),
+                            exit = fadeOut() + shrinkVertically(animationSpec = spring(stiffness = 800f))
                         ) {
                             Row(
                                 modifier = Modifier

@@ -36,6 +36,29 @@ object NotificationManager {
         _notificationCount.value = count
     }
 
+    fun removeNotificationOptimistically(key: String) {
+        val current = _notifications.value
+        val updated = current.filter { it.key != key }
+        if (updated.size != current.size) {
+            _notifications.value = updated
+            _notificationCount.value = updated.size
+        }
+    }
+
+    fun removeNotificationsByPackageOptimistically(packageName: String) {
+        val current = _notifications.value
+        val updated = current.filter { it.packageName != packageName }
+        if (updated.size != current.size) {
+            _notifications.value = updated
+            _notificationCount.value = updated.size
+        }
+    }
+
+    fun removeAllNotificationsOptimistically() {
+        _notifications.value = emptyList()
+        _notificationCount.value = 0
+    }
+
     fun updateFromNotifications(
         context: android.content.Context,
         activeNotifications: Array<StatusBarNotification>?,

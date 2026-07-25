@@ -49,12 +49,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -69,12 +72,8 @@ import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.notification.LauncherNotification
 import com.xenonware.launcher.ui.res.notification.NotificationItem
 import com.xenonware.launcher.ui.res.notification.NotificationTabButton
-import kotlin.math.abs
-
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.layout.boundsInRoot
-import androidx.compose.ui.layout.onGloballyPositioned
 import com.xenonware.launcher.viewmodel.LauncherViewModel
+import kotlin.math.abs
 
 @Composable
 fun NotificationPage(
@@ -188,7 +187,7 @@ fun NotificationPage(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.Bottom),
-                    contentPadding = PaddingValues(bottom = 16.dp)
+                    contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
                 ) {
                     val notificationsInGroup = groupedNotifications[pkg]?.reversed() ?: emptyList()
                     itemsIndexed(notificationsInGroup, key = { _, it -> it.key }) { index, notification ->
@@ -205,11 +204,12 @@ fun NotificationPage(
                             offsetBelow = offsetBelow,
                             onOffsetChanged = { offsets[notification.key] = it },
                             modifier = Modifier.animateItem(
-                                fadeInSpec = tween(durationMillis = 400, delayMillis = 150),
+                                fadeInSpec = tween(durationMillis = 150),
                                 placementSpec = spring(
-                                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                                    stiffness = Spring.StiffnessLow
-                                )
+                                    dampingRatio = Spring.DampingRatioNoBouncy,
+                                    stiffness = Spring.StiffnessHigh
+                                ),
+                                fadeOutSpec = tween(durationMillis = 150)
                             ),
                             onOpen = {
                                 try {
@@ -481,7 +481,8 @@ fun NotificationPage(
 fun getDominantColor(drawable: Drawable?): Color {
     if (drawable == null) return Color.Unspecified
     return try {
-        val bitmap = drawable.toBitmap()
+        // Use a small, fixed size for color extraction to be safe and efficient
+        val bitmap = drawable.toBitmap(width = 40, height = 40)
 
         // 1. Use Palette for brand-aware color extraction
         val palette = Palette.from(bitmap).generate()
@@ -498,6 +499,8 @@ fun getDominantColor(drawable: Drawable?): Color {
             // 2. Fallback center logic
             val width = bitmap.width
             val height = bitmap.height
+            if (width <= 0 || height <= 0) return Color.Unspecified
+            
             val pixels = IntArray(width * height)
             bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
             var bestColor: Int? = null
@@ -517,7 +520,7 @@ fun getDominantColor(drawable: Drawable?): Color {
                     }
                 }
             }
-            bestColor ?: pixels[height/2 * width + width/2]
+            bestColor ?: pixels[(height/2 * width + width/2).coerceIn(pixels.indices)]
         }
 
         // Tone down the color to avoid "eye-burning" intensity

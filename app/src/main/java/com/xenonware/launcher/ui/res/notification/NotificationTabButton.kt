@@ -170,12 +170,28 @@ fun NotificationTabButton(
         ) {
             val iconToDraw = notificationIcon ?: app?.icon
             if (iconToDraw != null) {
-                Image(
-                    bitmap = iconToDraw.toBitmap().asImageBitmap(),
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                    colorFilter = ColorFilter.tint(iconColor)
-                )
+                val iconBitmap = remember(iconToDraw) {
+                    try {
+                        iconToDraw.toBitmap(width = 40, height = 40).asImageBitmap()
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
+                if (iconBitmap != null) {
+                    Image(
+                        bitmap = iconBitmap,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        colorFilter = ColorFilter.tint(iconColor)
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Rounded.Apps,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = iconColor
+                    )
+                }
             } else {
                 Icon(
                     imageVector = Icons.Rounded.Apps,
