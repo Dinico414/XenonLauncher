@@ -1,22 +1,349 @@
 package com.xenonware.launcher.ui.pages
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.SkipNext
+import androidx.compose.material.icons.rounded.SkipPrevious
+import androidx.compose.material3.Button
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import com.xenonware.launcher.media.MediaState
+import java.util.Locale
+import kotlin.math.pow
 
 @Composable
-fun MediaPage() {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text("Media Player Fullscreen", color = Color.White, style = MaterialTheme.typography.headlineMedium)
+fun MediaPage(
+    mediaState: MediaState,
+    progress: Float,
+    isPermissionGranted: Boolean,
+    onOpenSettings: () -> Unit,
+    onTogglePlayPause: () -> Unit,
+    onSkipNext: () -> Unit,
+    onSkipPrevious: () -> Unit,
+    onSeek: (Long) -> Unit,
+    onOpenSource: () -> Unit,
+) {
+    val context = LocalContext.current
+    val pm = remember { context.packageManager }
+
+    val appName = remember(mediaState.packageName) {
+        mediaState.packageName?.let {
+            try {
+                pm.getApplicationLabel(pm.getApplicationInfo(it, 0)).toString()
+            } catch (_: Exception) {
+                null
+            }
+        } ?: "Media"
+    }
+
+    val appIcon = remember(mediaState.packageName) {
+        mediaState.packageName?.let {
+            try {
+                pm.getApplicationIcon(it)
+            } catch (_: Exception) {
+                null
+            }
+        }
+    }
+
+    // Normalize progress for the background effects: 0.5f to 1.0f -> 0.0f to 1.0f
+    val bgProgress = ((progress - 0.5f) * 2f).coerceIn(0f, 1f)
+    val cornerProgress = ((progress - 0.85f) * 2f).coerceIn(0f, 1f)
+    // Exponential corner radius: 24.dp to 0.dp
+    // Using power of 3 for a more pronounced exponential curve
+    val cornerRadius = (24 * (1f - cornerProgress).pow(3)).dp
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Background Album Art
+        mediaState.albumArt?.let { bitmap ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .alpha(bgProgress)
+                    .clip(RoundedCornerShape(cornerRadius))
+            ) {
+                Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .blur(30.dp),
+                    contentScale = ContentScale.Crop,
+                    colorFilter = ColorFilter.tint(
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                        blendMode = BlendMode.SrcAtop
+                    )
+                )
+                // Darken the background for better readability
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.3f))
+                )
+            }
+        }
+
+        // Content
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(32.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            if (!isPermissionGranted) {
+                Text(
+                    "Notification Access Required",
+                    color = Color.White,
+                    style = MaterialTheme.typography.headlineSmall,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "To show and control media playback, Xenon needs notification access.",
+                    color = Color.White.copy(alpha = 0.7f),
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                Button(onClick = onOpenSettings) {
+                    Text("Grant Access")
+                }
+            } else {
+                // Top App Info / Open Source Button
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding(),
+                    horizontalArrangement = Arrangement.Start
+                ) {
+                    Surface(
+                        onClick = onOpenSource,
+                        color = Color.White.copy(alpha = 0.1f),
+                        shape = RoundedCornerShape(20.dp),
+                        modifier = Modifier.height(40.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            if (appIcon != null) {
+                                AsyncImage(
+                                    model = appIcon,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                )
+                            }
+                            Text(
+                                text = appName,
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                // Main Album Art
+                Surface(
+                    modifier = Modifier
+                        .size(280.dp)
+                        .aspectRatio(1f)
+                        .clip(RoundedCornerShape(24.dp)),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    tonalElevation = 8.dp
+                ) {
+                    if (mediaState.albumArt != null) {
+                        Image(
+                            bitmap = mediaState.albumArt.asImageBitmap(),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "No Art",
+                                color = Color.White.copy(alpha = 0.5f),
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(48.dp))
+
+                // Info
+                Text(
+                    text = mediaState.title ?: "Nothing Playing",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = mediaState.artist ?: "Unknown Artist",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color.White.copy(alpha = 0.7f),
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // Progress Bar
+                var sliderPosition by remember { mutableStateOf<Float?>(null) }
+                val currentPosition = sliderPosition ?: mediaState.position.toFloat()
+                val duration = mediaState.duration.toFloat().coerceAtLeast(1f)
+
+                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                    Slider(
+                        value = currentPosition.coerceIn(0f, duration),
+                        onValueChange = { sliderPosition = it },
+                        onValueChangeFinished = {
+                            sliderPosition?.let { onSeek(it.toLong()) }
+                            sliderPosition = null
+                        },
+                        valueRange = 0f..duration,
+                        colors = SliderDefaults.colors(
+                            thumbColor = Color.White,
+                            activeTrackColor = Color.White,
+                            inactiveTrackColor = Color.White.copy(alpha = 0.3f)
+                        )
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            formatTime(currentPosition.toLong()),
+                            color = Color.White.copy(alpha = 0.6f),
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                        Text(
+                            formatTime(mediaState.duration),
+                            color = Color.White.copy(alpha = 0.6f),
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // Controls
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(24.dp)
+                ) {
+                    IconButton(
+                        onClick = onSkipPrevious,
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Icon(
+                            Icons.Rounded.SkipPrevious,
+                            contentDescription = "Previous",
+                            modifier = Modifier.size(32.dp),
+                            tint = Color.White
+                        )
+                    }
+
+                    FilledIconButton(
+                        onClick = onTogglePlayPause,
+                        modifier = Modifier.size(64.dp),
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = Color.White,
+                            contentColor = Color.Black
+                        )
+                    ) {
+                        Icon(
+                            if (mediaState.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                            contentDescription = "Play/Pause",
+                            modifier = Modifier.size(40.dp)
+                        )
+                    }
+
+                    IconButton(
+                        onClick = onSkipNext,
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Icon(
+                            Icons.Rounded.SkipNext,
+                            contentDescription = "Next",
+                            modifier = Modifier.size(32.dp),
+                            tint = Color.White
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+private fun formatTime(millis: Long): String {
+    val totalSeconds = millis / 1000
+    val seconds = totalSeconds % 60
+    val minutes = (totalSeconds / 60) % 60
+    val hours = totalSeconds / 3600
+    return if (hours > 0) {
+        String.format(Locale.getDefault(), "%d:%02d:%02d", hours, minutes, seconds)
+    } else {
+        String.format(Locale.getDefault(), "%d:%02d", minutes, seconds)
     }
 }

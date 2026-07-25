@@ -199,7 +199,17 @@ fun LauncherScreen(
                         beyondViewportPageCount = 1
                     ) { page ->
                         when (page) {
-                            0 -> MediaPage()
+                            0 -> MediaPage(
+                                mediaState = viewModel.mediaState,
+                                progress = mediaBlurProgress,
+                                isPermissionGranted = viewModel.isMediaPermissionGranted,
+                                onOpenSettings = { viewModel.openNotificationAccessSettings() },
+                                onTogglePlayPause = { viewModel.togglePlayPause() },
+                                onSkipNext = { viewModel.skipNext() },
+                                onSkipPrevious = { viewModel.skipPrevious() },
+                                onSeek = { viewModel.seekTo(it) },
+                                onOpenSource = { viewModel.openMediaApp() }
+                            )
                             1 -> NotificationPage(
                                 viewModel = viewModel,
                                 notificationCount = notificationCount,

@@ -307,6 +307,17 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun togglePlayPause() = mediaControllerManager.togglePlayPause()
     fun skipNext() = mediaControllerManager.skipNext()
     fun skipPrevious() = mediaControllerManager.skipPrevious()
+    fun seekTo(position: Long) = mediaControllerManager.seekTo(position)
+    
+    fun openMediaApp() {
+        val pkg = mediaState.packageName ?: return
+        val pm = getApplication<Application>().packageManager
+        val intent = pm.getLaunchIntentForPackage(pkg)
+        if (intent != null) {
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            getApplication<Application>().startActivity(intent)
+        }
+    }
     
     val isMediaPermissionGranted: Boolean get() = mediaControllerManager.isPermissionGranted
     

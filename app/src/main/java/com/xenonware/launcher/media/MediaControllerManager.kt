@@ -18,7 +18,9 @@ data class MediaState(
     val artist: String? = null,
     val isPlaying: Boolean = false,
     val packageName: String? = null,
-    val albumArt: Bitmap? = null
+    val albumArt: Bitmap? = null,
+    val position: Long = 0L,
+    val duration: Long = 0L
 )
 
 class MediaControllerManager(private val context: Context) {
@@ -78,17 +80,24 @@ class MediaControllerManager(private val context: Context) {
         val controller = activeController
         if (controller != null) {
             val metadata = controller.metadata
+            val playbackState = controller.playbackState
             mediaState = MediaState(
                 title = metadata?.getString(MediaMetadata.METADATA_KEY_TITLE),
                 artist = metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST),
-                isPlaying = controller.playbackState?.state == PlaybackState.STATE_PLAYING,
+                isPlaying = playbackState?.state == PlaybackState.STATE_PLAYING,
                 packageName = controller.packageName,
                 albumArt = metadata?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
-                    ?: metadata?.getBitmap(MediaMetadata.METADATA_KEY_ART)
+                    ?: metadata?.getBitmap(MediaMetadata.METADATA_KEY_ART),
+                position = playbackState?.position ?: 0L,
+                duration = metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L
             )
         } else {
             mediaState = MediaState()
         }
+    }
+
+    fun seekTo(position: Long) {
+        activeController?.transportControls?.seekTo(position)
     }
 
     fun togglePlayPause() {
