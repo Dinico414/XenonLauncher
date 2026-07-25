@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
@@ -18,6 +19,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -41,8 +43,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.LinearGradientShader
 import androidx.compose.ui.graphics.Shader
@@ -113,6 +117,16 @@ fun StatusSection(
             repeatMode = RepeatMode.Reverse
         ),
         label = "flashOffset"
+    )
+
+    val rippleProgress by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2500, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "rippleProgress"
     )
 
     val verticalPadding by animateDpAsState(
@@ -217,9 +231,50 @@ fun StatusSection(
         border = BorderStroke(strokeWidth, borderBrush)
     ) {
         Box(
-            modifier = if (!isExpanded && isCharging && backgroundBrush != null) {
-                Modifier.background(backgroundBrush)
-            } else Modifier,
+            modifier = Modifier
+                .fillMaxSize()
+                .then(
+                    if (!isExpanded && isCharging && backgroundBrush != null) {
+                        Modifier.background(backgroundBrush)
+                    } else Modifier
+                )
+                .then(
+                    if (isCharging) {
+                        Modifier.drawBehind {
+                            val color = strokeColor.copy(alpha = 0.4f)
+                            val radius = if (isExpanded) size.width * 1.5f else size.height * 1.5f
+                            val p1 = rippleProgress
+                            val p2 = (rippleProgress + 0.5f) % 1f
+
+                            listOf(p1, p2).forEach { p ->
+                                val dimension = if (isExpanded) size.width else size.height
+                                // Extend travel range to ensure the wave enters and exits fully
+                                val travelRange = dimension + radius * 0.5f
+                                val currentPos = p * travelRange - (radius * 0.25f)
+
+                                val center = if (isExpanded) {
+                                    // Moving from start to end
+                                    Offset(currentPos - radius * 0.95f, size.height / 2)
+                                } else {
+                                    // Moving from bottom to top
+                                    Offset(size.width / 2, (size.height - currentPos) + radius * 0.95f)
+                                }
+
+                                drawCircle(
+                                    brush = Brush.radialGradient(
+                                        0.65f to Color.Transparent,
+                                        0.85f to color,
+                                        1.0f to Color.Transparent,
+                                        center = center,
+                                        radius = radius
+                                    ),
+                                    center = center,
+                                    radius = radius
+                                )
+                            }
+                        }
+                    } else Modifier
+                ),
             contentAlignment = Alignment.Center
         ) {
             AnimatedContent(
