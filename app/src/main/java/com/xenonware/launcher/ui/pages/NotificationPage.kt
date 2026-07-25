@@ -184,8 +184,7 @@ fun NotificationPage(
                 LazyColumn(
                     modifier = Modifier
                         .weight(1f)
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
+                        .fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.Bottom),
                     contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
                 ) {
@@ -204,12 +203,12 @@ fun NotificationPage(
                             offsetBelow = offsetBelow,
                             onOffsetChanged = { offsets[notification.key] = it },
                             modifier = Modifier.animateItem(
-                                fadeInSpec = tween(durationMillis = 150),
+                                fadeInSpec = tween(durationMillis = 200),
                                 placementSpec = spring(
                                     dampingRatio = Spring.DampingRatioNoBouncy,
-                                    stiffness = Spring.StiffnessHigh
+                                    stiffness = Spring.StiffnessMedium
                                 ),
-                                fadeOutSpec = tween(durationMillis = 150)
+                                fadeOutSpec = tween(durationMillis = 200)
                             ),
                             onOpen = {
                                 try {

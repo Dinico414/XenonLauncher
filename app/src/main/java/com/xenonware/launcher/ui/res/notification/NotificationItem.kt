@@ -165,13 +165,16 @@ fun NotificationItem(
         modifier = modifier
             .fillMaxWidth()
             .graphicsLayer {
-                if (isDismissing) alpha = 1f - swipeProgress
+                // Stay visible longer during dismissal to show the flight animation
+                val fadeThreshold = if (isDismissing) dismissThreshold * 12f else dismissThreshold * 4f
+                alpha = (1f - (abs(offsetX.value) / fadeThreshold)).coerceIn(0f, 1f)
             }
     ) {
         Surface(
             onClick = onOpen,
             modifier = Modifier
                 .fillMaxWidth()
+                .padding(horizontal = 16.dp)
                 .offset { IntOffset(offsetX.value.roundToInt(), 0) }
                 .draggable(
                     orientation = Orientation.Horizontal,
@@ -219,12 +222,10 @@ fun NotificationItem(
                             val isDismiss = !isStuck || abs(velocity) > 4000f
                             if (isDismiss) {
                                 isDismissing = true
-                                val target = if (offsetX.value > 0) stretchLimit * 8 else -stretchLimit * 4
+                                // Moderate target to clear screen without "jumping"
+                                val target = if (offsetX.value > 0) stretchLimit * 4 else -stretchLimit * 4
                                 
-                                // Optimistically dismiss immediately so the list starts collapsing
-                                onDismiss()
-                                
-                                // Animate the flight off screen
+                                // Sequential: Wait for flight (200ms) then dismiss
                                 offsetX.animateTo(
                                     targetValue = target,
                                     animationSpec = tween(
@@ -234,6 +235,8 @@ fun NotificationItem(
                                 ) {
                                     onOffsetChanged(value)
                                 }
+
+                                onDismiss()
                             } else {
                                 offsetX.animateTo(
                                     targetValue = 0f,
