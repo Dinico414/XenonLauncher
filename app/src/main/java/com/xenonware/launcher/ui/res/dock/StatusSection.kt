@@ -15,8 +15,9 @@ import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -27,7 +28,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ElectricBolt
 import androidx.compose.material.icons.rounded.Info
@@ -47,13 +47,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.ClipOp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.LinearGradientShader
 import androidx.compose.ui.graphics.Path
@@ -63,7 +60,6 @@ import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.font.FontWeight
@@ -76,7 +72,6 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
-import kotlin.math.sqrt
 
 @Composable
 fun StatusSection(
@@ -101,6 +96,9 @@ fun StatusSection(
         if (notificationCount > prevNotificationCount) {
             showBell = true
             delay(2000)
+            showBell = false
+        } else {
+            // Ensure bell is hidden if count drops or stays same
             showBell = false
         }
         prevNotificationCount = notificationCount
@@ -368,9 +366,15 @@ fun StatusSection(
         ) {
             AnimatedContent(
                 targetState = isExpanded, transitionSpec = {
-                    fadeIn(animationSpec = tween(300)) togetherWith fadeOut(
-                        animationSpec = tween(300)
-                    )
+                    if (targetState) {
+                        fadeIn(animationSpec = tween(300)) togetherWith fadeOut(
+                            animationSpec = tween(50)
+                        )
+                    } else {
+                        fadeIn(animationSpec = tween(300)) togetherWith fadeOut(
+                            animationSpec = tween(300)
+                        )
+                    }
                 }, label = "statusTransition"
             ) { targetExpanded ->
                 if (targetExpanded) {
@@ -391,10 +395,10 @@ fun StatusSection(
                                 else -> StatusViewState.Default
                             },
                             transitionSpec = {
-                                fadeIn(animationSpec = tween(250)) togetherWith fadeOut(
-                                    animationSpec = tween(250)
-                                )
+                                (fadeIn(animationSpec = tween(250)) + scaleIn(initialScale = 0.8f))
+                                    .togetherWith(fadeOut(animationSpec = tween(250)) + scaleOut(targetScale = 0.8f))
                             },
+                            contentAlignment = Alignment.Center,
                             label = "collapsedContent"
                         ) { state ->
                             when (state) {
