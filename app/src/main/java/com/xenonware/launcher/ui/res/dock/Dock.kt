@@ -7,11 +7,13 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -30,6 +32,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -95,10 +98,14 @@ fun DockPill(
     onMediaPlayPause: () -> Unit,
     onMediaSkipNext: () -> Unit,
     onOpenMediaPermission: () -> Unit,
+    onTimeClick: () -> Unit = {},
+    onDateClick: () -> Unit = {},
+    onWeatherClick: () -> Unit = {},
     isAppDrawerVisible: Boolean = false,
     hazeState: HazeState? = null,
     progress: Float = 1f,
     isCharging: Boolean = false,
+    dockSafeDrawIme: Boolean = false,
     onUnpinApp: (String) -> Unit = {},
     onPinApp: (String, Int) -> Unit = { _, _ -> },
     onReorderApp: (Int, Int) -> Unit = { _, _ -> },
@@ -214,8 +221,20 @@ fun DockPill(
     }
 
     val baseDockColor = colorScheme.surfaceContainer
-    val safeDrawBottom = WindowInsets.navigationBars.only(WindowInsetsSides.Bottom).asPaddingValues().calculateBottomPadding()
-    val bottomPadding = if (safeDrawBottom < 16.dp) {16.dp} else {safeDrawBottom + 8.dp}
+    val navPadding = WindowInsets.navigationBars.only(WindowInsetsSides.Bottom).asPaddingValues().calculateBottomPadding()
+    val imePadding = WindowInsets.ime.only(WindowInsetsSides.Bottom).asPaddingValues().calculateBottomPadding()
+    
+    val safeDrawBottom = if (dockSafeDrawIme) maxOf(navPadding, imePadding) else navPadding
+    val targetBottomPadding = if (safeDrawBottom < 16.dp) 16.dp else safeDrawBottom + 8.dp
+    val animatedBottomPadding by animateDpAsState(
+        targetValue = targetBottomPadding,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "dockPaddingAnimation"
+    )
+    val bottomPadding = animatedBottomPadding.coerceAtLeast(0.dp)
 
     Row(
         modifier = modifier
@@ -279,6 +298,9 @@ fun DockPill(
                     buttonAlpha = buttonAlpha,
                     onExpand = { currentPage = 0 },
                     onClickExpanded = { openNotifications(context) },
+                    onTimeClick = onTimeClick,
+                    onDateClick = onDateClick,
+                    onWeatherClick = onWeatherClick,
                     modifier = Modifier
                         .padding(start = statusStartPadding)
                         .then(if (currentPage == 0) Modifier.weight(1f) else Modifier)

@@ -71,6 +71,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             "widget_layout_normal", "widget_layout_wide" -> loadWidgets()
             "advanced_search_enabled" -> _advancedSearchEnabled.value = prefManager.advancedSearchEnabled
             "search_history" -> _searchHistory.value = loadSearchHistory()
+            "dock_safedraw_ime" -> _dockSafeDrawIme.value = prefManager.dockSafeDrawIme
         }
     }
 
@@ -107,8 +108,59 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val _advancedSearchEnabled = MutableStateFlow(prefManager.advancedSearchEnabled)
     val advancedSearchEnabled: StateFlow<Boolean> = _advancedSearchEnabled
 
+    private val _dockSafeDrawIme = MutableStateFlow(prefManager.dockSafeDrawIme)
+    val dockSafeDrawIme: StateFlow<Boolean> = _dockSafeDrawIme
+
     private val _searchHistory = MutableStateFlow<List<String>>(loadSearchHistory())
     val searchHistory: StateFlow<List<String>> = _searchHistory
+
+    private val _configShortcutType = MutableStateFlow<ShortcutType?>(null)
+    val configShortcutType: StateFlow<ShortcutType?> = _configShortcutType
+
+    enum class ShortcutType { TIME, DATE, WEATHER }
+
+    fun setConfigShortcut(type: ShortcutType?) {
+        _configShortcutType.value = type
+    }
+
+    fun handleShortcutClick(type: ShortcutType) {
+        val shortcut = when (type) {
+            ShortcutType.TIME -> prefManager.timeShortcut
+            ShortcutType.DATE -> prefManager.dateShortcut
+            ShortcutType.WEATHER -> prefManager.weatherShortcut
+        }
+
+        if (shortcut.isEmpty()) {
+            _configShortcutType.value = type
+        } else {
+            executeShortcut(shortcut)
+        }
+    }
+
+    private fun executeShortcut(shortcut: String) {
+        val context = getApplication<Application>()
+        if (shortcut.startsWith("link:")) {
+            val url = shortcut.substring(5)
+            try {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(intent)
+            } catch (_: Exception) {}
+        } else if (shortcut.startsWith("app:")) {
+            val pkg = shortcut.substring(4)
+            launchApp(pkg)
+        }
+    }
+
+    fun saveShortcut(type: ShortcutType, value: String) {
+        when (type) {
+            ShortcutType.TIME -> prefManager.timeShortcut = value
+            ShortcutType.DATE -> prefManager.dateShortcut = value
+            ShortcutType.WEATHER -> prefManager.weatherShortcut = value
+        }
+        _configShortcutType.value = null
+    }
 
     private val _searchResults = MutableStateFlow<List<SearchResult>>(emptyList())
     val searchResults: StateFlow<List<SearchResult>> = _searchResults

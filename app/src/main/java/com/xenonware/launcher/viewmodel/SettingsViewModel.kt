@@ -1,15 +1,49 @@
 package com.xenonware.launcher.viewmodel
 
 import android.app.Application
+import android.content.Intent
 import android.os.Build
 import android.os.Environment
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
 import com.xenonware.launcher.data.SharedPreferenceManager
+import com.xenonware.launcher.model.AppInfo
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
     private val sharedPreferenceManager = SharedPreferenceManager(application)
+
+    private val _apps = MutableStateFlow<List<AppInfo>>(emptyList())
+    val apps = _apps.asStateFlow()
+
+    init {
+        loadApps()
+    }
+
+    private fun loadApps() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val pm = getApplication<Application>().packageManager
+            val intent = Intent(Intent.ACTION_MAIN, null).apply {
+                addCategory(Intent.CATEGORY_LAUNCHER)
+            }
+            val resolvedInfos = pm.queryIntentActivities(intent, 0)
+            val appList = resolvedInfos.mapNotNull {
+                try {
+                    AppInfo(
+                        name = it.loadLabel(pm).toString(),
+                        packageName = it.activityInfo.packageName,
+                        icon = it.loadIcon(pm)
+                    )
+                } catch (e: Exception) {
+                    null
+                }
+            }.sortedBy { it.name.lowercase() }
+            _apps.value = appList
+        }
+    }
 
     private val _currentThemeTitle = MutableStateFlow(
         when(sharedPreferenceManager.theme) {
@@ -34,6 +68,18 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     private val _notificationBadgeType = MutableStateFlow(sharedPreferenceManager.notificationBadgeType)
     val notificationBadgeType = _notificationBadgeType.asStateFlow()
+
+    private val _dockSafeDrawIme = MutableStateFlow(sharedPreferenceManager.dockSafeDrawIme)
+    val dockSafeDrawIme = _dockSafeDrawIme.asStateFlow()
+
+    private val _timeShortcut = MutableStateFlow(sharedPreferenceManager.timeShortcut)
+    val timeShortcut = _timeShortcut.asStateFlow()
+
+    private val _dateShortcut = MutableStateFlow(sharedPreferenceManager.dateShortcut)
+    val dateShortcut = _dateShortcut.asStateFlow()
+
+    private val _weatherShortcut = MutableStateFlow(sharedPreferenceManager.weatherShortcut)
+    val weatherShortcut = _weatherShortcut.asStateFlow()
 
     private val _hasWallpaperAccess = MutableStateFlow(checkWallpaperAccess())
     val hasWallpaperAccess = _hasWallpaperAccess.asStateFlow()
@@ -84,6 +130,26 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setNotificationBadgeType(type: Int) {
         sharedPreferenceManager.notificationBadgeType = type
         _notificationBadgeType.value = type
+    }
+
+    fun setDockSafeDrawIme(enabled: Boolean) {
+        sharedPreferenceManager.dockSafeDrawIme = enabled
+        _dockSafeDrawIme.value = enabled
+    }
+
+    fun setTimeShortcut(value: String) {
+        sharedPreferenceManager.timeShortcut = value
+        _timeShortcut.value = value
+    }
+
+    fun setDateShortcut(value: String) {
+        sharedPreferenceManager.dateShortcut = value
+        _dateShortcut.value = value
+    }
+
+    fun setWeatherShortcut(value: String) {
+        sharedPreferenceManager.weatherShortcut = value
+        _weatherShortcut.value = value
     }
 
     fun onLanguageSettingClicked() { /* TODO */ }

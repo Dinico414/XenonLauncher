@@ -42,6 +42,7 @@ import com.xenonware.launcher.ui.layouts.main.AppDrawer
 import com.xenonware.launcher.ui.pages.NotificationPage
 import com.xenonware.launcher.ui.pages.MediaPage
 import com.xenonware.launcher.ui.pages.WidgetPage
+import com.xenonware.launcher.ui.res.ShortcutConfigDialog
 import com.xenonware.launcher.ui.res.dock.DockPill
 import com.xenonware.launcher.ui.theme.XenonLauncherTheme
 import com.xenonware.launcher.util.DragHandler
@@ -94,6 +95,8 @@ class MainActivity : ComponentActivity() {
                 val batteryLevel by viewModel.batteryLevel.collectAsState()
                 val isCharging by viewModel.isCharging.collectAsState()
                 val calendarEvents by viewModel.calendarEvents.collectAsState()
+                val dockSafeDrawIme by viewModel.dockSafeDrawIme.collectAsState()
+                val configShortcutType by viewModel.configShortcutType.collectAsState()
 
                 LauncherScreen(
                     viewModel = viewModel,
@@ -112,6 +115,8 @@ class MainActivity : ComponentActivity() {
                     batteryLevel = batteryLevel,
                     isCharging = isCharging,
                     calendarEvents = calendarEvents,
+                    dockSafeDrawIme = dockSafeDrawIme,
+                    configShortcutType = configShortcutType,
                     onAppClick = { viewModel.launchApp(it) },
                     onOpenSettings = {
                         startActivity(Intent(this, SettingsActivity::class.java))
@@ -140,6 +145,8 @@ fun LauncherScreen(
     batteryLevel: Float,
     isCharging: Boolean,
     calendarEvents: List<com.xenonware.launcher.viewmodel.CalendarEvent>,
+    dockSafeDrawIme: Boolean,
+    configShortcutType: com.xenonware.launcher.viewmodel.LauncherViewModel.ShortcutType?,
     onAppClick: (String) -> Unit,
     onOpenSettings: () -> Unit
 ) {
@@ -277,14 +284,35 @@ fun LauncherScreen(
                 onMediaPlayPause = { viewModel.togglePlayPause() },
                 onMediaSkipNext = { viewModel.skipNext() },
                 onOpenMediaPermission = { viewModel.openNotificationAccessSettings() },
+                onTimeClick = { viewModel.handleShortcutClick(com.xenonware.launcher.viewmodel.LauncherViewModel.ShortcutType.TIME) },
+                onDateClick = { viewModel.handleShortcutClick(com.xenonware.launcher.viewmodel.LauncherViewModel.ShortcutType.DATE) },
+                onWeatherClick = { viewModel.handleShortcutClick(com.xenonware.launcher.viewmodel.LauncherViewModel.ShortcutType.WEATHER) },
                 isAppDrawerVisible = isAppDrawerVisible,
                 hazeState = hazeState,
                 progress = batteryLevel,
                 isCharging = isCharging,
+                dockSafeDrawIme = dockSafeDrawIme,
                 onUnpinApp = { viewModel.unpinApp(it) },
                 onPinApp = { pkg, index -> viewModel.pinApp(pkg, index) },
                 onReorderApp = { from, to -> viewModel.reorderPinnedApp(from, to) }
             )
+            
+            configShortcutType?.let { type ->
+                val context = androidx.compose.ui.platform.LocalContext.current
+                val prefs = remember { com.xenonware.launcher.data.SharedPreferenceManager(context) }
+                val initialValue = when (type) {
+                    com.xenonware.launcher.viewmodel.LauncherViewModel.ShortcutType.TIME -> prefs.timeShortcut
+                    com.xenonware.launcher.viewmodel.LauncherViewModel.ShortcutType.DATE -> prefs.dateShortcut
+                    com.xenonware.launcher.viewmodel.LauncherViewModel.ShortcutType.WEATHER -> prefs.weatherShortcut
+                }
+                ShortcutConfigDialog(
+                    type = type,
+                    apps = apps,
+                    initialValue = initialValue,
+                    onDismiss = { viewModel.setConfigShortcut(null) },
+                    onSave = { viewModel.saveShortcut(type, it) }
+                )
+            }
         }
     }
 }

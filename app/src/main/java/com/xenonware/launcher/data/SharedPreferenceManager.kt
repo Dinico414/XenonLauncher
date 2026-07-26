@@ -58,6 +58,22 @@ class SharedPreferenceManager(context: Context) {
         get() = prefs.getString("search_history", "") ?: ""
         set(value) = prefs.edit().putString("search_history", value).apply()
 
+    var dockSafeDrawIme: Boolean
+        get() = prefs.getBoolean("dock_safedraw_ime", false)
+        set(value) = prefs.edit().putBoolean("dock_safedraw_ime", value).apply()
+
+    var timeShortcut: String
+        get() = prefs.getString("time_shortcut", "") ?: ""
+        set(value) = prefs.edit().putString("time_shortcut", value).apply()
+
+    var dateShortcut: String
+        get() = prefs.getString("date_shortcut", "") ?: ""
+        set(value) = prefs.edit().putString("date_shortcut", value).apply()
+
+    var weatherShortcut: String
+        get() = prefs.getString("weather_shortcut", "") ?: ""
+        set(value) = prefs.edit().putString("weather_shortcut", value).apply()
+
     fun registerListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
         prefs.registerOnSharedPreferenceChangeListener(listener)
     }

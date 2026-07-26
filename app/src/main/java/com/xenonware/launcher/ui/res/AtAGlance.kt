@@ -1,25 +1,31 @@
 package com.xenonware.launcher.ui.res
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
@@ -27,6 +33,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.xenonware.launcher.R
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.util.Calendar
 
 @Composable
@@ -36,9 +44,23 @@ fun AtAGlance(
     temperature: String,
     condition: String,
     notificationCount: Int,
+    onTimeClick: () -> Unit,
+    onDateClick: () -> Unit,
+    onWeatherClick: () -> Unit,
+    pillInteractionSource: MutableInteractionSource,
     modifier: Modifier = Modifier
 ) {
     val contentColor = LocalContentColor.current
+    val scope = rememberCoroutineScope()
+
+    fun triggerPillRipple() {
+        scope.launch {
+            val press = PressInteraction.Press(Offset.Zero)
+            pillInteractionSource.emit(press)
+            delay(80)
+            pillInteractionSource.emit(PressInteraction.Release(press))
+        }
+    }
 
     // Re-evaluated whenever the clock string changes so it flips at dusk/dawn.
     val isDay = remember(time) {
@@ -116,17 +138,43 @@ fun AtAGlance(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight(),
-            verticalArrangement = Arrangement.spacedBy((-6).dp, Alignment.CenterVertically)
+            verticalArrangement = Arrangement.spacedBy((-8).dp, Alignment.CenterVertically)
         ) {
-            Spacer(modifier = Modifier.height(9.dp))
             Text(
                 time,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 fontSize = 16.sp,
-                color = contentColor
+                color = contentColor,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(100.dp))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {
+                            triggerPillRipple()
+                            onTimeClick()
+                        }
+                    )
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
             )
-            Text(date, maxLines = 1, fontSize = 10.sp, color = contentColor.copy(alpha = 0.7f))
+            Text(
+                date,
+                maxLines = 1,
+                fontSize = 10.sp,
+                color = contentColor.copy(alpha = 0.7f),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(100.dp))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {
+                            triggerPillRipple()
+                            onDateClick()
+                        }
+                    )
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            )
         }
 
         if (notificationCount > 0) {
@@ -144,7 +192,20 @@ fun AtAGlance(
             }
         }
 
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .clip(RoundedCornerShape(100.dp))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = {
+                        triggerPillRipple()
+                        onWeatherClick()
+                    }
+                )
+                .padding(horizontal = 6.dp, vertical = 2.dp)
+        ) {
             Box(contentAlignment = Alignment.Center) {
                 // Shadow
                 Image(

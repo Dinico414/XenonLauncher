@@ -19,6 +19,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -86,8 +87,12 @@ fun StatusSection(
     buttonAlpha: Float,
     onExpand: () -> Unit,
     onClickExpanded: () -> Unit,
+    onTimeClick: () -> Unit,
+    onDateClick: () -> Unit,
+    onWeatherClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val pillInteractionSource = remember { MutableInteractionSource() }
     var showBell by remember { mutableStateOf(false) }
     var showFlash by remember { mutableStateOf(false) }
     var prevNotificationCount by remember { mutableIntStateOf(notificationCount) }
@@ -251,6 +256,7 @@ fun StatusSection(
                 onExpand()
             }
         },
+        interactionSource = pillInteractionSource,
         modifier = modifier
             .fillMaxHeight()
             .padding(vertical = verticalPadding)
@@ -383,7 +389,11 @@ fun StatusSection(
                         currentDate,
                         weatherTemp,
                         weatherCondition,
-                        notificationCount
+                        notificationCount,
+                        onTimeClick = onTimeClick,
+                        onDateClick = onDateClick,
+                        onWeatherClick = onWeatherClick,
+                        pillInteractionSource = pillInteractionSource
                     )
                 } else {
                     Box(contentAlignment = Alignment.Center) {

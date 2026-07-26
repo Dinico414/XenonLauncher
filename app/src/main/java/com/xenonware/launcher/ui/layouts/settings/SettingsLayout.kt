@@ -13,6 +13,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.xenonware.launcher.ui.res.ShortcutConfigDialog
+import com.xenonware.launcher.viewmodel.LauncherViewModel
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.filled.BlurOn
 import androidx.compose.material.icons.filled.Circle
@@ -55,6 +64,14 @@ fun SettingsLayout(
     val isGridLayout by viewModel.isGridLayout.collectAsState()
     val openKeyboard by viewModel.openKeyboard.collectAsState()
     val advancedSearchEnabled by viewModel.advancedSearchEnabled.collectAsState()
+    val dockSafeDrawIme by viewModel.dockSafeDrawIme.collectAsState()
+    
+    val apps by viewModel.apps.collectAsState()
+    val timeShortcut by viewModel.timeShortcut.collectAsState()
+    val dateShortcut by viewModel.dateShortcut.collectAsState()
+    val weatherShortcut by viewModel.weatherShortcut.collectAsState()
+    
+    var configShortcutType by remember { mutableStateOf<LauncherViewModel.ShortcutType?>(null) }
 
     val innerRadius = 4.dp
     val outerRadius = 24.dp
@@ -138,6 +155,26 @@ fun SettingsLayout(
                 }
 
                 Text(
+                    "DOCK",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(start = 12.dp)
+                )
+
+                Column {
+                    SettingsSwitchTile(
+                        title = "Move with keyboard",
+                        subtitle = if (dockSafeDrawIme) "Dock moves up to stay visible" else "Dock stays at the bottom",
+                        checked = dockSafeDrawIme,
+                        onCheckedChange = { viewModel.setDockSafeDrawIme(it) },
+                        icon = { Icon(Icons.Default.Keyboard, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                        backgroundColor = tileColor,
+                        shape = standaloneShape
+                    )
+                }
+
+                Text(
                     "NOTIFICATIONS",
                     color = MaterialTheme.colorScheme.primary,
                     fontSize = 12.sp,
@@ -208,6 +245,43 @@ fun SettingsLayout(
                 }
 
                 Text(
+                    "SHORTCUTS",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(start = 12.dp)
+                )
+
+                Column {
+                    SettingsTile(
+                        title = "Time Shortcut",
+                        subtitle = timeShortcut.ifEmpty { "Not set" },
+                        icon = { Icon(Icons.Default.Schedule, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                        backgroundColor = tileColor,
+                        shape = topShape,
+                        onClick = { configShortcutType = LauncherViewModel.ShortcutType.TIME }
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    SettingsTile(
+                        title = "Date Shortcut",
+                        subtitle = dateShortcut.ifEmpty { "Not set" },
+                        icon = { Icon(Icons.Default.CalendarToday, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                        backgroundColor = tileColor,
+                        shape = middleShape,
+                        onClick = { configShortcutType = LauncherViewModel.ShortcutType.DATE }
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    SettingsTile(
+                        title = "Weather Shortcut",
+                        subtitle = weatherShortcut.ifEmpty { "Not set" },
+                        icon = { Icon(Icons.Default.Cloud, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                        backgroundColor = tileColor,
+                        shape = bottomShape,
+                        onClick = { configShortcutType = LauncherViewModel.ShortcutType.WEATHER }
+                    )
+                }
+
+                Text(
                     "SYSTEM", 
                     color = MaterialTheme.colorScheme.primary, 
                     fontSize = 12.sp, 
@@ -222,6 +296,28 @@ fun SettingsLayout(
                     backgroundColor = tileColor,
                     shape = standaloneShape,
                     onClick = { viewModel.onResetSettingsClicked() }
+                )
+            }
+            
+            configShortcutType?.let { type ->
+                val initialValue = when (type) {
+                    LauncherViewModel.ShortcutType.TIME -> timeShortcut
+                    LauncherViewModel.ShortcutType.DATE -> dateShortcut
+                    LauncherViewModel.ShortcutType.WEATHER -> weatherShortcut
+                }
+                ShortcutConfigDialog(
+                    type = type,
+                    apps = apps,
+                    initialValue = initialValue,
+                    onDismiss = { configShortcutType = null },
+                    onSave = {
+                        when (type) {
+                            LauncherViewModel.ShortcutType.TIME -> viewModel.setTimeShortcut(it)
+                            LauncherViewModel.ShortcutType.DATE -> viewModel.setDateShortcut(it)
+                            LauncherViewModel.ShortcutType.WEATHER -> viewModel.setWeatherShortcut(it)
+                        }
+                        configShortcutType = null
+                    }
                 )
             }
         }
