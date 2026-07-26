@@ -11,6 +11,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -26,6 +27,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ElectricBolt
 import androidx.compose.material.icons.rounded.Info
@@ -44,14 +46,24 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.ClipOp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.LinearGradientShader
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathMeasure
 import androidx.compose.ui.graphics.Shader
 import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.font.FontWeight
@@ -60,7 +72,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.xenonware.launcher.ui.res.AtAGlance
 import kotlinx.coroutines.delay
+import kotlin.math.PI
+import kotlin.math.cos
 import kotlin.math.roundToInt
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 @Composable
 fun StatusSection(
@@ -172,42 +188,58 @@ fun StatusSection(
         targetValue = if (isExpanded) 2.dp else 1.dp, label = "strokeWidth"
     )
 
-    val borderBrush = remember(strokeRotationProgress, progress, strokeColor) {
-        object : ShaderBrush() {
-            override fun createShader(size: Size): Shader {
-                val start = Offset(
-                    x = 0f, y = size.height * (1f - strokeRotationProgress)
-                )
-                val end = Offset(
-                    x = size.width * strokeRotationProgress, y = 0f
-                )
-                return LinearGradientShader(
-                    from = start, to = end, colors = listOf(
-                        strokeColor,
-                        strokeColor,
-                        Color.Transparent,
-                        Color.Transparent
-                    ), colorStops = listOf(0.0f, progress, progress, 1.0f)
-                )
-            }
-        }
-    }
+    val chargingAlpha by animateFloatAsState(
+        targetValue = if (isCharging) 1f else 0f,
+        animationSpec = tween(500),
+        label = "chargingAlpha"
+    )
+
+    val bgChargingAlpha by animateFloatAsState(
+        targetValue = if (isCharging) 1f else 0f,
+        animationSpec = if (isCharging) tween(500) else snap(),
+        label = "bgChargingAlpha"
+    )
 
     val baseBgColor = colorScheme.surfaceContainerLowest.copy(alpha = buttonAlpha)
-    val backgroundBrush = remember(progress, strokeColor, isCharging, baseBgColor) {
-        if (!isCharging) null else object : ShaderBrush() {
+    val backgroundBrush = remember(progress, strokeColor, baseBgColor, bgChargingAlpha) {
+        if (bgChargingAlpha == 0f) null else object : ShaderBrush() {
             override fun createShader(size: Size): Shader {
-                val solidColor = strokeColor.copy(alpha = 0.5f)
+                val r = if (size.width > size.height) size.height / 2 else size.width / 2
+                val h = size.height
+                val w = size.width
+                
+                // Calculate mapped progress to match the stroke's vertical height
+                val mappedProgress = if (w < h) {
+                    val lTotal = PI.toFloat() * r + (h - 2 * r)
+                    val d = progress * lTotal
+                    val y = when {
+                        d < PI.toFloat() * r / 2f -> (h - r) + r * cos(d / r)
+                        d < PI.toFloat() * r / 2f + (h - 2 * r) -> (h - r) - (d - PI.toFloat() * r / 2f)
+                        else -> {
+                            val dPrime = d - (PI.toFloat() * r / 2f + h - 2 * r)
+                            r - r * sin(dPrime / r)
+                        }
+                    }
+                    ((h - y) / h).coerceIn(0f, 1f)
+                } else progress
+
+                val solidColor = strokeColor.copy(alpha = 0.5f * bgChargingAlpha)
+                val baseColorWithAlpha = baseBgColor.copy(alpha = baseBgColor.alpha * bgChargingAlpha)
+                
+                // Always Bottom to Top
+                val start = Offset(0f, size.height)
+                val end = Offset(0f, 0f)
+                
                 return LinearGradientShader(
-                    from = Offset(0f, size.height),
-                    to = Offset(0f, 0f),
+                    from = start,
+                    to = end,
                     colors = listOf(
                         solidColor,
                         solidColor,
-                        baseBgColor,
-                        baseBgColor
+                        baseColorWithAlpha,
+                        baseColorWithAlpha
                     ),
-                    colorStops = listOf(0.0f, progress, progress, 1.0f)
+                    colorStops = listOf(0.0f, mappedProgress, mappedProgress, 1.0f)
                 )
             }
         }
@@ -228,20 +260,77 @@ fun StatusSection(
         shape = CircleShape,
         color = backgroundColor,
         contentColor = contentColor,
-        border = BorderStroke(strokeWidth, borderBrush)
+        border = null // Border is drawn manually for better control over rounded ends
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .then(
-                    if (!isExpanded && isCharging && backgroundBrush != null) {
+                    if (!isExpanded && backgroundBrush != null) {
                         Modifier.background(backgroundBrush)
                     } else Modifier
                 )
                 .then(
-                    if (isCharging) {
-                        Modifier.drawBehind {
-                            val color = strokeColor.copy(alpha = 0.4f)
+                    if (chargingAlpha > 0f) {
+                        Modifier.drawWithContent {
+                            drawContent()
+
+                            val sw = strokeWidth.toPx()
+                            val w = size.width
+                            val h = size.height
+                            val s = strokeRotationProgress
+                            val r = if (w > h) h / 2 else w / 2
+
+                            val pillPath = Path().apply {
+                                moveTo(r, 0f)
+                                lineTo(w - r, 0f)
+                                arcTo(Rect(w - 2 * r, 0f, w, 2 * r), 270f, 90f, false)
+                                lineTo(w, h - r)
+                                arcTo(Rect(w - 2 * r, h - 2 * r, w, h), 0f, 90f, false)
+                                lineTo(r, h)
+                                arcTo(Rect(0f, h - 2 * r, 2 * r, h), 90f, 90f, false)
+                                lineTo(0f, r)
+                                arcTo(Rect(0f, 0f, 2 * r, 2 * r), 180f, 90f, false)
+                                close()
+                            }
+
+                            val pm = PathMeasure().apply { setPath(pillPath, true) }
+                            val totalLen = pm.length
+
+                            val dVertical = (w - 2 * r) + (PI.toFloat() * r / 2f) + (h - 2 * r) + (PI.toFloat() * r / 2f) + (w - 2 * r) / 2f
+                            val dHorizontal = 2 * (w - 2 * r) + (PI.toFloat() * r) + (h - 2 * r) + (PI.toFloat() * r / 2f) + (h - 2 * r) / 2f
+                            
+                            val dOrigin = (dVertical * (1 - s) + dHorizontal * s) % totalLen
+                            val segLen = (totalLen / 2f) * progress
+
+                            val colorWithAlpha = strokeColor.copy(alpha = strokeColor.alpha * chargingAlpha)
+                            
+                            fun drawWrappedSegment(startDist: Float, endDist: Float) {
+                                val d1 = startDist % totalLen
+                                val d2 = endDist % totalLen
+                                
+                                val actualStart = if (d1 < 0) d1 + totalLen else d1
+                                val actualEnd = if (d2 < 0) d2 + totalLen else d2
+                                
+                                if (actualStart > actualEnd) {
+                                    val s1 = Path()
+                                    pm.getSegment(actualStart, totalLen, s1)
+                                    drawPath(s1, colorWithAlpha, style = Stroke(sw, cap = StrokeCap.Round))
+                                    val s2 = Path()
+                                    pm.getSegment(0f, actualEnd, s2)
+                                    drawPath(s2, colorWithAlpha, style = Stroke(sw, cap = StrokeCap.Round))
+                                } else {
+                                    val s1 = Path()
+                                    pm.getSegment(actualStart, actualEnd, s1)
+                                    drawPath(s1, colorWithAlpha, style = Stroke(sw, cap = StrokeCap.Round))
+                                }
+                            }
+
+                            drawWrappedSegment(dOrigin - segLen, dOrigin)
+                            drawWrappedSegment(dOrigin, dOrigin + segLen)
+
+                        }.drawBehind {
+                            val color = strokeColor.copy(alpha = 0.4f * chargingAlpha)
                             val radius = if (isExpanded) size.width * 1.5f else size.height * 1.5f
                             val p1 = rippleProgress
                             val p2 = (rippleProgress + 0.5f) % 1f
