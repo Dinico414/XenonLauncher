@@ -34,6 +34,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.Surface
@@ -98,12 +99,6 @@ fun NotificationPage(
     val sortedAppPackages = remember(groupedNotifications) {
         groupedNotifications.keys.sortedByDescending { pkg ->
             groupedNotifications[pkg]?.maxOfOrNull { it.postTime } ?: 0L
-        }
-    }
-
-    LaunchedEffect(sortedAppPackages) {
-        if (selectedPackage == null || !sortedAppPackages.contains(selectedPackage)) {
-            selectedPackage = sortedAppPackages.firstOrNull()
         }
     }
 
@@ -176,8 +171,31 @@ fun NotificationPage(
             }
             Spacer(Modifier.height(dockAreaHeight)) // Accounts for dock area to center correctly
         } else {
-            // Notification List
-            selectedPackage?.let { pkg ->
+            // Notifications present - Content Area
+            if (selectedPackage == null) {
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.NotificationsActive,
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = 0.8f),
+                            modifier = Modifier.size(64.dp)
+                        )
+                        Text(
+                            text = "You have $notificationCount notifications",
+                            color = Color.White.copy(alpha = 0.8f),
+                            fontSize = 18.sp,
+                            fontFamily = QuicksandTitleVariable,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            } else {
+                // Notification List for selected app
+                val pkg = selectedPackage!!
                 val app = apps.find { it.packageName == pkg }
                 val appColor = remember(app) { getDominantColor(app?.icon) }
 
@@ -269,9 +287,9 @@ fun NotificationPage(
                         )
                     }
                 }
-            } ?: Spacer(modifier = Modifier.weight(1f))
+            }
 
-            // Notification Tabs
+            // Tabs section (always visible if notificationCount > 0)
             val scrollState = rememberScrollState()
             val configuration = LocalConfiguration.current
             val screenWidth = configuration.screenWidthDp.dp
@@ -333,32 +351,36 @@ fun NotificationPage(
                 if (!isScrollable) {
                     // Reliable non-scrollable Row using weights
                     sortedAppPackages.forEach { pkg ->
-                        val app = apps.find { it.packageName == pkg }
-                        val notificationsForApp = groupedNotifications[pkg] ?: emptyList()
-                        val latestNotification = notificationsForApp.firstOrNull()
-                        val isSelected = selectedPackage == pkg
-                        val appColor = remember(app) { getDominantColor(app?.icon) }
-                        val contrastColor = remember(appColor) { getContrastColor(appColor) }
+                        androidx.compose.runtime.key(pkg) {
+                            val app = apps.find { it.packageName == pkg }
+                            val notificationsForApp = groupedNotifications[pkg] ?: emptyList()
+                            val latestNotification = notificationsForApp.firstOrNull()
+                            val isSelected = selectedPackage == pkg
+                            val appColor = remember(app) { getDominantColor(app?.icon) }
+                            val contrastColor = remember(appColor) { getContrastColor(appColor) }
 
-                        NotificationTabButton(
-                            app = app,
-                            notificationIcon = latestNotification?.icon,
-                            notificationCount = notificationsForApp.size,
-                            isSelected = isSelected,
-                            appColor = appColor,
-                            contrastColor = contrastColor,
-                            onClick = { selectedPackage = pkg },
-                            onDismiss = { viewModel.dismissNotificationsByPackage(pkg) },
-                            isOverDelete = { tabRect ->
-                                val intersection = deleteButtonBounds.intersect(tabRect)
-                                val overlapRatio = if (intersection.isEmpty) 0f else {
-                                    (intersection.width * intersection.height) / (deleteButtonBounds.width * deleteButtonBounds.height)
-                                }
-                                // Deletes if 50% overlap OR if the tab is dragged past the start of the delete button
-                                overlapRatio >= 0.5f || tabRect.center.x >= deleteButtonBounds.left
-                            },
-                            modifier = Modifier.weight(1f)
-                        )
+                            NotificationTabButton(
+                                app = app,
+                                notificationIcon = latestNotification?.icon,
+                                notificationCount = notificationsForApp.size,
+                                isSelected = isSelected,
+                                appColor = appColor,
+                                contrastColor = contrastColor,
+                                onClick = { 
+                                    selectedPackage = if (isSelected) null else pkg 
+                                },
+                                onDismiss = { viewModel.dismissNotificationsByPackage(pkg) },
+                                isOverDelete = { tabRect ->
+                                    val intersection = deleteButtonBounds.intersect(tabRect)
+                                    val overlapRatio = if (intersection.isEmpty) 0f else {
+                                        (intersection.width * intersection.height) / (deleteButtonBounds.width * deleteButtonBounds.height)
+                                    }
+                                    // Deletes if 50% overlap OR if the tab is dragged past the start of the delete button
+                                    overlapRatio >= 0.5f || tabRect.center.x >= deleteButtonBounds.left
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
                         Spacer(Modifier.width(tabSpacing))
                     }
 
@@ -420,32 +442,36 @@ fun NotificationPage(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             sortedAppPackages.forEach { pkg ->
-                                val app = apps.find { it.packageName == pkg }
-                                val notificationsForApp = groupedNotifications[pkg] ?: emptyList()
-                                val latestNotification = notificationsForApp.firstOrNull()
-                                val isSelected = selectedPackage == pkg
-                                val appColor = remember(app) { getDominantColor(app?.icon) }
-                                val contrastColor = remember(appColor) { getContrastColor(appColor) }
+                                androidx.compose.runtime.key(pkg) {
+                                    val app = apps.find { it.packageName == pkg }
+                                    val notificationsForApp = groupedNotifications[pkg] ?: emptyList()
+                                    val latestNotification = notificationsForApp.firstOrNull()
+                                    val isSelected = selectedPackage == pkg
+                                    val appColor = remember(app) { getDominantColor(app?.icon) }
+                                    val contrastColor = remember(appColor) { getContrastColor(appColor) }
 
-                                NotificationTabButton(
-                                    app = app,
-                                    notificationIcon = latestNotification?.icon,
-                                    notificationCount = notificationsForApp.size,
-                                    isSelected = isSelected,
-                                    appColor = appColor,
-                                    contrastColor = contrastColor,
-                                    onClick = { selectedPackage = pkg },
-                                    onDismiss = { viewModel.dismissNotificationsByPackage(pkg) },
-                                    isOverDelete = { tabRect ->
-                                        val intersection = deleteButtonBounds.intersect(tabRect)
-                                        val overlapRatio = if (intersection.isEmpty) 0f else {
-                                            (intersection.width * intersection.height) / (deleteButtonBounds.width * deleteButtonBounds.height)
-                                        }
-                                        // Deletes if 50% overlap OR if the tab is dragged past the start of the delete button
-                                        overlapRatio >= 0.5f || tabRect.center.x >= deleteButtonBounds.left
-                                    },
-                                    modifier = Modifier.width(itemWidth)
-                                )
+                                    NotificationTabButton(
+                                        app = app,
+                                        notificationIcon = latestNotification?.icon,
+                                        notificationCount = notificationsForApp.size,
+                                        isSelected = isSelected,
+                                        appColor = appColor,
+                                        contrastColor = contrastColor,
+                                        onClick = { 
+                                            selectedPackage = if (isSelected) null else pkg 
+                                        },
+                                        onDismiss = { viewModel.dismissNotificationsByPackage(pkg) },
+                                        isOverDelete = { tabRect ->
+                                            val intersection = deleteButtonBounds.intersect(tabRect)
+                                            val overlapRatio = if (intersection.isEmpty) 0f else {
+                                                (intersection.width * intersection.height) / (deleteButtonBounds.width * deleteButtonBounds.height)
+                                            }
+                                            // Deletes if 50% overlap OR if the tab is dragged past the start of the delete button
+                                            overlapRatio >= 0.5f || tabRect.center.x >= deleteButtonBounds.left
+                                        },
+                                        modifier = Modifier.width(itemWidth)
+                                    )
+                                }
                             }
                         }
                     }

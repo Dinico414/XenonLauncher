@@ -32,6 +32,7 @@ import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,6 +40,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -78,6 +80,23 @@ fun NotificationTabButton(
     var itemSize by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
     val dragOffset = remember { Animatable(Offset.Zero, Offset.VectorConverter) }
     var isDragging by remember { mutableStateOf(false) }
+
+    val iconScale = remember { Animatable(1f) }
+    var prevCount by remember { mutableStateOf(notificationCount) }
+
+    LaunchedEffect(notificationCount) {
+        if (notificationCount > prevCount) {
+            iconScale.animateTo(
+                targetValue = 1.2f,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow)
+            )
+            iconScale.animateTo(
+                targetValue = 1f,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)
+            )
+        }
+        prevCount = notificationCount
+    }
 
     val cornerRadius by animateDpAsState(
         targetValue = when {
@@ -181,14 +200,18 @@ fun NotificationTabButton(
                     Image(
                         bitmap = iconBitmap,
                         contentDescription = null,
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier
+                            .size(20.dp)
+                            .scale(iconScale.value),
                         colorFilter = ColorFilter.tint(iconColor)
                     )
                 } else {
                     Icon(
                         imageVector = Icons.Rounded.Apps,
                         contentDescription = null,
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier
+                            .size(20.dp)
+                            .scale(iconScale.value),
                         tint = iconColor
                     )
                 }
@@ -196,7 +219,9 @@ fun NotificationTabButton(
                 Icon(
                     imageVector = Icons.Rounded.Apps,
                     contentDescription = null,
-                    modifier = Modifier.size(20.dp),
+                    modifier = Modifier
+                        .size(20.dp)
+                        .scale(iconScale.value),
                     tint = iconColor
                 )
             }
