@@ -97,9 +97,9 @@ object NotificationManager {
                 val hasMediaSession = notification.extras.containsKey(Notification.EXTRA_MEDIA_SESSION)
                 val isMediaStyle = notification.extras.getString(Notification.EXTRA_TEMPLATE)?.contains("MediaStyle") == true
                 
-                // YouTube and Twitter often have media we want to show even if they use MediaSession/MediaStyle
-                val isSocialOrVideo = sbn.packageName == "com.google.android.youtube" || 
-                                     sbn.packageName.contains("twitter") || 
+                // YouTube, Twitter, etc. often have media we want to show even if they use MediaSession/MediaStyle
+                // BUT the user specifically wants to exclude YouTube playback controls
+                val isSocialOrVideo = sbn.packageName.contains("twitter") ||
                                      sbn.packageName.contains("x.android") ||
                                      sbn.packageName.contains("instagram")
                 

@@ -109,7 +109,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         val label: String,
         val isWidget: Boolean,
         val widgetInfo: android.appwidget.AppWidgetProviderInfo? = null,
-        val shortcutInfo: android.content.pm.ResolveInfo? = null
+        val shortcutInfo: android.content.pm.ResolveInfo? = null,
+        val id: String = java.util.UUID.randomUUID().toString()
     )
 
     private val _advancedSearchEnabled = MutableStateFlow(prefManager.advancedSearchEnabled)
@@ -683,10 +684,22 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 }
                 
                 val widgetItems = providers.filter { it.provider.packageName == pkg }.map {
-                    WidgetPickerItemData(it.loadLabel(pm), true, widgetInfo = it)
+                    val label = it.loadLabel(pm)
+                    WidgetPickerItemData(
+                        label = label, 
+                        isWidget = true, 
+                        widgetInfo = it,
+                        id = "widget_${it.provider.flattenToString()}_$label"
+                    )
                 }
                 val shortcutItems = shortcuts.filter { it.activityInfo.packageName == pkg }.map {
-                    WidgetPickerItemData(it.loadLabel(pm).toString(), false, shortcutInfo = it)
+                    val label = it.loadLabel(pm).toString()
+                    WidgetPickerItemData(
+                        label = label, 
+                        isWidget = false, 
+                        shortcutInfo = it,
+                        id = "shortcut_${it.activityInfo.packageName}_${it.activityInfo.name}_$label"
+                    )
                 }
                 
                 AppWidgetGroup(appName, icon) to (widgetItems + shortcutItems).sortedBy { it.label }
