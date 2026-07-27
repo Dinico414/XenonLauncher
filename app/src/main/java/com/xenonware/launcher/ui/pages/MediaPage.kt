@@ -119,7 +119,7 @@ fun MediaPage(
     }
 
     // Normalize progress for the background effects: 0.5f to 1.0f -> 0.0f to 1.0f
-    val bgProgress = ((progress - 0.5f) * 2f).coerceIn(0f, 1f)
+    val bgProgress = ((progress - 0.5f) * 2f).coerceIn(0.25f, 1f)
     val cornerProgress = ((progress - 0.85f) * 2f).coerceIn(0f, 1f)
     // Exponential corner radius: 24.dp to 0.dp
     // Using power of 3 for a more pronounced exponential curve
@@ -127,7 +127,6 @@ fun MediaPage(
 
     Box(modifier = Modifier
         .fillMaxSize()
-        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
     ) {
         // Background Album Art
         mediaState.albumArt?.let { bitmap ->
@@ -163,7 +162,8 @@ fun MediaPage(
             Row(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(top = topPadding, bottom = dockAreaHeight),
+                    .padding(top = topPadding, bottom = dockAreaHeight)
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
@@ -367,7 +367,8 @@ fun MediaPage(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(32.dp),
+                    .padding(32.dp)
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
