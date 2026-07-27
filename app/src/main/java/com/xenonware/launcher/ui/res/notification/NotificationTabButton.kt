@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import com.xenon.mylibrary.theme.QuicksandTitleVariable
 import com.xenonware.launcher.model.AppInfo
+import com.xenonware.launcher.util.ColorUtils
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -109,8 +110,7 @@ fun NotificationTabButton(
 
     val finalAppColor = if (appColor == Color.Unspecified) colorScheme.primary else appColor
     val finalContrastColor = if (appColor == Color.Unspecified) {
-        val luminance = 0.2126 * finalAppColor.red + 0.7152 * finalAppColor.green + 0.0722 * finalAppColor.blue
-        if (luminance > 0.72) Color.Black else Color.White
+        ColorUtils.getContrastColor(finalAppColor)
     } else {
         contrastColor
     }

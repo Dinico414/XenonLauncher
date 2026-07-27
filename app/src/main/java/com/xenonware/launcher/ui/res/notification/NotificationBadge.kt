@@ -20,8 +20,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
-import androidx.core.graphics.get
-import androidx.palette.graphics.Palette
+import com.xenonware.launcher.util.ColorUtils
 import com.xenon.mylibrary.theme.QuicksandTitleVariable
 
 @Composable
@@ -33,7 +32,7 @@ fun NotificationBadge(
 ) {
     if (badgeType == 0 || count <= 0) return
 
-    val dominantColor = remember(appIcon) { getDominantColor(appIcon) }
+    val dominantColor = remember(appIcon) { ColorUtils.getDominantColor(appIcon) }
     val primaryColor = MaterialTheme.colorScheme.primary
     val badgeColor = remember(dominantColor, primaryColor) {
         val base = if (dominantColor == Color.Unspecified) Color.Red else dominantColor
@@ -59,7 +58,7 @@ fun NotificationBadge(
         if (badgeType == 2) {
             Text(
                 text = if (count > 99) "99+" else count.toString(),
-                color = getContrastColor(badgeColor),
+                color = ColorUtils.getContrastColor(badgeColor),
                 fontSize = 12.sp,
                 fontFamily = QuicksandTitleVariable,
                 fontWeight = FontWeight.Bold,
@@ -76,34 +75,4 @@ private fun getTertiaryColor(color: Color): Color {
     return Color(android.graphics.Color.HSVToColor(hsv))
 }
 
-private fun getDominantColor(drawable: Drawable?): Color {
-    if (drawable == null) return Color.Unspecified
-    return try {
-        val bitmap = drawable.toBitmap()
-        val palette = Palette.from(bitmap).generate()
-        val swatch = palette.darkVibrantSwatch
-            ?: palette.vibrantSwatch
-            ?: palette.lightVibrantSwatch
-            ?: palette.dominantSwatch
 
-        val rawColor = swatch?.rgb ?: run {
-            val width = bitmap.width
-            val height = bitmap.height
-            bitmap[width / 2, height / 2]
-        }
-
-        val hsv = FloatArray(3)
-        android.graphics.Color.colorToHSV(rawColor, hsv)
-        hsv[1] = hsv[1].coerceAtMost(0.7f)
-        hsv[2] = hsv[2].coerceAtMost(0.8f)
-
-        Color(android.graphics.Color.HSVToColor(hsv)).copy(alpha = 1f)
-    } catch (_: Exception) {
-        Color.Unspecified
-    }
-}
-
-private fun getContrastColor(color: Color): Color {
-    val luminance = (0.299 * color.red + 0.587 * color.green + 0.114 * color.blue)
-    return if (luminance > 0.5) Color.Black else Color.White
-}

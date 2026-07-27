@@ -27,11 +27,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -82,7 +84,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import com.xenonware.launcher.notification.LauncherNotification
 import com.xenonware.launcher.notification.LauncherNotificationAction
- import com.xenonware.launcher.ui.pages.getContrastColor
+import com.xenonware.launcher.util.ColorUtils
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.max
@@ -121,7 +123,7 @@ fun NotificationItem(
     val stretchLimit = with(density) { 120.dp.toPx() }
 
     val finalAppColor = if (appColor == Color.Unspecified) colorScheme.primary else appColor
-    val finalContrastColor = remember(finalAppColor) { getContrastColor(finalAppColor) }
+    val finalContrastColor = remember(finalAppColor) { ColorUtils.getContrastColor(finalAppColor) }
     var expanded by remember { mutableStateOf(false) }
 
     val swipeProgress by remember {
@@ -292,24 +294,32 @@ fun NotificationItem(
                     }
 
                     Column(modifier = Modifier.weight(1f)) {
+                        val hasTitle = !notification.title.isNullOrBlank()
+                        val displayTitle = if (hasTitle) notification.title else notification.text
+                        val displayText = if (hasTitle) notification.text else null
+
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.Top
                         ) {
-                            notification.title?.let {
+                            displayTitle?.let {
                                 Text(
                                     text = it,
                                     color = colorScheme.onSurface,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 14.sp,
-                                    maxLines = 1,
+                                    maxLines = if (expanded) 3 else 1,
                                     overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.weight(1f, fill = false)
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(top = 2.dp)
                                 )
                             }
 
-                            if (notification.actions.isNotEmpty()) {
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            if (notification.actions.isNotEmpty() || (displayText != null && displayText.length > 50) || (displayTitle != null && displayTitle.length > 40)) {
                                 Surface(
                                     onClick = { expanded = !expanded },
                                     shape = RoundedCornerShape(8.dp),
@@ -339,17 +349,18 @@ fun NotificationItem(
                                     text = formatNotificationTime(notification.postTime),
                                     color = colorScheme.onSurface.copy(alpha = 0.5f),
                                     fontSize = 12.sp,
-                                    fontWeight = FontWeight.Medium
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.padding(top = 4.dp)
                                 )
                             }
                         }
 
-                        notification.text?.let {
+                        displayText?.let {
                             Text(
                                 text = it,
                                 color = colorScheme.onSurface.copy(alpha = 0.7f),
                                 fontSize = 13.sp,
-                                maxLines = 2,
+                                maxLines = if (expanded) 10 else 2,
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
