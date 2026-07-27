@@ -7,13 +7,24 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Pause
@@ -45,13 +56,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.xenonware.launcher.media.MediaState
+import com.xenonware.launcher.util.shouldDisableLandscapeLayout
 import java.util.Locale
 import kotlin.math.pow
 
@@ -69,6 +83,20 @@ fun MediaPage(
 ) {
     val context = LocalContext.current
     val pm = remember { context.packageManager }
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val disableLandscape = shouldDisableLandscapeLayout(context)
+    val useLandscapeLayout = isLandscape && !disableLandscape
+
+    val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val topPadding = if (statusBarHeight < 16.dp) {16.dp} else {statusBarHeight}
+    val safeDrawingPadding = WindowInsets.safeDrawing.asPaddingValues()
+    val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
+    val startPadding = safeDrawingPadding.calculateStartPadding(layoutDirection).coerceAtLeast(16.dp)
+    val endPadding = safeDrawingPadding.calculateEndPadding(layoutDirection).coerceAtLeast(16.dp)
+    val navBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    // 72dp (dock) + 8dp (dock padding) + 8dp (gap) + 4dp (to match widget vertical padding)
+    val dockAreaHeight = 72.dp + navBarHeight + 8.dp + 8.dp + 4.dp
 
     val appName = remember(mediaState.packageName) {
         mediaState.packageName?.let {
@@ -97,7 +125,10 @@ fun MediaPage(
     // Using power of 3 for a more pronounced exponential curve
     val cornerRadius = (24 * (1f - cornerProgress).pow(3)).dp
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier
+        .fillMaxSize()
+        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
+    ) {
         // Background Album Art
         mediaState.albumArt?.let { bitmap ->
             Box(
@@ -127,210 +158,418 @@ fun MediaPage(
             }
         }
 
-        // Content
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(32.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            if (!isPermissionGranted) {
-                Text(
-                    "Notification Access Required",
-                    color = Color.White,
-                    style = MaterialTheme.typography.headlineSmall,
-                    textAlign = TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    "To show and control media playback, Xenon needs notification access.",
-                    color = Color.White.copy(alpha = 0.7f),
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-                Button(onClick = onOpenSettings) {
-                    Text("Grant Access")
-                }
-            } else {
-                // Top App Info / Open Source Button
-                Row(
+        if (useLandscapeLayout) {
+            // Landscape Side-by-Side Layout
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = topPadding, bottom = dockAreaHeight),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Left Side: Album Art
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .statusBarsPadding(),
-                    horizontalArrangement = Arrangement.Start
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    contentAlignment = Alignment.Center
                 ) {
                     Surface(
-                        onClick = onOpenSource,
-                        color = Color.White.copy(alpha = 0.1f),
-                        shape = RoundedCornerShape(20.dp),
-                        modifier = Modifier.height(40.dp)
+                        modifier = Modifier
+                            .aspectRatio(1f)
+                            .fillMaxSize(0.9f)
+                            .clip(RoundedCornerShape(24.dp)),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        tonalElevation = 8.dp
                     ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            if (appIcon != null) {
-                                AsyncImage(
-                                    model = appIcon,
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .size(24.dp)
-                                        .clip(RoundedCornerShape(12.dp))
+                        if (mediaState.albumArt != null) {
+                            Image(
+                                bitmap = mediaState.albumArt.asImageBitmap(),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    "No Art",
+                                    color = Color.White.copy(alpha = 0.5f),
+                                    style = MaterialTheme.typography.bodyLarge
                                 )
                             }
-                            Text(
-                                text = appName,
-                                color = Color.White,
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Medium
-                            )
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.weight(1f))
-
-                // Main Album Art
-                Surface(
-                    modifier = Modifier
-                        .size(280.dp)
-                        .aspectRatio(1f)
-                        .clip(RoundedCornerShape(24.dp)),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    tonalElevation = 8.dp
+                // Right Side: Controls and Info
+                Column(
+                    modifier = Modifier.weight(1f).padding(end = endPadding),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
-                    if (mediaState.albumArt != null) {
-                        Image(
-                            bitmap = mediaState.albumArt.asImageBitmap(),
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
+                    if (!isPermissionGranted) {
+                        Text(
+                            "Notification Access Required",
+                            color = Color.White,
+                            style = MaterialTheme.typography.headlineSmall,
+                            textAlign = TextAlign.Center
                         )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Button(onClick = onOpenSettings) {
+                            Text("Grant Access")
+                        }
                     } else {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
+                        // App Name
+                        Surface(
+                            onClick = onOpenSource,
+                            color = Color.White.copy(alpha = 0.1f),
+                            shape = RoundedCornerShape(20.dp),
+                            modifier = Modifier.height(40.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                if (appIcon != null) {
+                                    AsyncImage(
+                                        model = appIcon,
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                    )
+                                }
+                                Text(
+                                    text = appName,
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.padding(end = 4.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(Modifier.weight(1f))
+
+                        // Info
+                        Text(
+                            text = mediaState.title ?: "Nothing Playing",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            textAlign = TextAlign.Center,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = mediaState.artist ?: "Unknown Artist",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Color.White.copy(alpha = 0.7f),
+                            textAlign = TextAlign.Center,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+
+                        Spacer(Modifier.weight(1f))
+
+                        // Progress Bar
+                        var sliderPosition by remember { mutableStateOf<Float?>(null) }
+                        val currentPosition = sliderPosition ?: mediaState.position.toFloat()
+                        val duration = mediaState.duration.toFloat().coerceAtLeast(1f)
+
+                        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                            Slider(
+                                value = currentPosition.coerceIn(0f, duration),
+                                onValueChange = { sliderPosition = it },
+                                onValueChangeFinished = {
+                                    sliderPosition?.let { onSeek(it.toLong()) }
+                                    sliderPosition = null
+                                },
+                                valueRange = 0f..duration,
+                                colors = SliderDefaults.colors(
+                                    thumbColor = Color.White,
+                                    activeTrackColor = Color.White,
+                                    inactiveTrackColor = Color.White.copy(alpha = 0.3f)
+                                )
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    formatTime(currentPosition.toLong()),
+                                    color = Color.White.copy(alpha = 0.6f),
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                                Text(
+                                    formatTime(mediaState.duration),
+                                    color = Color.White.copy(alpha = 0.6f),
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
+                        }
+
+                        Spacer(Modifier.weight(1f))
+
+                        // Controls
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(24.dp)
+                        ) {
+                            IconButton(
+                                onClick = onSkipPrevious,
+                                modifier = Modifier.size(48.dp)
+                            ) {
+                                Icon(
+                                    Icons.Rounded.SkipPrevious,
+                                    contentDescription = "Previous",
+                                    modifier = Modifier.size(32.dp),
+                                    tint = Color.White
+                                )
+                            }
+
+                            FilledIconButton(
+                                onClick = onTogglePlayPause,
+                                modifier = Modifier.size(64.dp),
+                                colors = IconButtonDefaults.filledIconButtonColors(
+                                    containerColor = Color.White,
+                                    contentColor = Color.Black
+                                )
+                            ) {
+                                Icon(
+                                    if (mediaState.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                                    contentDescription = "Play/Pause",
+                                    modifier = Modifier.size(40.dp)
+                                )
+                            }
+
+                            IconButton(
+                                onClick = onSkipNext,
+                                modifier = Modifier.size(48.dp)
+                            ) {
+                                Icon(
+                                    Icons.Rounded.SkipNext,
+                                    contentDescription = "Next",
+                                    modifier = Modifier.size(32.dp),
+                                    tint = Color.White
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            // Content
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(32.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (!isPermissionGranted) {
+                    Text(
+                        "Notification Access Required",
+                        color = Color.White,
+                        style = MaterialTheme.typography.headlineSmall,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "To show and control media playback, Xenon needs notification access.",
+                        color = Color.White.copy(alpha = 0.7f),
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Button(onClick = onOpenSettings) {
+                        Text("Grant Access")
+                    }
+                } else {
+                    // Top App Info / Open Source Button
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .statusBarsPadding(),
+                        horizontalArrangement = Arrangement.Start
+                    ) {
+                        Surface(
+                            onClick = onOpenSource,
+                            color = Color.White.copy(alpha = 0.1f),
+                            shape = RoundedCornerShape(20.dp),
+                            modifier = Modifier.height(40.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                if (appIcon != null) {
+                                    AsyncImage(
+                                        model = appIcon,
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                    )
+                                }
+                                Text(
+                                    text = appName,
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.padding(end = 4.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    // Main Album Art
+                    Surface(
+                        modifier = Modifier
+                            .size(280.dp)
+                            .aspectRatio(1f)
+                            .clip(RoundedCornerShape(24.dp)),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        tonalElevation = 8.dp
+                    ) {
+                        if (mediaState.albumArt != null) {
+                            Image(
+                                bitmap = mediaState.albumArt.asImageBitmap(),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    "No Art",
+                                    color = Color.White.copy(alpha = 0.5f),
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(48.dp))
+
+                    // Info
+                    Text(
+                        text = mediaState.title ?: "Nothing Playing",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = mediaState.artist ?: "Unknown Artist",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Color.White.copy(alpha = 0.7f),
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    // Progress Bar
+                    var sliderPosition by remember { mutableStateOf<Float?>(null) }
+                    val currentPosition = sliderPosition ?: mediaState.position.toFloat()
+                    val duration = mediaState.duration.toFloat().coerceAtLeast(1f)
+
+                    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                        Slider(
+                            value = currentPosition.coerceIn(0f, duration),
+                            onValueChange = { sliderPosition = it },
+                            onValueChangeFinished = {
+                                sliderPosition?.let { onSeek(it.toLong()) }
+                                sliderPosition = null
+                            },
+                            valueRange = 0f..duration,
+                            colors = SliderDefaults.colors(
+                                thumbColor = Color.White,
+                                activeTrackColor = Color.White,
+                                inactiveTrackColor = Color.White.copy(alpha = 0.3f)
+                            )
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                "No Art",
-                                color = Color.White.copy(alpha = 0.5f),
-                                style = MaterialTheme.typography.bodyLarge
+                                formatTime(currentPosition.toLong()),
+                                color = Color.White.copy(alpha = 0.6f),
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                            Text(
+                                formatTime(mediaState.duration),
+                                color = Color.White.copy(alpha = 0.6f),
+                                style = MaterialTheme.typography.labelSmall
                             )
                         }
                     }
-                }
 
-                Spacer(modifier = Modifier.height(48.dp))
+                    Spacer(modifier = Modifier.height(32.dp))
 
-                // Info
-                Text(
-                    text = mediaState.title ?: "Nothing Playing",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    textAlign = TextAlign.Center,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = mediaState.artist ?: "Unknown Artist",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Color.White.copy(alpha = 0.7f),
-                    textAlign = TextAlign.Center,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                // Progress Bar
-                var sliderPosition by remember { mutableStateOf<Float?>(null) }
-                val currentPosition = sliderPosition ?: mediaState.position.toFloat()
-                val duration = mediaState.duration.toFloat().coerceAtLeast(1f)
-
-                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                    Slider(
-                        value = currentPosition.coerceIn(0f, duration),
-                        onValueChange = { sliderPosition = it },
-                        onValueChangeFinished = {
-                            sliderPosition?.let { onSeek(it.toLong()) }
-                            sliderPosition = null
-                        },
-                        valueRange = 0f..duration,
-                        colors = SliderDefaults.colors(
-                            thumbColor = Color.White,
-                            activeTrackColor = Color.White,
-                            inactiveTrackColor = Color.White.copy(alpha = 0.3f)
-                        )
-                    )
+                    // Controls
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(24.dp)
                     ) {
-                        Text(
-                            formatTime(currentPosition.toLong()),
-                            color = Color.White.copy(alpha = 0.6f),
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                        Text(
-                            formatTime(mediaState.duration),
-                            color = Color.White.copy(alpha = 0.6f),
-                            style = MaterialTheme.typography.labelSmall
-                        )
+                        IconButton(
+                            onClick = onSkipPrevious,
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Icon(
+                                Icons.Rounded.SkipPrevious,
+                                contentDescription = "Previous",
+                                modifier = Modifier.size(32.dp),
+                                tint = Color.White
+                            )
+                        }
+
+                        FilledIconButton(
+                            onClick = onTogglePlayPause,
+                            modifier = Modifier.size(64.dp),
+                            colors = IconButtonDefaults.filledIconButtonColors(
+                                containerColor = Color.White,
+                                contentColor = Color.Black
+                            )
+                        ) {
+                            Icon(
+                                if (mediaState.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                                contentDescription = "Play/Pause",
+                                modifier = Modifier.size(40.dp)
+                            )
+                        }
+
+                        IconButton(
+                            onClick = onSkipNext,
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Icon(
+                                Icons.Rounded.SkipNext,
+                                contentDescription = "Next",
+                                modifier = Modifier.size(32.dp),
+                                tint = Color.White
+                            )
+                        }
                     }
+                    
+                    Spacer(modifier = Modifier.weight(1f))
+                    Spacer(modifier = Modifier.height(dockAreaHeight))
                 }
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                // Controls
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(24.dp)
-                ) {
-                    IconButton(
-                        onClick = onSkipPrevious,
-                        modifier = Modifier.size(48.dp)
-                    ) {
-                        Icon(
-                            Icons.Rounded.SkipPrevious,
-                            contentDescription = "Previous",
-                            modifier = Modifier.size(32.dp),
-                            tint = Color.White
-                        )
-                    }
-
-                    FilledIconButton(
-                        onClick = onTogglePlayPause,
-                        modifier = Modifier.size(64.dp),
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = Color.White,
-                            contentColor = Color.Black
-                        )
-                    ) {
-                        Icon(
-                            if (mediaState.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                            contentDescription = "Play/Pause",
-                            modifier = Modifier.size(40.dp)
-                        )
-                    }
-
-                    IconButton(
-                        onClick = onSkipNext,
-                        modifier = Modifier.size(48.dp)
-                    ) {
-                        Icon(
-                            Icons.Rounded.SkipNext,
-                            contentDescription = "Next",
-                            modifier = Modifier.size(32.dp),
-                            tint = Color.White
-                        )
-                    }
-                }
-                
-                Spacer(modifier = Modifier.weight(1f))
             }
         }
     }

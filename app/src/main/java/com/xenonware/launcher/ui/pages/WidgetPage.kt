@@ -26,16 +26,20 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -116,7 +120,11 @@ fun WidgetPage(
     val topGridPadding = 8.dp
     val bottomGridPadding = 8.dp
     
-    val screenWidth = configuration.screenWidthDp.dp - (horizontalPadding * 2)
+    val horizontalSafePadding = WindowInsets.safeDrawing.asPaddingValues().run { 
+        calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr) + calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr)
+    }
+    
+    val screenWidth = configuration.screenWidthDp.dp - (horizontalPadding * 2) - horizontalSafePadding
 
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val navBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -305,6 +313,7 @@ fun WidgetPage(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
             .hazeSource(hazeState)
             .pointerInput(Unit) {
                 detectTapGestures(
