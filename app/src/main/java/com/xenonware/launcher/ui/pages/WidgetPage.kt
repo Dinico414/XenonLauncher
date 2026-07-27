@@ -759,25 +759,40 @@ fun WidgetPage(
         WidgetSelectorDialog(
             installedWidgets = installedWidgets,
             onDismiss = { showWidgetSelector = false },
-            onWidgetSelected = { info ->
-                val appWidgetId = appWidgetHost.allocateAppWidgetId()
-                val success = appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)
-                val w = 2.coerceAtMost(widgetColumns)
-                val h = 2
-                val space = findFirstAvailableSpace(w, h, pagerState.currentPage)
-                val (targetPage, targetX, targetY) = space ?: Triple(pagerState.currentPage, 0, 0)
+            onWidgetSelected = { item ->
+                if (item.isWidget && item.widgetInfo != null) {
+                    val info = item.widgetInfo
+                    val appWidgetId = appWidgetHost.allocateAppWidgetId()
+                    val success = appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)
+                    val w = 2.coerceAtMost(widgetColumns)
+                    val h = 2
+                    val space = findFirstAvailableSpace(w, h, pagerState.currentPage)
+                    val (targetPage, targetX, targetY) = space ?: Triple(pagerState.currentPage, 0, 0)
 
-                if (success) {
-                    viewModel.addWidget(appWidgetId, targetPage, targetX, targetY, w, h)
-                    scope.launch {
-                        pagerState.animateScrollToPage(targetPage)
+                    if (success) {
+                        viewModel.addWidget(appWidgetId, targetPage, targetX, targetY, w, h)
+                        scope.launch {
+                            pagerState.animateScrollToPage(targetPage)
+                        }
+                    } else {
+                        val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_BIND).apply {
+                            putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+                            putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, info.provider)
+                        }
+                        pickWidgetLauncher.launch(intent)
                     }
-                } else {
-                    val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_BIND).apply {
-                        putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
-                        putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, info.provider)
+                } else if (item.shortcutInfo != null) {
+                    val intent = Intent(Intent.ACTION_CREATE_SHORTCUT).apply {
+                        component = android.content.ComponentName(
+                            item.shortcutInfo.activityInfo.packageName,
+                            item.shortcutInfo.activityInfo.name
+                        )
                     }
-                    pickWidgetLauncher.launch(intent)
+                    // For now, we just launch the shortcut picker. 
+                    // Full implementation of workspace shortcuts would require model changes.
+                    try {
+                        context.startActivity(intent)
+                    } catch (_: Exception) {}
                 }
                 showWidgetSelector = false
             }

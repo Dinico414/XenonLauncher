@@ -102,8 +102,15 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val _widgets = MutableStateFlow<List<com.xenonware.launcher.model.WidgetItem>>(emptyList())
     val widgets: StateFlow<List<com.xenonware.launcher.model.WidgetItem>> = _widgets
 
-    private val _installedWidgets = MutableStateFlow<Map<AppWidgetGroup, List<android.appwidget.AppWidgetProviderInfo>>>(emptyMap())
-    val installedWidgets: StateFlow<Map<AppWidgetGroup, List<android.appwidget.AppWidgetProviderInfo>>> = _installedWidgets
+    private val _installedWidgets = MutableStateFlow<Map<AppWidgetGroup, List<WidgetPickerItemData>>>(emptyMap())
+    val installedWidgets: StateFlow<Map<AppWidgetGroup, List<WidgetPickerItemData>>> = _installedWidgets
+
+    data class WidgetPickerItemData(
+        val label: String,
+        val isWidget: Boolean,
+        val widgetInfo: android.appwidget.AppWidgetProviderInfo? = null,
+        val shortcutInfo: android.content.pm.ResolveInfo? = null
+    )
 
     private val _advancedSearchEnabled = MutableStateFlow(prefManager.advancedSearchEnabled)
     val advancedSearchEnabled: StateFlow<Boolean> = _advancedSearchEnabled
@@ -656,24 +663,37 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch(Dispatchers.IO) {
             val manager = android.appwidget.AppWidgetManager.getInstance(getApplication())
             val pm = getApplication<Application>().packageManager
-            val providers = manager.installedProviders
             
-            val grouped = providers.groupBy { it.provider.packageName }
-                .map { (pkg, widgets) ->
-                    val appName = try {
-                        pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
-                    } catch (e: Exception) {
-                        pkg
-                    }
-                    val icon = try {
-                        pm.getApplicationIcon(pkg)
-                    } catch (e: Exception) {
-                        null
-                    }
-                    AppWidgetGroup(appName, icon) to widgets
+            val providers = manager.installedProviders
+            val shortcutIntent = Intent(Intent.ACTION_CREATE_SHORTCUT)
+            val shortcuts = pm.queryIntentActivities(shortcutIntent, 0)
+            
+            val allPackages = (providers.map { it.provider.packageName } + shortcuts.map { it.activityInfo.packageName }).toSet()
+            
+            val grouped = allPackages.map { pkg ->
+                val appName = try {
+                    pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
+                } catch (e: Exception) {
+                    pkg
                 }
-                .toMap()
-                .toSortedMap()
+                val icon = try {
+                    pm.getApplicationIcon(pkg)
+                } catch (e: Exception) {
+                    null
+                }
+                
+                val widgetItems = providers.filter { it.provider.packageName == pkg }.map {
+                    WidgetPickerItemData(it.loadLabel(pm), true, widgetInfo = it)
+                }
+                val shortcutItems = shortcuts.filter { it.activityInfo.packageName == pkg }.map {
+                    WidgetPickerItemData(it.loadLabel(pm).toString(), false, shortcutInfo = it)
+                }
+                
+                AppWidgetGroup(appName, icon) to (widgetItems + shortcutItems).sortedBy { it.label }
+            }
+            .filter { it.second.isNotEmpty() }
+            .toMap()
+            .toSortedMap()
             
             _installedWidgets.value = grouped
         }
