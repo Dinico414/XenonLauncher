@@ -57,6 +57,8 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -227,7 +229,30 @@ fun NotificationPage(
                             LazyColumn(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .fillMaxWidth(),
+                                    .fillMaxWidth()
+                                    .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                                    .drawWithContent {
+                                        drawContent()
+                                        val fadeHeight = 16.dp.toPx()
+                                        if (size.height > 0) {
+                                            // Top fade
+                                            drawRect(
+                                                brush = Brush.verticalGradient(
+                                                    0f to Color.Transparent,
+                                                    (fadeHeight / size.height).coerceIn(0f, 1f) to Color.Black
+                                                ),
+                                                blendMode = BlendMode.DstIn
+                                            )
+                                            // Bottom fade
+                                            drawRect(
+                                                brush = Brush.verticalGradient(
+                                                    ((size.height - fadeHeight) / size.height).coerceIn(0f, 1f) to Color.Black,
+                                                    1f to Color.Transparent
+                                                ),
+                                                blendMode = BlendMode.DstIn
+                                            )
+                                        }
+                                    },
                                 verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.Bottom),
                                 contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
                             ) {
@@ -384,7 +409,30 @@ fun NotificationPage(
                         LazyColumn(
                             modifier = Modifier
                                 .weight(1f)
-                                .fillMaxWidth(),
+                                .fillMaxWidth()
+                                .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                                .drawWithContent {
+                                    drawContent()
+                                    val fadeHeight = 16.dp.toPx()
+                                    if (size.height > 0) {
+                                        // Top fade
+                                        drawRect(
+                                            brush = Brush.verticalGradient(
+                                                0f to Color.Transparent,
+                                                (fadeHeight / size.height).coerceIn(0f, 1f) to Color.Black
+                                            ),
+                                            blendMode = BlendMode.DstIn
+                                        )
+                                        // Bottom fade
+                                        drawRect(
+                                            brush = Brush.verticalGradient(
+                                                ((size.height - fadeHeight) / size.height).coerceIn(0f, 1f) to Color.Black,
+                                                1f to Color.Transparent
+                                            ),
+                                            blendMode = BlendMode.DstIn
+                                        )
+                                    }
+                                },
                             verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.Bottom),
                             contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
                         ) {
