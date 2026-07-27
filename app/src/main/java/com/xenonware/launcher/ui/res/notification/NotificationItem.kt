@@ -28,8 +28,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -62,11 +64,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -260,8 +264,9 @@ fun NotificationItem(
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalAlignment = Alignment.Top,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     val iconToDraw = notification.icon
                     if (iconToDraw != null) {
@@ -279,7 +284,7 @@ fun NotificationItem(
                         Box(
                             modifier = Modifier
                                 .size(40.dp)
-                                .background(finalAppColor, CircleShape),
+                                .background(finalAppColor, RoundedCornerShape(12.dp)),
                             contentAlignment = Alignment.Center
                         ) {
                             if (iconBitmap != null) {
@@ -293,75 +298,177 @@ fun NotificationItem(
                         }
                     }
 
-                    Column(modifier = Modifier.weight(1f)) {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .heightIn(min = 40.dp),
+                        verticalArrangement = Arrangement.Center
+                    ) {
                         val hasTitle = !notification.title.isNullOrBlank()
                         val displayTitle = if (hasTitle) notification.title else notification.text
-                        val displayText = if (hasTitle) notification.text else null
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.Top
-                        ) {
-                            displayTitle?.let {
-                                Text(
-                                    text = it,
-                                    color = colorScheme.onSurface,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp,
-                                    maxLines = if (expanded) 3 else 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .padding(top = 2.dp)
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            if (notification.actions.isNotEmpty() || (displayText != null && displayText.length > 50) || (displayTitle != null && displayTitle.length > 40)) {
-                                Surface(
-                                    onClick = { expanded = !expanded },
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = colorScheme.surfaceContainerHighest,
-                                    modifier = Modifier.height(26.dp)
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.padding(horizontal = 8.dp)
-                                    ) {
-                                        Text(
-                                            text = formatNotificationTime(notification.postTime),
-                                            color = colorScheme.onSurface.copy(alpha = 0.6f),
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        Icon(
-                                            imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
-                                            contentDescription = if (expanded) "Collapse" else "Expand",
-                                            tint = colorScheme.onSurface.copy(alpha = 0.6f),
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
-                                }
-                            } else {
-                                Text(
-                                    text = formatNotificationTime(notification.postTime),
-                                    color = colorScheme.onSurface.copy(alpha = 0.5f),
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    modifier = Modifier.padding(top = 4.dp)
-                                )
-                            }
-                        }
-
-                        displayText?.let {
+                        
+                        displayTitle?.let {
                             Text(
                                 text = it,
-                                color = colorScheme.onSurface.copy(alpha = 0.7f),
-                                fontSize = 13.sp,
-                                maxLines = if (expanded) 10 else 2,
+                                color = colorScheme.onSurface,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                maxLines = if (expanded) 3 else 1,
                                 overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+
+                    // Sender Icon / Profile Picture (Same size as package icon, stays in row)
+                    if (notification.senderIcon != null) {
+                        val senderBitmap = remember(notification.senderIcon) {
+                            try {
+                                notification.senderIcon.toBitmap(
+                                    width = (40 * density.density).toInt().coerceAtLeast(1),
+                                    height = (40 * density.density).toInt().coerceAtLeast(1)
+                                ).asImageBitmap()
+                            } catch (e: Exception) {
+                                null
+                            }
+                        }
+                        if (senderBitmap != null) {
+                            Image(
+                                bitmap = senderBitmap,
+                                contentDescription = null,
+                                modifier = Modifier.size(40.dp),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                    }
+
+                    // Collapsed Media Thumbnail
+                    if (!expanded && notification.mediaImage != null) {
+                        val thumbnailBitmap = remember(notification.mediaImage) {
+                            try {
+                                notification.mediaImage.toBitmap(
+                                    width = (40 * density.density).toInt().coerceAtLeast(1),
+                                    height = (40 * density.density).toInt().coerceAtLeast(1)
+                                ).asImageBitmap()
+                            } catch (e: Exception) {
+                                null
+                            }
+                        }
+                        if (thumbnailBitmap != null) {
+                            Image(
+                                bitmap = thumbnailBitmap,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(colorScheme.surfaceContainer),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                    }
+
+                    // Expand Button Area
+                    Column(
+                        horizontalAlignment = Alignment.End,
+                        verticalArrangement = Arrangement.Center,
+                        modifier = Modifier.height(40.dp)
+                    ) {
+                        val hasTitle = !notification.title.isNullOrBlank()
+                        val displayText = if (hasTitle) notification.text else null
+                        val displayTitle = if (hasTitle) notification.title else notification.text
+                        
+                        val canExpand = notification.actions.isNotEmpty() || 
+                                       (displayText != null && displayText.length > 50) || 
+                                       (displayTitle != null && displayTitle.length > 40) ||
+                                       notification.mediaImage != null || 
+                                       notification.senderIcon != null
+
+                        if (canExpand) {
+                            Surface(
+                                onClick = { expanded = !expanded },
+                                shape = RoundedCornerShape(8.dp),
+                                color = colorScheme.surfaceContainerHighest,
+                                modifier = Modifier.height(26.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 8.dp)
+                                ) {
+                                    Text(
+                                        text = formatNotificationTime(notification.postTime),
+                                        color = colorScheme.onSurface.copy(alpha = 0.6f),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Icon(
+                                        imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                                        contentDescription = if (expanded) "Collapse" else "Expand",
+                                        tint = colorScheme.onSurface.copy(alpha = 0.6f),
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                        } else {
+                            Text(
+                                text = formatNotificationTime(notification.postTime),
+                                color = colorScheme.onSurface.copy(alpha = 0.5f),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+
+                // Message content (Below the top row)
+                val hasTitle = !notification.title.isNullOrBlank()
+                val bodyText = if (hasTitle) notification.text else null
+                
+                if (!bodyText.isNullOrBlank()) {
+                    Text(
+                        text = bodyText,
+                        color = colorScheme.onSurface.copy(alpha = 0.7f),
+                        fontSize = 13.sp,
+                        maxLines = if (expanded) 10 else 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 4.dp) // Starts at the very beginning
+                    )
+                }
+
+                // Expanded Media (Big) with Aspect Ratio
+                if (expanded && notification.mediaImage != null) {
+                    var aspectRatio by remember { mutableFloatStateOf(16f / 9f) }
+                    val mediaBitmap = remember(notification.mediaImage) {
+                        try {
+                            val bmp = notification.mediaImage.toBitmap()
+                            aspectRatio = (bmp.width.toFloat() / bmp.height.toFloat()).coerceIn(0.2f, 2.5f)
+                            bmp.asImageBitmap()
+                        } catch (e: Exception) {
+                            null
+                        }
+                    }
+                    if (mediaBitmap != null) {
+                        Box(
+                            modifier = Modifier
+                                .padding(top = 12.dp)
+                                .fillMaxWidth(),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            Image(
+                                bitmap = mediaBitmap,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(colorScheme.surfaceContainer)
+                                    .then(
+                                        if (aspectRatio < 1f) {
+                                            // Vertical: Cap height at 300dp (approx square size on most screens)
+                                            // and let the width adjust to maintain aspect ratio
+                                            Modifier.height(300.dp).aspectRatio(aspectRatio)
+                                        } else {
+                                            // Horizontal/Square: Fill width
+                                            Modifier.fillMaxWidth().aspectRatio(aspectRatio)
+                                        }
+                                    ),
+                                contentScale = ContentScale.Fit
                             )
                         }
                     }
