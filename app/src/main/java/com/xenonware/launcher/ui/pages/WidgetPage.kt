@@ -14,8 +14,10 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -40,6 +42,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.AspectRatio
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Settings
@@ -72,6 +75,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -84,6 +88,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
+import androidx.core.graphics.drawable.toBitmap
 import com.xenonware.launcher.ui.res.MenuItem
 import com.xenonware.launcher.ui.res.WidgetEditBorder
 import com.xenonware.launcher.ui.res.WidgetSelectorDialog
@@ -104,7 +109,7 @@ fun WidgetPage(
     val haptic = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
-    val isWide = configuration.screenWidthDp >= 640
+    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
 
     // Grid layout constants
     val horizontalPadding = 16.dp
@@ -129,14 +134,19 @@ fun WidgetPage(
     
     val gridAreaHeight = configuration.screenHeightDp.dp - gridTopOffset - gridBottomOffset
 
+    // Dynamic Grid Calculation Helper
+    val getRowCountForColumns = remember(gridAreaHeight, screenWidth) {
+        { cols: Int ->
+            val cellWidth = screenWidth / cols
+            val maxPossibleRows = (gridAreaHeight / (cellWidth * 0.75f)).toInt()
+            (if (maxPossibleRows % 2 == 0) maxPossibleRows else maxPossibleRows - 1).coerceAtLeast(2)
+        }
+    }
+
+    val rowCount = getRowCountForColumns(widgetColumns)
+
     // Cell width is strictly determined by horizontal padding and columns
     val cellWidthDp = screenWidth / widgetColumns
-    
-    // Dynamic Row Calculation:
-    // We want as many rows as possible while keeping the cell aspect ratio
-    // between 75% and 125% of the width, but the row count must be even.
-    val maxPossibleRows = (gridAreaHeight / (cellWidthDp * 0.75f)).toInt()
-    val rowCount = (if (maxPossibleRows % 2 == 0) maxPossibleRows else maxPossibleRows - 1).coerceAtLeast(2)
     
     // Actual cell height to fill the available space exactly
     val cellHeightDp = gridAreaHeight / rowCount
@@ -232,6 +242,52 @@ fun WidgetPage(
                     }
                 } else {
                     viewModel.addWidget(appWidgetId, pagerState.currentPage, 0, 0, w, h)
+                }
+            }
+        }
+    }
+
+    val shortcutLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
+            val data = result.data ?: return@rememberLauncherForActivityResult
+            val intent = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                data.getParcelableExtra(Intent.EXTRA_SHORTCUT_INTENT, Intent::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                data.getParcelableExtra(Intent.EXTRA_SHORTCUT_INTENT)
+            }
+            val name = data.getStringExtra(Intent.EXTRA_SHORTCUT_NAME)
+            val iconRes = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                data.getParcelableExtra(Intent.EXTRA_SHORTCUT_ICON_RESOURCE, Intent.ShortcutIconResource::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                data.getParcelableExtra(Intent.EXTRA_SHORTCUT_ICON_RESOURCE)
+            }
+            
+            val iconBitmap = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                data.getParcelableExtra(Intent.EXTRA_SHORTCUT_ICON, android.graphics.Bitmap::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                data.getParcelableExtra(Intent.EXTRA_SHORTCUT_ICON) as? android.graphics.Bitmap
+            }
+            
+            if (intent != null && name != null) {
+                val w = 1
+                val h = 1
+                val space = findFirstAvailableSpace(w, h, pagerState.currentPage)
+                val (targetPage, targetX, targetY) = space ?: Triple(pagerState.currentPage, 0, 0)
+                
+                viewModel.addShortcut(
+                    targetPage, targetX, targetY, w, h,
+                    name, intent.toUri(0), 
+                    iconRes?.let { "${it.packageName}:${it.resourceName}" },
+                    iconBitmap
+                )
+                
+                scope.launch {
+                    pagerState.animateScrollToPage(targetPage)
                 }
             }
         }
@@ -385,6 +441,38 @@ fun WidgetPage(
                     Box(
                         modifier = Modifier.fillMaxSize()
                     ) {
+                    if (widgets.isEmpty()) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .clickable { showWidgetSelector = true }
+                                    .size(80.dp)
+                                    .background(colorScheme.primaryContainer.copy(alpha = 0.3f), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Rounded.Add,
+                                    null,
+                                    modifier = Modifier.size(40.dp),
+                                    tint = colorScheme.onPrimaryContainer
+                                )
+                            }
+                            Spacer(Modifier.height(16.dp))
+                            Text(
+                                "Add your first Widget",
+                                style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White.copy(alpha = 0.8f)
+                            )
+                        }
+                    }
+
                     widgets.filter { it.page == pageIndex }.forEach { widget ->
                         key(widget.id) {
                             val isSelected = selectedWidgetId == widget.id
@@ -437,20 +525,24 @@ fun WidgetPage(
                                         .fillMaxSize()
                                         .clip(RoundedCornerShape(24.dp))
                                 ) {
-                                    AndroidView(
-                                        factory = { ctx ->
-                                            appWidgetHost.createView(ctx, widget.id, widgetInfo).apply {
-                                                setPadding(0, 0, 0, 0)
-                                                setOnLongClickListener { 
-                                                    selectedWidgetId = widget.id
-                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                    true 
+                                    if (widget.type == "shortcut") {
+                                        ShortcutWidgetContent(widget)
+                                    } else {
+                                        AndroidView(
+                                            factory = { ctx ->
+                                                appWidgetHost.createView(ctx, widget.id, widgetInfo).apply {
+                                                    setPadding(0, 0, 0, 0)
+                                                    setOnLongClickListener { 
+                                                        selectedWidgetId = widget.id
+                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                        true 
+                                                    }
                                                 }
-                                            }
-                                        },
-                                        update = { _ -> },
-                                        modifier = Modifier.fillMaxSize()
-                                    )
+                                            },
+                                            update = { _ -> },
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
 
                                     Box(
                                         modifier = Modifier
@@ -463,98 +555,122 @@ fun WidgetPage(
                                     )
                                 }
 
-                                if (currentIsEditing) {
+                                // Overlay for selection and dragging
+                                // When not editing, only shortcuts need a tap handler here.
+                                // Widgets handle their own taps.
+                                // Both need a long press handler to enter edit mode.
+                                if (isEditing || widget.type == "shortcut") {
                                     Box(
                                         modifier = Modifier
                                             .fillMaxSize()
-                                            .pointerInput(widget.id, currentIsSelected) {
-                                                var moveAccumulated = Offset.Zero
-                                                var lastPageTurnTime = 0L
+                                            .pointerInput(widget.id, isEditing, isSelected) {
+                                                if (isEditing) {
+                                                    var moveAccumulated = Offset.Zero
+                                                    var lastPageTurnTime = 0L
 
-                                                val handleDrag = { change: androidx.compose.ui.input.pointer.PointerInputChange, dragAmount: Offset ->
-                                                    change.consume()
-                                                    moveAccumulated += dragAmount
-                                                    val cellWidthPx = with(density) { cellWidthDp.toPx() }
-                                                    val cellHeightPx = with(density) { cellHeightDp.toPx() }
-                                                    val dx = (moveAccumulated.x / cellWidthPx).roundToInt()
-                                                    val dy = (moveAccumulated.y / cellHeightPx).roundToInt()
+                                                    val handleDrag = { change: androidx.compose.ui.input.pointer.PointerInputChange, dragAmount: Offset ->
+                                                        change.consume()
+                                                        moveAccumulated += dragAmount
+                                                        val cellWidthPx = with(density) { cellWidthDp.toPx() }
+                                                        val cellHeightPx = with(density) { cellHeightDp.toPx() }
+                                                        val dx = (moveAccumulated.x / cellWidthPx).roundToInt()
+                                                        val dy = (moveAccumulated.y / cellHeightPx).roundToInt()
 
-                                                    val touchYInPager = change.position.y + with(density) { animY.toPx() }
-                                                    val pagerHeightPx = with(density) { gridAreaHeight.toPx() }
-                                                    val edgeThreshold = with(density) { 100.dp.toPx() }
-                                                    val now = System.currentTimeMillis()
+                                                        val touchYInPager = change.position.y + with(density) { animY.toPx() }
+                                                        val pagerHeightPx = with(density) { gridAreaHeight.toPx() }
+                                                        val edgeThreshold = with(density) { 100.dp.toPx() }
+                                                        val now = System.currentTimeMillis()
 
-                                                    if (touchYInPager < edgeThreshold && pagerState.currentPage > 0 && now - lastPageTurnTime > 1200) {
-                                                        val newPage = pagerState.currentPage - 1
-                                                        var targetX = currentWidget.x
-                                                        var targetY = currentWidget.y
+                                                        if (touchYInPager < edgeThreshold && pagerState.currentPage > 0 && now - lastPageTurnTime > 1200) {
+                                                            val newPage = pagerState.currentPage - 1
+                                                            var targetX = currentWidget.x
+                                                            var targetY = currentWidget.y
 
-                                                        if (!isAreaVacant(currentWidget.id, newPage, targetX, targetY, currentWidget.width, currentWidget.height)) {
-                                                            val space = findFirstAvailableSpace(currentWidget.width, currentWidget.height, newPage)
-                                                            if (space != null && space.first == newPage) {
-                                                                targetX = space.second
-                                                                targetY = space.third
+                                                            if (!isAreaVacant(currentWidget.id, newPage, targetX, targetY, currentWidget.width, currentWidget.height)) {
+                                                                val space = findFirstAvailableSpace(currentWidget.width, currentWidget.height, newPage)
+                                                                if (space != null && space.first == newPage) {
+                                                                    targetX = space.second
+                                                                    targetY = space.third
+                                                                }
+                                                            }
+
+                                                            if (isAreaVacant(currentWidget.id, newPage, targetX, targetY, currentWidget.width, currentWidget.height)) {
+                                                                scope.launch {
+                                                                    pagerState.animateScrollToPage(newPage)
+                                                                    viewModel.updateWidget(currentWidget.id, newPage, targetX, targetY, currentWidget.width, currentWidget.height)
+                                                                }
+                                                                lastPageTurnTime = now
+                                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                            }
+                                                        } else if (touchYInPager > pagerHeightPx - edgeThreshold && pagerState.currentPage < pageCount - 1 && now - lastPageTurnTime > 1200) {
+                                                            val newPage = pagerState.currentPage + 1
+                                                            var targetX = currentWidget.x
+                                                            var targetY = currentWidget.y
+
+                                                            if (!isAreaVacant(currentWidget.id, newPage, targetX, targetY, currentWidget.width, currentWidget.height)) {
+                                                                val space = findFirstAvailableSpace(currentWidget.width, currentWidget.height, newPage)
+                                                                if (space != null && space.first == newPage) {
+                                                                    targetX = space.second
+                                                                    targetY = space.third
+                                                                }
+                                                            }
+
+                                                            if (isAreaVacant(currentWidget.id, newPage, targetX, targetY, currentWidget.width, currentWidget.height)) {
+                                                                scope.launch {
+                                                                    pagerState.animateScrollToPage(newPage)
+                                                                    viewModel.updateWidget(currentWidget.id, newPage, targetX, targetY, currentWidget.width, currentWidget.height)
+                                                                }
+                                                                lastPageTurnTime = now
+                                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                             }
                                                         }
 
-                                                        if (isAreaVacant(currentWidget.id, newPage, targetX, targetY, currentWidget.width, currentWidget.height)) {
-                                                            scope.launch {
-                                                                pagerState.animateScrollToPage(newPage)
-                                                                viewModel.updateWidget(currentWidget.id, newPage, targetX, targetY, currentWidget.width, currentWidget.height)
+                                                        if (dx != 0 || dy != 0) {
+                                                            val newX = (currentWidget.x + dx).coerceIn(0, (currentWidgetColumns - currentWidget.width).coerceAtLeast(0))
+                                                            val newY = (currentWidget.y + dy).coerceIn(0, (currentRowCount - currentWidget.height).coerceAtLeast(0))
+                                                            
+                                                            if ((newX != currentWidget.x || newY != currentWidget.y) && isAreaVacant(currentWidget.id, currentWidget.page, newX, newY, currentWidget.width, currentWidget.height)) {
+                                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                                viewModel.updateWidget(currentWidget.id, currentWidget.page, newX, newY, currentWidget.width, currentWidget.height)
+                                                                moveAccumulated = Offset(
+                                                                    moveAccumulated.x - (newX - currentWidget.x) * cellWidthPx,
+                                                                    moveAccumulated.y - (newY - currentWidget.y) * cellHeightPx
+                                                                )
                                                             }
-                                                            lastPageTurnTime = now
-                                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                        }
-                                                    } else if (touchYInPager > pagerHeightPx - edgeThreshold && pagerState.currentPage < pageCount - 1 && now - lastPageTurnTime > 1200) {
-                                                        val newPage = pagerState.currentPage + 1
-                                                        var targetX = currentWidget.x
-                                                        var targetY = currentWidget.y
-
-                                                        if (!isAreaVacant(currentWidget.id, newPage, targetX, targetY, currentWidget.width, currentWidget.height)) {
-                                                            val space = findFirstAvailableSpace(currentWidget.width, currentWidget.height, newPage)
-                                                            if (space != null && space.first == newPage) {
-                                                                targetX = space.second
-                                                                targetY = space.third
-                                                            }
-                                                        }
-
-                                                        if (isAreaVacant(currentWidget.id, newPage, targetX, targetY, currentWidget.width, currentWidget.height)) {
-                                                            scope.launch {
-                                                                pagerState.animateScrollToPage(newPage)
-                                                                viewModel.updateWidget(currentWidget.id, newPage, targetX, targetY, currentWidget.width, currentWidget.height)
-                                                            }
-                                                            lastPageTurnTime = now
-                                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                         }
                                                     }
 
-                                                    if (dx != 0 || dy != 0) {
-                                                        val newX = (currentWidget.x + dx).coerceIn(0, (currentWidgetColumns - currentWidget.width).coerceAtLeast(0))
-                                                        val newY = (currentWidget.y + dy).coerceIn(0, (currentRowCount - currentWidget.height).coerceAtLeast(0))
-                                                        
-                                                        if ((newX != currentWidget.x || newY != currentWidget.y) && isAreaVacant(currentWidget.id, currentWidget.page, newX, newY, currentWidget.width, currentWidget.height)) {
-                                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                                            viewModel.updateWidget(currentWidget.id, currentWidget.page, newX, newY, currentWidget.width, currentWidget.height)
-                                                            moveAccumulated = Offset(
-                                                                moveAccumulated.x - (newX - currentWidget.x) * cellWidthPx,
-                                                                moveAccumulated.y - (newY - currentWidget.y) * cellHeightPx
-                                                            )
-                                                        }
+                                                    if (isSelected) {
+                                                        detectDragGestures(
+                                                            onDragStart = {
+                                                                isDraggingBody = true
+                                                                moveAccumulated = Offset.Zero
+                                                            },
+                                                            onDragEnd = { isDraggingBody = false },
+                                                            onDragCancel = { isDraggingBody = false },
+                                                            onDrag = { change, dragAmount -> handleDrag(change, dragAmount) }
+                                                        )
+                                                    } else {
+                                                        detectTapGestures(onTap = { selectedWidgetId = widget.id })
                                                     }
-                                                }
-
-                                                if (currentIsSelected) {
-                                                    detectDragGestures(
-                                                        onDragStart = {
-                                                            isDraggingBody = true
-                                                            moveAccumulated = Offset.Zero
-                                                        },
-                                                        onDragEnd = { isDraggingBody = false },
-                                                        onDragCancel = { isDraggingBody = false },
-                                                        onDrag = { change, dragAmount -> handleDrag(change, dragAmount) }
-                                                    )
                                                 } else {
-                                                    detectTapGestures(onTap = { selectedWidgetId = widget.id })
+                                                    // Not editing, but widget is a shortcut
+                                                    detectTapGestures(
+                                                        onLongPress = {
+                                                            selectedWidgetId = widget.id
+                                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                        },
+                                                        onTap = {
+                                                            if (widget.type == "shortcut") {
+                                                                try {
+                                                                    val intent = Intent.parseUri(widget.shortcutIntent, 0).apply {
+                                                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                                                    }
+                                                                    context.startActivity(intent)
+                                                                } catch (_: Exception) {}
+                                                            }
+                                                        }
+                                                    )
                                                 }
                                             }
                                     )
@@ -563,6 +679,7 @@ fun WidgetPage(
                                 if (isSelected) {
                                     val cellWidthPx = with(density) { cellWidthDp.toPx() }
                                     val cellHeightPx = with(density) { cellHeightDp.toPx() }
+                                    val isShortcut = currentWidget.type == "shortcut"
 
                                     val topAcc = remember { mutableFloatStateOf(0f) }
                                     WidgetEditBorder (Alignment.TopCenter) { dragAmount ->
@@ -572,6 +689,10 @@ fun WidgetPage(
                                             val maxY = (currentWidget.y + currentWidget.height - minH).coerceAtLeast(0)
                                             val newY = (currentWidget.y + dy).coerceIn(0, maxY)
                                             val newH = (currentWidget.height - (newY - currentWidget.y)).coerceAtLeast(minH)
+                                            
+                                            // Shortcut constraint: max 2x2
+                                            if (isShortcut && newH > 2) return@WidgetEditBorder
+                                            
                                             if ((newY != currentWidget.y || newH != currentWidget.height) && isAreaVacant(currentWidget.id, currentWidget.page, currentWidget.x, newY, currentWidget.width, newH)) {
                                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                                 viewModel.updateWidget(currentWidget.id, currentWidget.page, currentWidget.x, newY, currentWidget.width, newH)
@@ -585,7 +706,10 @@ fun WidgetPage(
                                         botAcc.floatValue += dragAmount.y
                                         val dh = (botAcc.floatValue / cellHeightPx).roundToInt()
                                         if (dh != 0) {
-                                            val newH = (currentWidget.height + dh).coerceIn(minH, (currentRowCount - currentWidget.y).coerceAtLeast(minH))
+                                            var newH = (currentWidget.height + dh).coerceIn(minH, (currentRowCount - currentWidget.y).coerceAtLeast(minH))
+                                            
+                                            if (isShortcut) newH = newH.coerceAtMost(2)
+                                            
                                             if (newH != currentWidget.height && isAreaVacant(currentWidget.id, currentWidget.page, currentWidget.x, currentWidget.y, currentWidget.width, newH)) {
                                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                                 viewModel.updateWidget(currentWidget.id, currentWidget.page, currentWidget.x, currentWidget.y, currentWidget.width, newH)
@@ -602,6 +726,9 @@ fun WidgetPage(
                                             val maxX = (currentWidget.x + currentWidget.width - minW).coerceAtLeast(0)
                                             val newX = (currentWidget.x + dx).coerceIn(0, maxX)
                                             val newW = (currentWidget.width - (newX - currentWidget.x)).coerceAtLeast(minW)
+                                            
+                                            if (isShortcut && newW > 2) return@WidgetEditBorder
+                                            
                                             if ((newX != currentWidget.x || newW != currentWidget.width) && isAreaVacant(currentWidget.id, currentWidget.page, newX, currentWidget.y, newW, currentWidget.height)) {
                                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                                 viewModel.updateWidget(currentWidget.id, currentWidget.page, newX, currentWidget.y, newW, currentWidget.height)
@@ -616,7 +743,10 @@ fun WidgetPage(
                                         val dw = (rightAcc.floatValue / cellWidthPx).roundToInt()
                                         if (dw != 0) {
                                             val maxAllowedW = (currentWidgetColumns - currentWidget.x).coerceAtLeast(minW)
-                                            val newW = (currentWidget.width + dw).coerceIn(minW, maxAllowedW)
+                                            var newW = (currentWidget.width + dw).coerceIn(minW, maxAllowedW)
+                                            
+                                            if (isShortcut) newW = newW.coerceAtMost(2)
+
                                             if (newW != currentWidget.width && isAreaVacant(currentWidget.id, currentWidget.page, currentWidget.x, currentWidget.y, newW, currentWidget.height)) {
                                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                                 viewModel.updateWidget(currentWidget.id, currentWidget.page, currentWidget.x, currentWidget.y, newW, currentWidget.height)
@@ -677,10 +807,10 @@ fun WidgetPage(
             if (showDropDown) {
                 val dropDownOffsetDpX = with(density) { dropDownOffset.x.toDp() }
                 val dropDownOffsetDpY = with(density) { dropDownOffset.y.toDp() }
-                val gridOptions = if (isWide) listOf(6, 8, 10) else listOf(4, 5)
+                val gridOptions = if (isLandscape) listOf(6, 8, 10) else listOf(4, 5)
                 val primaryColor = colorScheme.primary
 
-                val menuItems = remember(isWide, widgetColumns, primaryColor, isEditing) {
+                val menuItems = remember(isLandscape, widgetColumns, primaryColor, isEditing, getRowCountForColumns) {
                     listOfNotNull(
                         MenuItem(
                             text = "Wallpaper",
@@ -706,8 +836,9 @@ fun WidgetPage(
                             leadingIcon = { Icon(Icons.Rounded.Settings, null) }
                         ) else null
                     ) + gridOptions.map { cols ->
+                        val targetRowCount = getRowCountForColumns(cols)
                         MenuItem(
-                            text = "Grid Size ${cols}x$rowCount",
+                            text = "Grid Size ${cols}x$targetRowCount",
                             onClick = { viewModel.setWidgetColumns(cols) },
                             leadingIcon = { Icon(Icons.Rounded.AspectRatio, null) },
                             textColor = if (widgetColumns == cols) primaryColor else null
@@ -788,14 +919,77 @@ fun WidgetPage(
                             item.shortcutInfo.activityInfo.name
                         )
                     }
-                    // For now, we just launch the shortcut picker. 
-                    // Full implementation of workspace shortcuts would require model changes.
                     try {
-                        context.startActivity(intent)
+                        shortcutLauncher.launch(intent)
                     } catch (_: Exception) {}
                 }
                 showWidgetSelector = false
             }
         )
+    }
+}
+
+@Composable
+fun ShortcutWidgetContent(widget: com.xenonware.launcher.model.WidgetItem) {
+    val context = LocalContext.current
+    
+    val iconDrawable = remember(widget.shortcutIconRes, widget.shortcutIntent) {
+        try {
+            if (widget.shortcutIconRes?.startsWith("file:") == true) {
+                val fileName = widget.shortcutIconRes.substring(5)
+                val file = context.getFileStreamPath(fileName)
+                if (file.exists()) {
+                    android.graphics.drawable.BitmapDrawable(context.resources, file.absolutePath)
+                } else null
+            } else if (widget.shortcutIconRes != null) {
+                val parts = widget.shortcutIconRes.split(":")
+                if (parts.size == 2) {
+                    val pkg = parts[0]
+                    val resName = parts[1]
+                    val appRes = context.packageManager.getResourcesForApplication(pkg)
+                    val id = appRes.getIdentifier(resName, null, null)
+                    if (id != 0) appRes.getDrawable(id, null) else null
+                } else null
+            } else {
+                val intent = Intent.parseUri(widget.shortcutIntent, 0)
+                val pkg = intent.`package` ?: intent.component?.packageName
+                if (pkg != null) context.packageManager.getApplicationIcon(pkg) else null
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.padding(8.dp)
+        ) {
+            if (iconDrawable != null) {
+                Image(
+                    bitmap = iconDrawable.toBitmap().asImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier.size(if (widget.width > 1) 56.dp else 40.dp)
+                )
+            } else {
+                Icon(Icons.Rounded.Apps, null, modifier = Modifier.size(40.dp))
+            }
+            
+            Text(
+                text = widget.shortcutLabel ?: "",
+                style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
+                maxLines = if (widget.height > 1) 2 else 1,
+                fontWeight = FontWeight.Medium,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
     }
 }

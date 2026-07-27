@@ -14,5 +14,9 @@ data class WidgetItem(
     val x: Int,
     val y: Int,
     val width: Int,
-    val height: Int
+    val height: Int,
+    val type: String = "widget", // "widget" or "shortcut"
+    val shortcutIntent: String? = null,
+    val shortcutLabel: String? = null,
+    val shortcutIconRes: String? = null // package:name
 )

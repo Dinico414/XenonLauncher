@@ -30,21 +30,21 @@ class SharedPreferenceManager(context: Context) {
         get() = prefs.getString("app_usage", "") ?: ""
         set(value) = prefs.edit().putString("app_usage", value).apply()
 
-    var widgetColumnsNormal: Int
-        get() = prefs.getInt("widget_columns_normal", 4)
-        set(value) = prefs.edit().putInt("widget_columns_normal", value).apply()
+    var widgetColumnsPortrait: Int
+        get() = prefs.getInt("widget_columns_portrait", 4)
+        set(value) = prefs.edit().putInt("widget_columns_portrait", value).apply()
 
-    var widgetColumnsWide: Int
-        get() = prefs.getInt("widget_columns_wide", 8)
-        set(value) = prefs.edit().putInt("widget_columns_wide", value).apply()
+    var widgetColumnsLandscape: Int
+        get() = prefs.getInt("widget_columns_landscape", 6)
+        set(value) = prefs.edit().putInt("widget_columns_landscape", value).apply()
 
-    var widgetLayoutNormal: String
-        get() = prefs.getString("widget_layout_normal", "") ?: ""
-        set(value) = prefs.edit().putString("widget_layout_normal", value).apply()
+    var widgetLayoutPortrait: String
+        get() = prefs.getString("widget_layout_portrait", "") ?: ""
+        set(value) = prefs.edit().putString("widget_layout_portrait", value).apply()
 
-    var widgetLayoutWide: String
-        get() = prefs.getString("widget_layout_wide", "") ?: ""
-        set(value) = prefs.edit().putString("widget_layout_wide", value).apply()
+    var widgetLayoutLandscape: String
+        get() = prefs.getString("widget_layout_landscape", "") ?: ""
+        set(value) = prefs.edit().putString("widget_layout_landscape", value).apply()
 
     var advancedSearchEnabled: Boolean
         get() = prefs.getBoolean("advanced_search_enabled", true)

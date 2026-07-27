@@ -65,10 +65,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             "is_grid_layout" -> _isGridLayout.value = prefManager.isGridLayout
             "notification_badge_type" -> _notificationBadgeType.value = prefManager.notificationBadgeType
             "open_keyboard" -> _openKeyboard.value = prefManager.openKeyboard
-            "widget_columns_normal", "widget_columns_wide" -> {
-                _widgetColumns.value = if (_isWide.value) prefManager.widgetColumnsWide else prefManager.widgetColumnsNormal
+            "widget_columns_portrait", "widget_columns_landscape" -> {
+                _widgetColumns.value = if (_isLandscape.value) prefManager.widgetColumnsLandscape else prefManager.widgetColumnsPortrait
             }
-            "widget_layout_normal", "widget_layout_wide" -> loadWidgets()
+            "widget_layout_portrait", "widget_layout_landscape" -> loadWidgets()
             "advanced_search_enabled" -> _advancedSearchEnabled.value = prefManager.advancedSearchEnabled
             "search_history" -> _searchHistory.value = loadSearchHistory()
             "dock_safedraw_ime" -> _dockSafeDrawIme.value = prefManager.dockSafeDrawIme
@@ -93,10 +93,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val _recentlyOpened = MutableStateFlow<List<AppInfo>>(emptyList())
     val recentlyOpened: StateFlow<List<AppInfo>> = _recentlyOpened
 
-    private val _isWide = MutableStateFlow(false)
-    val isWide: StateFlow<Boolean> = _isWide
+    private val _isLandscape = MutableStateFlow(false)
+    val isLandscape: StateFlow<Boolean> = _isLandscape
 
-    private val _widgetColumns = MutableStateFlow(prefManager.widgetColumnsNormal)
+    private val _widgetColumns = MutableStateFlow(prefManager.widgetColumnsPortrait)
     val widgetColumns: StateFlow<Int> = _widgetColumns
 
     private val _widgets = MutableStateFlow<List<com.xenonware.launcher.model.WidgetItem>>(emptyList())
@@ -511,20 +511,20 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         prefManager.openKeyboard = enabled
     }
 
-    fun setIsWide(wide: Boolean) {
-        if (_isWide.value != wide) {
-            _isWide.value = wide
-            _widgetColumns.value = if (wide) prefManager.widgetColumnsWide else prefManager.widgetColumnsNormal
+    fun setIsLandscape(landscape: Boolean) {
+        if (_isLandscape.value != landscape) {
+            _isLandscape.value = landscape
+            _widgetColumns.value = if (landscape) prefManager.widgetColumnsLandscape else prefManager.widgetColumnsPortrait
             loadWidgets()
         }
     }
 
     fun setWidgetColumns(cols: Int) {
         _widgetColumns.value = cols
-        if (_isWide.value) {
-            prefManager.widgetColumnsWide = cols
+        if (_isLandscape.value) {
+            prefManager.widgetColumnsLandscape = cols
         } else {
-            prefManager.widgetColumnsNormal = cols
+            prefManager.widgetColumnsPortrait = cols
         }
     }
 
@@ -713,21 +713,39 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     }
 
     private fun loadWidgets() {
-        val layout = if (_isWide.value) prefManager.widgetLayoutWide else prefManager.widgetLayoutNormal
+        val layout = if (_isLandscape.value) prefManager.widgetLayoutLandscape else prefManager.widgetLayoutPortrait
         if (layout.isEmpty()) {
             _widgets.value = emptyList()
             return
         }
+        var nextShortcutId = -100
         val items = layout.split(",").mapNotNull {
             val parts = it.split("|")
-            if (parts.size == 6) {
+            if (parts.size >= 6) {
+                var id = parts[0].toIntOrNull() ?: -1
+                val page = parts[1].toIntOrNull() ?: 0
+                val x = parts[2].toIntOrNull() ?: 0
+                val y = parts[3].toIntOrNull() ?: 0
+                val width = parts[4].toIntOrNull() ?: 1
+                val height = parts[5].toIntOrNull() ?: 1
+                val type = if (parts.size > 6) parts[6] else "widget"
+                
+                // Fix broken IDs (-1 or -2) for shortcuts
+                if (type == "shortcut" && id >= -2) {
+                    id = nextShortcutId--
+                }
+
                 com.xenonware.launcher.model.WidgetItem(
-                    parts[0].toIntOrNull() ?: -1,
-                    parts[1].toIntOrNull() ?: 0,
-                    parts[2].toIntOrNull() ?: 0,
-                    parts[3].toIntOrNull() ?: 0,
-                    parts[4].toIntOrNull() ?: 1,
-                    parts[5].toIntOrNull() ?: 1
+                    id = id,
+                    page = page,
+                    x = x,
+                    y = y,
+                    width = width,
+                    height = height,
+                    type = type,
+                    shortcutIntent = if (parts.size > 7) parts[7].replace("~", "|").replace("^", ",") else null,
+                    shortcutLabel = if (parts.size > 8) parts[8].replace("~", "|").replace("^", ",") else null,
+                    shortcutIconRes = if (parts.size > 9) parts[9] else null
                 )
             } else if (parts.size == 5) {
                 // Backward compatibility
@@ -740,13 +758,53 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                     parts[4].toIntOrNull() ?: 1
                 )
             } else null
-        }.filter { it.id != -1 }
+        }.filter { it.id != -1 || it.type == "shortcut" }
         _widgets.value = items
+        
+        // If we fixed any IDs, save them back immediately
+        if (layout.contains("|-1|shortcut") || layout.contains("|-2|shortcut")) {
+            saveWidgets()
+        }
     }
 
     fun addWidget(id: Int, page: Int, x: Int, y: Int, w: Int, h: Int) {
         val current = _widgets.value.toMutableList()
         current.add(com.xenonware.launcher.model.WidgetItem(id, page, x, y, w, h))
+        _widgets.value = current
+        saveWidgets()
+    }
+
+    fun addShortcut(page: Int, x: Int, y: Int, w: Int, h: Int, label: String, intent: String, iconRes: String?, iconBitmap: android.graphics.Bitmap? = null) {
+        val current = _widgets.value.toMutableList()
+        // Generate a unique ID that isn't -1 or -2
+        val id = (current.map { it.id }.minOrNull() ?: 0).coerceAtMost(0) - 100
+        
+        var finalIconRes = iconRes
+        if (iconBitmap != null) {
+            try {
+                val context = getApplication<Application>()
+                val fileName = "shortcut_icon_${System.currentTimeMillis()}.png"
+                context.openFileOutput(fileName, Context.MODE_PRIVATE).use { 
+                    iconBitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+                }
+                finalIconRes = "file:$fileName"
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        current.add(com.xenonware.launcher.model.WidgetItem(
+            id = id,
+            page = page,
+            x = x,
+            y = y,
+            width = w,
+            height = h,
+            type = "shortcut",
+            shortcutLabel = label,
+            shortcutIntent = intent,
+            shortcutIconRes = finalIconRes
+        ))
         _widgets.value = current
         saveWidgets()
     }
@@ -761,7 +819,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         val current = _widgets.value.toMutableList()
         val index = current.indexOfFirst { it.id == id }
         if (index != -1) {
-            current[index] = com.xenonware.launcher.model.WidgetItem(id, page, x, y, w, h)
+            val old = current[index]
+            current[index] = old.copy(page = page, x = x, y = y, width = w, height = h)
             _widgets.value = current
             saveWidgets()
         }
@@ -811,11 +870,21 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     }
 
     private fun saveWidgets() {
-        val layout = _widgets.value.joinToString(",") { "${it.id}|${it.page}|${it.x}|${it.y}|${it.width}|${it.height}" }
-        if (_isWide.value) {
-            prefManager.widgetLayoutWide = layout
+        val layout = _widgets.value.joinToString(",") { 
+            val base = "${it.id}|${it.page}|${it.x}|${it.y}|${it.width}|${it.height}"
+            if (it.type == "shortcut") {
+                // Escape separators in label/intent
+                val escapedIntent = it.shortcutIntent?.replace(",", "^")?.replace("|", "~") ?: ""
+                val escapedLabel = it.shortcutLabel?.replace(",", "^")?.replace("|", "~") ?: ""
+                "$base|shortcut|$escapedIntent|$escapedLabel|${it.shortcutIconRes ?: ""}"
+            } else {
+                "$base|widget"
+            }
+        }
+        if (_isLandscape.value) {
+            prefManager.widgetLayoutLandscape = layout
         } else {
-            prefManager.widgetLayoutNormal = layout
+            prefManager.widgetLayoutPortrait = layout
         }
     }
 }

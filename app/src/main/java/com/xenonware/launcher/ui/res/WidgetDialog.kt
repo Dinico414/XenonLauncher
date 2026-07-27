@@ -340,49 +340,52 @@ fun WidgetPickerItem(
 
                 if (item.isWidget && item.widgetInfo != null) {
                     val info = item.widgetInfo
-                    // 1. Try actual preview image
-                    drawable = info.loadPreviewImage(context, targetDpi)
                     
-                    if (drawable != null) {
-                        source = "Preview"
-                    } else {
-                        // 2. Try to inflate previewLayout if available (Android 12+)
-                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S && info.previewLayout != 0) {
-                            try {
-                                source = "PreviewLayout"
-                                withContext(Dispatchers.Main) {
-                                    val inflater = android.view.LayoutInflater.from(context)
-                                    val appRes = context.packageManager.getResourcesForApplication(info.provider.packageName)
-                                    val parser = appRes.getLayout(info.previewLayout)
-                                    val view = inflater.inflate(parser, null, false)
-                                    
-                                    val width = if (info.minWidth > 0) info.minWidth else 200
-                                    val height = if (info.minHeight > 0) info.minHeight else 200
-                                    view.measure(
-                                        android.view.View.MeasureSpec.makeMeasureSpec(width, android.view.View.MeasureSpec.EXACTLY),
-                                        android.view.View.MeasureSpec.makeMeasureSpec(height, android.view.View.MeasureSpec.EXACTLY)
-                                    )
-                                    view.layout(0, 0, view.measuredWidth, view.measuredHeight)
-                                    
-                                    val canvasBitmap = android.graphics.Bitmap.createBitmap(
-                                        view.measuredWidth.coerceAtLeast(1), 
-                                        view.measuredHeight.coerceAtLeast(1), 
-                                        android.graphics.Bitmap.Config.ARGB_8888
-                                    )
-                                    val canvas = android.graphics.Canvas(canvasBitmap)
-                                    view.draw(canvas)
-                                    drawable = android.graphics.drawable.BitmapDrawable(context.resources, canvasBitmap)
-                                }
-                            } catch (e: Exception) {
-                                Log.e("WidgetType", "Failed to inflate previewLayout for ${item.label}: ${e.message}")
+                    // 1. On Android 12+, try previewLayout FIRST
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S && info.previewLayout != 0) {
+                        try {
+                            source = "PreviewLayout"
+                            withContext(Dispatchers.Main) {
+                                val remoteContext = context.createPackageContext(info.provider.packageName, 0)
+                                val inflater = android.view.LayoutInflater.from(remoteContext)
+                                val view = inflater.inflate(info.previewLayout, null, false)
+                                
+                                val widthPx = info.minWidth.coerceAtLeast(200)
+                                val heightPx = info.minHeight.coerceAtLeast(200)
+                                
+                                view.measure(
+                                    android.view.View.MeasureSpec.makeMeasureSpec(widthPx, android.view.View.MeasureSpec.EXACTLY),
+                                    android.view.View.MeasureSpec.makeMeasureSpec(heightPx, android.view.View.MeasureSpec.EXACTLY)
+                                )
+                                view.layout(0, 0, view.measuredWidth, view.measuredHeight)
+                                
+                                val canvasBitmap = android.graphics.Bitmap.createBitmap(
+                                    view.measuredWidth.coerceAtLeast(1), 
+                                    view.measuredHeight.coerceAtLeast(1), 
+                                    android.graphics.Bitmap.Config.ARGB_8888
+                                )
+                                val canvas = android.graphics.Canvas(canvasBitmap)
+                                view.draw(canvas)
+                                drawable = android.graphics.drawable.BitmapDrawable(context.resources, canvasBitmap)
                             }
+                        } catch (e: Exception) {
+                            Log.w("WidgetType", "Failed previewLayout for ${item.label}: ${e.message}")
                         }
-                        
-                        // 3. Fallback to app icon
-                        if (drawable == null) {
-                            source = "Icon"
-                            drawable = info.loadIcon(context, targetDpi)
+                    }
+
+                    // 2. Fallback to actual preview image
+                    if (drawable == null) {
+                        val preview = info.loadPreviewImage(context, targetDpi)
+                        if (preview != null) {
+                            source = "Preview"
+                            drawable = preview
                         }
+                    }
+                    
+                    // 3. Fallback to app icon
+                    if (drawable == null) {
+                        source = "Icon"
+                        drawable = info.loadIcon(context, targetDpi)
                     }
                 } else if (item.shortcutInfo != null) {
                     source = "ShortcutIcon"

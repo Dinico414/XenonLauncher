@@ -78,6 +78,11 @@ class MainActivity : ComponentActivity() {
 
                 val permissionsState = rememberMultiplePermissionsState(permissions = permissions)
 
+                val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+                LaunchedEffect(configuration.orientation) {
+                    viewModel.setIsLandscape(configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE)
+                }
+
                 LaunchedEffect(Unit) {
                     permissionsState.launchMultiplePermissionRequest()
                 }
