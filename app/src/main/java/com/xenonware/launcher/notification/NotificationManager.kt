@@ -1,10 +1,21 @@
 package com.xenonware.launcher.notification
 
+import android.app.Notification
+import android.app.PendingIntent
+import android.app.RemoteInput
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.drawable.Drawable
+import android.graphics.drawable.Icon
+import android.net.Uri
+import android.os.Build
+import android.os.Bundle
 import android.service.notification.NotificationListenerService.Ranking
 import android.service.notification.NotificationListenerService.RankingMap
 import android.service.notification.StatusBarNotification
 import android.util.Log
+import androidx.core.graphics.drawable.toDrawable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -18,14 +29,14 @@ data class LauncherNotification(
     val icon: Drawable? = null,
     val senderIcon: Drawable? = null,
     val mediaImage: Drawable? = null,
-    val contentIntent: android.app.PendingIntent? = null,
+    val contentIntent: PendingIntent? = null,
     val actions: List<LauncherNotificationAction> = emptyList()
 )
 
 data class LauncherNotificationAction(
     val title: String,
-    val actionIntent: android.app.PendingIntent?,
-    val remoteInput: android.app.RemoteInput? = null
+    val actionIntent: PendingIntent?,
+    val remoteInput: RemoteInput? = null
 )
 
 object NotificationManager {
@@ -35,9 +46,6 @@ object NotificationManager {
     private val _notifications = MutableStateFlow<List<LauncherNotification>>(emptyList())
     val notifications: StateFlow<List<LauncherNotification>> = _notifications
 
-    fun updateCount(count: Int) {
-        _notificationCount.value = count
-    }
 
     fun removeNotificationOptimistically(key: String) {
         val current = _notifications.value
@@ -63,7 +71,7 @@ object NotificationManager {
     }
 
     fun updateFromNotifications(
-        context: android.content.Context,
+        context: Context,
         activeNotifications: Array<StatusBarNotification>?,
         rankingMap: RankingMap?,
         ownPackageName: String
@@ -85,9 +93,9 @@ object NotificationManager {
                 if (sbn.isOngoing) return@filter false
 
                 // 1.5 Media Filter - Exclude media playback notifications
-                val isTransport = notification.category == android.app.Notification.CATEGORY_TRANSPORT
-                val hasMediaSession = notification.extras.containsKey(android.app.Notification.EXTRA_MEDIA_SESSION)
-                val isMediaStyle = notification.extras.getString(android.app.Notification.EXTRA_TEMPLATE)?.contains("MediaStyle") == true
+                val isTransport = notification.category == Notification.CATEGORY_TRANSPORT
+                val hasMediaSession = notification.extras.containsKey(Notification.EXTRA_MEDIA_SESSION)
+                val isMediaStyle = notification.extras.getString(Notification.EXTRA_TEMPLATE)?.contains("MediaStyle") == true
                 
                 // YouTube and Twitter often have media we want to show even if they use MediaSession/MediaStyle
                 val isSocialOrVideo = sbn.packageName == "com.google.android.youtube" || 
@@ -128,12 +136,11 @@ object NotificationManager {
             val groupedByGroup = filtered.groupBy { it.groupKey ?: (it.packageName + it.id) }
             
             val finalNotifications = groupedByGroup.flatMap { (_, sbnList) ->
-                val summaries = sbnList.filter { (it.notification.flags and android.app.Notification.FLAG_GROUP_SUMMARY) != 0 }
-                val children = sbnList.filter { (it.notification.flags and android.app.Notification.FLAG_GROUP_SUMMARY) == 0 }
-                
-                if (children.isNotEmpty()) {
-                    children // Prefer individual notifications
-                } else {
+                val summaries = sbnList.filter { (it.notification.flags and Notification.FLAG_GROUP_SUMMARY) != 0 }
+                val children = sbnList.filter { (it.notification.flags and Notification.FLAG_GROUP_SUMMARY) == 0 }
+
+                // Prefer individual notifications
+                children.ifEmpty {
                     summaries // Fallback to summary if no children (rare but possible)
                 }
             }
@@ -156,16 +163,16 @@ object NotificationManager {
                     ?: ""
                 
                 // 5. Advanced text extraction for MessagingStyle/InboxStyle
-                val template = extras.getString(android.app.Notification.EXTRA_TEMPLATE)
+                val template = extras.getString(Notification.EXTRA_TEMPLATE)
                 val isMessaging = template?.contains("MessagingStyle") == true
-                val isSummary = (sbn.notification.flags and android.app.Notification.FLAG_GROUP_SUMMARY) != 0
+                val isSummary = (sbn.notification.flags and Notification.FLAG_GROUP_SUMMARY) != 0
                 
                 if (isSummary || body.isBlank() || body.contains("new messages", ignoreCase = true) || body.contains("nachrichten", ignoreCase = true)) {
                     // Try MessagingStyle messages
                     @Suppress("DEPRECATION")
                     val messages = extras.get("android.messages") as? Array<*>
                     if (!messages.isNullOrEmpty()) {
-                        val lastMessage = messages.last() as? android.os.Bundle
+                        val lastMessage = messages.last() as? Bundle
                         val messageText = lastMessage?.getCharSequence("text")
                         if (messageText != null) {
                             body = messageText.toString()
@@ -183,45 +190,45 @@ object NotificationManager {
                 val largeIcon = sbn.notification.getLargeIcon()?.loadDrawable(context)
                 
                 @Suppress("DEPRECATION")
-                val picture = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                    extras.getParcelable("android.picture", android.graphics.Bitmap::class.java)
+                val picture = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    extras.getParcelable("android.picture", Bitmap::class.java)
                 } else {
-                    extras.getParcelable("android.picture") as? android.graphics.Bitmap
-                }?.let { android.graphics.drawable.BitmapDrawable(context.resources, it) }
+                    extras.getParcelable("android.picture") as? Bitmap
+                })?.toDrawable(context.resources)
 
-                val pictureIcon = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                    extras.getParcelable("android.pictureIcon", android.graphics.drawable.Icon::class.java)
+                val pictureIcon = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    extras.getParcelable("android.pictureIcon", Icon::class.java)
                 } else {
-                    extras.getParcelable("android.pictureIcon") as? android.graphics.drawable.Icon
+                    extras.getParcelable("android.pictureIcon") as? Icon
                 }?.loadDrawable(context)
 
-                val largeIconBig = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                    extras.getParcelable("android.largeIcon.big", android.graphics.drawable.Icon::class.java)
+                val largeIconBig = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    extras.getParcelable("android.largeIcon.big", Icon::class.java)
                 } else {
                     @Suppress("DEPRECATION")
-                    extras.getParcelable("android.largeIcon.big") as? android.graphics.drawable.Icon
+                    extras.getParcelable("android.largeIcon.big") as? Icon
                 }?.loadDrawable(context)
 
                 @Suppress("DEPRECATION")
-                val bigPicture = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                    extras.getParcelable("android.bigPicture", android.graphics.Bitmap::class.java)
+                val bigPicture = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    extras.getParcelable("android.bigPicture", Bitmap::class.java)
                 } else {
-                    extras.getParcelable("android.bigPicture") as? android.graphics.Bitmap
-                }?.let { android.graphics.drawable.BitmapDrawable(context.resources, it) }
+                    extras.getParcelable("android.bigPicture") as? Bitmap
+                })?.toDrawable(context.resources)
 
                 // 7. MessagingStyle image extraction (WhatsApp Fix)
-                var messagingImage: android.graphics.drawable.Drawable? = null
+                var messagingImage: Drawable? = null
                 if (isMessaging) {
                     val messages = extras.getParcelableArray("android.messages")
-                    if (messages != null && messages.isNotEmpty()) {
+                    if (!messages.isNullOrEmpty()) {
                         Log.d("XenonNotification", "Found ${messages.size} messages in MessagingStyle")
                         for (i in messages.indices.reversed()) {
-                            val m = messages[i] as? android.os.Bundle ?: continue
-                            val uri = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                                m.getParcelable("dataUri", android.net.Uri::class.java)
+                            val m = messages[i] as? Bundle ?: continue
+                            val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                m.getParcelable("dataUri", Uri::class.java)
                             } else {
                                 @Suppress("DEPRECATION")
-                                m.getParcelable("dataUri") as? android.net.Uri
+                                m.getParcelable("dataUri") as? Uri
                             }
                             
                             Log.d("XenonNotification", "Message $i: hasUri=${uri != null}, type=${m.getString("dataMimeType")}")
@@ -229,9 +236,9 @@ object NotificationManager {
                             if (uri != null && m.getString("dataMimeType")?.startsWith("image/") == true) {
                                 try {
                                     context.contentResolver.openInputStream(uri)?.use { 
-                                        val bmp = android.graphics.BitmapFactory.decodeStream(it)
+                                        val bmp = BitmapFactory.decodeStream(it)
                                         if (bmp != null) {
-                                            messagingImage = android.graphics.drawable.BitmapDrawable(context.resources, bmp)
+                                            messagingImage = bmp.toDrawable(context.resources)
                                             Log.d("XenonNotification", "Successfully decoded messaging image")
                                         }
                                     }
@@ -248,7 +255,7 @@ object NotificationManager {
                 if (isYouTube) {
                     extras.keySet().forEach { key ->
                         val value = extras.get(key)
-                        if (value is android.graphics.Bitmap || value is android.graphics.drawable.Icon) {
+                        if (value is Bitmap || value is Icon) {
                             Log.d("XenonNotification", "YouTube Potential Image Found: $key -> $value")
                         }
                     }
@@ -268,8 +275,8 @@ object NotificationManager {
                 Log.d("XenonNotification", "Has MessagingImage: ${messagingImage != null}")
                 
                 // Determine what is a profile pic vs a media thumbnail
-                var finalSenderIcon: android.graphics.drawable.Drawable? = null
-                var finalMediaImage: android.graphics.drawable.Drawable? = null
+                var finalSenderIcon: Drawable?
+                var finalMediaImage: Drawable?
 
                 if (isYouTube) {
                     // YouTube: Prioritize anything that looks like a thumbnail

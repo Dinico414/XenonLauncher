@@ -1,100 +1,98 @@
 package com.xenonware.launcher.ui.res.notification
 
  import android.app.ActivityOptions
-import android.app.RemoteInput
-import android.content.Intent
-import android.os.Build
-import android.os.Bundle
-import android.util.Log
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.CubicBezierEasing
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.Send
-import androidx.compose.material.icons.rounded.ExpandLess
-import androidx.compose.material.icons.rounded.ExpandMore
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MaterialTheme.colorScheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.lerp
-import androidx.compose.ui.unit.sp
-import androidx.core.graphics.drawable.toBitmap
-import com.xenonware.launcher.notification.LauncherNotification
-import com.xenonware.launcher.notification.LauncherNotificationAction
-import com.xenonware.launcher.util.ColorUtils
-import kotlinx.coroutines.launch
-import kotlin.math.abs
-import kotlin.math.max
-import kotlin.math.pow
-import kotlin.math.roundToInt
-import kotlin.math.sign
+ import android.app.RemoteInput
+ import android.content.Intent
+ import android.os.Build
+ import android.os.Bundle
+ import android.util.Log
+ import androidx.compose.animation.AnimatedVisibility
+ import androidx.compose.animation.core.Animatable
+ import androidx.compose.animation.core.CubicBezierEasing
+ import androidx.compose.animation.core.Spring
+ import androidx.compose.animation.core.animateDpAsState
+ import androidx.compose.animation.core.spring
+ import androidx.compose.animation.core.tween
+ import androidx.compose.animation.expandVertically
+ import androidx.compose.animation.fadeIn
+ import androidx.compose.animation.fadeOut
+ import androidx.compose.animation.shrinkVertically
+ import androidx.compose.foundation.Image
+ import androidx.compose.foundation.background
+ import androidx.compose.foundation.gestures.Orientation
+ import androidx.compose.foundation.gestures.draggable
+ import androidx.compose.foundation.gestures.rememberDraggableState
+ import androidx.compose.foundation.horizontalScroll
+ import androidx.compose.foundation.layout.Arrangement
+ import androidx.compose.foundation.layout.Box
+ import androidx.compose.foundation.layout.Column
+ import androidx.compose.foundation.layout.Row
+ import androidx.compose.foundation.layout.aspectRatio
+ import androidx.compose.foundation.layout.fillMaxWidth
+ import androidx.compose.foundation.layout.height
+ import androidx.compose.foundation.layout.heightIn
+ import androidx.compose.foundation.layout.offset
+ import androidx.compose.foundation.layout.padding
+ import androidx.compose.foundation.layout.size
+ import androidx.compose.foundation.rememberScrollState
+ import androidx.compose.foundation.shape.CircleShape
+ import androidx.compose.foundation.shape.RoundedCornerShape
+ import androidx.compose.foundation.text.KeyboardOptions
+ import androidx.compose.material.icons.Icons
+ import androidx.compose.material.icons.automirrored.rounded.Send
+ import androidx.compose.material.icons.rounded.ExpandLess
+ import androidx.compose.material.icons.rounded.ExpandMore
+ import androidx.compose.material3.Icon
+ import androidx.compose.material3.MaterialTheme
+ import androidx.compose.material3.MaterialTheme.colorScheme
+ import androidx.compose.material3.Surface
+ import androidx.compose.material3.Text
+ import androidx.compose.material3.TextField
+ import androidx.compose.material3.TextFieldDefaults
+ import androidx.compose.runtime.Composable
+ import androidx.compose.runtime.DisposableEffect
+ import androidx.compose.runtime.derivedStateOf
+ import androidx.compose.runtime.getValue
+ import androidx.compose.runtime.mutableFloatStateOf
+ import androidx.compose.runtime.mutableStateOf
+ import androidx.compose.runtime.remember
+ import androidx.compose.runtime.rememberCoroutineScope
+ import androidx.compose.runtime.rememberUpdatedState
+ import androidx.compose.runtime.setValue
+ import androidx.compose.ui.Alignment
+ import androidx.compose.ui.Modifier
+ import androidx.compose.ui.draw.clip
+ import androidx.compose.ui.geometry.Offset
+ import androidx.compose.ui.graphics.Color
+ import androidx.compose.ui.graphics.ColorFilter
+ import androidx.compose.ui.graphics.asImageBitmap
+ import androidx.compose.ui.graphics.graphicsLayer
+ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+ import androidx.compose.ui.input.nestedscroll.nestedScroll
+ import androidx.compose.ui.layout.ContentScale
+ import androidx.compose.ui.platform.LocalContext
+ import androidx.compose.ui.platform.LocalDensity
+ import androidx.compose.ui.platform.LocalHapticFeedback
+ import androidx.compose.ui.platform.LocalView
+ import androidx.compose.ui.text.font.FontWeight
+ import androidx.compose.ui.text.input.ImeAction
+ import androidx.compose.ui.text.style.TextOverflow
+ import androidx.compose.ui.unit.IntOffset
+ import androidx.compose.ui.unit.dp
+ import androidx.compose.ui.unit.lerp
+ import androidx.compose.ui.unit.sp
+ import androidx.core.graphics.drawable.toBitmap
+ import com.xenonware.launcher.notification.LauncherNotification
+ import com.xenonware.launcher.notification.LauncherNotificationAction
+ import com.xenonware.launcher.util.ColorUtils
+ import kotlinx.coroutines.launch
+ import kotlin.math.abs
+ import kotlin.math.max
+ import kotlin.math.pow
+ import kotlin.math.roundToInt
+ import kotlin.math.sign
 
 
 @Composable
@@ -276,7 +274,7 @@ fun NotificationItem(
                                     width = (40 * density.density).toInt().coerceAtLeast(1),
                                     height = (40 * density.density).toInt().coerceAtLeast(1)
                                 ).asImageBitmap()
-                            } catch (e: Exception) {
+                            } catch (_: Exception) {
                                 null
                             }
                         }
@@ -320,14 +318,17 @@ fun NotificationItem(
                     }
 
                     // Sender Icon / Profile Picture (Same size as package icon, stays in row)
-                    if (notification.senderIcon != null) {
+                    val showSenderIcon = if (expanded) {
+                        notification.senderIcon != null
+                    } else {
+                        notification.senderIcon != null && notification.mediaImage == null
+                    }
+
+                    if (showSenderIcon) {
                         val senderBitmap = remember(notification.senderIcon) {
                             try {
-                                notification.senderIcon.toBitmap(
-                                    width = (40 * density.density).toInt().coerceAtLeast(1),
-                                    height = (40 * density.density).toInt().coerceAtLeast(1)
-                                ).asImageBitmap()
-                            } catch (e: Exception) {
+                                notification.senderIcon?.toBitmap()?.asImageBitmap()
+                            } catch (_: Exception) {
                                 null
                             }
                         }
@@ -345,11 +346,8 @@ fun NotificationItem(
                     if (!expanded && notification.mediaImage != null) {
                         val thumbnailBitmap = remember(notification.mediaImage) {
                             try {
-                                notification.mediaImage.toBitmap(
-                                    width = (40 * density.density).toInt().coerceAtLeast(1),
-                                    height = (40 * density.density).toInt().coerceAtLeast(1)
-                                ).asImageBitmap()
-                            } catch (e: Exception) {
+                                notification.mediaImage.toBitmap().asImageBitmap()
+                            } catch (_: Exception) {
                                 null
                             }
                         }
@@ -441,7 +439,7 @@ fun NotificationItem(
                             val bmp = notification.mediaImage.toBitmap()
                             aspectRatio = (bmp.width.toFloat() / bmp.height.toFloat()).coerceIn(0.2f, 2.5f)
                             bmp.asImageBitmap()
-                        } catch (e: Exception) {
+                        } catch (_: Exception) {
                             null
                         }
                     }
@@ -528,7 +526,8 @@ fun NotificationItem(
 
                                                     val options = ActivityOptions.makeBasic()
                                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                                                        options.setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
+                                                        options.pendingIntentBackgroundActivityStartMode =
+                                                            ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
                                                     }
 
                                                     action.actionIntent?.send(context, 0, fillInIntent, null, null, null, options.toBundle())
@@ -603,7 +602,8 @@ fun NotificationItem(
                                             try {
                                                 val options = ActivityOptions.makeBasic()
                                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                                                    options.setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
+                                                    options.pendingIntentBackgroundActivityStartMode =
+                                                        ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
                                                 }
 
                                                 action.actionIntent?.let { intent ->
