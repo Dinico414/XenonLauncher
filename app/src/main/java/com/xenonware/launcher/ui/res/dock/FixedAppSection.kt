@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,6 +41,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalViewConfiguration
+import androidx.compose.ui.platform.ViewConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -190,8 +193,7 @@ fun FixedAppSection(
                                     fadeStop to Color.Black,
                                     (1f - fadeStop) to Color.Black,
                                     1.2f to if (listState.canScrollForward) Color.Transparent else Color.Black
-                                ),
-                                blendMode = BlendMode.DstIn
+                                ), blendMode = BlendMode.DstIn
                             )
                         }
                     },
@@ -201,81 +203,104 @@ fun FixedAppSection(
             ) {
                 itemsIndexed(displayApps, key = { _, app -> app.packageName }) { _, app ->
                     var itemPos by remember { mutableStateOf(Offset.Zero) }
+                    var pressOffset by remember { mutableStateOf(Offset.Zero) }
+                    var isActualDrag by remember { mutableStateOf(false) }
                     val isBeingDragged = dragDropState.isDragging && app == dragDropState.draggedApp
 
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .onGloballyPositioned { itemPos = it.positionInRoot() }
-                            .animateItem(
-                                placementSpec = tween(
-                                    durationMillis = 400, easing = FastOutSlowInEasing
+                    val viewConfiguration = LocalViewConfiguration.current
+                    val customViewConfiguration = remember(viewConfiguration) {
+                        object : ViewConfiguration by viewConfiguration {
+                            override val touchSlop: Float
+                                get() = viewConfiguration.touchSlop * 3f
+                        }
+                    }
+
+                    CompositionLocalProvider(LocalViewConfiguration provides customViewConfiguration) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .onGloballyPositioned { itemPos = it.positionInRoot() }
+                                .animateItem(
+                                    placementSpec = tween(
+                                        durationMillis = 400, easing = FastOutSlowInEasing
+                                    )
                                 )
-                            )
-                            .graphicsLayer {
-                                alpha = if (isBeingDragged) 0f else 1f
-                            }) {
-                        Box(contentAlignment = Alignment.TopEnd) {
-                            app.icon?.let { icon ->
-                                Image(
-                                    bitmap = icon.toBitmap().asImageBitmap(),
-                                    contentDescription = app.name,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .clip(CircleShape)
-                                        .pointerInput(Unit) {
-                                            detectTapGestures(onTap = { onAppClick(app.packageName) })
-                                        }
-                                        .pointerInput(Unit) {
-                                            detectDragGesturesAfterLongPress(onDragStart = { offset ->
-                                                val originalIndex = apps.indexOf(app)
-                                                dragDropState.startDrag(
-                                                    app, itemPos + offset, originalIndex
-                                                )
-                                            }, onDrag = { change, dragAmount ->
-                                                change.consume()
-                                                dragDropState.dragOffset += dragAmount
-                                            }, onDragEnd = {
-                                                val finalPos = dragDropState.dragOffset
-                                                val sourceIdx = dragDropState.sourceIndex
-                                                val targetIdx = dragDropState.targetIndex
-
-                                                val verticalDist =
-                                                    if (finalPos.y < dragDropState.dockBounds.top) {
-                                                        dragDropState.dockBounds.top - finalPos.y
-                                                    } else if (finalPos.y > dragDropState.dockBounds.bottom) {
-                                                        finalPos.y - dragDropState.dockBounds.bottom
-                                                    } else 0f
-
-                                                val unpinThreshold = with(density) { 80.dp.toPx() }
-                                                val isOutside =
-                                                    !dragDropState.dockBounds.contains(finalPos) && verticalDist > unpinThreshold
-
-                                                if (isOutside) {
-                                                    if (sourceIdx != -1) {
-                                                        onUnpinApp(app.packageName)
+                                .graphicsLayer {
+                                    alpha = if (isBeingDragged) 0f else 1f
+                                }) {
+                            Box(contentAlignment = Alignment.TopEnd) {
+                                app.icon?.let { icon ->
+                                    Image(
+                                        bitmap = icon.toBitmap().asImageBitmap(),
+                                        contentDescription = app.name,
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clip(CircleShape)
+                                            .pointerInput(Unit) {
+                                                detectTapGestures(onTap = { onAppClick(app.packageName) })
+                                            }
+                                            .pointerInput(Unit) {
+                                                detectDragGesturesAfterLongPress(onDragStart = { offset ->
+                                                    pressOffset = offset
+                                                    isActualDrag = false
+                                                }, onDrag = { change, dragAmount ->
+                                                    if (dragAmount.getDistance() > 1f && !isActualDrag) {
+                                                        isActualDrag = true
+                                                        val originalIndex = apps.indexOf(app)
+                                                        dragDropState.startDrag(
+                                                            app, itemPos + pressOffset, originalIndex
+                                                        )
                                                     }
-                                                } else {
-                                                    if (sourceIdx == -1) {
-                                                        if (targetIdx != -1) {
-                                                            onPinApp(app.packageName, targetIdx)
+                                                    
+                                                    if (isActualDrag) {
+                                                        change.consume()
+                                                        dragDropState.dragOffset += dragAmount
+                                                    }
+                                                }, onDragEnd = {
+                                                    if (isActualDrag) {
+                                                        val finalPos = dragDropState.dragOffset
+                                                        val sourceIdx = dragDropState.sourceIndex
+                                                        val targetIdx = dragDropState.targetIndex
+
+                                                        val verticalDist =
+                                                            if (finalPos.y < dragDropState.dockBounds.top) {
+                                                                dragDropState.dockBounds.top - finalPos.y
+                                                            } else if (finalPos.y > dragDropState.dockBounds.bottom) {
+                                                                finalPos.y - dragDropState.dockBounds.bottom
+                                                            } else 0f
+
+                                                        val unpinThreshold =
+                                                            with(density) { 80.dp.toPx() }
+                                                        val isOutside =
+                                                            !dragDropState.dockBounds.contains(finalPos) && verticalDist > unpinThreshold
+
+                                                        if (isOutside) {
+                                                            if (sourceIdx != -1) {
+                                                                onUnpinApp(app.packageName)
+                                                            }
+                                                        } else {
+                                                            if (sourceIdx == -1) {
+                                                                if (targetIdx != -1) {
+                                                                    onPinApp(app.packageName, targetIdx)
+                                                                }
+                                                            } else if (targetIdx != -1 && targetIdx != sourceIdx) {
+                                                                onReorderApp(sourceIdx, targetIdx)
+                                                            }
                                                         }
-                                                    } else if (targetIdx != -1 && targetIdx != sourceIdx) {
-                                                        onReorderApp(sourceIdx, targetIdx)
                                                     }
-                                                }
-                                                dragDropState.stopDrag()
-                                            }, onDragCancel = { dragDropState.stopDrag() })
-                                        },
-                                    contentScale = ContentScale.Fit
+                                                    dragDropState.stopDrag()
+                                                }, onDragCancel = { dragDropState.stopDrag() })
+                                            },
+                                        contentScale = ContentScale.Fit
+                                    )
+                                }
+                                NotificationBadge(
+                                    count = groupedNotifications[app.packageName]?.size ?: 0,
+                                    badgeType = badgeType,
+                                    appIcon = app.icon,
+                                    modifier = Modifier.offset(x = 2.dp, y = (-2).dp)
                                 )
                             }
-                            NotificationBadge(
-                                count = groupedNotifications[app.packageName]?.size ?: 0,
-                                badgeType = badgeType,
-                                appIcon = app.icon,
-                                modifier = Modifier.offset(x = 2.dp, y = (-2).dp)
-                            )
                         }
                     }
                 }

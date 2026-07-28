@@ -1,10 +1,14 @@
 package com.xenonware.launcher.util
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -13,6 +17,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -66,6 +71,15 @@ fun DragHandler(
             val app = state.draggedApp!!
             val density = LocalDensity.current
 
+            val scale by animateFloatAsState(
+                targetValue = if (state.isDragging) 1.2f else 1f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
+                ),
+                label = "dragScale"
+            )
+
             Box(modifier = Modifier
                 .offset {
                     IntOffset(
@@ -74,13 +88,15 @@ fun DragHandler(
                     )
                 }
                 .size(56.dp)
-                .scale(1.1f)
+                .scale(scale)
                 .alpha(0.9f)) {
                 app.icon?.let { icon ->
                     Image(
                         bitmap = icon.toBitmap().asImageBitmap(),
                         contentDescription = null,
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape)
                     )
                 }
             }

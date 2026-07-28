@@ -21,17 +21,25 @@ import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
@@ -39,6 +47,7 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import dev.chrisbanes.haze.materials.HazeMaterials
+import kotlin.math.roundToInt
 
 private const val ExpandedScaleTarget = 1f
 private const val ClosedScaleTarget = 0.8f
@@ -76,8 +85,9 @@ fun XenonDropDown(
     onDismissRequest: () -> Unit,
     items: List<MenuItem>,
     hazeState: HazeState,
-    offsetY: Dp = 64.dp,
-    offsetX: Dp = (-4).dp,
+    offsetY: Dp = 0.dp,
+    offsetX: Dp = 0.dp,
+    anchorPos: Offset? = null,
     radius: Dp = 24.dp,
     widthMin: Dp = 150.dp,
     widthMax: Dp = 280.dp,
@@ -88,16 +98,45 @@ fun XenonDropDown(
     val expandedState = remember { MutableTransitionState(false) }
     expandedState.targetState = expanded
 
+    var menuSize by remember { mutableStateOf(IntSize.Zero) }
+    var parentPos by remember { mutableStateOf(Offset.Zero) }
+
+    // Detect our own anchor position automatically
+    androidx.compose.foundation.layout.Box(
+        Modifier.onGloballyPositioned { parentPos = it.positionInRoot() }
+    )
+
     if (expandedState.currentState || expandedState.targetState) {
         val density = LocalDensity.current
+        val configuration = LocalConfiguration.current
+        val screenWidthPx = with(density) { configuration.screenWidthDp.dp.toPx() }
+        val screenHeightPx = with(density) { configuration.screenHeightDp.dp.toPx() }
+        val marginPx = with(density) { 16.dp.toPx() }
+
+        val actualAnchor = anchorPos ?: parentPos
 
         Popup(
-            alignment = alignment,
+            alignment = Alignment.TopStart,
             offset = with(density) {
-                IntOffset(
-                    x = offsetX.roundToPx(),
-                    y = offsetY.roundToPx(),
-                )
+                val touchX = actualAnchor.x + offsetX.toPx()
+                val touchY = actualAnchor.y + offsetY.toPx()
+
+                // Use measured size if available, otherwise estimate
+                val mWidth = if (menuSize.width > 0) menuSize.width.toFloat() else widthMax.toPx()
+                val mHeight = if (menuSize.height > 0) menuSize.height.toFloat() else (items.size * 48).dp.toPx() + 8.dp.toPx()
+
+                var targetAbsX = touchX - (mWidth / 2f)
+                var targetAbsY = touchY - (mHeight / 2f)
+
+                // Clamp to screen edges with 16dp margin
+                targetAbsX = targetAbsX.coerceIn(marginPx, (screenWidthPx - mWidth - marginPx).coerceAtLeast(marginPx))
+                targetAbsY = targetAbsY.coerceIn(marginPx, (screenHeightPx - mHeight - marginPx).coerceAtLeast(marginPx))
+
+                // Popup offset is relative to the anchor position
+                val finalRelX = targetAbsX - parentPos.x
+                val finalRelY = targetAbsY - parentPos.y
+
+                IntOffset(finalRelX.roundToInt(), finalRelY.roundToInt())
             },
             onDismissRequest = onDismissRequest,
             properties = PopupProperties(focusable = true),
@@ -131,6 +170,7 @@ fun XenonDropDown(
 
             Column(
                 modifier = Modifier
+                    .onSizeChanged { menuSize = it }
                     .widthIn(min = widthMin, max = widthMax)
                     .width(IntrinsicSize.Max)
                     .graphicsLayer {

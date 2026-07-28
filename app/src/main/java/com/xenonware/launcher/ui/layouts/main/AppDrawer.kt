@@ -77,6 +77,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -115,9 +116,12 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalViewConfiguration
+import androidx.compose.ui.platform.ViewConfiguration
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -145,6 +149,7 @@ import dev.chrisbanes.haze.materials.HazeMaterials
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 
 
@@ -238,6 +243,7 @@ fun AppDrawer(
     }
 
     var isSearchFocused by remember { mutableStateOf(false) }
+    var searchResultPressOffset by remember { mutableStateOf(Offset.Zero) }
     var isSearchActive by remember { mutableStateOf(false) }
 
     LaunchedEffect(isSearchFocused, searchQuery, selectedSearchType, openKeyboard, isSearchPressed) {
@@ -252,6 +258,7 @@ fun AppDrawer(
 
     var showMenu by remember { mutableStateOf(false) }
     var searchResultMenuApp by remember { mutableStateOf<AppInfo?>(null) }
+    var appMenuInfo by remember { mutableStateOf<Pair<AppInfo, Offset>?>(null) }
     var barHeightPx by remember { mutableIntStateOf(0) }
     var searchBarHeightPx by remember { mutableIntStateOf(0) }
 
@@ -365,6 +372,10 @@ fun AppDrawer(
 
     val onHideApp: (String) -> Unit = { packageName ->
         viewModel.hideApp(packageName)
+    }
+
+    val onUnhideApp: (String) -> Unit = { packageName ->
+        viewModel.unhideApp(packageName)
     }
 
 
@@ -578,12 +589,7 @@ fun AppDrawer(
                                                                     onDismiss = onDismiss,
                                                                     onPinApp = onPinApp,
                                                                     dragDropState = dragDropState,
-                                                                    hazeState = hazeState,
-                                                                    onUninstallApp = onUninstallApp,
-                                                                    onAppInfo = onAppInfo,
-                                                                    onHideApp = onHideApp,
-                                                                    onUnhideApp = { viewModel.unhideApp(it) },
-                                                                    isHidden = app.packageName in hiddenApps,
+                                                                    onLongPress = { appMenuInfo = app to it },
                                                                     iconShape = iconShape,
                                                                     showShadow = showShadow
                                                                 )
@@ -610,12 +616,7 @@ fun AppDrawer(
                                     onDismiss = onDismiss,
                                     onPinApp = onPinApp,
                                     dragDropState = dragDropState,
-                                    hazeState = hazeState,
-                                    onUninstallApp = onUninstallApp,
-                                    onAppInfo = onAppInfo,
-                                    onHideApp = onHideApp,
-                                    onUnhideApp = { viewModel.unhideApp(it) },
-                                    isHidden = app.packageName in hiddenApps,
+                                    onLongPress = { appMenuInfo = app to it },
                                     iconShape = iconShape,
                                     showShadow = showShadow
                                 )
@@ -664,12 +665,7 @@ fun AppDrawer(
                                                                     onDismiss = onDismiss,
                                                                     onPinApp = onPinApp,
                                                                     dragDropState = dragDropState,
-                                                                    hazeState = hazeState,
-                                                                    onUninstallApp = onUninstallApp,
-                                                                    onAppInfo = onAppInfo,
-                                                                    onHideApp = onHideApp,
-                                                                    onUnhideApp = { viewModel.unhideApp(it) },
-                                                                    isHidden = app.packageName in hiddenApps,
+                                                                    onLongPress = { appMenuInfo = app to it },
                                                                     iconShape = iconShape,
                                                                     showShadow = showShadow
                                                                 )
@@ -693,141 +689,120 @@ fun AppDrawer(
 
                                 items(filteredApps) { app ->
                                     var itemPos by remember { mutableStateOf(Offset.Zero) }
-                                    var showMenu by remember { mutableStateOf(false) }
+                                    var pressOffset by remember { mutableStateOf(Offset.Zero) }
                                     var isActualDrag by remember { mutableStateOf(false) }
 
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clip(RoundedCornerShape(16.dp))
-                                            .onGloballyPositioned { itemPos = it.positionInRoot() }
-                                            .pointerInput(Unit) {
-                                                detectTapGestures(
-                                                    onTap = {
-                                                        onAppClick(app.packageName)
-                                                        onDismiss()
-                                                    })
-                                            }
-                                            .pointerInput(Unit) {
-                                                detectDragGesturesAfterLongPress(onDragStart = { offset ->
-                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                    isActualDrag = false
-                                                    dragDropState.startDrag(
-                                                        app, itemPos + offset
-                                                    )
-                                                }, onDrag = { change, dragAmount ->
-                                                    if (dragAmount.getDistance() > 1f) isActualDrag = true
-                                                    change.consume()
-                                                    dragDropState.dragOffset += dragAmount
+                                    val viewConfiguration = LocalViewConfiguration.current
+                                    val customViewConfiguration = remember(viewConfiguration) {
+                                        object : ViewConfiguration by viewConfiguration {
+                                            override val touchSlop: Float
+                                                get() = viewConfiguration.touchSlop * 3f
+                                        }
+                                    }
 
-                                                    if (dragDropState.dockBounds.contains(
-                                                            dragDropState.dragOffset
-                                                        )
-                                                    ) {
-                                                        val relativeX =
-                                                            dragDropState.dragOffset.x - dragDropState.dockBounds.left
-                                                        val itemWidth =
-                                                            with(density) { 52.dp.toPx() }
-                                                        dragDropState.targetIndex =
-                                                            (relativeX / itemWidth).toInt()
-                                                                .coerceIn(0, 100)
-                                                    } else {
-                                                        dragDropState.targetIndex = -1
-                                                    }
-                                                }, onDragEnd = {
-                                                    if (isActualDrag) {
-                                                        val finalPos = dragDropState.dragOffset
-                                                        val verticalDist =
-                                                            if (finalPos.y < dragDropState.dockBounds.top) {
-                                                                dragDropState.dockBounds.top - finalPos.y
-                                                            } else if (finalPos.y > dragDropState.dockBounds.bottom) {
-                                                                finalPos.y - dragDropState.dockBounds.bottom
-                                                            } else 0f
-
-                                                        val hitThreshold =
-                                                            with(density) { 80.dp.toPx() }
-
-                                                        if (dragDropState.dockBounds.contains(
-                                                                finalPos
-                                                            ) || verticalDist < hitThreshold
-                                                        ) {
-                                                            onPinApp(
-                                                                app.packageName,
-                                                                dragDropState.targetIndex
+                                    CompositionLocalProvider(LocalViewConfiguration provides customViewConfiguration) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clip(RoundedCornerShape(16.dp))
+                                                .onGloballyPositioned { itemPos = it.positionInRoot() }
+                                                .pointerInput(Unit) {
+                                                    detectTapGestures(
+                                                        onTap = {
+                                                            onAppClick(app.packageName)
+                                                            onDismiss()
+                                                        })
+                                                }
+                                                .pointerInput(Unit) {
+                                                    detectDragGesturesAfterLongPress(onDragStart = { offset ->
+                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                        isActualDrag = false
+                                                        pressOffset = offset
+                                                    }, onDrag = { change, dragAmount ->
+                                                        if (dragAmount.getDistance() > 1f && !isActualDrag) {
+                                                            isActualDrag = true
+                                                            dragDropState.startDrag(
+                                                                app, itemPos + pressOffset
                                                             )
                                                         }
-                                                    } else {
-                                                        showMenu = true
-                                                    }
-                                                    dragDropState.stopDrag()
-                                                }, onDragCancel = { dragDropState.stopDrag() })
-                                            }
-                                            .padding(horizontal = 8.dp, vertical = 8.dp)) {
-                                        Box(contentAlignment = Alignment.TopEnd) {
-                                            app.icon?.let { icon ->
-                                                val shape = iconShape.getShape()
-                                                Image(
-                                                    bitmap = icon.toBitmap().asImageBitmap(),
-                                                    contentDescription = app.name,
-                                                    modifier = Modifier
-                                                        .size(48.dp)
-                                                        .then(if (showShadow) Modifier.shadow(4.dp, shape) else Modifier)
-                                                        .clip(shape)
+                                                        
+                                                        if (isActualDrag) {
+                                                            change.consume()
+                                                            dragDropState.dragOffset += dragAmount
+
+                                                            if (dragDropState.dockBounds.contains(
+                                                                    dragDropState.dragOffset
+                                                                )
+                                                            ) {
+                                                                val relativeX =
+                                                                    dragDropState.dragOffset.x - dragDropState.dockBounds.left
+                                                                val itemWidth =
+                                                                    with(density) { 52.dp.toPx() }
+                                                                dragDropState.targetIndex =
+                                                                    (relativeX / itemWidth).toInt()
+                                                                        .coerceIn(0, 100)
+                                                            } else {
+                                                                dragDropState.targetIndex = -1
+                                                            }
+                                                        }
+                                                    }, onDragEnd = {
+                                                        if (isActualDrag) {
+                                                            val finalPos = dragDropState.dragOffset
+                                                            val verticalDist =
+                                                                if (finalPos.y < dragDropState.dockBounds.top) {
+                                                                    dragDropState.dockBounds.top - finalPos.y
+                                                                } else if (finalPos.y > dragDropState.dockBounds.bottom) {
+                                                                    finalPos.y - dragDropState.dockBounds.bottom
+                                                                } else 0f
+
+                                                            val hitThreshold =
+                                                                with(density) { 80.dp.toPx() }
+
+                                                            if (dragDropState.dockBounds.contains(
+                                                                    finalPos
+                                                                ) || verticalDist < hitThreshold
+                                                            ) {
+                                                                onPinApp(
+                                                                    app.packageName,
+                                                                    dragDropState.targetIndex
+                                                                )
+                                                            }
+                                                        } else {
+                                                            appMenuInfo = app to (itemPos + pressOffset)
+                                                        }
+                                                        dragDropState.stopDrag()
+                                                    }, onDragCancel = { dragDropState.stopDrag() })
+                                                }
+                                                .padding(horizontal = 8.dp, vertical = 8.dp)) {
+                                            Box(contentAlignment = Alignment.TopEnd) {
+                                                app.icon?.let { icon ->
+                                                    val shape = iconShape.getShape()
+                                                    Image(
+                                                        bitmap = icon.toBitmap().asImageBitmap(),
+                                                        contentDescription = app.name,
+                                                        modifier = Modifier
+                                                            .size(48.dp)
+                                                            .then(if (showShadow) Modifier.shadow(4.dp, shape) else Modifier)
+                                                            .clip(shape)
+                                                    )
+                                                }
+                                                NotificationBadge(
+                                                    count = groupedNotifications[app.packageName]?.size ?: 0,
+                                                    badgeType = badgeType,
+                                                    appIcon = app.icon,
+                                                    modifier = Modifier.offset(x = 2.dp, y = (-2).dp)
                                                 )
                                             }
-                                            NotificationBadge(
-                                                count = groupedNotifications[app.packageName]?.size ?: 0,
-                                                badgeType = badgeType,
-                                                appIcon = app.icon,
-                                                modifier = Modifier.offset(x = 2.dp, y = (-2).dp)
+                                            Spacer(Modifier.width(16.dp))
+                                            Text(
+                                                app.name,
+                                                color = colorScheme.onSurface,
+                                                fontSize = 16.sp,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
                                             )
                                         }
-                                        Spacer(Modifier.width(16.dp))
-                                        Text(
-                                            app.name,
-                                            color = colorScheme.onSurface,
-                                            fontSize = 16.sp,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-
-                                        XenonDropDown(
-                                            expanded = showMenu,
-                                            onDismissRequest = { showMenu = false },
-                                            items = listOf(
-                                                MenuItem(
-                                                    text = "Uninstall",
-                                                    onClick = { onUninstallApp(app.packageName) },
-                                                    leadingIcon = { Icon(Icons.Rounded.Delete, null) },
-                                                    textColor = colorScheme.error,
-                                                    containerColor = colorScheme.error.copy(alpha = 0.25f)
-                                                ),
-
-                                                MenuItem(
-                                                    text = "App Info",
-                                                    onClick = { onAppInfo(app.packageName) },
-                                                    leadingIcon = { Icon(Icons.Rounded.Info, null) }
-                                                ),
-                                                MenuItem(
-                                                    text = "Edit",
-                                                    onClick = { /* Keep as placeholder */ },
-                                                    leadingIcon = { Icon(Icons.Rounded.Edit, null) }
-                                                ),
-                                                MenuItem(
-                                                    text = if (app.packageName in hiddenApps) "Unhide" else "Hide",
-                                                    onClick = {
-                                                        if (app.packageName in hiddenApps) viewModel.unhideApp(app.packageName)
-                                                        else viewModel.hideApp(app.packageName)
-                                                    },
-                                                    leadingIcon = { Icon(if (app.packageName in hiddenApps) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff, null) }
-                                                )
-                                            ),
-                                            hazeState = hazeState,
-                                            offsetY = 0.dp,
-                                            offsetX = 0.dp,
-                                            alignment = Alignment.Center
-                                        )
                                     }
                                 }
                             } else {
@@ -887,9 +862,10 @@ fun AppDrawer(
                                         SearchResultItem(
                                             result = result,
                                             onClick = { handleSearchResultClick(it) },
-                                            onLongClick = {
+                                            onLongClick = { it, offset ->
                                                 if (it is SearchResult.App) {
                                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                    searchResultPressOffset = offset
                                                     searchResultMenuApp = it.appInfo
                                                 }
                                             },
@@ -913,41 +889,42 @@ fun AppDrawer(
                     searchResultMenuApp?.let { app ->
                         val isHidden = app.packageName in hiddenApps
                         
-                        Box(Modifier.fillMaxSize()) {
-                            XenonDropDown(
-                                expanded = searchResultMenuApp != null,
-                                onDismissRequest = { searchResultMenuApp = null },
-                                items = listOf(
-                                    MenuItem(
-                                        text = "Uninstall",
-                                        onClick = { onUninstallApp(app.packageName) },
-                                        leadingIcon = { Icon(Icons.Rounded.Delete, null) },
-                                        textColor = colorScheme.error,
-                                        containerColor = colorScheme.error.copy(alpha = 0.15f)
-                                    ),
-                                    MenuItem(
-                                        text = "App Info",
-                                        onClick = { onAppInfo(app.packageName) },
-                                        leadingIcon = { Icon(Icons.Rounded.Info, null) }
-                                    ),
-                                    MenuItem(
-                                        text = "Edit",
-                                        onClick = { /* Placeholder */ },
-                                        leadingIcon = { Icon(Icons.Rounded.Edit, null) }
-                                    ),
-                                    MenuItem(
-                                        text = if (isHidden) "Unhide" else "Hide",
-                                        onClick = {
-                                            if (isHidden) viewModel.unhideApp(app.packageName)
-                                            else viewModel.hideApp(app.packageName)
-                                        },
-                                        leadingIcon = { Icon(if (isHidden) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff, null) }
-                                    )
+                        XenonDropDown(
+                            expanded = searchResultMenuApp != null,
+                            onDismissRequest = { searchResultMenuApp = null },
+                            items = listOf(
+                                MenuItem(
+                                    text = "Uninstall",
+                                    onClick = { onUninstallApp(app.packageName) },
+                                    leadingIcon = { Icon(Icons.Rounded.Delete, null) },
+                                    textColor = colorScheme.error,
+                                    containerColor = colorScheme.error.copy(alpha = 0.15f)
                                 ),
-                                hazeState = hazeState,
-                                alignment = Alignment.Center
-                            )
-                        }
+                                MenuItem(
+                                    text = "App Info",
+                                    onClick = { onAppInfo(app.packageName) },
+                                    leadingIcon = { Icon(Icons.Rounded.Info, null) }
+                                ),
+                                MenuItem(
+                                    text = "Edit",
+                                    onClick = { /* Placeholder */ },
+                                    leadingIcon = { Icon(Icons.Rounded.Edit, null) }
+                                ),
+                                MenuItem(
+                                    text = if (isHidden) "Unhide" else "Hide",
+                                    onClick = {
+                                        if (isHidden) onUnhideApp(app.packageName)
+                                        else onHideApp(app.packageName)
+                                    },
+                                    leadingIcon = { Icon(if (isHidden) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff, null) }
+                                )
+                            ),
+                            hazeState = hazeState,
+                            offsetX = with(density) { searchResultPressOffset.x.toDp() },
+                            offsetY = with(density) { searchResultPressOffset.y.toDp() },
+                            anchorPos = Offset.Zero,
+                            alignment = Alignment.Center
+                        )
                     }
 
                     Box(
@@ -1118,6 +1095,50 @@ fun AppDrawer(
                     }
                 }
             }
+        }
+        
+        appMenuInfo?.let { (app, offset) ->
+            XenonDropDown(
+                expanded = true,
+                onDismissRequest = { appMenuInfo = null },
+                items = listOf(
+                    MenuItem(
+                        text = "Uninstall",
+                        onClick = { onUninstallApp(app.packageName) },
+                        leadingIcon = { Icon(Icons.Rounded.Delete, null) },
+                        textColor = colorScheme.error,
+                        containerColor = colorScheme.error.copy(alpha = 0.25f)
+                    ),
+                    MenuItem(
+                        text = "App Info",
+                        onClick = { onAppInfo(app.packageName) },
+                        leadingIcon = { Icon(Icons.Rounded.Info, null) }
+                    ),
+                    MenuItem(
+                        text = "Edit",
+                        onClick = { /* Placeholder */ },
+                        leadingIcon = { Icon(Icons.Rounded.Edit, null) }
+                    ),
+                    MenuItem(
+                        text = if (app.packageName in hiddenApps) "Unhide" else "Hide",
+                        onClick = {
+                            if (app.packageName in hiddenApps) onUnhideApp(app.packageName)
+                            else onHideApp(app.packageName)
+                        },
+                        leadingIcon = {
+                            Icon(
+                                if (app.packageName in hiddenApps) Icons.Rounded.Visibility
+                                else Icons.Rounded.VisibilityOff, null
+                            )
+                        }
+                    )
+                ),
+                hazeState = hazeState,
+                offsetX = with(density) { offset.x.toDp() },
+                offsetY = with(density) { offset.y.toDp() },
+                anchorPos = Offset.Zero,
+                alignment = Alignment.Center
+            )
         }
     }
 }

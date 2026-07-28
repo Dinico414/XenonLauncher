@@ -29,15 +29,23 @@ import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -51,24 +59,33 @@ import com.xenonware.launcher.ui.res.ContactAvatar
 fun SearchResultItem(
     result: SearchResult,
     onClick: (SearchResult) -> Unit,
-    onLongClick: ((SearchResult) -> Unit)? = null,
+    onLongClick: ((SearchResult, Offset) -> Unit)? = null,
     iconShape: com.xenonware.launcher.ui.res.IconShape = com.xenonware.launcher.ui.res.IconShape.Circle,
     showShadow: Boolean = false
 ) {
+    var itemPos by remember { mutableStateOf(Offset.Zero) }
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(colorScheme.surfaceContainer.copy(alpha = 0.8f))
+            .onGloballyPositioned { itemPos = it.positionInRoot() }
             .then(
                 if (onLongClick != null) {
-                    Modifier.pointerInput(result) {
-                        detectTapGestures(
-                            onTap = { onClick(result) },
-                            onLongPress = { onLongClick(result) }
-                        )
-                    }
+                    Modifier
+                        .pointerInput(result) {
+                            detectTapGestures(onTap = { onClick(result) })
+                        }
+                        .pointerInput(result) {
+                            var tempOffset = Offset.Zero
+                            detectDragGesturesAfterLongPress(
+                                onDragStart = { offset -> tempOffset = offset },
+                                onDrag = { change, _ -> change.consume() },
+                                onDragEnd = { onLongClick(result, itemPos + tempOffset) }
+                            )
+                        }
                 } else {
                     Modifier.clickable { onClick(result) }
                 }
