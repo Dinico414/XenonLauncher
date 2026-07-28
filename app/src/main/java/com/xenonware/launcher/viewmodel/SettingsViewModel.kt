@@ -25,16 +25,21 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     private fun loadApps() {
         viewModelScope.launch(Dispatchers.IO) {
-            val pm = getApplication<Application>().packageManager
+            val context = getApplication<Application>()
+            val pm = context.packageManager
+            val launcherPackage = context.packageName
             val intent = Intent(Intent.ACTION_MAIN, null).apply {
                 addCategory(Intent.CATEGORY_LAUNCHER)
             }
             val resolvedInfos = pm.queryIntentActivities(intent, 0)
             val appList = resolvedInfos.mapNotNull {
+                val pkgName = it.activityInfo.packageName
+                if (pkgName == launcherPackage) return@mapNotNull null
+
                 try {
                     AppInfo(
                         name = it.loadLabel(pm).toString(),
-                        packageName = it.activityInfo.packageName,
+                        packageName = pkgName,
                         icon = it.loadIcon(pm)
                     )
                 } catch (e: Exception) {
