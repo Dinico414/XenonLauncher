@@ -37,10 +37,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 if (pkgName == launcherPackage) return@mapNotNull null
 
                 try {
+                    val originalIcon = it.loadIcon(pm)
+                    val normalizedIcon = com.xenonware.launcher.util.normalizeIcon(context, originalIcon)
                     AppInfo(
                         name = it.loadLabel(pm).toString(),
                         packageName = pkgName,
-                        icon = it.loadIcon(pm)
+                        icon = normalizedIcon
                     )
                 } catch (e: Exception) {
                     null
@@ -82,6 +84,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     private val _dockSafeDrawIme = MutableStateFlow(sharedPreferenceManager.dockSafeDrawIme)
     val dockSafeDrawIme = _dockSafeDrawIme.asStateFlow()
+
+    private val _drawerIconShape = MutableStateFlow(com.xenonware.launcher.ui.res.IconShape.valueOf(sharedPreferenceManager.drawerIconShape))
+    val drawerIconShape = _drawerIconShape.asStateFlow()
+
+    private val _drawerIconShadow = MutableStateFlow(sharedPreferenceManager.drawerIconShadow)
+    val drawerIconShadow = _drawerIconShadow.asStateFlow()
 
     private val _timeShortcut = MutableStateFlow(sharedPreferenceManager.timeShortcut)
     val timeShortcut = _timeShortcut.asStateFlow()
@@ -158,6 +166,16 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setDockSafeDrawIme(enabled: Boolean) {
         sharedPreferenceManager.dockSafeDrawIme = enabled
         _dockSafeDrawIme.value = enabled
+    }
+
+    fun setDrawerIconShape(shape: com.xenonware.launcher.ui.res.IconShape) {
+        sharedPreferenceManager.drawerIconShape = shape.name
+        _drawerIconShape.value = shape
+    }
+
+    fun setDrawerIconShadow(enabled: Boolean) {
+        sharedPreferenceManager.drawerIconShadow = enabled
+        _drawerIconShadow.value = enabled
     }
 
     fun setTimeShortcut(value: String) {

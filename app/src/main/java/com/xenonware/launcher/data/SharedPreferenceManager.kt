@@ -82,6 +82,14 @@ class SharedPreferenceManager(context: Context) {
         get() = prefs.getBoolean("show_hidden_apps_in_search", false)
         set(value) = prefs.edit().putBoolean("show_hidden_apps_in_search", value).apply()
 
+    var drawerIconShape: String
+        get() = prefs.getString("drawer_icon_shape", "Circle") ?: "Circle"
+        set(value) = prefs.edit().putString("drawer_icon_shape", value).apply()
+
+    var drawerIconShadow: Boolean
+        get() = prefs.getBoolean("drawer_icon_shadow", false)
+        set(value) = prefs.edit().putBoolean("drawer_icon_shadow", value).apply()
+
     fun registerListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
         prefs.registerOnSharedPreferenceChangeListener(listener)
     }

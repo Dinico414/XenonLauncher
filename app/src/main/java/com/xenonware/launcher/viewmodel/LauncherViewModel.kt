@@ -77,6 +77,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 _hiddenApps.value = prefManager.hiddenApps.toSet()
                 loadApps()
             }
+            "drawer_icon_shape" -> _drawerIconShape.value = com.xenonware.launcher.ui.res.IconShape.valueOf(prefManager.drawerIconShape)
+            "drawer_icon_shadow" -> _drawerIconShadow.value = prefManager.drawerIconShadow
         }
     }
 
@@ -91,6 +93,12 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private val _showHiddenAppsInSearch = MutableStateFlow(prefManager.showHiddenAppsInSearch)
     val showHiddenAppsInSearch: StateFlow<Boolean> = _showHiddenAppsInSearch
+
+    private val _drawerIconShape = MutableStateFlow(com.xenonware.launcher.ui.res.IconShape.valueOf(prefManager.drawerIconShape))
+    val drawerIconShape: StateFlow<com.xenonware.launcher.ui.res.IconShape> = _drawerIconShape
+
+    private val _drawerIconShadow = MutableStateFlow(prefManager.drawerIconShadow)
+    val drawerIconShadow: StateFlow<Boolean> = _drawerIconShadow
 
     private val _pinnedApps = MutableStateFlow<List<AppInfo>>(emptyList())
     val pinnedApps: StateFlow<List<AppInfo>> = _pinnedApps
@@ -415,10 +423,12 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 if (pkgName == launcherPackage) return@mapNotNull null
 
                 try {
+                    val originalIcon = it.loadIcon(pm)
+                    val normalizedIcon = com.xenonware.launcher.util.normalizeIcon(context, originalIcon)
                     AppInfo(
                         name = it.loadLabel(pm).toString(),
                         packageName = pkgName,
-                        icon = it.loadIcon(pm)
+                        icon = normalizedIcon
                     )
                 } catch (e: Exception) {
                     null
@@ -572,6 +582,16 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun setAdvancedSearchEnabled(enabled: Boolean) {
         _advancedSearchEnabled.value = enabled
         prefManager.advancedSearchEnabled = enabled
+    }
+
+    fun setDrawerIconShape(shape: com.xenonware.launcher.ui.res.IconShape) {
+        _drawerIconShape.value = shape
+        prefManager.drawerIconShape = shape.name
+    }
+
+    fun setDrawerIconShadow(enabled: Boolean) {
+        _drawerIconShadow.value = enabled
+        prefManager.drawerIconShadow = enabled
     }
 
     private fun loadSearchHistory(): List<String> {

@@ -26,6 +26,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -61,6 +63,8 @@ fun AppDrawerGridLayout(
     onHideApp: (String) -> Unit,
     onUnhideApp: (String) -> Unit,
     isHidden: Boolean = false,
+    iconShape: com.xenonware.launcher.ui.res.IconShape = com.xenonware.launcher.ui.res.IconShape.Circle,
+    showShadow: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     var itemPos by remember { mutableStateOf(Offset.Zero) }
@@ -120,10 +124,14 @@ fun AppDrawerGridLayout(
             }) {
         Box(contentAlignment = Alignment.TopEnd) {
             app.icon?.let { icon ->
+                val shape = iconShape.getShape()
                 Image(
                     bitmap = icon.toBitmap().asImageBitmap(),
                     contentDescription = app.name,
-                    modifier = Modifier.size(56.dp)
+                    modifier = Modifier
+                        .size(56.dp)
+                        .then(if (showShadow) Modifier.shadow(4.dp, shape) else Modifier)
+                        .clip(shape)
                 )
             }
             NotificationBadge(

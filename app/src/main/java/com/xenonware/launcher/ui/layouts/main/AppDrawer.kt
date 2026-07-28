@@ -2,7 +2,6 @@ package com.xenonware.launcher.ui.layouts.main
 
 import android.Manifest
 import android.content.Intent
-import android.os.Build
 import android.os.Environment
 import android.provider.Settings
 import androidx.activity.compose.PredictiveBackHandler
@@ -92,6 +91,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -200,6 +200,8 @@ fun AppDrawer(
     val showHiddenAppsInSearch by viewModel.showHiddenAppsInSearch.collectAsState()
     val hiddenApps by viewModel.hiddenApps.collectAsState()
     val allApps by viewModel.allApps.collectAsState()
+    val iconShape by viewModel.drawerIconShape.collectAsState()
+    val showShadow by viewModel.drawerIconShadow.collectAsState()
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -208,26 +210,20 @@ fun AppDrawer(
     LaunchedEffect(advancedSearchEnabled) {
         if (advancedSearchEnabled) {
             val permissions = mutableListOf<String>()
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                permissions.add(Manifest.permission.READ_MEDIA_AUDIO)
-            } else {
-                permissions.add(Manifest.permission.READ_EXTERNAL_STORAGE)
-            }
+            permissions.add(Manifest.permission.READ_MEDIA_AUDIO)
             permissions.add(Manifest.permission.READ_CONTACTS)
 
             permissionLauncher.launch(permissions.toTypedArray())
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                if (!Environment.isExternalStorageManager()) {
-                    try {
-                        val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
-                            data = "package:${context.packageName}".toUri()
-                        }
-                        context.startActivity(intent)
-                    } catch (_: Exception) {
-                        val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
-                        context.startActivity(intent)
+            if (!Environment.isExternalStorageManager()) {
+                try {
+                    val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                        data = "package:${context.packageName}".toUri()
                     }
+                    context.startActivity(intent)
+                } catch (_: Exception) {
+                    val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                    context.startActivity(intent)
                 }
             }
         }
@@ -587,7 +583,9 @@ fun AppDrawer(
                                                                     onAppInfo = onAppInfo,
                                                                     onHideApp = onHideApp,
                                                                     onUnhideApp = { viewModel.unhideApp(it) },
-                                                                    isHidden = app.packageName in hiddenApps
+                                                                    isHidden = app.packageName in hiddenApps,
+                                                                    iconShape = iconShape,
+                                                                    showShadow = showShadow
                                                                 )
                                                         }
                                                     }
@@ -617,7 +615,9 @@ fun AppDrawer(
                                     onAppInfo = onAppInfo,
                                     onHideApp = onHideApp,
                                     onUnhideApp = { viewModel.unhideApp(it) },
-                                    isHidden = app.packageName in hiddenApps
+                                    isHidden = app.packageName in hiddenApps,
+                                    iconShape = iconShape,
+                                    showShadow = showShadow
                                 )
                             }
                         }
@@ -669,7 +669,9 @@ fun AppDrawer(
                                                                     onAppInfo = onAppInfo,
                                                                     onHideApp = onHideApp,
                                                                     onUnhideApp = { viewModel.unhideApp(it) },
-                                                                    isHidden = app.packageName in hiddenApps
+                                                                    isHidden = app.packageName in hiddenApps,
+                                                                    iconShape = iconShape,
+                                                                    showShadow = showShadow
                                                                 )
                                                             }
                                                         }
@@ -764,10 +766,14 @@ fun AppDrawer(
                                             .padding(horizontal = 8.dp, vertical = 8.dp)) {
                                         Box(contentAlignment = Alignment.TopEnd) {
                                             app.icon?.let { icon ->
+                                                val shape = iconShape.getShape()
                                                 Image(
                                                     bitmap = icon.toBitmap().asImageBitmap(),
                                                     contentDescription = app.name,
-                                                    modifier = Modifier.size(48.dp)
+                                                    modifier = Modifier
+                                                        .size(48.dp)
+                                                        .then(if (showShadow) Modifier.shadow(4.dp, shape) else Modifier)
+                                                        .clip(shape)
                                                 )
                                             }
                                             NotificationBadge(
@@ -837,7 +843,12 @@ fun AppDrawer(
                                 if (selectedSearchType == SearchType.Web) {
                                     if (searchQuery.isNotEmpty()) {
                                         items(filteredResults) { result ->
-                                            SearchResultItem(result, onClick = { handleSearchResultClick(it) })
+                                            SearchResultItem(
+                                                result = result,
+                                                onClick = { handleSearchResultClick(it) },
+                                                iconShape = iconShape,
+                                                showShadow = showShadow
+                                            )
                                         }
                                     }
                                     if (searchHistory.isNotEmpty()) {
@@ -881,7 +892,9 @@ fun AppDrawer(
                                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                     searchResultMenuApp = it.appInfo
                                                 }
-                                            }
+                                            },
+                                            iconShape = iconShape,
+                                            showShadow = showShadow
                                         )
                                     }
                                 }

@@ -32,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
@@ -50,7 +51,9 @@ import com.xenonware.launcher.ui.res.ContactAvatar
 fun SearchResultItem(
     result: SearchResult,
     onClick: (SearchResult) -> Unit,
-    onLongClick: ((SearchResult) -> Unit)? = null
+    onLongClick: ((SearchResult) -> Unit)? = null,
+    iconShape: com.xenonware.launcher.ui.res.IconShape = com.xenonware.launcher.ui.res.IconShape.Circle,
+    showShadow: Boolean = false
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -76,7 +79,15 @@ fun SearchResultItem(
             when (result) {
                 is SearchResult.App -> {
                     result.appInfo.icon?.let { icon ->
-                        Image(bitmap = icon.toBitmap().asImageBitmap(), contentDescription = null, modifier = Modifier.fillMaxSize())
+                        val shape = iconShape.getShape()
+                        Image(
+                            bitmap = icon.toBitmap().asImageBitmap(), 
+                            contentDescription = null, 
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .then(if (showShadow) Modifier.shadow(4.dp, shape) else Modifier)
+                                .clip(shape)
+                        )
                     }
                 }
                 is SearchResult.Contact -> {
