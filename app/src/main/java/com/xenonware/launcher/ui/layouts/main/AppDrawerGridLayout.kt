@@ -13,6 +13,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme.colorScheme
@@ -57,6 +59,8 @@ fun AppDrawerGridLayout(
     onUninstallApp: (String) -> Unit,
     onAppInfo: (String) -> Unit,
     onHideApp: (String) -> Unit,
+    onUnhideApp: (String) -> Unit,
+    isHidden: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     var itemPos by remember { mutableStateOf(Offset.Zero) }
@@ -162,9 +166,9 @@ fun AppDrawerGridLayout(
                 leadingIcon = { Icon(Icons.Rounded.Edit, null) }
             ),
             MenuItem(
-                text = "Hide",
-                onClick = { onHideApp(app.packageName) },
-                leadingIcon = { Icon(Icons.Rounded.VisibilityOff, null) }
+                text = if (isHidden) "Unhide" else "Hide",
+                onClick = { if (isHidden) onUnhideApp(app.packageName) else onHideApp(app.packageName) },
+                leadingIcon = { Icon(if (isHidden) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff, null) }
             )
         ),
         hazeState = hazeState,

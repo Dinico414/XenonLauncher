@@ -84,6 +84,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     val apps: StateFlow<List<AppInfo>> = _apps
 
     private val _allApps = MutableStateFlow<List<AppInfo>>(emptyList())
+    val allApps: StateFlow<List<AppInfo>> = _allApps
 
     private val _hiddenApps = MutableStateFlow(prefManager.hiddenApps.toSet())
     val hiddenApps: StateFlow<Set<String>> = _hiddenApps

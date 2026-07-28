@@ -138,6 +138,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         _showHiddenAppsInSearch.value = enabled
     }
 
+    fun unhideApp(packageName: String) {
+        val current = sharedPreferenceManager.hiddenApps.toMutableList()
+        current.remove(packageName)
+        sharedPreferenceManager.hiddenApps = current
+        _hiddenApps.value = current
+    }
+
     fun setNotificationBadgeType(type: Int) {
         sharedPreferenceManager.notificationBadgeType = type
         _notificationBadgeType.value = type

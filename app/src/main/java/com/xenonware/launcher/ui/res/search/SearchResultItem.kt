@@ -34,6 +34,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -45,14 +47,29 @@ import com.xenonware.launcher.model.SearchResult
 import com.xenonware.launcher.ui.res.ContactAvatar
 
 @Composable
-fun SearchResultItem(result: SearchResult, onClick: (SearchResult) -> Unit) {
+fun SearchResultItem(
+    result: SearchResult,
+    onClick: (SearchResult) -> Unit,
+    onLongClick: ((SearchResult) -> Unit)? = null
+) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(colorScheme.surfaceContainer.copy(alpha = 0.8f))
-            .clickable { onClick(result) }
+            .then(
+                if (onLongClick != null) {
+                    Modifier.pointerInput(result) {
+                        detectTapGestures(
+                            onTap = { onClick(result) },
+                            onLongPress = { onLongClick(result) }
+                        )
+                    }
+                } else {
+                    Modifier.clickable { onClick(result) }
+                }
+            )
             .padding(12.dp)
     ) {
         Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {

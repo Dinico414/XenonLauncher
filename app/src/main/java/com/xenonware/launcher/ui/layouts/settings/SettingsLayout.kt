@@ -43,6 +43,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.graphics.drawable.toBitmap
 import com.xenon.mylibrary.ActivityScreen
 import com.xenon.mylibrary.res.SettingsSwitchTile
 import com.xenon.mylibrary.res.SettingsTile
@@ -66,6 +79,7 @@ fun SettingsLayout(
     val openKeyboard by viewModel.openKeyboard.collectAsState()
     val advancedSearchEnabled by viewModel.advancedSearchEnabled.collectAsState()
     val showHiddenAppsInSearch by viewModel.showHiddenAppsInSearch.collectAsState()
+    val hiddenApps by viewModel.hiddenApps.collectAsState()
     val dockSafeDrawIme by viewModel.dockSafeDrawIme.collectAsState()
     
     val apps by viewModel.apps.collectAsState()
@@ -74,6 +88,7 @@ fun SettingsLayout(
     val weatherShortcut by viewModel.weatherShortcut.collectAsState()
     
     var configShortcutType by remember { mutableStateOf<LauncherViewModel.ShortcutType?>(null) }
+    var showHiddenAppsDialog by remember { mutableStateOf(false) }
 
     val innerRadius = 4.dp
     val outerRadius = 24.dp
@@ -252,7 +267,8 @@ fun SettingsLayout(
                         onCheckedChange = { viewModel.setShowHiddenAppsInSearch(it) },
                         icon = { Icon(Icons.Default.Visibility, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                         backgroundColor = tileColor,
-                        shape = bottomShape
+                        shape = bottomShape,
+                        onClick = { showHiddenAppsDialog = true }
                     )
                 }
 
@@ -329,6 +345,48 @@ fun SettingsLayout(
                             LauncherViewModel.ShortcutType.WEATHER -> viewModel.setWeatherShortcut(it)
                         }
                         configShortcutType = null
+                    }
+                )
+            }
+
+            if (showHiddenAppsDialog) {
+                AlertDialog(
+                    onDismissRequest = { showHiddenAppsDialog = false },
+                    title = { Text("Hidden Apps") },
+                    text = {
+                        val hiddenAppInfos = apps.filter { it.packageName in hiddenApps }
+                        if (hiddenAppInfos.isEmpty()) {
+                            Text("No apps are hidden.")
+                        } else {
+                            LazyColumn(modifier = Modifier.height(300.dp)) {
+                                items(hiddenAppInfos) { app ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        app.icon?.let { icon ->
+                                            Image(
+                                                bitmap = icon.toBitmap().asImageBitmap(),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(32.dp)
+                                            )
+                                        }
+                                        Text(app.name, modifier = Modifier.weight(1f))
+                                        IconButton(onClick = { viewModel.unhideApp(app.packageName) }) {
+                                            Icon(Icons.Rounded.Visibility, contentDescription = "Unhide")
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { showHiddenAppsDialog = false }) {
+                            Text("Close")
+                        }
                     }
                 )
             }

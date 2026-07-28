@@ -197,6 +197,9 @@ fun AppDrawer(
         notifications.groupBy { it.packageName }
     }
     val advancedSearchEnabled by viewModel.advancedSearchEnabled.collectAsState()
+    val showHiddenAppsInSearch by viewModel.showHiddenAppsInSearch.collectAsState()
+    val hiddenApps by viewModel.hiddenApps.collectAsState()
+    val allApps by viewModel.allApps.collectAsState()
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -252,6 +255,7 @@ fun AppDrawer(
     }
 
     var showMenu by remember { mutableStateOf(false) }
+    var searchResultMenuApp by remember { mutableStateOf<AppInfo?>(null) }
     var barHeightPx by remember { mutableIntStateOf(0) }
     var searchBarHeightPx by remember { mutableIntStateOf(0) }
 
@@ -301,9 +305,12 @@ fun AppDrawer(
         }
     }
 
-    val filteredApps = remember(apps, searchQuery) {
+    val filteredApps = remember(apps, allApps, searchQuery, showHiddenAppsInSearch) {
         if (searchQuery.isBlank()) apps
-        else apps.filter { it.matches(searchQuery) }
+        else {
+            val source = if (showHiddenAppsInSearch) allApps else apps
+            source.filter { it.matches(searchQuery) }
+        }
     }
 
     fun handleSearchResultClick(result: SearchResult) {
@@ -578,7 +585,9 @@ fun AppDrawer(
                                                                     hazeState = hazeState,
                                                                     onUninstallApp = onUninstallApp,
                                                                     onAppInfo = onAppInfo,
-                                                                    onHideApp = onHideApp
+                                                                    onHideApp = onHideApp,
+                                                                    onUnhideApp = { viewModel.unhideApp(it) },
+                                                                    isHidden = app.packageName in hiddenApps
                                                                 )
                                                         }
                                                     }
@@ -606,7 +615,9 @@ fun AppDrawer(
                                     hazeState = hazeState,
                                     onUninstallApp = onUninstallApp,
                                     onAppInfo = onAppInfo,
-                                    onHideApp = onHideApp
+                                    onHideApp = onHideApp,
+                                    onUnhideApp = { viewModel.unhideApp(it) },
+                                    isHidden = app.packageName in hiddenApps
                                 )
                             }
                         }
@@ -656,7 +667,9 @@ fun AppDrawer(
                                                                     hazeState = hazeState,
                                                                     onUninstallApp = onUninstallApp,
                                                                     onAppInfo = onAppInfo,
-                                                                    onHideApp = onHideApp
+                                                                    onHideApp = onHideApp,
+                                                                    onUnhideApp = { viewModel.unhideApp(it) },
+                                                                    isHidden = app.packageName in hiddenApps
                                                                 )
                                                             }
                                                         }
@@ -796,9 +809,12 @@ fun AppDrawer(
                                                     leadingIcon = { Icon(Icons.Rounded.Edit, null) }
                                                 ),
                                                 MenuItem(
-                                                    text = "Hide",
-                                                    onClick = { onHideApp(app.packageName) },
-                                                    leadingIcon = { Icon(Icons.Rounded.VisibilityOff, null) }
+                                                    text = if (app.packageName in hiddenApps) "Unhide" else "Hide",
+                                                    onClick = {
+                                                        if (app.packageName in hiddenApps) viewModel.unhideApp(app.packageName)
+                                                        else viewModel.hideApp(app.packageName)
+                                                    },
+                                                    leadingIcon = { Icon(if (app.packageName in hiddenApps) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff, null) }
                                                 )
                                             ),
                                             hazeState = hazeState,
@@ -821,7 +837,7 @@ fun AppDrawer(
                                 if (selectedSearchType == SearchType.Web) {
                                     if (searchQuery.isNotEmpty()) {
                                         items(filteredResults) { result ->
-                                            SearchResultItem(result) { handleSearchResultClick(it) }
+                                            SearchResultItem(result, onClick = { handleSearchResultClick(it) })
                                         }
                                     }
                                     if (searchHistory.isNotEmpty()) {
@@ -857,7 +873,16 @@ fun AppDrawer(
                                     }
                                 } else {
                                     items(filteredResults) { result ->
-                                        SearchResultItem(result) { handleSearchResultClick(it) }
+                                        SearchResultItem(
+                                            result = result,
+                                            onClick = { handleSearchResultClick(it) },
+                                            onLongClick = {
+                                                if (it is SearchResult.App) {
+                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                    searchResultMenuApp = it.appInfo
+                                                }
+                                            }
+                                        )
                                     }
                                 }
                             }
@@ -870,6 +895,46 @@ fun AppDrawer(
                             color = colorScheme.onSurfaceVariant,
                             modifier = Modifier.align(Alignment.Center)
                         )
+                    }
+
+                    searchResultMenuApp?.let { app ->
+                        val isHidden = app.packageName in hiddenApps
+                        
+                        Box(Modifier.fillMaxSize()) {
+                            XenonDropDown(
+                                expanded = searchResultMenuApp != null,
+                                onDismissRequest = { searchResultMenuApp = null },
+                                items = listOf(
+                                    MenuItem(
+                                        text = "Uninstall",
+                                        onClick = { onUninstallApp(app.packageName) },
+                                        leadingIcon = { Icon(Icons.Rounded.Delete, null) },
+                                        textColor = colorScheme.error,
+                                        containerColor = colorScheme.error.copy(alpha = 0.15f)
+                                    ),
+                                    MenuItem(
+                                        text = "App Info",
+                                        onClick = { onAppInfo(app.packageName) },
+                                        leadingIcon = { Icon(Icons.Rounded.Info, null) }
+                                    ),
+                                    MenuItem(
+                                        text = "Edit",
+                                        onClick = { /* Placeholder */ },
+                                        leadingIcon = { Icon(Icons.Rounded.Edit, null) }
+                                    ),
+                                    MenuItem(
+                                        text = if (isHidden) "Unhide" else "Hide",
+                                        onClick = {
+                                            if (isHidden) viewModel.unhideApp(app.packageName)
+                                            else viewModel.hideApp(app.packageName)
+                                        },
+                                        leadingIcon = { Icon(if (isHidden) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff, null) }
+                                    )
+                                ),
+                                hazeState = hazeState,
+                                alignment = Alignment.Center
+                            )
+                        }
                     }
 
                     Box(
