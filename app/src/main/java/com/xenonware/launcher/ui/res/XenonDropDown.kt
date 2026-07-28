@@ -7,9 +7,11 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -64,6 +66,7 @@ data class MenuItem(
     val trailingIcon: (@Composable () -> Unit)? = null,
     val dismissOnClick: Boolean = true,
     val textColor: Color? = null,
+    val containerColor: Color? = null,
 )
 
 @OptIn(ExperimentalHazeMaterialsApi::class)
@@ -142,7 +145,9 @@ fun XenonDropDown(
                         state = hazeState,
                         style = HazeMaterials.ultraThin(),
                     )
-                    .background(colorScheme.surfaceContainer.copy(alpha = 0.4f)),
+                    .background(colorScheme.surfaceContainer.copy(alpha = 0.4f))
+                    .padding(4.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 items.forEach { item ->
                     DropdownMenuItem(
@@ -159,6 +164,18 @@ fun XenonDropDown(
                         },
                         leadingIcon = item.leadingIcon,
                         trailingIcon = item.trailingIcon,
+                        colors = MenuDefaults.itemColors(
+                            textColor = item.textColor ?: colorScheme.onSurface,
+                            leadingIconColor = item.textColor ?: colorScheme.onSurfaceVariant,
+                            trailingIconColor = item.textColor ?: colorScheme.onSurfaceVariant
+                        ),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(radius - 4.dp))
+                            .then(
+                                if (item.containerColor != null) {
+                                    Modifier.background(item.containerColor)
+                                } else Modifier
+                            ),
                         contentPadding = if (item.trailingIcon != null) {
                             MenuDefaults.DropdownMenuItemContentPadding
                         } else {

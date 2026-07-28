@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Numbers
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -64,6 +65,7 @@ fun SettingsLayout(
     val isGridLayout by viewModel.isGridLayout.collectAsState()
     val openKeyboard by viewModel.openKeyboard.collectAsState()
     val advancedSearchEnabled by viewModel.advancedSearchEnabled.collectAsState()
+    val showHiddenAppsInSearch by viewModel.showHiddenAppsInSearch.collectAsState()
     val dockSafeDrawIme by viewModel.dockSafeDrawIme.collectAsState()
     
     val apps by viewModel.apps.collectAsState()
@@ -240,7 +242,17 @@ fun SettingsLayout(
                         onCheckedChange = { viewModel.setAdvancedSearchEnabled(it) },
                         icon = { Icon(Icons.Default.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                         backgroundColor = tileColor,
-                        shape = standaloneShape
+                        shape = topShape
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    SettingsSwitchTile(
+                        title = "Show Hidden Apps",
+                        subtitle = "Show hidden apps in search results",
+                        checked = showHiddenAppsInSearch,
+                        onCheckedChange = { viewModel.setShowHiddenAppsInSearch(it) },
+                        icon = { Icon(Icons.Default.Visibility, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                        backgroundColor = tileColor,
+                        shape = bottomShape
                     )
                 }
 

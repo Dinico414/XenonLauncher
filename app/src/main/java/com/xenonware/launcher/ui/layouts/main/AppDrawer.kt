@@ -58,7 +58,10 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ViewList
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.GridView
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SearchOff
@@ -98,6 +101,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -109,6 +113,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
@@ -143,7 +148,6 @@ import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 
 
-
 enum class SearchType {
     Apps, Contacts, Files, Web
 }
@@ -172,6 +176,7 @@ fun AppDrawer(
     val density = LocalDensity.current
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    val haptic = LocalHapticFeedback.current
 
     val hazeState = remember { HazeState() }
     val focusRequester = remember { FocusRequester() }
@@ -343,6 +348,20 @@ fun AppDrawer(
         } else {
             onDismiss()
         }
+    }
+
+    val onUninstallApp: (String) -> Unit = { packageName ->
+        val intent = Intent(Intent.ACTION_DELETE, "package:$packageName".toUri())
+        context.startActivity(intent)
+    }
+
+    val onAppInfo: (String) -> Unit = { packageName ->
+        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:$packageName".toUri())
+        context.startActivity(intent)
+    }
+
+    val onHideApp: (String) -> Unit = { packageName ->
+        viewModel.hideApp(packageName)
     }
 
 
@@ -548,15 +567,19 @@ fun AppDrawer(
                                                             modifier = Modifier.weight(1f),
                                                             contentAlignment = Alignment.Center
                                                         ) {
-                                                            AppDrawerGridLayout(
-                                                                app = app,
-                                                                notificationCount = groupedNotifications[app.packageName]?.size ?: 0,
-                                                                badgeType = badgeType,
-                                                                onAppClick = onAppClick,
-                                                                onDismiss = onDismiss,
-                                                                onPinApp = onPinApp,
-                                                                dragDropState = dragDropState
-                                                            )
+                                                                AppDrawerGridLayout(
+                                                                    app = app,
+                                                                    notificationCount = groupedNotifications[app.packageName]?.size ?: 0,
+                                                                    badgeType = badgeType,
+                                                                    onAppClick = onAppClick,
+                                                                    onDismiss = onDismiss,
+                                                                    onPinApp = onPinApp,
+                                                                    dragDropState = dragDropState,
+                                                                    hazeState = hazeState,
+                                                                    onUninstallApp = onUninstallApp,
+                                                                    onAppInfo = onAppInfo,
+                                                                    onHideApp = onHideApp
+                                                                )
                                                         }
                                                     }
                                                     repeat(recentCount - recentApps.size) {
@@ -579,7 +602,11 @@ fun AppDrawer(
                                     onAppClick = onAppClick,
                                     onDismiss = onDismiss,
                                     onPinApp = onPinApp,
-                                    dragDropState = dragDropState
+                                    dragDropState = dragDropState,
+                                    hazeState = hazeState,
+                                    onUninstallApp = onUninstallApp,
+                                    onAppInfo = onAppInfo,
+                                    onHideApp = onHideApp
                                 )
                             }
                         }
@@ -625,7 +652,11 @@ fun AppDrawer(
                                                                     onAppClick = onAppClick,
                                                                     onDismiss = onDismiss,
                                                                     onPinApp = onPinApp,
-                                                                    dragDropState = dragDropState
+                                                                    dragDropState = dragDropState,
+                                                                    hazeState = hazeState,
+                                                                    onUninstallApp = onUninstallApp,
+                                                                    onAppInfo = onAppInfo,
+                                                                    onHideApp = onHideApp
                                                                 )
                                                             }
                                                         }
@@ -647,6 +678,8 @@ fun AppDrawer(
 
                                 items(filteredApps) { app ->
                                     var itemPos by remember { mutableStateOf(Offset.Zero) }
+                                    var showMenu by remember { mutableStateOf(false) }
+                                    var isActualDrag by remember { mutableStateOf(false) }
 
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
@@ -663,10 +696,13 @@ fun AppDrawer(
                                             }
                                             .pointerInput(Unit) {
                                                 detectDragGesturesAfterLongPress(onDragStart = { offset ->
+                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                    isActualDrag = false
                                                     dragDropState.startDrag(
                                                         app, itemPos + offset
                                                     )
                                                 }, onDrag = { change, dragAmount ->
+                                                    if (dragAmount.getDistance() > 1f) isActualDrag = true
                                                     change.consume()
                                                     dragDropState.dragOffset += dragAmount
 
@@ -685,25 +721,29 @@ fun AppDrawer(
                                                         dragDropState.targetIndex = -1
                                                     }
                                                 }, onDragEnd = {
-                                                    val finalPos = dragDropState.dragOffset
-                                                    val verticalDist =
-                                                        if (finalPos.y < dragDropState.dockBounds.top) {
-                                                            dragDropState.dockBounds.top - finalPos.y
-                                                        } else if (finalPos.y > dragDropState.dockBounds.bottom) {
-                                                            finalPos.y - dragDropState.dockBounds.bottom
-                                                        } else 0f
+                                                    if (isActualDrag) {
+                                                        val finalPos = dragDropState.dragOffset
+                                                        val verticalDist =
+                                                            if (finalPos.y < dragDropState.dockBounds.top) {
+                                                                dragDropState.dockBounds.top - finalPos.y
+                                                            } else if (finalPos.y > dragDropState.dockBounds.bottom) {
+                                                                finalPos.y - dragDropState.dockBounds.bottom
+                                                            } else 0f
 
-                                                    val hitThreshold =
-                                                        with(density) { 80.dp.toPx() }
+                                                        val hitThreshold =
+                                                            with(density) { 80.dp.toPx() }
 
-                                                    if (dragDropState.dockBounds.contains(
-                                                            finalPos
-                                                        ) || verticalDist < hitThreshold
-                                                    ) {
-                                                        onPinApp(
-                                                            app.packageName,
-                                                            dragDropState.targetIndex
-                                                        )
+                                                        if (dragDropState.dockBounds.contains(
+                                                                finalPos
+                                                            ) || verticalDist < hitThreshold
+                                                        ) {
+                                                            onPinApp(
+                                                                app.packageName,
+                                                                dragDropState.targetIndex
+                                                            )
+                                                        }
+                                                    } else {
+                                                        showMenu = true
                                                     }
                                                     dragDropState.stopDrag()
                                                 }, onDragCancel = { dragDropState.stopDrag() })
@@ -731,6 +771,40 @@ fun AppDrawer(
                                             fontSize = 16.sp,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
+                                        )
+
+                                        XenonDropDown(
+                                            expanded = showMenu,
+                                            onDismissRequest = { showMenu = false },
+                                            items = listOf(
+                                                MenuItem(
+                                                    text = "Uninstall",
+                                                    onClick = { onUninstallApp(app.packageName) },
+                                                    leadingIcon = { Icon(Icons.Rounded.Delete, null) },
+                                                    textColor = colorScheme.error,
+                                                    containerColor = colorScheme.error.copy(alpha = 0.25f)
+                                                ),
+
+                                                MenuItem(
+                                                    text = "App Info",
+                                                    onClick = { onAppInfo(app.packageName) },
+                                                    leadingIcon = { Icon(Icons.Rounded.Info, null) }
+                                                ),
+                                                MenuItem(
+                                                    text = "Edit",
+                                                    onClick = { /* Keep as placeholder */ },
+                                                    leadingIcon = { Icon(Icons.Rounded.Edit, null) }
+                                                ),
+                                                MenuItem(
+                                                    text = "Hide",
+                                                    onClick = { onHideApp(app.packageName) },
+                                                    leadingIcon = { Icon(Icons.Rounded.VisibilityOff, null) }
+                                                )
+                                            ),
+                                            hazeState = hazeState,
+                                            offsetY = 0.dp,
+                                            offsetX = 0.dp,
+                                            alignment = Alignment.Center
                                         )
                                     }
                                 }

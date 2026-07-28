@@ -66,6 +66,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _advancedSearchEnabled = MutableStateFlow(sharedPreferenceManager.advancedSearchEnabled)
     val advancedSearchEnabled = _advancedSearchEnabled.asStateFlow()
 
+    private val _showHiddenAppsInSearch = MutableStateFlow(sharedPreferenceManager.showHiddenAppsInSearch)
+    val showHiddenAppsInSearch = _showHiddenAppsInSearch.asStateFlow()
+
+    private val _hiddenApps = MutableStateFlow(sharedPreferenceManager.hiddenApps)
+    val hiddenApps = _hiddenApps.asStateFlow()
+
     private val _notificationBadgeType = MutableStateFlow(sharedPreferenceManager.notificationBadgeType)
     val notificationBadgeType = _notificationBadgeType.asStateFlow()
 
@@ -125,6 +131,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setAdvancedSearchEnabled(enabled: Boolean) {
         sharedPreferenceManager.advancedSearchEnabled = enabled
         _advancedSearchEnabled.value = enabled
+    }
+
+    fun setShowHiddenAppsInSearch(enabled: Boolean) {
+        sharedPreferenceManager.showHiddenAppsInSearch = enabled
+        _showHiddenAppsInSearch.value = enabled
     }
 
     fun setNotificationBadgeType(type: Int) {

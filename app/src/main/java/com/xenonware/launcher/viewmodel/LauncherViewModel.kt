@@ -72,11 +72,24 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             "advanced_search_enabled" -> _advancedSearchEnabled.value = prefManager.advancedSearchEnabled
             "search_history" -> _searchHistory.value = loadSearchHistory()
             "dock_safedraw_ime" -> _dockSafeDrawIme.value = prefManager.dockSafeDrawIme
+            "show_hidden_apps_in_search" -> _showHiddenAppsInSearch.value = prefManager.showHiddenAppsInSearch
+            "hidden_apps" -> {
+                _hiddenApps.value = prefManager.hiddenApps.toSet()
+                loadApps()
+            }
         }
     }
 
     private val _apps = MutableStateFlow<List<AppInfo>>(emptyList())
     val apps: StateFlow<List<AppInfo>> = _apps
+
+    private val _allApps = MutableStateFlow<List<AppInfo>>(emptyList())
+
+    private val _hiddenApps = MutableStateFlow(prefManager.hiddenApps.toSet())
+    val hiddenApps: StateFlow<Set<String>> = _hiddenApps
+
+    private val _showHiddenAppsInSearch = MutableStateFlow(prefManager.showHiddenAppsInSearch)
+    val showHiddenAppsInSearch: StateFlow<Boolean> = _showHiddenAppsInSearch
 
     private val _pinnedApps = MutableStateFlow<List<AppInfo>>(emptyList())
     val pinnedApps: StateFlow<List<AppInfo>> = _pinnedApps
@@ -405,7 +418,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                     null
                 }
             }.sortedBy { it.name.lowercase() }
-            _apps.value = appList
+            _allApps.value = appList
+            _apps.value = appList.filter { it.packageName !in _hiddenApps.value }
 
             // Restore pinned apps once the main list is loaded
             val savedPinnedPkgs = prefManager.pinnedApps
@@ -414,6 +428,27 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             }
             loadRecentlyOpened()
         }
+    }
+
+    fun hideApp(packageName: String) {
+        val current = _hiddenApps.value.toMutableSet()
+        current.add(packageName)
+        _hiddenApps.value = current
+        prefManager.hiddenApps = current.toList()
+        loadApps()
+    }
+
+    fun unhideApp(packageName: String) {
+        val current = _hiddenApps.value.toMutableSet()
+        current.remove(packageName)
+        _hiddenApps.value = current
+        prefManager.hiddenApps = current.toList()
+        loadApps()
+    }
+
+    fun setShowHiddenAppsInSearch(enabled: Boolean) {
+        _showHiddenAppsInSearch.value = enabled
+        prefManager.showHiddenAppsInSearch = enabled
     }
 
     private fun recordLaunch(packageName: String) {
@@ -557,7 +592,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             val results = mutableListOf<SearchResult>()
 
             // 1. Search Apps
-            val appResults = _apps.value.filter { it.matches(query) }
+            val appResults = _allApps.value
+                .filter { it.packageName !in _hiddenApps.value || _showHiddenAppsInSearch.value }
+                .filter { it.matches(query) }
                 .map { SearchResult.App(it) }
             results.addAll(appResults)
 
