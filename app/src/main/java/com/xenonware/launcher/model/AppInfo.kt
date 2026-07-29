@@ -5,7 +5,9 @@ import android.graphics.drawable.Drawable
 data class AppInfo(
     val name: String,
     val packageName: String,
-    val icon: Drawable? = null
+    val icon: Drawable? = null,
+    val label: String = name,
+    val isCustomized: Boolean = false
 )
 
 data class WidgetItem(

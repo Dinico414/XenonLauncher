@@ -2,6 +2,8 @@ package com.xenonware.launcher.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.xenonware.launcher.model.AppOverride
+import org.json.JSONObject
 
 class SharedPreferenceManager(context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("launcher_prefs", Context.MODE_PRIVATE)
@@ -89,6 +91,53 @@ class SharedPreferenceManager(context: Context) {
     var drawerIconShadow: Boolean
         get() = prefs.getBoolean("drawer_icon_shadow", false)
         set(value) = prefs.edit().putBoolean("drawer_icon_shadow", value).apply()
+
+    fun getAppOverrides(): Map<String, AppOverride> {
+        val jsonStr = prefs.getString("app_overrides", "{}") ?: "{}"
+        val json = JSONObject(jsonStr)
+        val map = mutableMapOf<String, AppOverride>()
+        json.keys().forEach { pkg ->
+            val obj = json.getJSONObject(pkg)
+            map[pkg] = AppOverride(
+                customName = if (obj.has("name")) obj.getString("name") else null,
+                iconPackPackage = if (obj.has("iconPack")) obj.getString("iconPack") else null,
+                iconResourceName = if (obj.has("iconRes")) obj.getString("iconRes") else null,
+                zoom = if (obj.has("zoom")) obj.getDouble("zoom").toFloat() else 1.0f,
+                backgroundColor = if (obj.has("bgColor")) obj.getInt("bgColor") else null,
+                borderColor = if (obj.has("borderColor")) obj.getInt("borderColor") else null,
+                borderWidth = if (obj.has("borderWidth")) obj.getDouble("borderWidth").toFloat() else 0f
+            )
+        }
+        return map
+    }
+
+    fun saveAppOverride(packageName: String, override: AppOverride) {
+        val overrides = getAppOverrides().toMutableMap()
+        overrides[packageName] = override
+        saveAllOverrides(overrides)
+    }
+
+    fun resetAppOverride(packageName: String) {
+        val overrides = getAppOverrides().toMutableMap()
+        overrides.remove(packageName)
+        saveAllOverrides(overrides)
+    }
+
+    private fun saveAllOverrides(overrides: Map<String, AppOverride>) {
+        val json = JSONObject()
+        overrides.forEach { (pkg, override) ->
+            val obj = JSONObject()
+            override.customName?.let { obj.put("name", it) }
+            override.iconPackPackage?.let { obj.put("iconPack", it) }
+            override.iconResourceName?.let { obj.put("iconRes", it) }
+            obj.put("zoom", override.zoom.toDouble())
+            override.backgroundColor?.let { obj.put("bgColor", it) }
+            override.borderColor?.let { obj.put("borderColor", it) }
+            obj.put("borderWidth", override.borderWidth.toDouble())
+            json.put(pkg, obj)
+        }
+        prefs.edit().putString("app_overrides", json.toString()).apply()
+    }
 
     fun registerListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
         prefs.registerOnSharedPreferenceChangeListener(listener)

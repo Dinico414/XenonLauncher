@@ -135,7 +135,7 @@ fun AppDrawerGridLayout(
                     val shape = iconShape.getShape()
                     Image(
                         bitmap = icon.toBitmap().asImageBitmap(),
-                        contentDescription = app.name,
+                        contentDescription = app.label,
                         modifier = Modifier
                             .size(56.dp)
                             .then(if (showShadow) Modifier.shadow(4.dp, shape) else Modifier)
@@ -151,7 +151,7 @@ fun AppDrawerGridLayout(
             }
             Spacer(Modifier.height(4.dp))
             Text(
-                app.name,
+                app.label,
                 color = colorScheme.onSurface,
                 fontSize = 12.sp,
                 maxLines = 1,

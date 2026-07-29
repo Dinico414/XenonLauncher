@@ -183,7 +183,7 @@ fun SearchResultItem(
         Spacer(Modifier.width(16.dp))
         Column {
             val title = when (result) {
-                is SearchResult.App -> result.appInfo.name
+                is SearchResult.App -> result.appInfo.label
                 is SearchResult.Contact -> result.name
                 is SearchResult.File -> result.name
                 is SearchResult.Web -> if (result.isUrl) "Open Website" else "Web Search"

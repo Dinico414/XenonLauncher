@@ -10,6 +10,7 @@ import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.drawable.Drawable
 import android.location.Location
 import android.net.Uri
 import android.os.BatteryManager
@@ -28,7 +29,10 @@ import com.xenonware.launcher.data.SharedPreferenceManager
 import com.xenonware.launcher.media.MediaControllerManager
 import com.xenonware.launcher.media.MediaState
 import com.xenonware.launcher.model.AppInfo
+import com.xenonware.launcher.model.AppOverride
 import com.xenonware.launcher.model.SearchResult
+import com.xenonware.launcher.util.generateCustomIcon
+import com.xenonware.launcher.util.loadIconFromPack
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import com.xenonware.launcher.util.matches
@@ -77,8 +81,12 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 _hiddenApps.value = prefManager.hiddenApps.toSet()
                 loadApps()
             }
-            "drawer_icon_shape" -> _drawerIconShape.value = com.xenonware.launcher.ui.res.IconShape.valueOf(prefManager.drawerIconShape)
+            "drawer_icon_shape" -> {
+                _drawerIconShape.value = com.xenonware.launcher.ui.res.IconShape.valueOf(prefManager.drawerIconShape)
+                loadApps() // Reload icons when shape changes
+            }
             "drawer_icon_shadow" -> _drawerIconShadow.value = prefManager.drawerIconShadow
+            "app_overrides" -> loadApps()
         }
     }
 
@@ -417,23 +425,50 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             val intent = Intent(Intent.ACTION_MAIN, null).apply {
                 addCategory(Intent.CATEGORY_LAUNCHER)
             }
+            
+            val overrides = prefManager.getAppOverrides()
+            val currentShape = _drawerIconShape.value
+            
             val resolvedInfos = pm.queryIntentActivities(intent, 0)
             val appList = resolvedInfos.mapNotNull {
                 val pkgName = it.activityInfo.packageName
                 if (pkgName == launcherPackage) return@mapNotNull null
 
                 try {
+                    val originalLabel = it.loadLabel(pm).toString()
                     val originalIcon = it.loadIcon(pm)
-                    val normalizedIcon = com.xenonware.launcher.util.normalizeIcon(context, originalIcon)
+                    
+                    val override = overrides[pkgName]
+                    var finalLabel = originalLabel
+                    var finalIcon: Drawable? = null
+                    var isCustomized = false
+
+                    if (override != null) {
+                        isCustomized = true
+                        override.customName?.let { finalLabel = it }
+                        
+                        val baseIcon = if (override.iconPackPackage != null && override.iconResourceName != null) {
+                            loadIconFromPack(context, override.iconPackPackage, override.iconResourceName) ?: originalIcon
+                        } else {
+                            originalIcon
+                        }
+                        
+                        finalIcon = generateCustomIcon(context, baseIcon, override, currentShape)
+                    } else {
+                        finalIcon = com.xenonware.launcher.util.normalizeIcon(context, originalIcon)
+                    }
+
                     AppInfo(
-                        name = it.loadLabel(pm).toString(),
+                        name = originalLabel,
                         packageName = pkgName,
-                        icon = normalizedIcon
+                        icon = finalIcon,
+                        label = finalLabel,
+                        isCustomized = isCustomized
                     )
                 } catch (e: Exception) {
                     null
                 }
-            }.sortedBy { it.name.lowercase() }
+            }.sortedBy { it.label.lowercase() }
             _allApps.value = appList
             _apps.value = appList.filter { it.packageName !in _hiddenApps.value }
 
@@ -444,6 +479,34 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             }
             loadRecentlyOpened()
         }
+    }
+
+    fun updateAppOverride(packageName: String, override: AppOverride) {
+        prefManager.saveAppOverride(packageName, override)
+        loadApps()
+    }
+
+    fun resetAppOverride(packageName: String) {
+        prefManager.resetAppOverride(packageName)
+        loadApps()
+    }
+
+    fun getAppOverride(packageName: String): AppOverride? {
+        return prefManager.getAppOverrides()[packageName]
+    }
+
+    fun getInstalledIconPacks(): List<android.content.pm.ResolveInfo> {
+        val pm = getApplication<Application>().packageManager
+        val intent = Intent("com.novalauncher.THEME")
+        val adwIntent = Intent("org.adw.launcher.THEMES")
+        val goIntent = Intent("com.gau.go.launcherex.theme")
+        
+        val list = mutableListOf<android.content.pm.ResolveInfo>()
+        list.addAll(pm.queryIntentActivities(intent, PackageManager.GET_META_DATA))
+        list.addAll(pm.queryIntentActivities(adwIntent, PackageManager.GET_META_DATA))
+        list.addAll(pm.queryIntentActivities(goIntent, PackageManager.GET_META_DATA))
+        
+        return list.distinctBy { it.activityInfo.packageName }
     }
 
     fun hideApp(packageName: String) {

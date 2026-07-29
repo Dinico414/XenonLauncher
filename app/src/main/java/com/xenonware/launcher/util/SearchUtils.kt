@@ -14,8 +14,9 @@ fun AppInfo.matches(query: String): Boolean {
     val normalizedQuery = query.normalizeForSearch()
     if (normalizedQuery.isEmpty()) return query.isBlank()
     
-    // Check app name
+    // Check app name and custom label
     if (this.name.matchesSearch(query)) return true
+    if (this.label.matchesSearch(query)) return true
     
     // Check package name parts to support "settings" finding "com.android.settings"
     val packageParts = this.packageName.split('.')

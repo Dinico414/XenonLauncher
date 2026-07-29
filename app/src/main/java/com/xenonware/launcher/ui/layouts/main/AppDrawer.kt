@@ -130,6 +130,7 @@ import com.xenon.mylibrary.theme.QuicksandTitleVariable
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.model.SearchResult
 import com.xenonware.launcher.ui.res.AllAppsDivider
+import com.xenonware.launcher.ui.res.AppEditDialog
 import com.xenonware.launcher.ui.res.MenuItem
 import com.xenonware.launcher.ui.res.XenonDropDown
 import com.xenonware.launcher.ui.res.XenonSingleChoiceButtonGroup
@@ -198,6 +199,8 @@ fun AppDrawer(
     val groupedNotifications = remember(notifications) {
         notifications.groupBy { it.packageName }
     }
+    
+    var appToEdit by remember { mutableStateOf<AppInfo?>(null) }
     val advancedSearchEnabled by viewModel.advancedSearchEnabled.collectAsState()
     val showHiddenAppsInSearch by viewModel.showHiddenAppsInSearch.collectAsState()
     val hiddenApps by viewModel.hiddenApps.collectAsState()
@@ -783,7 +786,7 @@ fun AppDrawer(
                                                     val shape = iconShape.getShape()
                                                     Image(
                                                         bitmap = icon.toBitmap().asImageBitmap(),
-                                                        contentDescription = app.name,
+                                                        contentDescription = app.label,
                                                         modifier = Modifier
                                                             .size(48.dp)
                                                             .then(if (showShadow) Modifier.shadow(4.dp, shape) else Modifier)
@@ -799,7 +802,7 @@ fun AppDrawer(
                                             }
                                             Spacer(Modifier.width(16.dp))
                                             Text(
-                                                app.name,
+                                                app.label,
                                                 color = colorScheme.onSurface,
                                                 fontSize = 16.sp,
                                                 maxLines = 1,
@@ -910,7 +913,7 @@ fun AppDrawer(
                                 ),
                                 MenuItem(
                                     text = "Edit",
-                                    onClick = { /* Placeholder */ },
+                                    onClick = { appToEdit = app },
                                     leadingIcon = { Icon(Icons.Rounded.Edit, null) }
                                 ),
                                 MenuItem(
@@ -1128,7 +1131,7 @@ fun AppDrawer(
                     ),
                     MenuItem(
                         text = "Edit",
-                        onClick = { /* Placeholder */ },
+                        onClick = { appToEdit = app },
                         leadingIcon = { Icon(Icons.Rounded.Edit, null) }
                     ),
                     MenuItem(
@@ -1150,6 +1153,14 @@ fun AppDrawer(
                 offsetY = with(density) { offset.y.toDp() },
                 anchorPos = Offset.Zero,
                 alignment = Alignment.Center
+            )
+        }
+        
+        appToEdit?.let { app ->
+            AppEditDialog(
+                app = app,
+                viewModel = viewModel,
+                onDismiss = { appToEdit = null }
             )
         }
     }

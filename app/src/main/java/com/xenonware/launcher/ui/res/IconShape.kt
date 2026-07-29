@@ -12,6 +12,8 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.graphics.shapes.RoundedPolygon
 import androidx.graphics.shapes.toPath
+import android.graphics.Path
+import android.graphics.Matrix as AndroidMatrix
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 enum class IconShape {
@@ -27,6 +29,51 @@ enum class IconShape {
             Cookie6 -> PolygonShape(MaterialShapes.Cookie6Sided)
             Cookie7 -> PolygonShape(MaterialShapes.Cookie7Sided)
             Teardrop -> RoundedCornerShape(topStartPercent = 50, topEndPercent = 50, bottomEndPercent = 25, bottomStartPercent = 50)
+        }
+    }
+
+    fun getAndroidPath(width: Float, height: Float): Path {
+        return when (this) {
+            Arch -> {
+                val path = Path()
+                val rect = android.graphics.RectF(0f, 0f, width, height)
+                val radii = floatArrayOf(
+                    width * 0.5f, width * 0.5f,
+                    width * 0.5f, width * 0.5f,
+                    width * 0.25f, width * 0.25f,
+                    width * 0.25f, width * 0.25f
+                )
+                path.addRoundRect(rect, radii, Path.Direction.CW)
+                path
+            }
+            Teardrop -> {
+                val path = Path()
+                val rect = android.graphics.RectF(0f, 0f, width, height)
+                val radii = floatArrayOf(
+                    width * 0.5f, width * 0.5f,
+                    width * 0.5f, width * 0.5f,
+                    width * 0.25f, width * 0.25f,
+                    width * 0.5f, width * 0.5f
+                )
+                path.addRoundRect(rect, radii, Path.Direction.CW)
+                path
+            }
+            else -> {
+                val poly = when (this) {
+                    Circle -> MaterialShapes.Circle
+                    Square -> MaterialShapes.Square
+                    Pill -> MaterialShapes.Pill
+                    Cookie4 -> MaterialShapes.Cookie4Sided
+                    Cookie6 -> MaterialShapes.Cookie6Sided
+                    Cookie7 -> MaterialShapes.Cookie7Sided
+                    else -> MaterialShapes.Circle
+                }
+                val path = poly.toPath()
+                val matrix = AndroidMatrix()
+                matrix.setScale(width, height)
+                path.transform(matrix)
+                path
+            }
         }
     }
 }
