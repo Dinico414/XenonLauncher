@@ -3,7 +3,6 @@ package com.xenonware.launcher.ui.res.dock
 import android.content.Context
 import android.content.Intent
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -43,13 +42,13 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
+import coil.compose.AsyncImage
 import com.xenonware.launcher.media.MediaState
 
 @Composable
@@ -90,9 +89,12 @@ fun MediaSection(
                 Text("Grant", fontSize = 10.sp, maxLines = 1, softWrap = false)
             }
         } else {
-            if (mediaState.albumArt != null) {
-                Image(
-                    bitmap = mediaState.albumArt.asImageBitmap(),
+            val artModel = remember(mediaState.title, mediaState.artist) {
+                mediaState.albumArt ?: mediaState.albumArtUri
+            }
+            if (artModel != null) {
+                AsyncImage(
+                    model = artModel,
                     contentDescription = "Album Art",
                     modifier = Modifier
                         .size(44.dp)

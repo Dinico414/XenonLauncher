@@ -7,11 +7,12 @@ import android.media.MediaMetadata
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
+import android.provider.Settings
+import android.text.TextUtils
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import android.provider.Settings
-import android.text.TextUtils
 
 data class MediaState(
     val title: String? = null,
@@ -19,6 +20,7 @@ data class MediaState(
     val isPlaying: Boolean = false,
     val packageName: String? = null,
     val albumArt: Bitmap? = null,
+    val albumArtUri: String? = null,
     val position: Long = 0L,
     val duration: Long = 0L
 )
@@ -81,17 +83,39 @@ class MediaControllerManager(private val context: Context) {
         if (controller != null) {
             val metadata = controller.metadata
             val playbackState = controller.playbackState
+
+            Log.d("MediaController", "Updating state for ${controller.packageName}: ${metadata?.getString(MediaMetadata.METADATA_KEY_TITLE)} by ${metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST)}")
+            
+            val albumArt = metadata?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
+                ?: metadata?.getBitmap(MediaMetadata.METADATA_KEY_ART)
+            
+            // Standard URIs
+            var albumArtUri = metadata?.getString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI)
+                ?: metadata?.getString(MediaMetadata.METADATA_KEY_ART_URI)
+            
+            // Spotify specific fallback
+            if (albumArtUri == null || albumArtUri.startsWith("content://com.spotify")) {
+                val spotifyUri = metadata?.getString("com.spotify.music.extra.ART_HTTPS_URI")
+                if (spotifyUri != null) {
+                    albumArtUri = spotifyUri
+                    Log.d("MediaController", "Using Spotify HTTPS URI: $albumArtUri")
+                }
+            }
+
+            Log.d("MediaController", "Art Bitmap: ${albumArt != null}, URI: $albumArtUri")
+
             mediaState = MediaState(
                 title = metadata?.getString(MediaMetadata.METADATA_KEY_TITLE),
                 artist = metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST),
                 isPlaying = playbackState?.state == PlaybackState.STATE_PLAYING,
                 packageName = controller.packageName,
-                albumArt = metadata?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
-                    ?: metadata?.getBitmap(MediaMetadata.METADATA_KEY_ART),
+                albumArt = albumArt,
+                albumArtUri = albumArtUri,
                 position = playbackState?.position ?: 0L,
                 duration = metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L
             )
         } else {
+            Log.d("MediaController", "No active controller")
             mediaState = MediaState()
         }
     }

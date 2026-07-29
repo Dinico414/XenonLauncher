@@ -1,5 +1,6 @@
 package com.xenonware.launcher.util
 
+import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
 import androidx.compose.ui.graphics.Color
 import androidx.core.graphics.drawable.toBitmap
@@ -8,10 +9,12 @@ import androidx.palette.graphics.Palette
 object ColorUtils {
     fun getDominantColor(drawable: Drawable?): Color {
         if (drawable == null) return Color.Unspecified
-        return try {
-            // Use a small, fixed size for color extraction to be safe and efficient
-            val bitmap = drawable.toBitmap(width = 40, height = 40)
+        return getDominantColor(drawable.toBitmap(width = 40, height = 40))
+    }
 
+    fun getDominantColor(bitmap: Bitmap?): Color {
+        if (bitmap == null) return Color.Unspecified
+        return try {
             // 1. Use Palette for brand-aware color extraction
             val palette = Palette.from(bitmap).generate()
 

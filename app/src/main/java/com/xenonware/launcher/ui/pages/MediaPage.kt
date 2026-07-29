@@ -1,6 +1,5 @@
 package com.xenonware.launcher.ui.pages
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -46,6 +45,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import android.util.Log
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -54,7 +54,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -64,6 +63,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import coil.compose.AsyncImagePainter
 import com.xenonware.launcher.media.MediaState
 import com.xenonware.launcher.util.shouldDisableLandscapeLayout
 import java.util.Locale
@@ -129,15 +129,19 @@ fun MediaPage(
         .fillMaxSize()
     ) {
         // Background Album Art
-        mediaState.albumArt?.let { bitmap ->
+        val artModel = remember(mediaState.title, mediaState.artist) {
+            mediaState.albumArt ?: mediaState.albumArtUri
+        }
+        
+        artModel?.let { model ->
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .alpha(bgProgress)
                     .clip(RoundedCornerShape(cornerRadius))
             ) {
-                Image(
-                    bitmap = bitmap.asImageBitmap(),
+                AsyncImage(
+                    model = model,
                     contentDescription = null,
                     modifier = Modifier
                         .fillMaxSize()
@@ -146,7 +150,12 @@ fun MediaPage(
                     colorFilter = ColorFilter.tint(
                         MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
                         blendMode = BlendMode.SrcAtop
-                    )
+                    ),
+                    onState = { state ->
+                        if (state is AsyncImagePainter.State.Error) {
+                            Log.e("MediaPage", "Art Load Error: ${state.result.throwable}")
+                        }
+                    }
                 )
                 // Darken the background for better readability
                 Box(
@@ -182,9 +191,9 @@ fun MediaPage(
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                         tonalElevation = 8.dp
                     ) {
-                        if (mediaState.albumArt != null) {
-                            Image(
-                                bitmap = mediaState.albumArt.asImageBitmap(),
+                        if (artModel != null) {
+                            AsyncImage(
+                                model = artModel,
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier.fillMaxSize()
@@ -440,9 +449,9 @@ fun MediaPage(
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                         tonalElevation = 8.dp
                     ) {
-                        if (mediaState.albumArt != null) {
-                            Image(
-                                bitmap = mediaState.albumArt.asImageBitmap(),
+                        if (artModel != null) {
+                            AsyncImage(
+                                model = artModel,
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier.fillMaxSize()

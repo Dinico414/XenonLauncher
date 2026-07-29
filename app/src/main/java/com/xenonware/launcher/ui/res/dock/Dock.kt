@@ -65,12 +65,15 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.core.graphics.get
-import androidx.core.graphics.scale
+import androidx.core.graphics.drawable.toBitmap
+import coil.imageLoader
+import coil.request.ImageRequest
+import coil.request.SuccessResult
 import com.xenonware.launcher.accessibility.XenonAccessibilityService
 import com.xenonware.launcher.media.MediaState
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.notification.LauncherNotification
+import com.xenonware.launcher.util.ColorUtils
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
@@ -158,6 +161,7 @@ fun DockPill(
     )
 
     val albumArt = mediaState.albumArt
+    val albumArtUri = mediaState.albumArtUri
     val isDark = isSystemInDarkTheme()
     val currentColorScheme = colorScheme
 
@@ -167,13 +171,24 @@ fun DockPill(
 
     var mediaThemeBase by remember { mutableStateOf(defaultTheme) }
 
-    LaunchedEffect(albumArt, isDark, currentColorScheme) {
-        if (albumArt != null) {
+    LaunchedEffect(albumArt, albumArtUri, isDark, currentColorScheme) {
+        val bitmap = if (albumArt != null) {
+            albumArt
+        } else if (albumArtUri != null) {
+            val request = ImageRequest.Builder(context)
+                .data(albumArtUri)
+                .size(40, 40)
+                .allowHardware(false)
+                .build()
+            val result = context.imageLoader.execute(request)
+            if (result is SuccessResult) {
+                result.drawable.toBitmap(40, 40)
+            } else null
+        } else null
+
+        if (bitmap != null) {
             try {
-                val scaled = albumArt.scale(1, 1)
-                val colorInt = scaled[0, 0]
-                scaled.recycle()
-                val seed = Color(colorInt)
+                val seed = ColorUtils.getDominantColor(bitmap)
 
                 val bg = if (isDark) {
                     lerp(seed, surfaceContainerLowest, 0.52f)
