@@ -19,11 +19,13 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -43,15 +45,14 @@ import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.rounded.Visibility
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -65,15 +66,18 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.graphics.drawable.toBitmap
 import com.xenon.mylibrary.ActivityScreen
 import com.xenon.mylibrary.res.SettingsSwitchTile
 import com.xenon.mylibrary.res.SettingsTile
+//import com.xenon.mylibrary.res.XenonDialog
 import com.xenon.mylibrary.values.LargestPadding
 import com.xenon.mylibrary.values.MediumPadding
 import com.xenon.mylibrary.values.NoSpacing
 import com.xenonware.launcher.ui.res.IconShape
 import com.xenonware.launcher.ui.res.ShortcutConfigDialog
+import com.xenonware.launcher.ui.res.XenonDialog
 import com.xenonware.launcher.ui.res.XenonSingleChoiceButtonGroup
 import com.xenonware.launcher.viewmodel.LauncherViewModel
 import com.xenonware.launcher.viewmodel.SettingsViewModel
@@ -87,7 +91,7 @@ import kotlin.time.Duration.Companion.milliseconds
 fun SettingsLayout(
     onNavigateBack: () -> Unit,
     viewModel: SettingsViewModel,
-    hazeState: HazeState
+    hazeState: HazeState,
 ) {
     val currentThemeTitle by viewModel.currentThemeTitle.collectAsState()
     val blackedOutEnabled by viewModel.blackedOutModeEnabled.collectAsState()
@@ -97,22 +101,32 @@ fun SettingsLayout(
     val showHiddenAppsInSearch by viewModel.showHiddenAppsInSearch.collectAsState()
     val hiddenApps by viewModel.hiddenApps.collectAsState()
     val dockSafeDrawIme by viewModel.dockSafeDrawIme.collectAsState()
-    
+
     val apps by viewModel.apps.collectAsState()
     val timeShortcut by viewModel.timeShortcut.collectAsState()
     val dateShortcut by viewModel.dateShortcut.collectAsState()
     val weatherShortcut by viewModel.weatherShortcut.collectAsState()
-    
+
     var configShortcutType by remember { mutableStateOf<LauncherViewModel.ShortcutType?>(null) }
     var showHiddenAppsDialog by remember { mutableStateOf(false) }
 
     val innerRadius = 4.dp
     val outerRadius = 24.dp
     val tileColor = MaterialTheme.colorScheme.surfaceBright
-    
-    val topShape = RoundedCornerShape(topStart = outerRadius, topEnd = outerRadius, bottomStart = innerRadius, bottomEnd = innerRadius)
+
+    val topShape = RoundedCornerShape(
+        topStart = outerRadius,
+        topEnd = outerRadius,
+        bottomStart = innerRadius,
+        bottomEnd = innerRadius
+    )
     val middleShape = RoundedCornerShape(innerRadius)
-    val bottomShape = RoundedCornerShape(topStart = innerRadius, topEnd = innerRadius, bottomStart = outerRadius, bottomEnd = outerRadius)
+    val bottomShape = RoundedCornerShape(
+        topStart = innerRadius,
+        topEnd = innerRadius,
+        bottomStart = outerRadius,
+        bottomEnd = outerRadius
+    )
     val standaloneShape = RoundedCornerShape(outerRadius)
 
     ActivityScreen(
@@ -135,24 +149,29 @@ fun SettingsLayout(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(LargestPadding),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(LargestPadding), verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
-                    "PERSONALIZATION", 
-                    color = MaterialTheme.colorScheme.primary, 
-                    fontSize = 12.sp, 
-                    fontWeight = FontWeight.Bold, 
+                    "PERSONALIZATION",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(start = 12.dp)
                 )
-                
+
                 Column {
                     SettingsSwitchTile(
                         title = "Grid Layout",
                         subtitle = if (isGridLayout) "Using grid view" else "Using list view",
                         checked = isGridLayout,
                         onCheckedChange = { viewModel.setGridLayout(it) },
-                        icon = { Icon(Icons.Default.GridView, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                        icon = {
+                            Icon(
+                                Icons.Default.GridView,
+                                null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
                         backgroundColor = tileColor,
                         shape = topShape
                     )
@@ -162,7 +181,13 @@ fun SettingsLayout(
                         subtitle = "Focus search at top of drawer",
                         checked = openKeyboard,
                         onCheckedChange = { viewModel.setOpenKeyboard(it) },
-                        icon = { Icon(Icons.Default.Keyboard, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                        icon = {
+                            Icon(
+                                Icons.Default.Keyboard,
+                                null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
                         backgroundColor = tileColor,
                         shape = middleShape
                     )
@@ -172,7 +197,13 @@ fun SettingsLayout(
                         subtitle = "Enable glass haze",
                         checked = blackedOutEnabled,
                         onCheckedChange = { viewModel.setBlackedOutEnabled(it) },
-                        icon = { Icon(Icons.Default.BlurOn, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                        icon = {
+                            Icon(
+                                Icons.Default.BlurOn,
+                                null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
                         backgroundColor = tileColor,
                         shape = middleShape
                     )
@@ -180,11 +211,16 @@ fun SettingsLayout(
                     SettingsTile(
                         title = "Theme",
                         subtitle = "Current: $currentThemeTitle",
-                        icon = { Icon(Icons.Default.Palette, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                        icon = {
+                            Icon(
+                                Icons.Default.Palette,
+                                null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
                         backgroundColor = tileColor,
                         shape = middleShape,
-                        onClick = { viewModel.onThemeSettingClicked() }
-                    )
+                        onClick = { viewModel.onThemeSettingClicked() })
                     Spacer(Modifier.height(2.dp))
                     Column(
                         modifier = Modifier
@@ -201,8 +237,15 @@ fun SettingsLayout(
                         )
                         val drawerIconShape by viewModel.drawerIconShape.collectAsState()
                         val entries = IconShape.entries
-                        val interactionSources = remember { entries.map { MutableInteractionSource() } }
-                        val pressedStates = remember { mutableStateListOf<Boolean>().apply { repeat(entries.size) { add(false) } } }
+                        val interactionSources =
+                            remember { entries.map { MutableInteractionSource() } }
+                        val pressedStates = remember {
+                            mutableStateListOf<Boolean>().apply {
+                                repeat(entries.size) {
+                                    add(false)
+                                }
+                            }
+                        }
 
                         entries.forEachIndexed { index, _ ->
                             LaunchedEffect(interactionSources[index]) {
@@ -213,11 +256,14 @@ fun SettingsLayout(
                                             pressedStates[index] = true
                                             pressStartTime = System.currentTimeMillis()
                                         }
+
                                         is PressInteraction.Release -> {
-                                            val duration = System.currentTimeMillis() - pressStartTime
+                                            val duration =
+                                                System.currentTimeMillis() - pressStartTime
                                             if (duration < 200) delay((200 - duration).milliseconds)
                                             pressedStates[index] = false
                                         }
+
                                         is PressInteraction.Cancel -> pressedStates[index] = false
                                     }
                                 }
@@ -225,7 +271,7 @@ fun SettingsLayout(
                         }
 
                         val pressedIndex = pressedStates.indexOfFirst { it }
-                        
+
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -247,13 +293,16 @@ fun SettingsLayout(
                                     val isSelected = shape == drawerIconShape
                                     val isPressed = pressedStates[index]
 
-                                    val isNeighborPressed = pressedIndex != -1 && abs(index - pressedIndex) == 1
-                                    
+                                    val isNeighborPressed =
+                                        pressedIndex != -1 && abs(index - pressedIndex) == 1
+
                                     val targetWidth = when {
                                         isPressed -> {
-                                            val neighbors = if (index == 0 || index == entries.size - 1) 1 else 2
+                                            val neighbors =
+                                                if (index == 0 || index == entries.size - 1) 1 else 2
                                             64.dp + (if (neighbors == 1) 6.dp else 12.dp)
                                         }
+
                                         isNeighborPressed -> 58.dp
                                         else -> 64.dp
                                     }
@@ -272,16 +321,14 @@ fun SettingsLayout(
                                             isPressed -> 6.dp
                                             isSelected -> 16.dp
                                             else -> 32.dp
-                                        },
-                                        label = "containerRadius",
-                                        animationSpec = spring(
+                                        }, label = "containerRadius", animationSpec = spring(
                                             dampingRatio = Spring.DampingRatioNoBouncy,
                                             stiffness = Spring.StiffnessMedium
                                         )
                                     )
-                                    
+
                                     val containerShape = RoundedCornerShape(containerRadius)
-    
+
                                     Box(
                                         modifier = Modifier
                                             .width(containerWidth)
@@ -289,23 +336,23 @@ fun SettingsLayout(
                                             .clip(containerShape)
                                             .background(
                                                 if (isSelected) MaterialTheme.colorScheme.primaryContainer
-                                                else MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f)
+                                                else MaterialTheme.colorScheme.surfaceContainerHighest.copy(
+                                                    alpha = 0.5f
+                                                )
                                             )
                                             .border(
                                                 width = 2.dp,
                                                 color = if (isSelected) MaterialTheme.colorScheme.primary
-                                                        else Color.Transparent,
+                                                else Color.Transparent,
                                                 shape = containerShape
                                             )
                                             .clickable(
                                                 interactionSource = interactionSources[index],
                                                 indication = null
-                                            ) { 
-                                                viewModel.setDrawerIconShape(shape) 
+                                            ) {
+                                                viewModel.setDrawerIconShape(shape)
                                             }
-                                            .padding(12.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
+                                            .padding(12.dp), contentAlignment = Alignment.Center) {
                                         Box(
                                             modifier = Modifier
                                                 .size(32.dp) // Fixed size to prevent shape distortion
@@ -319,7 +366,7 @@ fun SettingsLayout(
                                 }
                             }
                         }
-                 }
+                    }
                     Spacer(Modifier.height(2.dp))
                     val drawerIconShadow by viewModel.drawerIconShadow.collectAsState()
                     SettingsSwitchTile(
@@ -327,7 +374,13 @@ fun SettingsLayout(
                         subtitle = "Apply depth to app icons",
                         checked = drawerIconShadow,
                         onCheckedChange = { viewModel.setDrawerIconShadow(it) },
-                        icon = { Icon(Icons.Default.BlurOn, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                        icon = {
+                            Icon(
+                                Icons.Default.BlurOn,
+                                null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
                         backgroundColor = tileColor,
                         shape = bottomShape
                     )
@@ -347,7 +400,13 @@ fun SettingsLayout(
                         subtitle = if (dockSafeDrawIme) "Dock moves up to stay visible" else "Dock stays at the bottom",
                         checked = dockSafeDrawIme,
                         onCheckedChange = { viewModel.setDockSafeDrawIme(it) },
-                        icon = { Icon(Icons.Default.Keyboard, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                        icon = {
+                            Icon(
+                                Icons.Default.Keyboard,
+                                null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
                         backgroundColor = tileColor,
                         shape = standaloneShape
                     )
@@ -417,7 +476,13 @@ fun SettingsLayout(
                         subtitle = "Include contacts, files and web results",
                         checked = advancedSearchEnabled,
                         onCheckedChange = { viewModel.setAdvancedSearchEnabled(it) },
-                        icon = { Icon(Icons.Default.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                        icon = {
+                            Icon(
+                                Icons.Default.Search,
+                                null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
                         backgroundColor = tileColor,
                         shape = topShape
                     )
@@ -427,11 +492,16 @@ fun SettingsLayout(
                         subtitle = "Show hidden apps in search results",
                         checked = showHiddenAppsInSearch,
                         onCheckedChange = { viewModel.setShowHiddenAppsInSearch(it) },
-                        icon = { Icon(Icons.Default.Visibility, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                        icon = {
+                            Icon(
+                                Icons.Default.Visibility,
+                                null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
                         backgroundColor = tileColor,
                         shape = bottomShape,
-                        onClick = { showHiddenAppsDialog = true }
-                    )
+                        onClick = { showHiddenAppsDialog = true })
                 }
 
                 Text(
@@ -446,49 +516,69 @@ fun SettingsLayout(
                     SettingsTile(
                         title = "Time Shortcut",
                         subtitle = timeShortcut.ifEmpty { "Not set" },
-                        icon = { Icon(Icons.Default.Schedule, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                        icon = {
+                            Icon(
+                                Icons.Default.Schedule,
+                                null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
                         backgroundColor = tileColor,
                         shape = topShape,
-                        onClick = { configShortcutType = LauncherViewModel.ShortcutType.TIME }
-                    )
+                        onClick = { configShortcutType = LauncherViewModel.ShortcutType.TIME })
                     Spacer(Modifier.height(2.dp))
                     SettingsTile(
                         title = "Date Shortcut",
                         subtitle = dateShortcut.ifEmpty { "Not set" },
-                        icon = { Icon(Icons.Default.CalendarToday, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                        icon = {
+                            Icon(
+                                Icons.Default.CalendarToday,
+                                null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
                         backgroundColor = tileColor,
                         shape = middleShape,
-                        onClick = { configShortcutType = LauncherViewModel.ShortcutType.DATE }
-                    )
+                        onClick = { configShortcutType = LauncherViewModel.ShortcutType.DATE })
                     Spacer(Modifier.height(2.dp))
                     SettingsTile(
                         title = "Weather Shortcut",
                         subtitle = weatherShortcut.ifEmpty { "Not set" },
-                        icon = { Icon(Icons.Default.Cloud, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                        icon = {
+                            Icon(
+                                Icons.Default.Cloud,
+                                null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
                         backgroundColor = tileColor,
                         shape = bottomShape,
-                        onClick = { configShortcutType = LauncherViewModel.ShortcutType.WEATHER }
-                    )
+                        onClick = { configShortcutType = LauncherViewModel.ShortcutType.WEATHER })
                 }
 
                 Text(
-                    "SYSTEM", 
-                    color = MaterialTheme.colorScheme.primary, 
-                    fontSize = 12.sp, 
-                    fontWeight = FontWeight.Bold, 
+                    "SYSTEM",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(start = 12.dp)
                 )
 
                 SettingsTile(
                     title = "Default Home",
                     subtitle = "Set as default launcher",
-                    icon = { Icon(Icons.Default.Home, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    icon = {
+                        Icon(
+                            Icons.Default.Home,
+                            null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
                     backgroundColor = tileColor,
                     shape = standaloneShape,
-                    onClick = { viewModel.onResetSettingsClicked() }
-                )
+                    onClick = { viewModel.onResetSettingsClicked() })
             }
-            
+
             configShortcutType?.let { type ->
                 val initialValue = when (type) {
                     LauncherViewModel.ShortcutType.TIME -> timeShortcut
@@ -504,54 +594,66 @@ fun SettingsLayout(
                         when (type) {
                             LauncherViewModel.ShortcutType.TIME -> viewModel.setTimeShortcut(it)
                             LauncherViewModel.ShortcutType.DATE -> viewModel.setDateShortcut(it)
-                            LauncherViewModel.ShortcutType.WEATHER -> viewModel.setWeatherShortcut(it)
+                            LauncherViewModel.ShortcutType.WEATHER -> viewModel.setWeatherShortcut(
+                                it
+                            )
                         }
                         configShortcutType = null
-                    }
-                )
+                    })
             }
 
             if (showHiddenAppsDialog) {
-                AlertDialog(
+                val listState = rememberLazyListState()
+                val showTopDivider by remember {
+                    derivedStateOf { listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0 }
+                }
+                val showBottomDivider by remember {
+                    derivedStateOf { listState.canScrollForward }
+                }
+
+                XenonDialog(
                     onDismissRequest = { showHiddenAppsDialog = false },
-                    title = { Text("Hidden Apps") },
-                    text = {
-                        val hiddenAppInfos = apps.filter { it.packageName in hiddenApps }
+                    properties = DialogProperties(usePlatformDefaultWidth = true),
+                    title = "Hidden Apps",
+                    contentManagesScrolling = true,
+                    externalShowTopDivider = showTopDivider,
+                    externalShowBottomDivider = showBottomDivider
+                ) {
+                    val hiddenAppInfos = apps.filter { it.packageName in hiddenApps }
+                    LazyColumn(
+                        state = listState, modifier = Modifier.heightIn(max = 400.dp)
+                    ) {
                         if (hiddenAppInfos.isEmpty()) {
-                            Text("No apps are hidden.")
+                            item {
+                                Text("No apps are hidden.", modifier = Modifier.padding(16.dp))
+                            }
                         } else {
-                            LazyColumn(modifier = Modifier.height(300.dp)) {
-                                items(hiddenAppInfos) { app ->
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 8.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                    ) {
-                                        app.icon?.let { icon ->
-                                            Image(
-                                                bitmap = icon.toBitmap().asImageBitmap(),
-                                                contentDescription = null,
-                                                modifier = Modifier.size(32.dp)
-                                            )
-                                        }
-                                        Text(app.name, modifier = Modifier.weight(1f))
-                                        IconButton(onClick = { viewModel.unhideApp(app.packageName) }) {
-                                            Icon(Icons.Rounded.Visibility, contentDescription = "Unhide")
-                                        }
+                            items(hiddenAppInfos) { app ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    app.icon?.let { icon ->
+                                        Image(
+                                            bitmap = icon.toBitmap().asImageBitmap(),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(32.dp)
+                                        )
+                                    }
+                                    Text(app.name, modifier = Modifier.weight(1f))
+                                    IconButton(onClick = { viewModel.unhideApp(app.packageName) }) {
+                                        Icon(
+                                            Icons.Rounded.Visibility, contentDescription = "Unhide"
+                                        )
                                     }
                                 }
                             }
                         }
-                    },
-                    confirmButton = {
-                        TextButton(onClick = { showHiddenAppsDialog = false }) {
-                            Text("Close")
-                        }
                     }
-                )
+                }
             }
-        }
-    )
+        })
 }

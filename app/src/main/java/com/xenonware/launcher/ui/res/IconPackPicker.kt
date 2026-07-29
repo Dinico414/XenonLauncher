@@ -3,90 +3,85 @@ package com.xenonware.launcher.ui.res
 import android.content.pm.ResolveInfo
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.graphics.drawable.toBitmap
+//import com.xenon.mylibrary.res.XenonDialog
 import com.xenonware.launcher.viewmodel.LauncherViewModel
 
 @Composable
 fun IconPackPicker(
     viewModel: LauncherViewModel,
     onIconSelect: (String, String) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
 ) {
     var selectedPack by remember { mutableStateOf<ResolveInfo?>(null) }
     val iconPacks = remember { viewModel.getInstalledIconPacks() }
     val context = LocalContext.current
     val pm = context.packageManager
 
-    Dialog(
+    XenonDialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+        properties = DialogProperties(usePlatformDefaultWidth = true),
+        title = if (selectedPack == null) "Select Icon Pack" else selectedPack!!.loadLabel(pm)
+            .toString(),
+        contentManagesScrolling = true
     ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth(0.9f)
-                .fillMaxHeight(0.8f),
-            shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (selectedPack != null) {
-                        IconButton(onClick = { selectedPack = null }) {
-                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back")
-                        }
-                    }
-                    Text(
-                        text = if (selectedPack == null) "Select Icon Pack" else selectedPack!!.loadLabel(pm).toString(),
-                        style = MaterialTheme.typography.titleLarge,
-                        modifier = Modifier.padding(start = 8.dp)
-                    )
+        Column(modifier = Modifier.fillMaxWidth()) {
+            if (selectedPack != null) {
+                IconButton(onClick = { selectedPack = null }) {
+                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back")
                 }
+            }
 
-                Spacer(Modifier.height(16.dp))
-
-                if (selectedPack == null) {
-                    LazyColumn(modifier = Modifier.weight(1f)) {
-                        items(iconPacks) { pack ->
-                            ListItem(
-                                headlineContent = { Text(pack.loadLabel(pm).toString()) },
-                                leadingContent = {
-                                    Image(
-                                        bitmap = pack.loadIcon(pm).toBitmap().asImageBitmap(),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(40.dp)
-                                    )
-                                },
-                                modifier = Modifier.clickable { selectedPack = pack }
-                            )
-                        }
+            if (selectedPack == null) {
+                LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
+                    items(iconPacks) { pack ->
+                        ListItem(
+                            headlineContent = { Text(pack.loadLabel(pm).toString()) },
+                            leadingContent = {
+                                Image(
+                                    bitmap = pack.loadIcon(pm).toBitmap().asImageBitmap(),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(40.dp)
+                                )
+                            },
+                            modifier = Modifier.clickable { selectedPack = pack })
                     }
-                } else {
-                    IconGrid(
-                        packageName = selectedPack!!.activityInfo.packageName,
-                        onIconSelect = onIconSelect,
-                        modifier = Modifier.weight(1f)
-                    )
                 }
+            } else {
+                IconGrid(
+                    packageName = selectedPack!!.activityInfo.packageName,
+                    onIconSelect = onIconSelect,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
     }
@@ -96,7 +91,7 @@ fun IconPackPicker(
 fun IconGrid(
     packageName: String,
     onIconSelect: (String, String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val icons = remember(packageName) {
@@ -110,10 +105,10 @@ fun IconGrid(
             // I'll try to find at least the ones that match some common apps for demo purposes
             // Or just a placeholder message if we can't list them easily.
             // Actually, I'll try to iterate IDs if I can find the range, but that's risky.
-            
+
             // For now, I'll just show a "Select by name" or a few found ones.
             // In a real app, I'd use a library or a background task to parse the APK.
-            listOf("icon", "app_icon", "logo") 
+            listOf("icon", "app_icon", "logo")
         } catch (e: Exception) {
             emptyList<String>()
         }
@@ -127,9 +122,9 @@ fun IconGrid(
             label = { Text("Resource Name (e.g. chrome)") },
             modifier = Modifier.fillMaxWidth()
         )
-        
+
         Spacer(Modifier.height(16.dp))
-        
+
         if (searchQuery.isNotEmpty()) {
             Button(
                 onClick = { onIconSelect(packageName, searchQuery) },

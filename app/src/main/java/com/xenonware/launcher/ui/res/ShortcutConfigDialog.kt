@@ -1,14 +1,32 @@
 package com.xenonware.launcher.ui.res
 
+//import com.xenon.mylibrary.res.XenonDialog
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -16,7 +34,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.graphics.drawable.toBitmap
 import com.xenonware.launcher.model.AppInfo
@@ -28,52 +45,77 @@ fun ShortcutConfigDialog(
     apps: List<AppInfo>,
     initialValue: String,
     onDismiss: () -> Unit,
-    onSave: (String) -> Unit
+    onSave: (String) -> Unit,
 ) {
-    var linkValue by remember { mutableStateOf(if (initialValue.startsWith("link:")) initialValue.substring(5) else "") }
-    var selectedPackage by remember { mutableStateOf(if (initialValue.startsWith("app:")) initialValue.substring(4) else "") }
-    var selectionMode by remember { 
-        mutableStateOf(if (initialValue.startsWith("app:")) "app" else "link") 
+    var linkValue by remember {
+        mutableStateOf(
+            if (initialValue.startsWith("link:")) initialValue.substring(
+                5
+            ) else ""
+        )
+    }
+    var selectedPackage by remember {
+        mutableStateOf(
+            if (initialValue.startsWith("app:")) initialValue.substring(
+                4
+            ) else ""
+        )
+    }
+    var selectionMode by remember {
+        mutableStateOf(if (initialValue.startsWith("app:")) "app" else "link")
+    }
+    val listState = rememberLazyListState()
+    val showTopDivider by remember {
+        derivedStateOf { listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0 }
+    }
+    val showBottomDivider by remember {
+        derivedStateOf { listState.canScrollForward }
     }
 
-    Dialog(
+    XenonDialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+        properties = DialogProperties(usePlatformDefaultWidth = true),
+        title = "Configure ${type.name.lowercase().replaceFirstChar { it.uppercase() }} Shortcut",
+        confirmButtonText = "Save",
+        onConfirmButtonClick = {
+            when (selectionMode) {
+                "link" if linkValue.isNotEmpty() -> {
+                    onSave("link:$linkValue")
+                }
+
+                "app" if selectedPackage.isNotEmpty() -> {
+                    onSave("app:$selectedPackage")
+                }
+
+                else -> {
+                    onSave("")
+                }
+            }
+        },
+        contentManagesScrolling = true,
+        externalShowTopDivider = showTopDivider,
+        externalShowBottomDivider = showBottomDivider
     ) {
-        Surface(
+        LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.8f)
-                .padding(16.dp),
-            shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 6.dp
+                .heightIn(max = 450.dp),
+            verticalArrangement = Arrangement.Top
         ) {
-            Column(
-                modifier = Modifier
-                    .padding(24.dp)
-                    .fillMaxSize()
-            ) {
-                Text(
-                    text = "Configure ${type.name.lowercase().replaceFirstChar { it.uppercase() }} Shortcut",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
+            item {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth().clickable { selectionMode = "link" }
-                ) {
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { selectionMode = "link" }
+                        .padding(bottom = 16.dp)) {
                     RadioButton(
-                        selected = selectionMode == "link",
-                        onClick = { selectionMode = "link" }
-                    )
+                        selected = selectionMode == "link", onClick = { selectionMode = "link" })
                     Spacer(Modifier.width(8.dp))
                     OutlinedTextField(
                         value = linkValue,
-                        onValueChange = { 
+                        onValueChange = {
                             linkValue = it
                             selectionMode = "link"
                         },
@@ -85,93 +127,58 @@ fun ShortcutConfigDialog(
                         enabled = selectionMode == "link"
                     )
                 }
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
+            }
+
+            item {
                 Text(
                     text = "Select App",
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 12.dp, bottom = 8.dp)
                 )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.Top
-                ) {
-                    items(apps) { app ->
-                        val isSelected = selectionMode == "app" && selectedPackage == app.packageName
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(100.dp))
-                                .background(
-                                    if (isSelected) MaterialTheme.colorScheme.primaryContainer 
-                                    else Color.Transparent
-                                )
-                                .clickable { 
-                                    selectedPackage = app.packageName
-                                    selectionMode = "app"
-                                }
-                                .padding(horizontal = 12.dp, vertical = 8.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                RadioButton(
-                                    selected = isSelected,
-                                    onClick = { 
-                                        selectedPackage = app.packageName
-                                        selectionMode = "app"
-                                    }
-                                )
-                                
-                                if (app.icon != null) {
-                                    Image(
-                                        bitmap = app.icon.toBitmap().asImageBitmap(),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(40.dp)
-                                    )
-                                }
-                                
-                                Text(
-                                    text = app.name,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                    color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer 
-                                            else MaterialTheme.colorScheme.onSurface
-                                )
-                            }
+            }
+
+            items(apps) { app ->
+                val isSelected = selectionMode == "app" && selectedPackage == app.packageName
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(100.dp))
+                        .background(
+                            if (isSelected) MaterialTheme.colorScheme.primaryContainer
+                            else Color.Transparent
+                        )
+                        .clickable {
+                            selectedPackage = app.packageName
+                            selectionMode = "app"
                         }
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    TextButton(onClick = onDismiss) {
-                        Text("Cancel")
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(
-                        onClick = {
-                            if (selectionMode == "link" && linkValue.isNotEmpty()) {
-                                onSave("link:$linkValue")
-                            } else if (selectionMode == "app" && selectedPackage.isNotEmpty()) {
-                                onSave("app:$selectedPackage")
-                            } else {
-                                onSave("")
-                            }
-                        },
-                        shape = RoundedCornerShape(12.dp)
+                        .padding(horizontal = 12.dp, vertical = 8.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Text("Save")
+                        RadioButton(
+                            selected = isSelected, onClick = {
+                                selectedPackage = app.packageName
+                                selectionMode = "app"
+                            })
+
+                        if (app.icon != null) {
+                            Image(
+                                bitmap = app.icon.toBitmap().asImageBitmap(),
+                                contentDescription = null,
+                                modifier = Modifier.size(40.dp)
+                            )
+                        }
+
+                        Text(
+                            text = app.name,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
+                            else MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 }
             }
