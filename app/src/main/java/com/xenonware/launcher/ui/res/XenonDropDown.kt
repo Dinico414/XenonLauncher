@@ -121,12 +121,22 @@ fun XenonDropDown(
                 val touchX = actualAnchor.x + offsetX.toPx()
                 val touchY = actualAnchor.y + offsetY.toPx()
 
-                // Use measured size if available, otherwise estimate
                 val mWidth = if (menuSize.width > 0) menuSize.width.toFloat() else widthMax.toPx()
                 val mHeight = if (menuSize.height > 0) menuSize.height.toFloat() else (items.size * 48).dp.toPx() + 8.dp.toPx()
 
-                var targetAbsX = touchX - (mWidth / 2f)
-                var targetAbsY = touchY - (mHeight / 2f)
+                val pivotX = when (alignment) {
+                    Alignment.TopStart, Alignment.CenterStart, Alignment.BottomStart -> 0f
+                    Alignment.TopEnd, Alignment.CenterEnd, Alignment.BottomEnd -> 1f
+                    else -> 0.5f
+                }
+                val pivotY = when (alignment) {
+                    Alignment.TopStart, Alignment.TopCenter, Alignment.TopEnd -> 0f
+                    Alignment.BottomStart, Alignment.BottomCenter, Alignment.BottomEnd -> 1f
+                    else -> 0.5f
+                }
+
+                var targetAbsX = touchX - (mWidth * pivotX)
+                var targetAbsY = touchY - (mHeight * pivotY)
 
                 // Clamp to screen edges with 16dp margin
                 targetAbsX = targetAbsX.coerceIn(marginPx, (screenWidthPx - mWidth - marginPx).coerceAtLeast(marginPx))

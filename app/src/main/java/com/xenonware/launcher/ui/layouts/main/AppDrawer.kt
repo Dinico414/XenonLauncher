@@ -258,6 +258,7 @@ fun AppDrawer(
     var appMenuInfo by remember { mutableStateOf<Pair<AppInfo, Offset>?>(null) }
     var barHeightPx by remember { mutableIntStateOf(0) }
     var searchBarHeightPx by remember { mutableIntStateOf(0) }
+    var searchBarAnchor by remember { mutableStateOf(Offset.Zero) }
 
     val recentCount = if (isWideScreen) 6 else 4
     val recentApps = remember(recentlyOpened) { recentlyOpened.take(recentCount) }
@@ -980,6 +981,11 @@ fun AppDrawer(
                                 .zIndex(1f)
                                 .fillMaxWidth()
                                 .onSizeChanged { searchBarHeightPx = it.height }
+                                .onGloballyPositioned { coords ->
+                                    searchBarAnchor = coords.positionInRoot().let { pos ->
+                                        Offset(pos.x + coords.size.width, pos.y + coords.size.height)
+                                    }
+                                }
                                 .clip(RoundedCornerShape(100f))
                                 .hazeEffect(state = hazeState, style = HazeMaterials.ultraThin())
                                 .background(colorScheme.surfaceContainer.copy(alpha = 0.4f))
@@ -1091,7 +1097,11 @@ fun AppDrawer(
                                             )
                                         })
                                     ),
-                                    hazeState = hazeState)
+                                    hazeState = hazeState,
+                                    anchorPos = searchBarAnchor,
+                                    offsetY = 8.dp,
+                                    alignment = Alignment.TopEnd
+                                )
                             }
                         }
                     }
