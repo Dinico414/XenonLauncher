@@ -68,7 +68,7 @@ fun AppEditDialog(
     var name by remember { mutableStateOf(app.label) }
     var zoom by remember { mutableFloatStateOf(currentOverride.zoom) }
     var bgColor by remember {
-        mutableStateOf(currentOverride.backgroundColor?.let { Color(it) } ?: Color.White)
+        mutableStateOf(currentOverride.backgroundColor?.let { Color(it) })
     }
     var borderColor by remember {
         mutableStateOf(currentOverride.borderColor?.let { Color(it) } ?: Color.White)
@@ -99,7 +99,7 @@ fun AppEditDialog(
         generateCustomIcon(
             context, baseIcon, AppOverride(
                 zoom = zoom,
-                backgroundColor = bgColor.toArgb(),
+                backgroundColor = bgColor?.toArgb(),
                 borderColor = borderColor.toArgb(),
                 borderWidth = borderWidth
             ), currentShape
@@ -120,7 +120,7 @@ fun AppEditDialog(
                     iconPackPackage = iconPackPackage,
                     iconResourceName = iconResName,
                     zoom = zoom,
-                    backgroundColor = bgColor.toArgb(),
+                    backgroundColor = bgColor?.toArgb(),
                     borderColor = borderColor.toArgb(),
                     borderWidth = borderWidth
                 )
@@ -132,7 +132,7 @@ fun AppEditDialog(
             viewModel.resetAppOverride(app.packageName)
             name = app.name
             zoom = 1.0f
-            bgColor = Color.White
+            bgColor = null
             borderColor = Color.White
             borderWidth = 0f
             iconPackPackage = null
@@ -223,7 +223,7 @@ fun AppEditDialog(
                 }
             } else {
                 ColorSelectionSection(
-                    bgColor = bgColor,
+                    bgColor = bgColor ?: Color.White,
                     onBgColorChange = { bgColor = it },
                     borderColor = borderColor,
                     onBorderColorChange = { borderColor = it })

@@ -33,11 +33,8 @@ fun normalizeIcon(context: Context, drawable: Drawable?): Drawable? {
     val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bitmap)
     
-    // Set draw filter for high quality scaling (Anti-alias + Filtering)
+    // Draw filter for high quality scaling
     canvas.drawFilter = PaintFlagsDrawFilter(0, Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
-    
-    // Always start with a white background
-    canvas.drawColor(Color.WHITE)
     
     if (drawable is AdaptiveIconDrawable) {
         val scale = 1.5f
@@ -78,8 +75,8 @@ fun generateCustomIcon(
     val canvas = Canvas(bitmap)
     canvas.drawFilter = PaintFlagsDrawFilter(0, Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
 
-    // 1. Draw Background
-    override.backgroundColor?.let { canvas.drawColor(it) } ?: canvas.drawColor(Color.WHITE)
+    // 1. Draw Background if provided
+    override.backgroundColor?.let { canvas.drawColor(it) }
 
     // 2. Draw Icon with Zoom
     val zoom = override.zoom.coerceIn(0.1f, 5.0f)
@@ -104,13 +101,11 @@ fun generateCustomIcon(
             bounds.bottom + adaptiveOffset
         )
         
-        // Only draw original background if no custom background color is provided
-        if (override.backgroundColor == null) {
-            baseDrawable.background?.let {
-                it.bounds = adaptiveBounds
-                if (it is BitmapDrawable) it.isFilterBitmap = true
-                it.draw(canvas)
-            }
+        // Draw original background layer if it exists
+        baseDrawable.background?.let {
+            it.bounds = adaptiveBounds
+            if (it is BitmapDrawable) it.isFilterBitmap = true
+            it.draw(canvas)
         }
         
         baseDrawable.foreground?.let {
