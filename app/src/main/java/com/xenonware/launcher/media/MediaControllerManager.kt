@@ -9,7 +9,6 @@ import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.provider.Settings
 import android.text.TextUtils
-import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -84,8 +83,6 @@ class MediaControllerManager(private val context: Context) {
             val metadata = controller.metadata
             val playbackState = controller.playbackState
 
-            Log.d("MediaController", "Updating state for ${controller.packageName}: ${metadata?.getString(MediaMetadata.METADATA_KEY_TITLE)} by ${metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST)}")
-            
             val albumArt = metadata?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
                 ?: metadata?.getBitmap(MediaMetadata.METADATA_KEY_ART)
             
@@ -98,11 +95,8 @@ class MediaControllerManager(private val context: Context) {
                 val spotifyUri = metadata?.getString("com.spotify.music.extra.ART_HTTPS_URI")
                 if (spotifyUri != null) {
                     albumArtUri = spotifyUri
-                    Log.d("MediaController", "Using Spotify HTTPS URI: $albumArtUri")
                 }
             }
-
-            Log.d("MediaController", "Art Bitmap: ${albumArt != null}, URI: $albumArtUri")
 
             mediaState = MediaState(
                 title = metadata?.getString(MediaMetadata.METADATA_KEY_TITLE),
@@ -115,7 +109,6 @@ class MediaControllerManager(private val context: Context) {
                 duration = metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L
             )
         } else {
-            Log.d("MediaController", "No active controller")
             mediaState = MediaState()
         }
     }

@@ -45,7 +45,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import android.util.Log
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -63,7 +62,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import coil.compose.AsyncImagePainter
 import com.xenonware.launcher.media.MediaState
 import com.xenonware.launcher.util.shouldDisableLandscapeLayout
 import java.util.Locale
@@ -150,12 +148,7 @@ fun MediaPage(
                     colorFilter = ColorFilter.tint(
                         MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
                         blendMode = BlendMode.SrcAtop
-                    ),
-                    onState = { state ->
-                        if (state is AsyncImagePainter.State.Error) {
-                            Log.e("MediaPage", "Art Load Error: ${state.result.throwable}")
-                        }
-                    }
+                    )
                 )
                 // Darken the background for better readability
                 Box(
