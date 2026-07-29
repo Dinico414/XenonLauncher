@@ -82,12 +82,17 @@ fun AppDrawerGridLayout(
                     )
                 }
                 .pointerInput(Unit) {
+                    var totalDragDistance = 0f
                     detectDragGesturesAfterLongPress(onDragStart = { offset ->
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         isActualDrag = false
                         pressOffset = offset
+                        totalDragDistance = 0f
                     }, onDrag = { change, dragAmount ->
-                        if (dragAmount.getDistance() > 1f && !isActualDrag) {
+                        totalDragDistance += dragAmount.getDistance()
+                        val threshold = with(density) { 24.dp.toPx() }
+
+                        if (totalDragDistance > threshold && !isActualDrag) {
                             isActualDrag = true
                             dragDropState.startDrag(app, itemPos + pressOffset)
                         }

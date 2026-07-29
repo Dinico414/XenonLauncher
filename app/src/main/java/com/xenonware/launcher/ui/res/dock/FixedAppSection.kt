@@ -240,11 +240,16 @@ fun FixedAppSection(
                                                 detectTapGestures(onTap = { onAppClick(app.packageName) })
                                             }
                                             .pointerInput(Unit) {
+                                                var totalDragDistance = 0f
                                                 detectDragGesturesAfterLongPress(onDragStart = { offset ->
                                                     pressOffset = offset
                                                     isActualDrag = false
+                                                    totalDragDistance = 0f
                                                 }, onDrag = { change, dragAmount ->
-                                                    if (dragAmount.getDistance() > 1f && !isActualDrag) {
+                                                    totalDragDistance += dragAmount.getDistance()
+                                                    val threshold = with(density) { 24.dp.toPx() }
+
+                                                    if (totalDragDistance > threshold && !isActualDrag) {
                                                         isActualDrag = true
                                                         val originalIndex = apps.indexOf(app)
                                                         dragDropState.startDrag(

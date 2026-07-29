@@ -77,7 +77,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -121,7 +120,6 @@ import androidx.compose.ui.platform.ViewConfiguration
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -149,7 +147,6 @@ import dev.chrisbanes.haze.materials.HazeMaterials
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 
 
@@ -715,12 +712,17 @@ fun AppDrawer(
                                                         })
                                                 }
                                                 .pointerInput(Unit) {
+                                                    var totalDragDistance = 0f
                                                     detectDragGesturesAfterLongPress(onDragStart = { offset ->
                                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                         isActualDrag = false
                                                         pressOffset = offset
+                                                        totalDragDistance = 0f
                                                     }, onDrag = { change, dragAmount ->
-                                                        if (dragAmount.getDistance() > 1f && !isActualDrag) {
+                                                        totalDragDistance += dragAmount.getDistance()
+                                                        val threshold = with(density) { 24.dp.toPx() }
+
+                                                        if (totalDragDistance > threshold && !isActualDrag) {
                                                             isActualDrag = true
                                                             dragDropState.startDrag(
                                                                 app, itemPos + pressOffset
