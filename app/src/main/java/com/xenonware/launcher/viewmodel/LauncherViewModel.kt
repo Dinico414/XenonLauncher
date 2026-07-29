@@ -851,8 +851,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                     iconBitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
                 }
                 finalIconRes = "file:$fileName"
-            } catch (e: Exception) {
-                e.printStackTrace()
+            } catch (_: Exception) {
             }
         }
 

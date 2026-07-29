@@ -1,7 +1,5 @@
 package com.xenonware.launcher.ui.res
 
-import android.appwidget.AppWidgetProviderInfo
-import android.util.Log
 import android.util.LruCache
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -14,7 +12,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -368,8 +365,7 @@ fun WidgetPickerItem(
                                 view.draw(canvas)
                                 drawable = android.graphics.drawable.BitmapDrawable(context.resources, canvasBitmap)
                             }
-                        } catch (e: Exception) {
-                            Log.w("WidgetType", "Failed previewLayout for ${item.label}: ${e.message}")
+                        } catch (_: Exception) {
                         }
                     }
 
@@ -402,17 +398,14 @@ fun WidgetPickerItem(
                     
                     val w = targetWidthPx
                     val h = (targetWidthPx / aspect).toInt().coerceIn(10, 400)
-                    
-                    Log.d("WidgetType", "ASYNC LOAD [${item.label}] from $source. Size: ${w}x${h}")
-                    
+
                     val b = d.toBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888).asImageBitmap()
                     bitmapCache.put(item.id, b)
                     b
                 }
                 
                 bitmap = result
-            } catch (e: Exception) {
-                Log.e("WidgetType", "Error loading [${item.label}]: ${e.message}")
+            } catch (_: Exception) {
             }
         }
     }

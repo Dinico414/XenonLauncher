@@ -5,7 +5,6 @@ package com.xenonware.launcher.ui.res.notification
  import android.content.Intent
  import android.os.Build
  import android.os.Bundle
- import android.util.Log
  import androidx.compose.animation.AnimatedVisibility
  import androidx.compose.animation.core.Animatable
  import androidx.compose.animation.core.CubicBezierEasing
@@ -513,7 +512,6 @@ fun NotificationItem(
                                 Surface(
                                     onClick = {
                                         selectedActionForReply?.let { action ->
-                                            Log.d("XenonNotification", "Replying to action: ${action.title}, text: $replyTextValue")
                                             if (replyTextValue.isNotBlank() && action.remoteInput != null) {
                                                 val results = Bundle().apply {
                                                     putString(action.remoteInput.resultKey, replyTextValue)
@@ -522,8 +520,6 @@ fun NotificationItem(
                                                     RemoteInput.addResultsToIntent(arrayOf(action.remoteInput), this, results)
                                                 }
                                                 try {
-                                                    Log.d("XenonNotification", "Sending reply intent: ${action.actionIntent}")
-
                                                     val options = ActivityOptions.makeBasic()
                                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                                                         options.pendingIntentBackgroundActivityStartMode =
@@ -531,8 +527,7 @@ fun NotificationItem(
                                                     }
 
                                                     action.actionIntent?.send(context, 0, fillInIntent, null, null, null, options.toBundle())
-                                                } catch (e: Exception) {
-                                                    Log.e("XenonNotification", "Failed to send reply intent", e)
+                                                } catch (_: Exception) {
                                                 }
                                                 selectedActionForReply = null
                                                 replyTextValue = ""
@@ -590,7 +585,6 @@ fun NotificationItem(
                                 Surface(
                                     onClick = {
                                         if (action.remoteInput != null) {
-                                            Log.d("XenonNotification", "Action clicked (Reply): ${action.title}")
                                             if (selectedActionForReply == action) {
                                                 selectedActionForReply = null
                                             } else {
@@ -598,7 +592,6 @@ fun NotificationItem(
                                                 replyTextValue = ""
                                             }
                                         } else {
-                                            Log.d("XenonNotification", "Action clicked: ${action.title}")
                                             try {
                                                 val options = ActivityOptions.makeBasic()
                                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -607,16 +600,12 @@ fun NotificationItem(
                                                 }
 
                                                 action.actionIntent?.let { intent ->
-                                                    Log.d("XenonNotification", "Sending actionIntent with context: $intent")
                                                     intent.send(context, 0, null, null, null, null, options.toBundle())
-                                                } ?: Log.w("XenonNotification", "No actionIntent found for action")
-                                            } catch (e: Exception) {
-                                                Log.e("XenonNotification", "Failed to send actionIntent with context", e)
+                                                }
+                                            } catch (_: Exception) {
                                                 try {
-                                                    Log.d("XenonNotification", "Retrying actionIntent without context")
                                                     action.actionIntent?.send()
-                                                } catch (e2: Exception) {
-                                                    Log.e("XenonNotification", "Failed to send actionIntent without context", e2)
+                                                } catch (_: Exception) {
                                                 }
                                             }
                                         }

@@ -14,7 +14,6 @@ import android.os.Bundle
 import android.service.notification.NotificationListenerService.Ranking
 import android.service.notification.NotificationListenerService.RankingMap
 import android.service.notification.StatusBarNotification
-import android.util.Log
 import androidx.core.graphics.drawable.toDrawable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -221,7 +220,6 @@ object NotificationManager {
                 if (isMessaging) {
                     val messages = extras.getParcelableArray("android.messages")
                     if (!messages.isNullOrEmpty()) {
-                        Log.d("XenonNotification", "Found ${messages.size} messages in MessagingStyle")
                         for (i in messages.indices.reversed()) {
                             val m = messages[i] as? Bundle ?: continue
                             val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -231,48 +229,22 @@ object NotificationManager {
                                 m.getParcelable("dataUri") as? Uri
                             }
                             
-                            Log.d("XenonNotification", "Message $i: hasUri=${uri != null}, type=${m.getString("dataMimeType")}")
-                            
+
                             if (uri != null && m.getString("dataMimeType")?.startsWith("image/") == true) {
                                 try {
                                     context.contentResolver.openInputStream(uri)?.use { 
                                         val bmp = BitmapFactory.decodeStream(it)
                                         if (bmp != null) {
                                             messagingImage = bmp.toDrawable(context.resources)
-                                            Log.d("XenonNotification", "Successfully decoded messaging image")
                                         }
                                     }
-                                } catch (e: Exception) {
-                                    Log.e("XenonNotification", "Failed to load messaging image: ${e.message}")
+                                } catch (_: Exception) {
                                 }
                                 if (messagingImage != null) break
                             }
                         }
                     }
                 }
-
-                // YouTube & General Extra Inspection
-                if (isYouTube) {
-                    extras.keySet().forEach { key ->
-                        val value = extras.get(key)
-                        if (value is Bitmap || value is Icon) {
-                            Log.d("XenonNotification", "YouTube Potential Image Found: $key -> $value")
-                        }
-                    }
-                }
-
-                // Logging all content for debugging
-                Log.d("XenonNotification", "--- Notification Start: ${sbn.packageName} ---")
-                Log.d("XenonNotification", "Key: ${sbn.key}")
-                Log.d("XenonNotification", "Title: $title")
-                Log.d("XenonNotification", "Body: $body")
-                Log.d("XenonNotification", "Template: $template")
-                Log.d("XenonNotification", "Has LargeIcon: ${largeIcon != null}")
-                Log.d("XenonNotification", "Has Picture: ${picture != null}")
-                Log.d("XenonNotification", "Has PictureIcon: ${pictureIcon != null}")
-                Log.d("XenonNotification", "Has LargeIconBig: ${largeIconBig != null}")
-                Log.d("XenonNotification", "Has BigPicture: ${bigPicture != null}")
-                Log.d("XenonNotification", "Has MessagingImage: ${messagingImage != null}")
                 
                 // Determine what is a profile pic vs a media thumbnail
                 var finalSenderIcon: Drawable?
@@ -301,10 +273,7 @@ object NotificationManager {
                         finalSenderIcon = null
                     }
                 }
-                
-                Log.d("XenonNotification", "Final Assigned -> SenderIcon: ${finalSenderIcon != null}, MediaImage: ${finalMediaImage != null}")
-                Log.d("XenonNotification", "--- Notification End ---")
-                
+
                 LauncherNotification(
                     key = sbn.key,
                     packageName = sbn.packageName,
@@ -317,21 +286,17 @@ object NotificationManager {
                     mediaImage = finalMediaImage,
                     contentIntent = sbn.notification.contentIntent,
                     actions = sbn.notification.actions?.map { action ->
-                        Log.d("NotificationManager", "Parsing action: ${action.title}, hasIntent=${action.actionIntent != null}")
                         LauncherNotificationAction(
                             title = action.title.toString(),
                             actionIntent = action.actionIntent,
                             remoteInput = action.remoteInputs?.firstOrNull()
                         )
                     } ?: emptyList()
-                ).also {
-                    Log.d("NotificationManager", "Parsed notification from ${it.packageName}: title=${it.title}, hasContentIntent=${it.contentIntent != null}, actionCount=${it.actions.size}")
-                }
+                )
             }.sortedByDescending { it.postTime }
             
             _notificationCount.value = _notifications.value.size
-        } catch (e: Exception) {
-            e.printStackTrace()
+        } catch (_: Exception) {
         }
     }
 }
