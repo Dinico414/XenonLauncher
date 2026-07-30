@@ -1,653 +1,329 @@
 package com.xenonware.launcher.ui.layouts.settings
 
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.filled.BlurOn
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.Circle
-import androidx.compose.material.icons.filled.Cloud
-import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Keyboard
-import androidx.compose.material.icons.filled.NotificationsOff
-import androidx.compose.material.icons.filled.Numbers
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.graphics.drawable.toBitmap
 import com.xenon.mylibrary.ActivityScreen
-import com.xenon.mylibrary.res.SettingsSwitchTile
-import com.xenon.mylibrary.res.SettingsTile
-//import com.xenon.mylibrary.res.XenonDialog
+import com.xenon.mylibrary.res.DialogClearDataConfirmation
+import com.xenon.mylibrary.res.DialogCoverDisplaySelection
+import com.xenon.mylibrary.res.DialogResetSettingsConfirmation
+import com.xenon.mylibrary.res.DialogSignOut
+import com.xenon.mylibrary.res.DialogThemeSelection
+import com.xenon.mylibrary.res.DialogVersionNumber
+import com.xenon.mylibrary.theme.DeviceConfigProvider
+import com.xenon.mylibrary.theme.LocalDeviceConfig
 import com.xenon.mylibrary.values.LargestPadding
 import com.xenon.mylibrary.values.MediumPadding
 import com.xenon.mylibrary.values.NoSpacing
-import com.xenonware.launcher.ui.res.IconShape
+import com.xenonware.launcher.BuildConfig
+import com.xenonware.launcher.R
+import com.xenonware.launcher.presentation.sign_in.GoogleAuthUiClient
+import com.xenonware.launcher.presentation.sign_in.SignInState
 import com.xenonware.launcher.ui.res.ShortcutConfigDialog
 import com.xenonware.launcher.ui.res.XenonDialog
-import com.xenonware.launcher.ui.res.XenonSingleChoiceButtonGroup
 import com.xenonware.launcher.viewmodel.LauncherViewModel
+import com.xenonware.launcher.viewmodel.LayoutType
 import com.xenonware.launcher.viewmodel.SettingsViewModel
-import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
-import kotlinx.coroutines.delay
-import kotlin.math.abs
-import kotlin.time.Duration.Companion.milliseconds
+import dev.chrisbanes.haze.rememberHazeState
 
 @Composable
 fun SettingsLayout(
     onNavigateBack: () -> Unit,
     viewModel: SettingsViewModel,
-    hazeState: HazeState,
+    layoutType: LayoutType,
+    isLandscape: Boolean,
+    state: SignInState,
+    onSignInClick: () -> Unit,
+    onSignOutClick: () -> Unit,
+    onConfirmSignOut: () -> Unit,
+    googleAuthUiClient: GoogleAuthUiClient,
+    appSize: IntSize,
 ) {
-    val currentThemeTitle by viewModel.currentThemeTitle.collectAsState()
-    val blackedOutEnabled by viewModel.blackedOutModeEnabled.collectAsState()
-    val isGridLayout by viewModel.isGridLayout.collectAsState()
-    val openKeyboard by viewModel.openKeyboard.collectAsState()
-    val advancedSearchEnabled by viewModel.advancedSearchEnabled.collectAsState()
-    val showHiddenAppsInSearch by viewModel.showHiddenAppsInSearch.collectAsState()
-    val hiddenApps by viewModel.hiddenApps.collectAsState()
-    val dockSafeDrawIme by viewModel.dockSafeDrawIme.collectAsState()
+    Box(modifier = Modifier.fillMaxSize()) {
+        DefaultSettings(
+            onNavigateBack = onNavigateBack,
+            viewModel = viewModel,
+            layoutType = layoutType,
+            isLandscape = isLandscape,
+            state = state,
+            onSignInClick = onSignInClick,
+            onSignOutClick = onSignOutClick,
+            onConfirmSignOut = onConfirmSignOut,
+            googleAuthUiClient = googleAuthUiClient,
+            appSize = appSize
+        )
+    }
+}
 
-    val apps by viewModel.apps.collectAsState()
-    val timeShortcut by viewModel.timeShortcut.collectAsState()
-    val dateShortcut by viewModel.dateShortcut.collectAsState()
-    val weatherShortcut by viewModel.weatherShortcut.collectAsState()
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DefaultSettings(
+    onNavigateBack: () -> Unit,
+    viewModel: SettingsViewModel,
+    layoutType: LayoutType,
+    isLandscape: Boolean,
+    state: SignInState,
+    onSignInClick: () -> Unit,
+    onSignOutClick: () -> Unit,
+    onConfirmSignOut: () -> Unit,
+    googleAuthUiClient: GoogleAuthUiClient,
+    appSize: IntSize,
+) {
+    var isDeveloperOptionsVisible by remember { mutableStateOf(false) }
 
-    var configShortcutType by remember { mutableStateOf<LauncherViewModel.ShortcutType?>(null) }
-    var showHiddenAppsDialog by remember { mutableStateOf(false) }
-
-    val innerRadius = 4.dp
-    val outerRadius = 24.dp
-    val tileColor = MaterialTheme.colorScheme.surfaceBright
-
-    val topShape = RoundedCornerShape(
-        topStart = outerRadius,
-        topEnd = outerRadius,
-        bottomStart = innerRadius,
-        bottomEnd = innerRadius
-    )
-    val middleShape = RoundedCornerShape(innerRadius)
-    val bottomShape = RoundedCornerShape(
-        topStart = innerRadius,
-        topEnd = innerRadius,
-        bottomStart = outerRadius,
-        bottomEnd = outerRadius
-    )
-    val standaloneShape = RoundedCornerShape(outerRadius)
-
-    ActivityScreen(
-        titleText = "Settings",
-        expandable = true,
-        navigationIconStartPadding = MediumPadding,
-        navigationIconPadding = MediumPadding,
-        navigationIconSpacing = NoSpacing,
-        navigationIcon = {
-            Icon(
-                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                contentDescription = "Back",
-                modifier = Modifier.size(24.dp)
-            )
-        },
-        onNavigationIconClick = onNavigateBack,
-        modifier = Modifier.hazeSource(hazeState),
-        content = { _ ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(LargestPadding), verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Text(
-                    "PERSONALIZATION",
-                    color = MaterialTheme.colorScheme.primary,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(start = 12.dp)
+    if (isDeveloperOptionsVisible) {
+        ActivityScreen(
+            titleText = "Developer Options",
+            navigationIcon = {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                    contentDescription = "Back",
+                    modifier = Modifier.size(24.dp)
                 )
-
-                Column {
-                    SettingsSwitchTile(
-                        title = "Grid Layout",
-                        subtitle = if (isGridLayout) "Using grid view" else "Using list view",
-                        checked = isGridLayout,
-                        onCheckedChange = { viewModel.setGridLayout(it) },
-                        icon = {
-                            Icon(
-                                Icons.Default.GridView,
-                                null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        backgroundColor = tileColor,
-                        shape = topShape
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    SettingsSwitchTile(
-                        title = "Open Keyboard",
-                        subtitle = "Focus search at top of drawer",
-                        checked = openKeyboard,
-                        onCheckedChange = { viewModel.setOpenKeyboard(it) },
-                        icon = {
-                            Icon(
-                                Icons.Default.Keyboard,
-                                null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        backgroundColor = tileColor,
-                        shape = middleShape
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    SettingsSwitchTile(
-                        title = "Blur Effect",
-                        subtitle = "Enable glass haze",
-                        checked = blackedOutEnabled,
-                        onCheckedChange = { viewModel.setBlackedOutEnabled(it) },
-                        icon = {
-                            Icon(
-                                Icons.Default.BlurOn,
-                                null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        backgroundColor = tileColor,
-                        shape = middleShape
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    SettingsTile(
-                        title = "Theme",
-                        subtitle = "Current: $currentThemeTitle",
-                        icon = {
-                            Icon(
-                                Icons.Default.Palette,
-                                null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        backgroundColor = tileColor,
-                        shape = middleShape,
-                        onClick = { viewModel.onThemeSettingClicked() })
-                    Spacer(Modifier.height(2.dp))
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(tileColor, middleShape)
-                            .padding(vertical = 16.dp)
-                    ) {
-                        Text(
-                            "Icon Shape",
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
-                        )
-                        val drawerIconShape by viewModel.drawerIconShape.collectAsState()
-                        val entries = IconShape.entries
-                        val interactionSources =
-                            remember { entries.map { MutableInteractionSource() } }
-                        val pressedStates = remember {
-                            mutableStateListOf<Boolean>().apply {
-                                repeat(entries.size) {
-                                    add(false)
-                                }
-                            }
-                        }
-
-                        entries.forEachIndexed { index, _ ->
-                            LaunchedEffect(interactionSources[index]) {
-                                var pressStartTime = 0L
-                                interactionSources[index].interactions.collect { interaction ->
-                                    when (interaction) {
-                                        is PressInteraction.Press -> {
-                                            pressedStates[index] = true
-                                            pressStartTime = System.currentTimeMillis()
-                                        }
-
-                                        is PressInteraction.Release -> {
-                                            val duration =
-                                                System.currentTimeMillis() - pressStartTime
-                                            if (duration < 200) delay((200 - duration).milliseconds)
-                                            pressedStates[index] = false
-                                        }
-
-                                        is PressInteraction.Cancel -> pressedStates[index] = false
-                                    }
-                                }
-                            }
-                        }
-
-                        val pressedIndex = pressedStates.indexOfFirst { it }
-
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp)
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(MaterialTheme.colorScheme.surfaceContainerLowest)
-                                .padding(vertical = 12.dp)
-                                .horizontalScroll(rememberScrollState())
-                        ) {
-                            val entries = IconShape.entries
-                            Row(
-                                modifier = Modifier
-                                    .padding(horizontal = 12.dp)
-                                    .height(64.dp),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                entries.forEachIndexed { index, shape ->
-                                    val isSelected = shape == drawerIconShape
-                                    val isPressed = pressedStates[index]
-
-                                    val isNeighborPressed =
-                                        pressedIndex != -1 && abs(index - pressedIndex) == 1
-
-                                    val targetWidth = when {
-                                        isPressed -> {
-                                            val neighbors =
-                                                if (index == 0 || index == entries.size - 1) 1 else 2
-                                            64.dp + (if (neighbors == 1) 6.dp else 12.dp)
-                                        }
-
-                                        isNeighborPressed -> 58.dp
-                                        else -> 64.dp
-                                    }
-
-                                    val containerWidth by animateDpAsState(
-                                        targetValue = targetWidth,
-                                        label = "containerWidth",
-                                        animationSpec = spring(
-                                            dampingRatio = Spring.DampingRatioNoBouncy,
-                                            stiffness = Spring.StiffnessMedium
-                                        )
-                                    )
-
-                                    val containerRadius by animateDpAsState(
-                                        targetValue = when {
-                                            isPressed -> 6.dp
-                                            isSelected -> 16.dp
-                                            else -> 32.dp
-                                        }, label = "containerRadius", animationSpec = spring(
-                                            dampingRatio = Spring.DampingRatioNoBouncy,
-                                            stiffness = Spring.StiffnessMedium
-                                        )
-                                    )
-
-                                    val containerShape = RoundedCornerShape(containerRadius)
-
-                                    Box(
-                                        modifier = Modifier
-                                            .width(containerWidth)
-                                            .fillMaxHeight()
-                                            .clip(containerShape)
-                                            .background(
-                                                if (isSelected) MaterialTheme.colorScheme.primaryContainer
-                                                else MaterialTheme.colorScheme.surfaceContainerHighest.copy(
-                                                    alpha = 0.5f
-                                                )
-                                            )
-                                            .border(
-                                                width = 2.dp,
-                                                color = if (isSelected) MaterialTheme.colorScheme.primary
-                                                else Color.Transparent,
-                                                shape = containerShape
-                                            )
-                                            .clickable(
-                                                interactionSource = interactionSources[index],
-                                                indication = null
-                                            ) {
-                                                viewModel.setDrawerIconShape(shape)
-                                            }
-                                            .padding(12.dp), contentAlignment = Alignment.Center) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(32.dp) // Fixed size to prevent shape distortion
-                                                .clip(shape.getShape())
-                                                .background(
-                                                    if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
-                                                    else MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    Spacer(Modifier.height(2.dp))
-                    val drawerIconShadow by viewModel.drawerIconShadow.collectAsState()
-                    SettingsSwitchTile(
-                        title = "Icon Shadows",
-                        subtitle = "Apply depth to app icons",
-                        checked = drawerIconShadow,
-                        onCheckedChange = { viewModel.setDrawerIconShadow(it) },
-                        icon = {
-                            Icon(
-                                Icons.Default.BlurOn,
-                                null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        backgroundColor = tileColor,
-                        shape = bottomShape
-                    )
+            },
+            onNavigationIconClick = { isDeveloperOptionsVisible = false },
+            content = { _ ->
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Empty Developer Options", style = MaterialTheme.typography.bodyLarge)
                 }
+            }
+        )
+    } else {
+        DeviceConfigProvider(appSize = appSize) {
 
-                Text(
-                    "DOCK",
-                    color = MaterialTheme.colorScheme.primary,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(start = 12.dp)
-                )
+            val context = LocalContext.current
 
-                Column {
-                    SettingsSwitchTile(
-                        title = "Move with keyboard",
-                        subtitle = if (dockSafeDrawIme) "Dock moves up to stay visible" else "Dock stays at the bottom",
-                        checked = dockSafeDrawIme,
-                        onCheckedChange = { viewModel.setDockSafeDrawIme(it) },
-                        icon = {
-                            Icon(
-                                Icons.Default.Keyboard,
-                                null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        backgroundColor = tileColor,
-                        shape = standaloneShape
-                    )
+            val currentThemeTitle by viewModel.currentThemeTitle.collectAsState()
+            val showThemeDialog by viewModel.showThemeDialog.collectAsState()
+            val themeOptions = viewModel.themeOptions
+            val dialogSelectedThemeIndex by viewModel.dialogPreviewThemeIndex.collectAsState()
+            val currentLanguage by viewModel.currentLanguage.collectAsState()
+            val showClearDataDialog by viewModel.showClearDataDialog.collectAsState()
+            val showResetSettingsDialog by viewModel.showResetSettingsDialog.collectAsState()
+            val showCoverSelectionDialog by viewModel.showCoverSelectionDialog.collectAsState()
+            val coverThemeEnabled by viewModel.enableCoverTheme.collectAsState()
+
+            val showVersionDialog by viewModel.showVersionDialog.collectAsState()
+            val showSignOutDialog by viewModel.showSignOutDialog.collectAsState()
+
+            val apps by viewModel.apps.collectAsState()
+            val hiddenApps by viewModel.hiddenApps.collectAsState()
+            val timeShortcut by viewModel.timeShortcut.collectAsState()
+            val dateShortcut by viewModel.dateShortcut.collectAsState()
+            val weatherShortcut by viewModel.weatherShortcut.collectAsState()
+            val iconShape by viewModel.drawerIconShape.collectAsState()
+            val showShadow by viewModel.drawerIconShadow.collectAsState()
+
+            var configShortcutType by remember { mutableStateOf<LauncherViewModel.ShortcutType?>(null) }
+            var showHiddenAppsDialog by remember { mutableStateOf(false) }
+
+            val packageManager = context.packageManager
+            val packageName = context.packageName
+            val packageInfo = remember {
+                try {
+                    packageManager.getPackageInfo(packageName, 0)
+                } catch (_: Exception) {
+                    null
                 }
+            }
+            val appVersion = packageInfo?.versionName ?: "N/A"
+            val xenonUIVersion = BuildConfig.XENON_UI_VERSION
+            val xenonCommonsVersion = BuildConfig.XENON_COMMONS_VERSION
 
-                Text(
-                    "NOTIFICATIONS",
-                    color = MaterialTheme.colorScheme.primary,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(start = 12.dp)
-                )
-
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(tileColor, standaloneShape)
-                        .padding(16.dp)
-                ) {
-                    Text(
-                        "Notification Badges",
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    )
-                    val badgeType by viewModel.notificationBadgeType.collectAsState()
-                    XenonSingleChoiceButtonGroup(
-                        options = listOf(0, 1, 2),
-                        selectedOption = badgeType,
-                        onOptionSelect = { viewModel.setNotificationBadgeType(it) },
-                        label = { type ->
-                            when (type) {
-                                0 -> "None"
-                                1 -> "Dot"
-                                2 -> "Number"
-                                else -> ""
-                            }
-                        },
-                        unselectedIcon = { type ->
-                            Icon(
-                                imageVector = when (type) {
-                                    0 -> Icons.Default.NotificationsOff
-                                    1 -> Icons.Default.Circle
-                                    else -> Icons.Default.Numbers
-                                },
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-
-                Text(
-                    "SEARCH",
-                    color = MaterialTheme.colorScheme.primary,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(start = 12.dp)
-                )
-
-                Column {
-                    SettingsSwitchTile(
-                        title = "Advanced Search",
-                        subtitle = "Include contacts, files and web results",
-                        checked = advancedSearchEnabled,
-                        onCheckedChange = { viewModel.setAdvancedSearchEnabled(it) },
-                        icon = {
-                            Icon(
-                                Icons.Default.Search,
-                                null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        backgroundColor = tileColor,
-                        shape = topShape
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    SettingsSwitchTile(
-                        title = "Show Hidden Apps",
-                        subtitle = "Show hidden apps in search results",
-                        checked = showHiddenAppsInSearch,
-                        onCheckedChange = { viewModel.setShowHiddenAppsInSearch(it) },
-                        icon = {
-                            Icon(
-                                Icons.Default.Visibility,
-                                null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        backgroundColor = tileColor,
-                        shape = bottomShape,
-                        onClick = { showHiddenAppsDialog = true })
-                }
-
-                Text(
-                    "SHORTCUTS",
-                    color = MaterialTheme.colorScheme.primary,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(start = 12.dp)
-                )
-
-                Column {
-                    SettingsTile(
-                        title = "Time Shortcut",
-                        subtitle = timeShortcut.ifEmpty { "Not set" },
-                        icon = {
-                            Icon(
-                                Icons.Default.Schedule,
-                                null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        backgroundColor = tileColor,
-                        shape = topShape,
-                        onClick = { configShortcutType = LauncherViewModel.ShortcutType.TIME })
-                    Spacer(Modifier.height(2.dp))
-                    SettingsTile(
-                        title = "Date Shortcut",
-                        subtitle = dateShortcut.ifEmpty { "Not set" },
-                        icon = {
-                            Icon(
-                                Icons.Default.CalendarToday,
-                                null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        backgroundColor = tileColor,
-                        shape = middleShape,
-                        onClick = { configShortcutType = LauncherViewModel.ShortcutType.DATE })
-                    Spacer(Modifier.height(2.dp))
-                    SettingsTile(
-                        title = "Weather Shortcut",
-                        subtitle = weatherShortcut.ifEmpty { "Not set" },
-                        icon = {
-                            Icon(
-                                Icons.Default.Cloud,
-                                null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        backgroundColor = tileColor,
-                        shape = bottomShape,
-                        onClick = { configShortcutType = LauncherViewModel.ShortcutType.WEATHER })
-                }
-
-                Text(
-                    "SYSTEM",
-                    color = MaterialTheme.colorScheme.primary,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(start = 12.dp)
-                )
-
-                SettingsTile(
-                    title = "Default Home",
-                    subtitle = "Set as default launcher",
-                    icon = {
-                        Icon(
-                            Icons.Default.Home,
-                            null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    },
-                    backgroundColor = tileColor,
-                    shape = standaloneShape,
-                    onClick = { viewModel.onResetSettingsClicked() })
+            val containerSize = LocalWindowInfo.current.containerSize
+            val applyCoverTheme = remember(containerSize, coverThemeEnabled) {
+                viewModel.applyCoverTheme(containerSize)
             }
 
-            configShortcutType?.let { type ->
-                val initialValue = when (type) {
-                    LauncherViewModel.ShortcutType.TIME -> timeShortcut
-                    LauncherViewModel.ShortcutType.DATE -> dateShortcut
-                    LauncherViewModel.ShortcutType.WEATHER -> weatherShortcut
-                }
-                ShortcutConfigDialog(
-                    type = type,
-                    apps = apps,
-                    initialValue = initialValue,
-                    onDismiss = { configShortcutType = null },
-                    onSave = {
-                        when (type) {
-                            LauncherViewModel.ShortcutType.TIME -> viewModel.setTimeShortcut(it)
-                            LauncherViewModel.ShortcutType.DATE -> viewModel.setDateShortcut(it)
-                            LauncherViewModel.ShortcutType.WEATHER -> viewModel.setWeatherShortcut(
-                                it
+            val configuration = LocalConfiguration.current
+            val isCompact =
+                LocalDeviceConfig.current.isCommunicator || LocalDeviceConfig.current.isMindOne
+            val appHeight = configuration.screenHeightDp.dp
+
+            val isAppBarExpandable = when (layoutType) {
+                LayoutType.COVER -> false
+                LayoutType.SMALL -> false
+                LayoutType.COMPACT -> !isLandscape && !isCompact && appHeight >= 460.dp
+                LayoutType.MEDIUM -> true
+                LayoutType.EXPANDED -> true
+            }
+
+            val hazeState = rememberHazeState()
+
+            ActivityScreen(
+                titleText = "Settings",
+
+                expandable = isAppBarExpandable,
+
+                navigationIconStartPadding = MediumPadding,
+                navigationIconPadding = MediumPadding,
+                navigationIconSpacing = NoSpacing,
+                navigationIcon = {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                        contentDescription = "Navigate Back",
+                        modifier = Modifier.size(24.dp)
+                    )
+                },
+                onNavigationIconClick = onNavigateBack,
+                modifier = Modifier.hazeSource(hazeState),
+                content = { _ ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(
+                                start = LargestPadding,
+                                end = LargestPadding,
+                                top = LargestPadding,
+                                bottom = WindowInsets.safeDrawing.asPaddingValues()
+                                    .calculateBottomPadding() + LargestPadding
                             )
-                        }
-                        configShortcutType = null
-                    })
+                    ) {
+                        SettingsItems(
+                            viewModel = viewModel,
+                            currentThemeTitle = currentThemeTitle,
+                            applyCoverTheme = applyCoverTheme,
+                            coverThemeEnabled = coverThemeEnabled,
+                            currentLanguage = currentLanguage,
+                            appVersion = appVersion,
+                            state = state,
+                            onSignInClick = onSignInClick,
+                            onSignOutClick = onSignOutClick,
+                            googleAuthUiClient = googleAuthUiClient,
+                            onShowHiddenApps = { showHiddenAppsDialog = true },
+                            onNavigateToDeveloperOptions = { isDeveloperOptionsVisible = true },
+                            onConfigShortcut = { configShortcutType = it }
+                        )
+                    }
+                })
+
+            // Original Launcher Dialogs
+            configShortcutType?.let { type ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .hazeEffect(hazeState)
+                ) {
+                    val initialValue = when (type) {
+                        LauncherViewModel.ShortcutType.TIME -> timeShortcut
+                        LauncherViewModel.ShortcutType.DATE -> dateShortcut
+                        LauncherViewModel.ShortcutType.WEATHER -> weatherShortcut
+                    }
+                    ShortcutConfigDialog(
+                        type = type,
+                        apps = apps,
+                        initialValue = initialValue,
+                        iconShape = iconShape,
+                        showShadow = showShadow,
+                        onDismiss = { configShortcutType = null },
+                        onSave = {
+                            when (type) {
+                                LauncherViewModel.ShortcutType.TIME -> viewModel.setTimeShortcut(it)
+                                LauncherViewModel.ShortcutType.DATE -> viewModel.setDateShortcut(it)
+                                LauncherViewModel.ShortcutType.WEATHER -> viewModel.setWeatherShortcut(
+                                    it
+                                )
+                            }
+                            configShortcutType = null
+                        })
+                }
             }
 
             if (showHiddenAppsDialog) {
-                val listState = rememberLazyListState()
-                val showTopDivider by remember {
-                    derivedStateOf { listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0 }
-                }
-                val showBottomDivider by remember {
-                    derivedStateOf { listState.canScrollForward }
-                }
-
-                XenonDialog(
-                    onDismissRequest = { showHiddenAppsDialog = false },
-                    properties = DialogProperties(usePlatformDefaultWidth = true),
-                    title = "Hidden Apps",
-                    contentManagesScrolling = true,
-                    externalShowTopDivider = showTopDivider,
-                    externalShowBottomDivider = showBottomDivider
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .hazeEffect(hazeState)
                 ) {
-                    val hiddenAppInfos = apps.filter { it.packageName in hiddenApps }
-                    LazyColumn(
-                        state = listState, modifier = Modifier.heightIn(max = 400.dp)
+                    val listState = rememberLazyListState()
+                    val showTopDivider by remember {
+                        derivedStateOf { listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0 }
+                    }
+                    val showBottomDivider by remember {
+                        derivedStateOf { listState.canScrollForward }
+                    }
+
+                    XenonDialog(
+                        onDismissRequest = { showHiddenAppsDialog = false },
+                        properties = DialogProperties(usePlatformDefaultWidth = true),
+                        title = "Hidden Apps",
+                        contentManagesScrolling = true,
+                        externalShowTopDivider = showTopDivider,
+                        externalShowBottomDivider = showBottomDivider
                     ) {
-                        if (hiddenAppInfos.isEmpty()) {
-                            item {
-                                Text("No apps are hidden.", modifier = Modifier.padding(16.dp))
-                            }
-                        } else {
-                            items(hiddenAppInfos) { app ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    app.icon?.let { icon ->
-                                        Image(
-                                            bitmap = icon.toBitmap().asImageBitmap(),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(32.dp)
+                        val hiddenAppInfos = apps.filter { it.packageName in hiddenApps }
+                        LazyColumn(
+                            state = listState, modifier = Modifier.heightIn(max = 400.dp)
+                        ) {
+                            if (hiddenAppInfos.isEmpty()) {
+                                item {
+                                    Text("No apps are hidden.", modifier = Modifier.padding(16.dp))
+                                }
+                            } else {
+                                items(hiddenAppInfos) { app ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        com.xenonware.launcher.ui.res.AppIcon(
+                                            app = app,
+                                            iconShape = iconShape,
+                                            showShadow = showShadow,
+                                            size = 32.dp
                                         )
-                                    }
-                                    Text(app.name, modifier = Modifier.weight(1f))
-                                    IconButton(onClick = { viewModel.unhideApp(app.packageName) }) {
-                                        Icon(
-                                            Icons.Rounded.Visibility, contentDescription = "Unhide"
-                                        )
+                                        Text(app.label, modifier = Modifier.weight(1f))
+                                        IconButton(onClick = { viewModel.unhideApp(app.packageName) }) {
+                                            Icon(
+                                                Icons.Rounded.Visibility,
+                                                contentDescription = "Unhide"
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -655,5 +331,109 @@ fun SettingsLayout(
                     }
                 }
             }
-        })
+
+            // Standard Settings Dialogs
+            if (showThemeDialog) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .hazeEffect(hazeState)
+                ) {
+                    DialogThemeSelection(
+                        themeOptions = themeOptions,
+                        currentThemeIndex = dialogSelectedThemeIndex,
+                        onThemeSelected = { index -> viewModel.onThemeOptionSelectedInDialog(index) },
+                        onDismiss = { viewModel.dismissThemeDialog() },
+                        onConfirm = { viewModel.applySelectedTheme() },
+                        dialogTitle = "Theme",
+                        confirmText = "OK"
+                    )
+                }
+            }
+            if (showCoverSelectionDialog) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .hazeEffect(hazeState)
+                ) {
+                    DialogCoverDisplaySelection(
+                        onConfirm = {
+                            viewModel.saveCoverDisplayMetrics(
+                                containerSize
+                            )
+                        },
+                        onDismiss = { viewModel.dismissCoverThemeDialog() },
+                        dialogTitle = "Cover Screen",
+                        confirmText = "Yes",
+                        action2Text = "No",
+                        descriptionText = "Is this your cover display?"
+                    )
+                }
+            }
+            if (showClearDataDialog) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .hazeEffect(hazeState)
+                ) {
+                    DialogClearDataConfirmation(
+                        onConfirm = { viewModel.confirmClearData() },
+                        onDismiss = { viewModel.dismissClearDataDialog() },
+                        dialogTitle = "Clear Data",
+                        confirmText = "Confirm",
+                        descriptionText = "Are you sure you want to clear all data?"
+                    )
+                }
+            }
+            if (showResetSettingsDialog) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .hazeEffect(hazeState)
+                ) {
+                    DialogResetSettingsConfirmation(
+                        onConfirm = { viewModel.confirmResetSettings() },
+                        onDismiss = { viewModel.dismissResetSettingsDialog() },
+                        dialogTitle = "Reset Settings",
+                        confirmText = "Confirm",
+                        descriptionText = "Are you sure you want to reset all settings?"
+                    )
+                }
+            }
+            if (showVersionDialog) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .hazeEffect(hazeState)
+                ) {
+                    DialogVersionNumber(
+                        onDismiss = { viewModel.dismissVersionDialog() },
+                        dialogTitle = "Version",
+                        confirmText = "Close",
+                        appString = "App Version",
+                        appVersion = appVersion,
+                        xenonUiString = "Xenon UI",
+                        xenonUIVersion = xenonUIVersion,
+                        xenonCommonsString = "Xenon Commons",
+                        xenonCommonsVersion = xenonCommonsVersion
+                    )
+                }
+            }
+            if (showSignOutDialog) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .hazeEffect(hazeState)
+                ) {
+                    DialogSignOut(
+                        onConfirm = onConfirmSignOut,
+                        onDismiss = { viewModel.dismissSignOutDialog() },
+                        dialogTitle = "Sign Out",
+                        confirmText = "Confirm",
+                        descriptionText = "Are you sure you want to sign out?"
+                    )
+                }
+            }
+        }
+    }
 }

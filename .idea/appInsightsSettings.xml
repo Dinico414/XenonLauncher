@@ -8,10 +8,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.xenonware.launcher" />
+                  <option name="mobileSdkAppId" value="1:8027822132:android:f517e55851d137eabe1261" />
+                  <option name="projectId" value="custom-2d30c" />
+                  <option name="projectNumber" value="8027822132" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

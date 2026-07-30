@@ -16,3 +16,4 @@ local.properties
 /.artifacts
 /.kotlin
 /app/src/main/java/com/xenonware/launcher/.artifacts
+app/google-services.json

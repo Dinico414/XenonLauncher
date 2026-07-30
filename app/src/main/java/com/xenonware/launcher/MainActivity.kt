@@ -39,8 +39,8 @@ import androidx.compose.ui.unit.dp
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.xenonware.launcher.ui.layouts.main.AppDrawer
-import com.xenonware.launcher.ui.pages.NotificationPage
 import com.xenonware.launcher.ui.pages.MediaPage
+import com.xenonware.launcher.ui.pages.NotificationPage
 import com.xenonware.launcher.ui.pages.WidgetPage
 import com.xenonware.launcher.ui.res.ShortcutConfigDialog
 import com.xenonware.launcher.ui.res.dock.DockPill
@@ -310,10 +310,15 @@ fun LauncherScreen(
                     com.xenonware.launcher.viewmodel.LauncherViewModel.ShortcutType.DATE -> prefs.dateShortcut
                     com.xenonware.launcher.viewmodel.LauncherViewModel.ShortcutType.WEATHER -> prefs.weatherShortcut
                 }
+                val iconShape by viewModel.drawerIconShape.collectAsState()
+                val showShadow by viewModel.drawerIconShadow.collectAsState()
+                
                 ShortcutConfigDialog(
                     type = type,
                     apps = apps,
                     initialValue = initialValue,
+                    iconShape = iconShape,
+                    showShadow = showShadow,
                     onDismiss = { viewModel.setConfigShortcut(null) },
                     onSave = { viewModel.saveShortcut(type, it) }
                 )

@@ -92,6 +92,44 @@ class SharedPreferenceManager(context: Context) {
         get() = prefs.getBoolean("drawer_icon_shadow", false)
         set(value) = prefs.edit().putBoolean("drawer_icon_shadow", value).apply()
 
+    var developerModeEnabled: Boolean
+        get() = prefs.getBoolean("developer_mode_enabled", false)
+        set(value) = prefs.edit().putBoolean("developer_mode_enabled", value).apply()
+
+    var isUserLoggedIn: Boolean
+        get() = prefs.getBoolean("is_user_logged_in", false)
+        set(value) = prefs.edit().putBoolean("is_user_logged_in", value).apply()
+
+    var coverThemeEnabled: Boolean
+        get() = prefs.getBoolean("cover_theme_enabled", false)
+        set(value) = prefs.edit().putBoolean("cover_theme_enabled", value).apply()
+
+    var coverDisplaySize: androidx.compose.ui.unit.IntSize
+        get() {
+            val dim1 = prefs.getInt("cover_display_dimension_1", 0)
+            val dim2 = prefs.getInt("cover_display_dimension_2", 0)
+            return androidx.compose.ui.unit.IntSize(dim1, dim2)
+        }
+        set(value) {
+            prefs.edit().apply {
+                putInt("cover_display_dimension_1", kotlin.math.min(value.width, value.height))
+                putInt("cover_display_dimension_2", kotlin.math.max(value.width, value.height))
+            }.apply()
+        }
+
+    fun isCoverThemeApplied(currentDisplaySize: androidx.compose.ui.unit.IntSize): Boolean {
+        if (!coverThemeEnabled) return false
+        val storedDimension1 = prefs.getInt("cover_display_dimension_1", 0)
+        val storedDimension2 = prefs.getInt("cover_display_dimension_2", 0)
+        if (storedDimension1 == 0 || storedDimension2 == 0) return false
+        val currentMatchesStoredOrder =
+            (currentDisplaySize.width == storedDimension1 && currentDisplaySize.height == storedDimension2)
+        val currentMatchesSwappedOrder =
+            (currentDisplaySize.width == storedDimension2 && currentDisplaySize.height == storedDimension1)
+
+        return currentMatchesStoredOrder || currentMatchesSwappedOrder
+    }
+
     fun getAppOverrides(): Map<String, AppOverride> {
         val jsonStr = prefs.getString("app_overrides", "{}") ?: "{}"
         val json = JSONObject(jsonStr)

@@ -44,6 +44,8 @@ fun ShortcutConfigDialog(
     type: LauncherViewModel.ShortcutType,
     apps: List<AppInfo>,
     initialValue: String,
+    iconShape: IconShape,
+    showShadow: Boolean,
     onDismiss: () -> Unit,
     onSave: (String) -> Unit,
 ) {
@@ -164,16 +166,15 @@ fun ShortcutConfigDialog(
                                 selectionMode = "app"
                             })
 
-                        if (app.icon != null) {
-                            Image(
-                                bitmap = app.icon.toBitmap().asImageBitmap(),
-                                contentDescription = null,
-                                modifier = Modifier.size(40.dp)
-                            )
-                        }
+                        AppIcon(
+                            app = app,
+                            iconShape = iconShape,
+                            showShadow = showShadow,
+                            size = 40.dp
+                        )
 
                         Text(
-                            text = app.name,
+                            text = app.label,
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                             color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer

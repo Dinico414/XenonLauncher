@@ -1,6 +1,8 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.google.services)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -25,6 +27,8 @@ android {
                 "proguard-rules.pro"
             )
             signingConfig = signingConfigs.getByName("debug")
+            buildConfigField("String", "XENON_UI_VERSION", "\"1.0.0\"")
+            buildConfigField("String", "XENON_COMMONS_VERSION", "\"2.5.3\"")
         }
         release {
             isMinifyEnabled = true
@@ -34,6 +38,8 @@ android {
                 "proguard-rules.pro"
             )
             signingConfig = signingConfigs.getByName("debug")
+            buildConfigField("String", "XENON_UI_VERSION", "\"1.0.0\"")
+            buildConfigField("String", "XENON_COMMONS_VERSION", "\"2.5.3\"")
         }
     }
     compileOptions {
@@ -42,11 +48,16 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
 dependencies {
     implementation(libs.androidx.compose.remote.creation.compose)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.google.firebase.auth)
+    implementation(libs.googleid)
     implementation(libs.material3)
     implementation(libs.xenon.commons)
     implementation(platform(libs.androidx.compose.bom))
@@ -57,6 +68,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.appcompat)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.haze)
     implementation(libs.haze.materials)
@@ -74,4 +86,9 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
     implementation(libs.play.services.location)
+    implementation(libs.play.services.auth)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.androidx.lifecycle.runtime.compose)
 }
