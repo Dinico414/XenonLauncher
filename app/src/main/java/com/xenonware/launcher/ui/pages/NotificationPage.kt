@@ -327,47 +327,29 @@ fun NotificationPage(
                     )
                 }
 
-                if (notificationCount == 0) {
-                    Box(modifier = Modifier
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
                         .weight(1f)
-                        .fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    if (notificationCount == 0) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth(), contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                imageVector = Icons.Rounded.EmojiEvents,
-                                contentDescription = null,
-                                tint = Color.White.copy(alpha = 0.8f),
-                                modifier = Modifier.size(64.dp)
-                            )
-                            Text(
-                                text = "You're up to date",
-                                color = Color.White.copy(alpha = 0.8f),
-                                fontSize = 18.sp,
-                                fontFamily = QuicksandTitleVariable,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(dockAreaHeight)) 
-                } else {
-                    if (selectedPackage == null) {
-                        Box(modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth(), contentAlignment = Alignment.Center) {
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Rounded.NotificationsActive,
+                                    imageVector = Icons.Rounded.EmojiEvents,
                                     contentDescription = null,
                                     tint = Color.White.copy(alpha = 0.8f),
                                     modifier = Modifier.size(64.dp)
                                 )
                                 Text(
-                                    text = "You have $notificationCount notifications",
+                                    text = "You're up to date",
                                     color = Color.White.copy(alpha = 0.8f),
                                     fontSize = 18.sp,
                                     fontFamily = QuicksandTitleVariable,
@@ -375,93 +357,147 @@ fun NotificationPage(
                                 )
                             }
                         }
+                        Spacer(Modifier.height(dockAreaHeight))
                     } else {
-                        val pkg = selectedPackage!!
-                        val app = apps.find { it.packageName == pkg }
-                        val appColor = remember(app) { ColorUtils.getDominantColor(app?.icon) }
-
-                        LazyColumn(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxWidth()
-                                .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                                .drawWithContent {
-                                    drawContent()
-                                    val fadeHeight = 16.dp.toPx()
-                                    if (size.height > 0) {
-                                        // Top fade
-                                        drawRect(
-                                            brush = Brush.verticalGradient(
-                                                0f to Color.Transparent,
-                                                (fadeHeight / size.height).coerceIn(0f, 1f) to Color.Black
-                                            ),
-                                            blendMode = BlendMode.DstIn
+                        Box(modifier = Modifier.weight(1f)) {
+                            if (selectedPackage == null) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize(), contentAlignment = Alignment.Center
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.NotificationsActive,
+                                            contentDescription = null,
+                                            tint = Color.White.copy(alpha = 0.8f),
+                                            modifier = Modifier.size(64.dp)
                                         )
-                                        // Bottom fade
-                                        drawRect(
-                                            brush = Brush.verticalGradient(
-                                                ((size.height - fadeHeight) / size.height).coerceIn(0f, 1f) to Color.Black,
-                                                1f to Color.Transparent
-                                            ),
-                                            blendMode = BlendMode.DstIn
+                                        Text(
+                                            text = "You have $notificationCount notifications",
+                                            color = Color.White.copy(alpha = 0.8f),
+                                            fontSize = 18.sp,
+                                            fontFamily = QuicksandTitleVariable,
+                                            fontWeight = FontWeight.Medium
                                         )
                                     }
-                                },
-                            verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.Bottom),
-                            contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
-                        ) {
-                            val notificationsInGroup = groupedNotifications[pkg]?.reversed() ?: emptyList()
-                            itemsIndexed(notificationsInGroup, key = { _, it -> it.key }) { index, notification ->
-                                val offsetAbove = if (index > 0) offsets[notificationsInGroup[index - 1].key] ?: 0f else 0f
-                                val offsetBelow = if (index < notificationsInGroup.size - 1) offsets[notificationsInGroup[index + 1].key] ?: 0f else 0f
+                                }
+                            } else {
+                                val pkg = selectedPackage!!
+                                val app = apps.find { it.packageName == pkg }
+                                val appColor =
+                                    remember(app) { ColorUtils.getDominantColor(app?.icon) }
 
-                                NotificationItem(
-                                    notification = notification,
-                                    appColor = appColor,
-                                    isFirst = index == 0,
-                                    isLast = index == notificationsInGroup.size - 1,
-                                    offsetAbove = offsetAbove,
-                                    offsetBelow = offsetBelow,
-                                    onOffsetChanged = { offsets[notification.key] = it },
-                                    modifier = Modifier.animateItem(
-                                        fadeInSpec = tween(durationMillis = 200),
-                                        placementSpec = spring(
-                                            dampingRatio = Spring.DampingRatioNoBouncy,
-                                            stiffness = Spring.StiffnessMedium
-                                        ),
-                                        fadeOutSpec = tween(durationMillis = 200)
-                                    ),
-                                    onOpen = {
-                                        try {
-                                            val options = ActivityOptions.makeBasic()
-                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                                                options.setPendingIntentBackgroundActivityStartMode(
-                                                    ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+                                LazyColumn(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                                        .drawWithContent {
+                                            drawContent()
+                                            val fadeHeight = 16.dp.toPx()
+                                            if (size.height > 0) {
+                                                // Top fade
+                                                drawRect(
+                                                    brush = Brush.verticalGradient(
+                                                        0f to Color.Transparent,
+                                                        (fadeHeight / size.height).coerceIn(
+                                                            0f,
+                                                            1f
+                                                        ) to Color.Black
+                                                    ),
+                                                    blendMode = BlendMode.DstIn
+                                                )
+                                                // Bottom fade
+                                                drawRect(
+                                                    brush = Brush.verticalGradient(
+                                                        ((size.height - fadeHeight) / size.height).coerceIn(
+                                                            0f,
+                                                            1f
+                                                        ) to Color.Black,
+                                                        1f to Color.Transparent
+                                                    ),
+                                                    blendMode = BlendMode.DstIn
                                                 )
                                             }
-                                            notification.contentIntent?.send(context, 0, null, null, null, null, options.toBundle())
-                                        } catch (e: Exception) {
-                                            try { notification.contentIntent?.send() } catch (_: Exception) {}
-                                        }
-                                    },
-                                    onDismiss = { onDismissNotification(notification.key) }
-                                )
+                                        },
+                                    verticalArrangement = Arrangement.spacedBy(
+                                        2.dp,
+                                        Alignment.Bottom
+                                    ),
+                                    contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
+                                ) {
+                                    val notificationsInGroup =
+                                        groupedNotifications[pkg]?.reversed() ?: emptyList()
+                                    itemsIndexed(
+                                        notificationsInGroup,
+                                        key = { _, it -> it.key }) { index, notification ->
+                                        val offsetAbove =
+                                            if (index > 0) offsets[notificationsInGroup[index - 1].key] ?: 0f else 0f
+                                        val offsetBelow =
+                                            if (index < notificationsInGroup.size - 1) offsets[notificationsInGroup[index + 1].key] ?: 0f else 0f
+
+                                        NotificationItem(
+                                            notification = notification,
+                                            appColor = appColor,
+                                            isFirst = index == 0,
+                                            isLast = index == notificationsInGroup.size - 1,
+                                            offsetAbove = offsetAbove,
+                                            offsetBelow = offsetBelow,
+                                            onOffsetChanged = { offsets[notification.key] = it },
+                                            modifier = Modifier.animateItem(
+                                                fadeInSpec = tween(durationMillis = 200),
+                                                placementSpec = spring(
+                                                    dampingRatio = Spring.DampingRatioNoBouncy,
+                                                    stiffness = Spring.StiffnessMedium
+                                                ),
+                                                fadeOutSpec = tween(durationMillis = 200)
+                                            ),
+                                            onOpen = {
+                                                try {
+                                                    val options = ActivityOptions.makeBasic()
+                                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                                                        options.setPendingIntentBackgroundActivityStartMode(
+                                                            ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+                                                        )
+                                                    }
+                                                    notification.contentIntent?.send(
+                                                        context,
+                                                        0,
+                                                        null,
+                                                        null,
+                                                        null,
+                                                        null,
+                                                        options.toBundle()
+                                                    )
+                                                } catch (e: Exception) {
+                                                    try {
+                                                        notification.contentIntent?.send()
+                                                    } catch (_: Exception) {
+                                                    }
+                                                }
+                                            },
+                                            onDismiss = { onDismissNotification(notification.key) }
+                                        )
+                                    }
+                                }
                             }
                         }
-                    }
 
-                    NotificationTabs(
-                        sortedAppPackages = sortedAppPackages,
-                        groupedNotifications = groupedNotifications,
-                        selectedPackage = selectedPackage,
-                        apps = apps,
-                        viewModel = viewModel,
-                        onDismissAllNotifications = onDismissAllNotifications,
-                        onPackageSelected = { selectedPackage = it },
-                        deleteButtonBounds = deleteButtonBounds,
-                        onDeleteButtonBoundsChanged = { deleteButtonBounds = it },
-                        modifier = Modifier.padding(bottom = dockAreaHeight)
-                    )
+                        NotificationTabs(
+                            sortedAppPackages = sortedAppPackages,
+                            groupedNotifications = groupedNotifications,
+                            selectedPackage = selectedPackage,
+                            apps = apps,
+                            viewModel = viewModel,
+                            onDismissAllNotifications = onDismissAllNotifications,
+                            onPackageSelected = { selectedPackage = it },
+                            deleteButtonBounds = deleteButtonBounds,
+                            onDeleteButtonBoundsChanged = { deleteButtonBounds = it },
+                            modifier = Modifier.padding(bottom = dockAreaHeight)
+                        )
+                    }
                 }
             }
         }
