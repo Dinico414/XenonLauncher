@@ -58,7 +58,8 @@ data class CalendarEvent(
     val title: String,
     val startTime: Long,
     val endTime: Long,
-    val location: String?
+    val location: String?,
+    val isAllDay: Boolean
 )
 
 class LauncherViewModel(application: Application) : AndroidViewModel(application) {
@@ -968,7 +969,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 android.provider.CalendarContract.Events.TITLE,
                 android.provider.CalendarContract.Events.DTSTART,
                 android.provider.CalendarContract.Events.DTEND,
-                android.provider.CalendarContract.Events.EVENT_LOCATION
+                android.provider.CalendarContract.Events.EVENT_LOCATION,
+                android.provider.CalendarContract.Events.ALL_DAY
             )
             val now = System.currentTimeMillis()
             val tomorrow = now + 24 * 60 * 60 * 1000
@@ -981,6 +983,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 val startIdx = cursor.getColumnIndex(android.provider.CalendarContract.Events.DTSTART)
                 val endIdx = cursor.getColumnIndex(android.provider.CalendarContract.Events.DTEND)
                 val locIdx = cursor.getColumnIndex(android.provider.CalendarContract.Events.EVENT_LOCATION)
+                val allDayIdx = cursor.getColumnIndex(android.provider.CalendarContract.Events.ALL_DAY)
 
                 while (cursor.moveToNext() && events.size < 5) {
                     val title = cursor.getString(titleIdx) ?: "No Title"
@@ -989,7 +992,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                             title = title,
                             startTime = cursor.getLong(startIdx),
                             endTime = cursor.getLong(endIdx),
-                            location = cursor.getString(locIdx)
+                            location = cursor.getString(locIdx),
+                            isAllDay = cursor.getInt(allDayIdx) != 0
                         )
                     )
                 }
