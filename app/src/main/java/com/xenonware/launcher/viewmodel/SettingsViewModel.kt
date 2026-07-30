@@ -4,6 +4,7 @@ import android.app.ActivityManager
 import android.app.Application
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Build
@@ -108,8 +109,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     )
     val currentThemeTitle: StateFlow<String> = _currentThemeTitle.asStateFlow()
 
-    private val _blackedOutModeEnabled = MutableStateFlow(sharedPreferenceManager.blurEnabled)
+    private val _blackedOutModeEnabled = MutableStateFlow(sharedPreferenceManager.blackedOutModeEnabled)
     val blackedOutModeEnabled: StateFlow<Boolean> = _blackedOutModeEnabled.asStateFlow()
+
+    private val _blurEnabled = MutableStateFlow(sharedPreferenceManager.blurEnabled)
+    val blurEnabled: StateFlow<Boolean> = _blurEnabled.asStateFlow()
 
     private val _isGridLayout = MutableStateFlow(sharedPreferenceManager.isGridLayout)
     val isGridLayout: StateFlow<Boolean> = _isGridLayout.asStateFlow()
@@ -235,8 +239,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun setBlackedOutEnabled(enabled: Boolean) {
-        sharedPreferenceManager.blurEnabled = enabled
+        sharedPreferenceManager.blackedOutModeEnabled = enabled
         _blackedOutModeEnabled.value = enabled
+    }
+
+    fun setBlurEnabled(enabled: Boolean) {
+        sharedPreferenceManager.blurEnabled = enabled
+        _blurEnabled.value = enabled
     }
 
     fun setGridLayout(enabled: Boolean) {
@@ -414,10 +423,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             sharedPreferenceManager.showHiddenAppsInSearch = false
             sharedPreferenceManager.coverThemeEnabled = false
             sharedPreferenceManager.developerModeEnabled = false
+            sharedPreferenceManager.blackedOutModeEnabled = false
 
             _persistedThemeIndexFlow.value = 2
             _dialogPreviewThemeIndex.value = 2
-            _blackedOutModeEnabled.value = true
+            _blackedOutModeEnabled.value = false
+            _blurEnabled.value = true
             _isGridLayout.value = true
             _openKeyboard.value = false
             _advancedSearchEnabled.value = true
@@ -510,6 +521,32 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun dismissDeveloperOptions() {
         _showDeveloperOptions.value = false
+    }
+
+    fun isDefaultLauncher(context: Context): Boolean {
+        val intent = Intent(Intent.ACTION_MAIN)
+        intent.addCategory(Intent.CATEGORY_HOME)
+        val resolveInfo = context.packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
+        return resolveInfo?.activityInfo?.packageName == context.packageName
+    }
+
+    fun openLauncherSelector(context: Context) {
+        val intent = Intent(Settings.ACTION_HOME_SETTINGS)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        try {
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            val selectorIntent = Intent(Intent.ACTION_MAIN)
+            selectorIntent.addCategory(Intent.CATEGORY_HOME)
+            selectorIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(selectorIntent)
+        }
+    }
+
+    fun openAccessibilitySettings(context: Context) {
+        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
     }
 
     private fun restartApplication(context: Context) {

@@ -102,6 +102,7 @@ class MainActivity : ComponentActivity() {
                 val calendarEvents by viewModel.calendarEvents.collectAsState()
                 val dockSafeDrawIme by viewModel.dockSafeDrawIme.collectAsState()
                 val configShortcutType by viewModel.configShortcutType.collectAsState()
+                val blurSetting by viewModel.blurEnabled.collectAsState()
 
                 LauncherScreen(
                     viewModel = viewModel,
@@ -122,6 +123,7 @@ class MainActivity : ComponentActivity() {
                     calendarEvents = calendarEvents,
                     dockSafeDrawIme = dockSafeDrawIme,
                     configShortcutType = configShortcutType,
+                    blurSetting = blurSetting,
                     onAppClick = { viewModel.launchApp(it) },
                     onOpenSettings = {
                         startActivity(Intent(this, SettingsActivity::class.java))
@@ -151,7 +153,8 @@ fun LauncherScreen(
     isCharging: Boolean,
     calendarEvents: List<com.xenonware.launcher.viewmodel.CalendarEvent>,
     dockSafeDrawIme: Boolean,
-    configShortcutType: com.xenonware.launcher.viewmodel.LauncherViewModel.ShortcutType?,
+    configShortcutType: LauncherViewModel.ShortcutType?,
+    blurSetting: Boolean,
     onAppClick: (String) -> Unit,
     onOpenSettings: () -> Unit
 ) {
@@ -173,7 +176,7 @@ fun LauncherScreen(
     val mediaBlurProgress = 1f - (pagerState.currentPage + pagerState.currentPageOffsetFraction).coerceIn(0f, 1f)
     val blurProgress = appDrawerBlurProgress.coerceAtLeast(mediaBlurProgress)
 
-    val blurAvailable = rememberBlurAvailable()
+    val blurAvailable = rememberBlurAvailable() && blurSetting
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
 
@@ -185,14 +188,14 @@ fun LauncherScreen(
         }
     }
 
-    WindowBlurBehind(radiusPx = (30 * blurProgress).toInt())
+    WindowBlurBehind(radiusPx = if (blurSetting) (30 * blurProgress).toInt() else 0)
 
     DragHandler {
         Box(modifier = Modifier.fillMaxSize()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .hazeSource(state = hazeState)
+                    .then(if (blurSetting) Modifier.hazeSource(state = hazeState) else Modifier)
             ) {
                 Box(
                     modifier = Modifier
@@ -265,50 +268,51 @@ fun LauncherScreen(
                         onToggleLayout = { viewModel.setGridLayout(!isGridLayout) },
                         openKeyboard = openKeyboard,
                         onToggleOpenKeyboard = { viewModel.setOpenKeyboard(!openKeyboard) },
-                        onProgress = { drawerInteractiveProgress = it }
+                        onProgress = { drawerInteractiveProgress = it },
+                        blurEnabled = blurSetting
                     )
                 }
             }
 
-            // DOCK LAYER
-            DockPill(
-                modifier = Modifier.align(Alignment.BottomCenter),
-                apps = pinnedApps,
-                notifications = notifications,
-                badgeType = badgeType,
-                mediaState = viewModel.mediaState,
-                isMediaPermissionGranted = viewModel.isMediaPermissionGranted,
-                notificationCount = notificationCount,
-                currentTime = currentTime,
-                currentDate = currentDate,
-                weatherTemp = weatherTemp,
-                weatherCondition = weatherCondition,
-                onAppClick = onAppClick,
-                onSettingsClick = onOpenSettings,
-                onFabClick = { isAppDrawerVisible = !isAppDrawerVisible },
-                onMediaPlayPause = { viewModel.togglePlayPause() },
-                onMediaSkipNext = { viewModel.skipNext() },
-                onOpenMediaPermission = { viewModel.openNotificationAccessSettings() },
-                onTimeClick = { viewModel.handleShortcutClick(com.xenonware.launcher.viewmodel.LauncherViewModel.ShortcutType.TIME) },
-                onDateClick = { viewModel.handleShortcutClick(com.xenonware.launcher.viewmodel.LauncherViewModel.ShortcutType.DATE) },
-                onWeatherClick = { viewModel.handleShortcutClick(com.xenonware.launcher.viewmodel.LauncherViewModel.ShortcutType.WEATHER) },
-                isAppDrawerVisible = isAppDrawerVisible,
-                hazeState = hazeState,
-                progress = batteryLevel,
-                isCharging = isCharging,
-                dockSafeDrawIme = dockSafeDrawIme,
-                onUnpinApp = { viewModel.unpinApp(it) },
-                onPinApp = { pkg, index -> viewModel.pinApp(pkg, index) },
-                onReorderApp = { from, to -> viewModel.reorderPinnedApp(from, to) }
-            )
+                // DOCK LAYER
+                DockPill(
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                    apps = pinnedApps,
+                    notifications = notifications,
+                    badgeType = badgeType,
+                    mediaState = viewModel.mediaState,
+                    isMediaPermissionGranted = viewModel.isMediaPermissionGranted,
+                    notificationCount = notificationCount,
+                    currentTime = currentTime,
+                    currentDate = currentDate,
+                    weatherTemp = weatherTemp,
+                    weatherCondition = weatherCondition,
+                    onAppClick = onAppClick,
+                    onSettingsClick = onOpenSettings,
+                    onFabClick = { isAppDrawerVisible = !isAppDrawerVisible },
+                    onMediaPlayPause = { viewModel.togglePlayPause() },
+                    onMediaSkipNext = { viewModel.skipNext() },
+                    onOpenMediaPermission = { viewModel.openNotificationAccessSettings() },
+                    onTimeClick = { viewModel.handleShortcutClick(LauncherViewModel.ShortcutType.TIME) },
+                    onDateClick = { viewModel.handleShortcutClick(LauncherViewModel.ShortcutType.DATE) },
+                    onWeatherClick = { viewModel.handleShortcutClick(LauncherViewModel.ShortcutType.WEATHER) },
+                    isAppDrawerVisible = isAppDrawerVisible,
+                    hazeState = if (blurSetting) hazeState else null,
+                    progress = batteryLevel,
+                    isCharging = isCharging,
+                    dockSafeDrawIme = dockSafeDrawIme,
+                    onUnpinApp = { viewModel.unpinApp(it) },
+                    onPinApp = { pkg, index -> viewModel.pinApp(pkg, index) },
+                    onReorderApp = { from, to -> viewModel.reorderPinnedApp(from, to) }
+                )
             
             configShortcutType?.let { type ->
                 val context = androidx.compose.ui.platform.LocalContext.current
                 val prefs = remember { com.xenonware.launcher.data.SharedPreferenceManager(context) }
                 val initialValue = when (type) {
-                    com.xenonware.launcher.viewmodel.LauncherViewModel.ShortcutType.TIME -> prefs.timeShortcut
-                    com.xenonware.launcher.viewmodel.LauncherViewModel.ShortcutType.DATE -> prefs.dateShortcut
-                    com.xenonware.launcher.viewmodel.LauncherViewModel.ShortcutType.WEATHER -> prefs.weatherShortcut
+                    LauncherViewModel.ShortcutType.TIME -> prefs.timeShortcut
+                    LauncherViewModel.ShortcutType.DATE -> prefs.dateShortcut
+                    LauncherViewModel.ShortcutType.WEATHER -> prefs.weatherShortcut
                 }
                 val iconShape by viewModel.drawerIconShape.collectAsState()
                 val showShadow by viewModel.drawerIconShadow.collectAsState()

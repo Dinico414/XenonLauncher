@@ -86,6 +86,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 loadApps() // Reload icons when shape changes
             }
             "drawer_icon_shadow" -> _drawerIconShadow.value = prefManager.drawerIconShadow
+            "blur_enabled" -> _blurEnabled.value = prefManager.blurEnabled
             "app_overrides" -> loadApps()
         }
     }
@@ -107,6 +108,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private val _drawerIconShadow = MutableStateFlow(prefManager.drawerIconShadow)
     val drawerIconShadow: StateFlow<Boolean> = _drawerIconShadow
+
+    private val _blurEnabled = MutableStateFlow(prefManager.blurEnabled)
+    val blurEnabled: StateFlow<Boolean> = _blurEnabled
 
     private val _pinnedApps = MutableStateFlow<List<AppInfo>>(emptyList())
     val pinnedApps: StateFlow<List<AppInfo>> = _pinnedApps

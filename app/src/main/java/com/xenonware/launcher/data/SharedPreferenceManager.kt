@@ -92,6 +92,10 @@ class SharedPreferenceManager(context: Context) {
         get() = prefs.getBoolean("drawer_icon_shadow", false)
         set(value) = prefs.edit().putBoolean("drawer_icon_shadow", value).apply()
 
+    var blackedOutModeEnabled: Boolean
+        get() = prefs.getBoolean("blacked_out_mode_enabled", false)
+        set(value) = prefs.edit().putBoolean("blacked_out_mode_enabled", value).apply()
+
     var developerModeEnabled: Boolean
         get() = prefs.getBoolean("developer_mode_enabled", false)
         set(value) = prefs.edit().putBoolean("developer_mode_enabled", value).apply()

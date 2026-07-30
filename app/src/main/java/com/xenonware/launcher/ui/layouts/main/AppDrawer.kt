@@ -73,7 +73,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.MaterialTheme.typography
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -171,6 +170,7 @@ fun AppDrawer(
     openKeyboard: Boolean = false,
     onToggleOpenKeyboard: () -> Unit = {},
     onProgress: (Float) -> Unit = {},
+    blurEnabled: Boolean = true,
 ) {
     val dragDropState = LocalDragDropState.current
     val context = LocalContext.current
@@ -199,7 +199,7 @@ fun AppDrawer(
     val groupedNotifications = remember(notifications) {
         notifications.groupBy { it.packageName }
     }
-    
+
     var appToEdit by remember { mutableStateOf<AppInfo?>(null) }
     val advancedSearchEnabled by viewModel.advancedSearchEnabled.collectAsState()
     val showHiddenAppsInSearch by viewModel.showHiddenAppsInSearch.collectAsState()
@@ -402,7 +402,7 @@ fun AppDrawer(
                 selectedSearchType = SearchType.Apps
                 focusManager.clearFocus()
                 keyboardController?.hide()
-                
+
                 // Animate to 1.0 (fully dismissed) to sync with the current gesture progress
                 searchBackProgress.animateTo(1f, tween(300))
                 // Reset for next time
@@ -490,7 +490,7 @@ fun AppDrawer(
                 onClick = onDismiss
             )
     ) {
-        Surface(
+        Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .graphicsLayer {
@@ -510,12 +510,19 @@ fun AppDrawer(
                         Modifier.fillMaxSize()
                     }
                 )
-                .clickable(enabled = false) { },
-            shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
-            color = containerColor,
-            tonalElevation = 0.dp
+                .graphicsLayer(clip = false)
+                .background(
+                    containerColor,
+                    RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
+                )
+                .clickable(enabled = false) { }
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .animateContentSize(animationSpec = tween(300))
+                    .graphicsLayer(clip = false)
+            ) {
                 Spacer(Modifier.height(16.dp))
 
                 // Drag handle
@@ -553,7 +560,7 @@ fun AppDrawer(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .nestedScroll(sheetDragConnection)
-                                .hazeSource(hazeState)
+                                .then(if (blurEnabled) Modifier.hazeSource(hazeState) else Modifier)
                                 .clip(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)),
                             contentPadding = PaddingValues(
                                 top = contentTopPadding, bottom = 120.dp
@@ -629,7 +636,7 @@ fun AppDrawer(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .nestedScroll(sheetDragConnection)
-                                .hazeSource(hazeState)
+                                .then(if (blurEnabled) Modifier.hazeSource(hazeState) else Modifier)
                                 .clip(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)),
                             contentPadding = PaddingValues(
                                 top = contentTopPadding, bottom = 120.dp
@@ -732,7 +739,7 @@ fun AppDrawer(
                                                                 app, itemPos + pressOffset
                                                             )
                                                         }
-                                                        
+
                                                         if (isActualDrag) {
                                                             change.consume()
                                                             dragDropState.dragOffset += dragAmount
@@ -892,9 +899,9 @@ fun AppDrawer(
                         )
                     }
 
-                    searchResultMenuApp?.let { app ->
+                        searchResultMenuApp?.let { app ->
                         val isHidden = app.packageName in hiddenApps
-                        
+
                         XenonDropDown(
                             expanded = searchResultMenuApp != null,
                             onDismissRequest = { searchResultMenuApp = null },
@@ -925,7 +932,7 @@ fun AppDrawer(
                                     leadingIcon = { Icon(if (isHidden) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff, null) }
                                 )
                             ),
-                            hazeState = hazeState,
+                            hazeState = if (blurEnabled) hazeState else null,
                             offsetX = with(density) { searchResultPressOffset.x.toDp() },
                             offsetY = with(density) { searchResultPressOffset.y.toDp() },
                             anchorPos = Offset.Zero,
@@ -937,7 +944,6 @@ fun AppDrawer(
                         modifier = Modifier
                             .align(Alignment.TopCenter)
                             .fillMaxWidth()
-                            .animateContentSize(animationSpec = tween(300))
                             .onSizeChanged { barHeightPx = it.height }
                             .graphicsLayer(clip = false)
                     ) {
@@ -981,6 +987,7 @@ fun AppDrawer(
 
                         Row(
                             modifier = Modifier
+                                .graphicsLayer(clip = false)
                                 .zIndex(1f)
                                 .fillMaxWidth()
                                 .onSizeChanged { searchBarHeightPx = it.height }
@@ -989,9 +996,10 @@ fun AppDrawer(
                                         Offset(pos.x + coords.size.width, pos.y + coords.size.height)
                                     }
                                 }
-                                .clip(RoundedCornerShape(100f))
+                                .shadow(elevation = if (blurEnabled) 0.dp else 12.dp, shape = CircleShape)
+                                .clip(CircleShape)
                                 .hazeEffect(state = hazeState, style = HazeMaterials.ultraThin())
-                                .background(colorScheme.surfaceContainer.copy(alpha = 0.4f))
+                                .background(colorScheme.surfaceContainer.copy(alpha = if(blurEnabled) 0.4f else 1f))
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = null
@@ -1062,27 +1070,27 @@ fun AppDrawer(
                                     onDismissRequest = { showMenu = false },
                                     items = listOf(
                                         MenuItem(
-                                        text = if (isGridLayout) "List view" else "Grid view",
-                                        onClick = onToggleLayout,
-                                        dismissOnClick = true,
-                                        leadingIcon = {
-                                            Icon(
-                                                if (isGridLayout) Icons.AutoMirrored.Rounded.ViewList
-                                                else Icons.Rounded.GridView,
-                                                contentDescription = "Toggle layout"
-                                            )
-                                        }),
+                                            text = if (isGridLayout) "List view" else "Grid view",
+                                            onClick = onToggleLayout,
+                                            dismissOnClick = true,
+                                            leadingIcon = {
+                                                Icon(
+                                                    if (isGridLayout) Icons.AutoMirrored.Rounded.ViewList
+                                                    else Icons.Rounded.GridView,
+                                                    contentDescription = "Toggle layout"
+                                                )
+                                            }),
                                         MenuItem(
-                                        text = "Show Keyboard",
-                                        onClick = onToggleOpenKeyboard,
-                                        dismissOnClick = false,
-                                        leadingIcon = {
-                                            Icon(
-                                                if (openKeyboard) Icons.Rounded.Visibility
-                                                else Icons.Rounded.VisibilityOff,
-                                                contentDescription = null
-                                            )
-                                        }),
+                                            text = "Show Keyboard",
+                                            onClick = onToggleOpenKeyboard,
+                                            dismissOnClick = false,
+                                            leadingIcon = {
+                                                Icon(
+                                                    if (openKeyboard) Icons.Rounded.Visibility
+                                                    else Icons.Rounded.VisibilityOff,
+                                                    contentDescription = null
+                                                )
+                                            }),
                                         MenuItem(
                                             text = "Advanced Search",
                                             onClick = { viewModel.setAdvancedSearchEnabled(!advancedSearchEnabled) },
@@ -1090,17 +1098,17 @@ fun AppDrawer(
                                             leadingIcon = { Icon(if (advancedSearchEnabled) Icons.Rounded.Search else Icons.Rounded.SearchOff, null) }
                                         ),
                                         MenuItem(
-                                        text = "Settings",
-                                        onClick = { onSettingsClick() },
-                                        dismissOnClick = true,
-                                        leadingIcon = {
-                                            Icon(
-                                                Icons.Rounded.Settings,
-                                                contentDescription = "Settings"
-                                            )
-                                        })
+                                            text = "Settings",
+                                            onClick = { onSettingsClick() },
+                                            dismissOnClick = true,
+                                            leadingIcon = {
+                                                Icon(
+                                                    Icons.Rounded.Settings,
+                                                    contentDescription = "Settings"
+                                                )
+                                            })
                                     ),
-                                    hazeState = hazeState,
+                                    hazeState = if (blurEnabled) hazeState else null,
                                     anchorPos = searchBarAnchor,
                                     offsetY = 8.dp,
                                     alignment = Alignment.TopEnd
@@ -1148,14 +1156,14 @@ fun AppDrawer(
                         }
                     )
                 ),
-                hazeState = hazeState,
+                hazeState = if (blurEnabled) hazeState else null,
                 offsetX = with(density) { offset.x.toDp() },
                 offsetY = with(density) { offset.y.toDp() },
                 anchorPos = Offset.Zero,
                 alignment = Alignment.Center
             )
         }
-        
+
         appToEdit?.let { app ->
             AppEditDialog(
                 app = app,

@@ -1,6 +1,6 @@
 package com.xenonware.launcher.ui.layouts.settings
 
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,14 +35,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
-import androidx.core.graphics.drawable.toBitmap
 import com.xenon.mylibrary.ActivityScreen
 import com.xenon.mylibrary.res.DialogClearDataConfirmation
 import com.xenon.mylibrary.res.DialogCoverDisplaySelection
@@ -56,7 +55,6 @@ import com.xenon.mylibrary.values.LargestPadding
 import com.xenon.mylibrary.values.MediumPadding
 import com.xenon.mylibrary.values.NoSpacing
 import com.xenonware.launcher.BuildConfig
-import com.xenonware.launcher.R
 import com.xenonware.launcher.presentation.sign_in.GoogleAuthUiClient
 import com.xenonware.launcher.presentation.sign_in.SignInState
 import com.xenonware.launcher.ui.res.ShortcutConfigDialog
@@ -155,6 +153,7 @@ fun DefaultSettings(
             val weatherShortcut by viewModel.weatherShortcut.collectAsState()
             val iconShape by viewModel.drawerIconShape.collectAsState()
             val showShadow by viewModel.drawerIconShadow.collectAsState()
+        val blurEnabled by viewModel.blurEnabled.collectAsState()
 
             var configShortcutType by remember { mutableStateOf<LauncherViewModel.ShortcutType?>(null) }
             var showHiddenAppsDialog by remember { mutableStateOf(false) }
@@ -245,7 +244,8 @@ fun DefaultSettings(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .hazeEffect(hazeState)
+                        .then(if (blurEnabled) Modifier.hazeEffect(hazeState) else Modifier)
+                        .background(if (blurEnabled) Color.Transparent else MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
                 ) {
                     val initialValue = when (type) {
                         LauncherViewModel.ShortcutType.TIME -> timeShortcut
@@ -276,7 +276,8 @@ fun DefaultSettings(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .hazeEffect(hazeState)
+                        .then(if (blurEnabled) Modifier.hazeEffect(hazeState) else Modifier)
+                        .background(if (blurEnabled) Color.Transparent else MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
                 ) {
                     val listState = rememberLazyListState()
                     val showTopDivider by remember {
@@ -307,7 +308,7 @@ fun DefaultSettings(
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                                            .padding(vertical = 8.dp),
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                                     ) {
@@ -337,7 +338,8 @@ fun DefaultSettings(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .hazeEffect(hazeState)
+                        .then(if (blurEnabled) Modifier.hazeEffect(hazeState) else Modifier)
+                        .background(if (blurEnabled) Color.Transparent else MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
                 ) {
                     DialogThemeSelection(
                         themeOptions = themeOptions,
@@ -354,7 +356,8 @@ fun DefaultSettings(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .hazeEffect(hazeState)
+                        .then(if (blurEnabled) Modifier.hazeEffect(hazeState) else Modifier)
+                        .background(if (blurEnabled) Color.Transparent else MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
                 ) {
                     DialogCoverDisplaySelection(
                         onConfirm = {
@@ -374,7 +377,8 @@ fun DefaultSettings(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .hazeEffect(hazeState)
+                        .then(if (blurEnabled) Modifier.hazeEffect(hazeState) else Modifier)
+                        .background(if (blurEnabled) Color.Transparent else MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
                 ) {
                     DialogClearDataConfirmation(
                         onConfirm = { viewModel.confirmClearData() },
@@ -389,7 +393,8 @@ fun DefaultSettings(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .hazeEffect(hazeState)
+                        .then(if (blurEnabled) Modifier.hazeEffect(hazeState) else Modifier)
+                        .background(if (blurEnabled) Color.Transparent else MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
                 ) {
                     DialogResetSettingsConfirmation(
                         onConfirm = { viewModel.confirmResetSettings() },
@@ -404,7 +409,8 @@ fun DefaultSettings(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .hazeEffect(hazeState)
+                        .then(if (blurEnabled) Modifier.hazeEffect(hazeState) else Modifier)
+                        .background(if (blurEnabled) Color.Transparent else MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
                 ) {
                     DialogVersionNumber(
                         onDismiss = { viewModel.dismissVersionDialog() },
@@ -423,7 +429,8 @@ fun DefaultSettings(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .hazeEffect(hazeState)
+                        .then(if (blurEnabled) Modifier.hazeEffect(hazeState) else Modifier)
+                        .background(if (blurEnabled) Color.Transparent else MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
                 ) {
                     DialogSignOut(
                         onConfirm = onConfirmSignOut,

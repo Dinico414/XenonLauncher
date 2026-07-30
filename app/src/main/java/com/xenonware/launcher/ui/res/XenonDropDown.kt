@@ -84,7 +84,7 @@ fun XenonDropDown(
     expanded: Boolean,
     onDismissRequest: () -> Unit,
     items: List<MenuItem>,
-    hazeState: HazeState,
+    hazeState: HazeState?,
     offsetY: Dp = 0.dp,
     offsetX: Dp = 0.dp,
     anchorPos: Offset? = null,
@@ -191,11 +191,12 @@ fun XenonDropDown(
                     }
                     .shadow(shadowElevation, RoundedCornerShape(radius))
                     .clip(RoundedCornerShape(radius))
-                    .hazeEffect(
-                        state = hazeState,
-                        style = HazeMaterials.ultraThin(),
+                    .then(
+                        if (hazeState != null) {
+                            Modifier.hazeEffect(state = hazeState, style = HazeMaterials.ultraThin())
+                        } else Modifier
                     )
-                    .background(colorScheme.surfaceContainer.copy(alpha = 0.4f))
+                    .background(colorScheme.surfaceContainer.copy(alpha = if (hazeState != null) 0.4f else 1f))
                     .padding(4.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {

@@ -58,6 +58,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
@@ -120,13 +121,13 @@ fun DockPill(
 
     var currentPage by remember { mutableIntStateOf(1) }
     val dockAlpha by animateFloatAsState(
-        targetValue = if (isAppDrawerVisible) 0.4f else 1f,
+        targetValue = if (isAppDrawerVisible && hazeState != null) 0.4f else 1f,
         label = "dockAlpha",
         animationSpec = tween(500)
     )
     val fabAlpha by animateFloatAsState(
-        targetValue = if (isAppDrawerVisible) 0.6f else 1f,
-        label = "dockAlpha",
+        targetValue = if (isAppDrawerVisible && hazeState != null) 0.6f else 1f,
+        label = "fabAlpha",
         animationSpec = tween(500)
     )
     val buttonAlpha = if (isSystemInDarkTheme()) 0.35f else 1f
@@ -282,6 +283,8 @@ fun DockPill(
             modifier = Modifier
                 .height(72.dp)
                 .weight(1f)
+                .graphicsLayer(clip = false)
+                .then(if (hazeState == null) Modifier.shadow(8.dp, CircleShape) else Modifier)
                 .clip(CircleShape)
                 .then(
                     if (hazeState != null) {
@@ -454,6 +457,8 @@ fun DockPill(
             tonalElevation = 0.dp,
             modifier = Modifier
                 .size(64.dp)
+                .graphicsLayer(clip = false)
+                .then(if (hazeState == null) Modifier.shadow(8.dp, fabShape) else Modifier)
                 .clip(fabShape)
                 .pointerInput(Unit) {
                     detectTapGestures(onTap = { onFabClick() }, onDoubleTap = {

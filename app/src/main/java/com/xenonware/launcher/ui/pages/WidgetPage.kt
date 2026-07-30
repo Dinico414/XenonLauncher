@@ -141,6 +141,7 @@ fun WidgetPage(
 
     val widgetColumns by viewModel.widgetColumns.collectAsState()
     val widgets by viewModel.widgets.collectAsState()
+    val blurSetting by viewModel.blurEnabled.collectAsState()
 
     // Grid area boundaries
     val gridTopOffset = statusBarHeight + topGridPadding
@@ -329,7 +330,7 @@ fun WidgetPage(
         modifier = Modifier
             .fillMaxSize()
             .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
-            .hazeSource(hazeState)
+            .then(if (blurSetting) Modifier.hazeSource(hazeState) else Modifier)
             .pointerInput(Unit) {
                 detectTapGestures(onTap = { selectedWidgetId = -1 })
             }
@@ -1132,7 +1133,7 @@ fun WidgetPage(
                         expanded = showDropDown,
                         onDismissRequest = { showDropDown = false },
                         items = menuItems,
-                        hazeState = hazeState,
+                        hazeState = if (blurSetting) hazeState else null,
                         offsetX = with(density) { dropDownOffset.x.toDp() },
                         offsetY = with(density) { dropDownOffset.y.toDp() },
                         anchorPos = Offset.Zero,

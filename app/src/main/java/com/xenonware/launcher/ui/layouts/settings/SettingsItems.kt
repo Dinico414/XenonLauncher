@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Accessibility
 import androidx.compose.material.icons.filled.BlurOn
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Circle
@@ -43,6 +44,7 @@ import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SwitchColors
@@ -117,6 +119,7 @@ fun SettingsItems(
     val haptic = LocalHapticFeedback.current
     
     val blackedOutEnabled by viewModel.blackedOutModeEnabled.collectAsState()
+    val blurEnabled by viewModel.blurEnabled.collectAsState()
     val developerModeEnabled by viewModel.developerModeEnabled.collectAsState()
     val isGridLayout by viewModel.isGridLayout.collectAsState()
     val openKeyboard by viewModel.openKeyboard.collectAsState()
@@ -187,8 +190,132 @@ fun SettingsItems(
     )
     Spacer(Modifier.height(actualOuterGroupSpacing))
 
-    // --- PERSONALIZATION ---
-    CategoryHeader(text = stringResource(id = R.string.personalization))
+    // --- permission ---
+    val isDefault = viewModel.isDefaultLauncher(context)
+    if (!isDefault) {
+        SettingsTile(
+            title = "Default Launcher",
+            subtitle = "Set Xenon as your default launcher",
+            onClick = { viewModel.openLauncherSelector(context) },
+            icon = { Icon(Icons.Default.Home, null, tint = tileSubtitleColor) },
+            shape = tileShapeOverride ?: topShape,
+            backgroundColor = tileBackgroundColor,
+            contentColor = tileContentColor,
+            subtitleColor = tileSubtitleColor,
+            horizontalPadding = tileHorizontalPadding,
+            verticalPadding = tileVerticalPadding
+        )
+        Spacer(Modifier.height(actualInnerGroupSpacing))
+        SettingsTile(
+            title = "Accessibility Settings",
+            subtitle = "Open system accessibility settings",
+            onClick = { viewModel.openAccessibilitySettings(context) },
+            icon = { Icon(Icons.Default.Accessibility, null, tint = tileSubtitleColor) },
+            shape = tileShapeOverride ?: bottomShape,
+            backgroundColor = tileBackgroundColor,
+            contentColor = tileContentColor,
+            subtitleColor = tileSubtitleColor,
+            horizontalPadding = tileHorizontalPadding,
+            verticalPadding = tileVerticalPadding
+        )
+        Spacer(Modifier.height(actualOuterGroupSpacing))
+    } else {
+        SettingsTile(
+            title = "Accessibility Settings",
+            subtitle = "Open system accessibility settings",
+            onClick = { viewModel.openAccessibilitySettings(context) },
+            icon = { Icon(Icons.Default.Accessibility, null, tint = tileSubtitleColor) },
+            shape = tileShapeOverride ?: standaloneShape,
+            backgroundColor = tileBackgroundColor,
+            contentColor = tileContentColor,
+            subtitleColor = tileSubtitleColor,
+            horizontalPadding = tileHorizontalPadding,
+            verticalPadding = tileVerticalPadding
+        )
+        Spacer(Modifier.height(actualOuterGroupSpacing))
+    }
+
+    // --- theming ---
+    Column {
+        SettingsTile(
+            title = stringResource(id = R.string.theme),
+            subtitle = "${stringResource(id = R.string.current)} $currentThemeTitle",
+            onClick = { viewModel.onThemeSettingClicked() },
+            icon = { Icon(Icons.Default.Palette, null, tint = tileSubtitleColor) },
+            shape = tileShapeOverride ?: topShape,
+            backgroundColor = tileBackgroundColor,
+            contentColor = tileContentColor,
+            subtitleColor = tileSubtitleColor,
+            horizontalPadding = tileHorizontalPadding,
+            verticalPadding = tileVerticalPadding
+        )
+        Spacer(Modifier.height(actualInnerGroupSpacing))
+        SettingsSwitchTile(
+            title = "Blacked out",
+            subtitle = "Pure black AMOLED mode",
+            checked = blackedOutEnabled,
+            onCheckedChange = { viewModel.setBlackedOutEnabled(it) },
+            onClick = { viewModel.setBlackedOutEnabled(!blackedOutEnabled) },
+            icon = { Icon(Icons.Default.VpnKey, null, tint = tileSubtitleColor) },
+            shape = tileShapeOverride ?: middleShape,
+            backgroundColor = tileBackgroundColor,
+            contentColor = tileContentColor,
+            subtitleColor = tileSubtitleColor,
+            horizontalPadding = tileHorizontalPadding,
+            verticalPadding = tileVerticalPadding,
+            switchColors = switchColorsOverride ?: defaultSwitchColors
+        )
+        Spacer(Modifier.height(actualInnerGroupSpacing))
+        SettingsSwitchTile(
+            title = stringResource(id = R.string.blur_effect),
+            subtitle = stringResource(id = R.string.enable_glass_haze),
+            checked = blurEnabled,
+            onCheckedChange = { viewModel.setBlurEnabled(it) },
+            onClick = { viewModel.setBlurEnabled(!blurEnabled) },
+            icon = { Icon(Icons.Default.BlurOn, null, tint = tileSubtitleColor) },
+            shape = tileShapeOverride ?: middleShape,
+            backgroundColor = tileBackgroundColor,
+            contentColor = tileContentColor,
+            subtitleColor = tileSubtitleColor,
+            horizontalPadding = tileHorizontalPadding,
+            verticalPadding = tileVerticalPadding,
+            switchColors = switchColorsOverride ?: defaultSwitchColors
+        )
+        Spacer(Modifier.height(actualInnerGroupSpacing))
+        SettingsSwitchMenuTile(
+            title = stringResource(id = R.string.cover_screen_mode),
+            subtitle = "${stringResource(id = R.string.cover_screen_mode_description)} (${if (applyCoverTheme) stringResource(id = R.string.yes) else stringResource(id = R.string.no)})",
+            checked = coverThemeEnabled,
+            onCheckedChange = { viewModel.setCoverThemeEnabled(it) },
+            onClick = { viewModel.onCoverThemeClicked() },
+            icon = { Icon(Icons.Default.ScreenRotation, null, tint = tileSubtitleColor) },
+            shape = tileShapeOverride ?: bottomShape,
+            backgroundColor = tileBackgroundColor,
+            contentColor = tileContentColor,
+            subtitleColor = tileSubtitleColor,
+            horizontalPadding = tileHorizontalPadding,
+            verticalPadding = tileVerticalPadding,
+            switchColors = switchColorsOverride ?: defaultSwitchColors
+        )
+    }
+    Spacer(Modifier.height(actualOuterGroupSpacing))
+
+    // --- Language ---
+    SettingsTile(
+        title = stringResource(id = R.string.language),
+        subtitle = "${stringResource(id = R.string.current)} $currentLanguage",
+        onClick = { viewModel.onLanguageSettingClicked(context) },
+        icon = { Icon(Icons.Default.Language, null, tint = tileSubtitleColor) },
+        shape = tileShapeOverride ?: standaloneShape,
+        backgroundColor = tileBackgroundColor,
+        contentColor = tileContentColor,
+        subtitleColor = tileSubtitleColor,
+        horizontalPadding = tileHorizontalPadding,
+        verticalPadding = tileVerticalPadding
+    )
+    Spacer(Modifier.height(actualOuterGroupSpacing))
+
+    // --- appdrawer ---
     Column {
         SettingsSwitchTile(
             title = stringResource(id = R.string.grid_layout),
@@ -202,50 +329,8 @@ fun SettingsItems(
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
             horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding
-        )
-        Spacer(Modifier.height(actualInnerGroupSpacing))
-        SettingsSwitchTile(
-            title = stringResource(id = R.string.open_keyboard),
-            subtitle = stringResource(id = R.string.focus_search_description),
-            checked = openKeyboard,
-            onCheckedChange = { viewModel.setOpenKeyboard(it) },
-            onClick = { viewModel.setOpenKeyboard(!openKeyboard) },
-            icon = { Icon(Icons.Default.Keyboard, null, tint = tileSubtitleColor) },
-            shape = tileShapeOverride ?: middleShape,
-            backgroundColor = tileBackgroundColor,
-            contentColor = tileContentColor,
-            subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding
-        )
-        Spacer(Modifier.height(actualInnerGroupSpacing))
-        SettingsSwitchTile(
-            title = stringResource(id = R.string.blur_effect),
-            subtitle = stringResource(id = R.string.enable_glass_haze),
-            checked = blackedOutEnabled,
-            onCheckedChange = { viewModel.setBlackedOutEnabled(it) },
-            onClick = { viewModel.setBlackedOutEnabled(!blackedOutEnabled) },
-            icon = { Icon(Icons.Default.BlurOn, null, tint = tileSubtitleColor) },
-            shape = tileShapeOverride ?: middleShape,
-            backgroundColor = tileBackgroundColor,
-            contentColor = tileContentColor,
-            subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding
-        )
-        Spacer(Modifier.height(actualInnerGroupSpacing))
-        SettingsTile(
-            title = stringResource(id = R.string.theme),
-            subtitle = "${stringResource(id = R.string.current)} $currentThemeTitle",
-            onClick = { viewModel.onThemeSettingClicked() },
-            icon = { Icon(Icons.Default.Palette, null, tint = tileSubtitleColor) },
-            shape = tileShapeOverride ?: middleShape,
-            backgroundColor = tileBackgroundColor,
-            contentColor = tileContentColor,
-            subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding
+            verticalPadding = tileVerticalPadding,
+            switchColors = switchColorsOverride ?: defaultSwitchColors
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
         
@@ -364,32 +449,65 @@ fun SettingsItems(
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
             horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding
+            verticalPadding = tileVerticalPadding,
+            switchColors = switchColorsOverride ?: defaultSwitchColors
         )
     }
     Spacer(Modifier.height(actualOuterGroupSpacing))
 
-    // --- DOCK ---
-    CategoryHeader(text = stringResource(id = R.string.dock))
-    SettingsSwitchTile(
-        title = stringResource(id = R.string.move_with_keyboard),
-        subtitle = if (dockSafeDrawIme) stringResource(id = R.string.dock_move_up_description) else stringResource(id = R.string.dock_stay_bottom_description),
-        checked = dockSafeDrawIme,
-        onCheckedChange = { viewModel.setDockSafeDrawIme(it) },
-        onClick = { viewModel.setDockSafeDrawIme(!dockSafeDrawIme) },
-        icon = { Icon(Icons.Default.Keyboard, null, tint = tileSubtitleColor) },
-        shape = tileShapeOverride ?: standaloneShape,
-        backgroundColor = tileBackgroundColor,
-        contentColor = tileContentColor,
-        subtitleColor = tileSubtitleColor,
-        horizontalPadding = tileHorizontalPadding,
-        verticalPadding = tileVerticalPadding,
-        switchColors = switchColorsOverride ?: defaultSwitchColors
-    )
+    // --- search ---
+    Column {
+        SettingsSwitchTile(
+            title = stringResource(id = R.string.advanced_search),
+            subtitle = stringResource(id = R.string.advanced_search_description),
+            checked = advancedSearchEnabled,
+            onCheckedChange = { viewModel.setAdvancedSearchEnabled(it) },
+            onClick = { viewModel.setAdvancedSearchEnabled(!advancedSearchEnabled) },
+            icon = { Icon(Icons.Default.Search, null, tint = tileSubtitleColor) },
+            shape = tileShapeOverride ?: topShape,
+            backgroundColor = tileBackgroundColor,
+            contentColor = tileContentColor,
+            subtitleColor = tileSubtitleColor,
+            horizontalPadding = tileHorizontalPadding,
+            verticalPadding = tileVerticalPadding,
+            switchColors = switchColorsOverride ?: defaultSwitchColors
+        )
+        Spacer(Modifier.height(actualInnerGroupSpacing))
+        SettingsSwitchMenuTile(
+            title = stringResource(id = R.string.show_hidden_apps),
+            subtitle = stringResource(id = R.string.show_hidden_apps_description),
+            checked = showHiddenAppsInSearch,
+            onCheckedChange = { viewModel.setShowHiddenAppsInSearch(it) },
+            onClick = onShowHiddenApps,
+            icon = { Icon(Icons.Default.Visibility, null, tint = tileSubtitleColor) },
+            shape = tileShapeOverride ?: middleShape,
+            backgroundColor = tileBackgroundColor,
+            contentColor = tileContentColor,
+            subtitleColor = tileSubtitleColor,
+            horizontalPadding = tileHorizontalPadding,
+            verticalPadding = tileVerticalPadding,
+            switchColors = switchColorsOverride ?: defaultSwitchColors
+        )
+        Spacer(Modifier.height(actualInnerGroupSpacing))
+        SettingsSwitchTile(
+            title = stringResource(id = R.string.move_with_keyboard),
+            subtitle = if (dockSafeDrawIme) stringResource(id = R.string.dock_move_up_description) else stringResource(id = R.string.dock_stay_bottom_description),
+            checked = dockSafeDrawIme,
+            onCheckedChange = { viewModel.setDockSafeDrawIme(it) },
+            onClick = { viewModel.setDockSafeDrawIme(!dockSafeDrawIme) },
+            icon = { Icon(Icons.Default.Keyboard, null, tint = tileSubtitleColor) },
+            shape = tileShapeOverride ?: bottomShape,
+            backgroundColor = tileBackgroundColor,
+            contentColor = tileContentColor,
+            subtitleColor = tileSubtitleColor,
+            horizontalPadding = tileHorizontalPadding,
+            verticalPadding = tileVerticalPadding,
+            switchColors = switchColorsOverride ?: defaultSwitchColors
+        )
+    }
     Spacer(Modifier.height(actualOuterGroupSpacing))
 
-    // --- NOTIFICATIONS ---
-    CategoryHeader(text = stringResource(id = R.string.notifications))
+    // --- Notification ---
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -432,44 +550,7 @@ fun SettingsItems(
     }
     Spacer(Modifier.height(actualOuterGroupSpacing))
 
-    // --- SEARCH ---
-    CategoryHeader(text = stringResource(id = R.string.search))
-    Column {
-        SettingsSwitchTile(
-            title = stringResource(id = R.string.advanced_search),
-            subtitle = stringResource(id = R.string.advanced_search_description),
-            checked = advancedSearchEnabled,
-            onCheckedChange = { viewModel.setAdvancedSearchEnabled(it) },
-            onClick = { viewModel.setAdvancedSearchEnabled(!advancedSearchEnabled) },
-            icon = { Icon(Icons.Default.Search, null, tint = tileSubtitleColor) },
-            shape = tileShapeOverride ?: topShape,
-            backgroundColor = tileBackgroundColor,
-            contentColor = tileContentColor,
-            subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding
-        )
-        Spacer(Modifier.height(actualInnerGroupSpacing))
-        SettingsSwitchMenuTile(
-            title = stringResource(id = R.string.show_hidden_apps),
-            subtitle = stringResource(id = R.string.show_hidden_apps_description),
-            checked = showHiddenAppsInSearch,
-            onCheckedChange = { viewModel.setShowHiddenAppsInSearch(it) },
-            onClick = onShowHiddenApps,
-            icon = { Icon(Icons.Default.Visibility, null, tint = tileSubtitleColor) },
-            shape = tileShapeOverride ?: bottomShape,
-            backgroundColor = tileBackgroundColor,
-            contentColor = tileContentColor,
-            subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding,
-            switchColors = switchColorsOverride ?: defaultSwitchColors
-        )
-    }
-    Spacer(Modifier.height(actualOuterGroupSpacing))
-
-    // --- SHORTCUTS ---
-    CategoryHeader(text = stringResource(id = R.string.shortcuts))
+    // --- shortcuts ---
     Column {
         SettingsTile(
             title = stringResource(id = R.string.time_shortcut),
@@ -512,57 +593,14 @@ fun SettingsItems(
     }
     Spacer(Modifier.height(actualOuterGroupSpacing))
 
-    // --- SYSTEM ---
-    CategoryHeader(text = stringResource(id = R.string.system))
+    // --- system ---
     Column {
-        SettingsTile(
-            title = stringResource(id = R.string.default_home),
-            subtitle = stringResource(id = R.string.set_as_default_launcher),
-            onClick = { viewModel.onResetSettingsClicked() },
-            icon = { Icon(Icons.Default.Home, null, tint = tileSubtitleColor) },
-            shape = tileShapeOverride ?: topShape,
-            backgroundColor = tileBackgroundColor,
-            contentColor = tileContentColor,
-            subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding
-        )
-        Spacer(Modifier.height(actualInnerGroupSpacing))
-        SettingsTile(
-            title = stringResource(id = R.string.language),
-            subtitle = "${stringResource(id = R.string.current)} $currentLanguage",
-            onClick = { viewModel.onLanguageSettingClicked(context) },
-            icon = { Icon(Icons.Default.Language, null, tint = tileSubtitleColor) },
-            shape = tileShapeOverride ?: middleShape,
-            backgroundColor = tileBackgroundColor,
-            contentColor = tileContentColor,
-            subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding
-        )
-        Spacer(Modifier.height(actualInnerGroupSpacing))
-        SettingsSwitchMenuTile(
-            title = stringResource(id = R.string.cover_screen_mode),
-            subtitle = "${stringResource(id = R.string.cover_screen_mode_description)} (${if (applyCoverTheme) stringResource(id = R.string.yes) else stringResource(id = R.string.no)})",
-            checked = coverThemeEnabled,
-            onCheckedChange = { viewModel.setCoverThemeEnabled(it) },
-            onClick = { viewModel.onCoverThemeClicked() },
-            icon = { Icon(Icons.Default.ScreenRotation, null, tint = tileSubtitleColor) },
-            shape = tileShapeOverride ?: middleShape,
-            backgroundColor = tileBackgroundColor,
-            contentColor = tileContentColor,
-            subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding,
-            switchColors = switchColorsOverride ?: defaultSwitchColors
-        )
-        Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsTile(
             title = stringResource(id = R.string.clear_data),
             subtitle = stringResource(id = R.string.clear_data_description),
             onClick = { viewModel.onClearDataClicked(); haptic.performHapticFeedback(HapticFeedbackType.LongPress) },
             icon = { Icon(Icons.Default.ClearAll, null, tint = tileSubtitleColor) },
-            shape = tileShapeOverride ?: middleShape,
+            shape = tileShapeOverride ?: topShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
@@ -598,6 +636,7 @@ fun SettingsItems(
         )
     }
 
+    // --- dev ---
     if (developerModeEnabled) {
         Spacer(Modifier.height(actualOuterGroupSpacing))
         SettingsTile(
@@ -615,13 +654,4 @@ fun SettingsItems(
     }
 }
 
-@Composable
-fun CategoryHeader(text: String) {
-    Text(
-        text = text,
-        color = MaterialTheme.colorScheme.primary,
-        fontSize = 12.sp,
-        fontWeight = FontWeight.Bold,
-        modifier = Modifier.padding(start = 12.dp, bottom = 8.dp)
-    )
-}
+

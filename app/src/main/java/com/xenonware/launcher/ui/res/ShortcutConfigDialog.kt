@@ -1,7 +1,6 @@
 package com.xenonware.launcher.ui.res
 
 //import com.xenon.mylibrary.res.XenonDialog
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -11,7 +10,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -31,11 +29,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
-import androidx.core.graphics.drawable.toBitmap
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.viewmodel.LauncherViewModel
 
@@ -155,10 +151,10 @@ fun ShortcutConfigDialog(
                             selectedPackage = app.packageName
                             selectionMode = "app"
                         }
-                        .padding(horizontal = 12.dp, vertical = 8.dp)) {
+                        .padding(vertical = 8.dp)) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         RadioButton(
                             selected = isSelected, onClick = {
