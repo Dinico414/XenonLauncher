@@ -146,7 +146,7 @@ fun MediaPage(
                         .blur(30.dp),
                     contentScale = ContentScale.Crop,
                     colorFilter = ColorFilter.tint(
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                        MaterialTheme.colorScheme.inversePrimary.copy(alpha = 0.6f),
                         blendMode = BlendMode.SrcAtop
                     )
                 )

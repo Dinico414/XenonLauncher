@@ -10,6 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,23 +29,15 @@ import androidx.compose.material.icons.filled.Accessibility
 import androidx.compose.material.icons.filled.BlurOn
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Circle
-import androidx.compose.material.icons.filled.ClearAll
 import androidx.compose.material.icons.filled.Cloud
-import androidx.compose.material.icons.filled.DeveloperMode
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Keyboard
-import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Numbers
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.ResetTv
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SwitchColors
@@ -177,7 +170,7 @@ fun SettingsItems(
         title = if (state.isSignInSuccessful) userData?.username ?: "Signed in" else stringResource(id = R.string.sign_in_with_google),
         subtitle = if (state.isSignInSuccessful) userData?.email else null,
         profilePictureUrl = userData?.profilePictureUrl,
-        noAccIcon = painterResource(R.drawable.ic_launcher_foreground),
+        noAccIcon = painterResource(R.drawable.default_icon),
         isSignedIn = state.isSignInSuccessful,
         onClick = if (state.isSignInSuccessful) onSignOutClick else onSignInClick,
         shape = tileShapeOverride ?: standaloneShape,
@@ -241,7 +234,7 @@ fun SettingsItems(
             title = stringResource(id = R.string.theme),
             subtitle = "${stringResource(id = R.string.current)} $currentThemeTitle",
             onClick = { viewModel.onThemeSettingClicked() },
-            icon = { Icon(Icons.Default.Palette, null, tint = tileSubtitleColor) },
+            icon = { Icon(painterResource(R.drawable.themes), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: topShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -256,7 +249,7 @@ fun SettingsItems(
             checked = blackedOutEnabled,
             onCheckedChange = { viewModel.setBlackedOutEnabled(it) },
             onClick = { viewModel.setBlackedOutEnabled(!blackedOutEnabled) },
-            icon = { Icon(Icons.Default.VpnKey, null, tint = tileSubtitleColor) },
+            icon = { Icon(painterResource(R.drawable.blacked_out), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: middleShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -288,7 +281,7 @@ fun SettingsItems(
             checked = coverThemeEnabled,
             onCheckedChange = { viewModel.setCoverThemeEnabled(it) },
             onClick = { viewModel.onCoverThemeClicked() },
-            icon = { Icon(Icons.Default.ScreenRotation, null, tint = tileSubtitleColor) },
+            icon = { Icon(painterResource(R.drawable.cover_screen), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: bottomShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -305,7 +298,7 @@ fun SettingsItems(
         title = stringResource(id = R.string.language),
         subtitle = "${stringResource(id = R.string.current)} $currentLanguage",
         onClick = { viewModel.onLanguageSettingClicked(context) },
-        icon = { Icon(Icons.Default.Language, null, tint = tileSubtitleColor) },
+        icon = { Icon(painterResource(R.drawable.language), null, tint = tileSubtitleColor) },
         shape = tileShapeOverride ?: standaloneShape,
         backgroundColor = tileBackgroundColor,
         contentColor = tileContentColor,
@@ -380,7 +373,7 @@ fun SettingsItems(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
                     .clip(RoundedCornerShape(20.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+                    .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = if (isSystemInDarkTheme())0.5f else 1f))
                     .padding(vertical = 12.dp)
                     .horizontalScroll(rememberScrollState())
             ) {
@@ -599,7 +592,7 @@ fun SettingsItems(
             title = stringResource(id = R.string.clear_data),
             subtitle = stringResource(id = R.string.clear_data_description),
             onClick = { viewModel.onClearDataClicked(); haptic.performHapticFeedback(HapticFeedbackType.LongPress) },
-            icon = { Icon(Icons.Default.ClearAll, null, tint = tileSubtitleColor) },
+            icon = { Icon(painterResource(R.drawable.reset), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: topShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -612,7 +605,7 @@ fun SettingsItems(
             title = stringResource(id = R.string.reset_settings),
             subtitle = stringResource(id = R.string.reset_all_settings_description),
             onClick = { viewModel.onResetSettingsClicked(); haptic.performHapticFeedback(HapticFeedbackType.LongPress) },
-            icon = { Icon(Icons.Default.ResetTv, null, tint = tileSubtitleColor) },
+            icon = { Icon(painterResource(R.drawable.reset_settings), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: middleShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -626,7 +619,7 @@ fun SettingsItems(
             subtitle = "v $appVersion" + if (developerModeEnabled) " (Developer)" else "",
             onClick = { viewModel.onInfoTileClicked() },
             onLongClick = { viewModel.openImpressum(context) },
-            icon = { Icon(Icons.Default.Info, null, tint = tileSubtitleColor) },
+            icon = { Icon(painterResource(R.drawable.info), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: bottomShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -643,7 +636,7 @@ fun SettingsItems(
             title = stringResource(id = R.string.developer_options_title),
             subtitle = stringResource(id = R.string.dev_settings_description),
             onClick = onNavigateToDeveloperOptions,
-            icon = { Icon(Icons.Default.DeveloperMode, null, tint = tileSubtitleColor) },
+            icon = { Icon(painterResource(R.drawable.developer), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: standaloneShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
