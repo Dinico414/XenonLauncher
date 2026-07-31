@@ -55,7 +55,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import com.xenonware.launcher.ui.res.MorphingBackCloseIcon
+import com.xenonware.launcher.ui.res.MorphingBackCloseIcon
+import kotlin.math.max
 import androidx.compose.material.icons.automirrored.rounded.ViewList
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
@@ -386,6 +388,13 @@ fun AppDrawer(
     val currentOnDismiss by rememberUpdatedState(onDismiss)
 
     val isSearchUIActive = isSearchFocused || searchQuery.isNotEmpty() || isSearchActive
+
+    val searchActiveProgress by animateFloatAsState(
+        targetValue = if (isSearchUIActive) 0f else 1f,
+        animationSpec = tween(300),
+        label = "SearchActiveProgress"
+    )
+    val iconMorphProgress = max(searchActiveProgress, searchBackProgress.value)
 
     // 1. Search Back Handler: Handles dismissing search/categories
     PredictiveBackHandler(enabled = isSearchUIActive) { progress ->
@@ -1012,10 +1021,10 @@ fun AppDrawer(
                             IconButton(
                                 onClick = { closeSearchOrDismiss() }, Modifier.padding(4.dp)
                             ) {
-                                Icon(
-                                    Icons.AutoMirrored.Rounded.ArrowBack,
-                                    tint = colorScheme.onSurface,
-                                    contentDescription = if (isSearchFocused || searchQuery.isNotEmpty()) "Close search" else "Close"
+                                MorphingBackCloseIcon(
+                                    progress = iconMorphProgress,
+                                    color = colorScheme.onSurface,
+                                    modifier = Modifier.size(24.dp)
                                 )
                             }
 
