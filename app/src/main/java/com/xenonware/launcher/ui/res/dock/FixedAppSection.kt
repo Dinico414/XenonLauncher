@@ -16,7 +16,12 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.MoreHoriz
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme.colorScheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -55,6 +60,53 @@ import com.xenonware.launcher.util.LocalDragDropState
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
+
+/**
+ * The middle dock section: pinned apps when expanded, a "more" affordance when
+ * collapsed. Tapping it while expanded opens the app drawer.
+ */
+@Composable
+fun AppsSection(
+    isExpanded: Boolean,
+    onExpand: () -> Unit,
+    onOpenDrawer: () -> Unit,
+    apps: List<AppInfo>,
+    notifications: List<LauncherNotification>,
+    badgeType: Int,
+    onAppClick: (String) -> Unit,
+    onPinApp: (String, Int) -> Unit,
+    onReorderApp: (Int, Int) -> Unit,
+    onUnpinApp: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        onClick = { if (isExpanded) onOpenDrawer() else onExpand() },
+        modifier = modifier.dockSectionSize(isExpanded),
+        shape = DockSectionShape,
+        color = colorScheme.surfaceContainerLowest.copy(alpha = dockButtonAlpha()),
+        contentColor = colorScheme.onSurface
+    ) {
+        if (isExpanded) {
+            FixedAppSection(
+                apps = apps,
+                notifications = notifications,
+                badgeType = badgeType,
+                onAppClick = onAppClick,
+                onPinApp = onPinApp,
+                onReorderApp = onReorderApp,
+                onUnpinApp = onUnpinApp
+            )
+        } else {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    Icons.Rounded.MoreHoriz,
+                    null,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+    }
+}
 
 @Composable
 fun FixedAppSection(
@@ -256,7 +308,7 @@ fun FixedAppSection(
                                                             app, itemPos + pressOffset, originalIndex
                                                         )
                                                     }
-                                                    
+
                                                     if (isActualDrag) {
                                                         change.consume()
                                                         dragDropState.dragOffset += dragAmount
@@ -286,7 +338,10 @@ fun FixedAppSection(
                                                         } else {
                                                             if (sourceIdx == -1) {
                                                                 if (targetIdx != -1) {
-                                                                    onPinApp(app.packageName, targetIdx)
+                                                                    onPinApp(
+                                                                        app.packageName,
+                                                                        targetIdx
+                                                                    )
                                                                 }
                                                             } else if (targetIdx != -1 && targetIdx != sourceIdx) {
                                                                 onReorderApp(sourceIdx, targetIdx)

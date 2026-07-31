@@ -21,14 +21,9 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ElectricBolt
 import androidx.compose.material.icons.rounded.Info
@@ -63,6 +58,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -73,10 +69,12 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun StatusSection(
     isExpanded: Boolean,
+    onExpand: () -> Unit,
     notificationCount: Int,
     currentTime: String,
     currentDate: String,
@@ -84,14 +82,14 @@ fun StatusSection(
     weatherCondition: String,
     progress: Float,
     isCharging: Boolean,
-    buttonAlpha: Float,
-    onExpand: () -> Unit,
-    onClickExpanded: () -> Unit,
     onTimeClick: () -> Unit,
     onDateClick: () -> Unit,
     onWeatherClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
+    val buttonAlpha = dockButtonAlpha()
+
     val pillInteractionSource = remember { MutableInteractionSource() }
     var showBell by remember { mutableStateOf(false) }
     var showFlash by remember { mutableStateOf(false) }
@@ -100,7 +98,7 @@ fun StatusSection(
     LaunchedEffect(notificationCount) {
         if (notificationCount > prevNotificationCount) {
             showBell = true
-            delay(2000)
+            delay(2000.milliseconds)
             showBell = false
         } else {
             // Ensure bell is hidden if count drops or stays same
@@ -112,7 +110,7 @@ fun StatusSection(
     LaunchedEffect(isCharging) {
         if (isCharging) {
             showFlash = true
-            delay(1000)
+            delay(1000.milliseconds)
             showFlash = false
         }
     }
@@ -146,10 +144,6 @@ fun StatusSection(
             repeatMode = RepeatMode.Restart
         ),
         label = "rippleProgress"
-    )
-
-    val verticalPadding by animateDpAsState(
-        targetValue = if (isExpanded) 4.dp else 12.dp, label = "statusPadding"
     )
 
     val strokeColor = remember(progress) {
@@ -210,7 +204,7 @@ fun StatusSection(
                 val r = if (size.width > size.height) size.height / 2 else size.width / 2
                 val h = size.height
                 val w = size.width
-                
+
                 // Calculate mapped progress to match the stroke's vertical height
                 val mappedProgress = if (w < h) {
                     val lTotal = PI.toFloat() * r + (h - 2 * r)
@@ -228,11 +222,11 @@ fun StatusSection(
 
                 val solidColor = strokeColor.copy(alpha = 0.5f * bgChargingAlpha)
                 val baseColorWithAlpha = baseBgColor.copy(alpha = baseBgColor.alpha * bgChargingAlpha)
-                
+
                 // Always Bottom to Top
                 val start = Offset(0f, size.height)
                 val end = Offset(0f, 0f)
-                
+
                 return LinearGradientShader(
                     from = start,
                     to = end,
@@ -250,18 +244,11 @@ fun StatusSection(
 
     Surface(
         onClick = {
-            if (isExpanded) {
-                onClickExpanded()
-            } else {
-                onExpand()
-            }
+            if (isExpanded) openNotifications(context) else onExpand()
         },
         interactionSource = pillInteractionSource,
-        modifier = modifier
-            .fillMaxHeight()
-            .padding(vertical = verticalPadding)
-            .then(if (isExpanded) Modifier.fillMaxWidth() else Modifier.width(32.dp)),
-        shape = CircleShape,
+        modifier = modifier.dockSectionSize(isExpanded),
+        shape = DockSectionShape,
         color = backgroundColor,
         contentColor = contentColor,
         border = null // Border is drawn manually for better control over rounded ends
@@ -301,32 +288,47 @@ fun StatusSection(
                             val pm = PathMeasure().apply { setPath(pillPath, true) }
                             val totalLen = pm.length
 
-                            val dVertical = (w - 2 * r) + (PI.toFloat() * r / 2f) + (h - 2 * r) + (PI.toFloat() * r / 2f) + (w - 2 * r) / 2f
-                            val dHorizontal = 2 * (w - 2 * r) + (PI.toFloat() * r) + (h - 2 * r) + (PI.toFloat() * r / 2f) + (h - 2 * r) / 2f
-                            
+                            val dVertical =
+                                (w - 2 * r) + (PI.toFloat() * r / 2f) + (h - 2 * r) + (PI.toFloat() * r / 2f) + (w - 2 * r) / 2f
+                            val dHorizontal =
+                                2 * (w - 2 * r) + (PI.toFloat() * r) + (h - 2 * r) + (PI.toFloat() * r / 2f) + (h - 2 * r) / 2f
+
                             val dOrigin = (dVertical * (1 - s) + dHorizontal * s) % totalLen
                             val segLen = (totalLen / 2f) * progress
 
-                            val colorWithAlpha = strokeColor.copy(alpha = strokeColor.alpha * chargingAlpha)
-                            
+                            val colorWithAlpha =
+                                strokeColor.copy(alpha = strokeColor.alpha * chargingAlpha)
+
                             fun drawWrappedSegment(startDist: Float, endDist: Float) {
                                 val d1 = startDist % totalLen
                                 val d2 = endDist % totalLen
-                                
+
                                 val actualStart = if (d1 < 0) d1 + totalLen else d1
                                 val actualEnd = if (d2 < 0) d2 + totalLen else d2
-                                
+
                                 if (actualStart > actualEnd) {
                                     val s1 = Path()
                                     pm.getSegment(actualStart, totalLen, s1)
-                                    drawPath(s1, colorWithAlpha, style = Stroke(sw, cap = StrokeCap.Round))
+                                    drawPath(
+                                        s1,
+                                        colorWithAlpha,
+                                        style = Stroke(sw, cap = StrokeCap.Round)
+                                    )
                                     val s2 = Path()
                                     pm.getSegment(0f, actualEnd, s2)
-                                    drawPath(s2, colorWithAlpha, style = Stroke(sw, cap = StrokeCap.Round))
+                                    drawPath(
+                                        s2,
+                                        colorWithAlpha,
+                                        style = Stroke(sw, cap = StrokeCap.Round)
+                                    )
                                 } else {
                                     val s1 = Path()
                                     pm.getSegment(actualStart, actualEnd, s1)
-                                    drawPath(s1, colorWithAlpha, style = Stroke(sw, cap = StrokeCap.Round))
+                                    drawPath(
+                                        s1,
+                                        colorWithAlpha,
+                                        style = Stroke(sw, cap = StrokeCap.Round)
+                                    )
                                 }
                             }
 
@@ -350,7 +352,10 @@ fun StatusSection(
                                     Offset(currentPos - radius * 0.95f, size.height / 2)
                                 } else {
                                     // Moving from bottom to top
-                                    Offset(size.width / 2, (size.height - currentPos) + radius * 0.95f)
+                                    Offset(
+                                        size.width / 2,
+                                        (size.height - currentPos) + radius * 0.95f
+                                    )
                                 }
 
                                 drawCircle(
@@ -431,7 +436,12 @@ fun StatusSection(
                                         null,
                                         modifier = Modifier
                                             .size(20.dp)
-                                            .offset { IntOffset(flashOffset.dp.toPx().roundToInt(), 0) }
+                                            .offset {
+                                                IntOffset(
+                                                    flashOffset.dp.toPx().roundToInt(),
+                                                    0
+                                                )
+                                            }
                                     )
                                 }
 
