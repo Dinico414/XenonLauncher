@@ -272,6 +272,7 @@ fun DockPill(
                     onPinApp = onPinApp,
                     onReorderApp = onReorderApp,
                     onUnpinApp = onUnpinApp,
+                    isAppDrawerVisible = isAppDrawerVisible,
                     modifier = Modifier
                         .then(if (currentPage == DockPage.Apps) Modifier.weight(1f) else Modifier)
                         .animateContentSize()

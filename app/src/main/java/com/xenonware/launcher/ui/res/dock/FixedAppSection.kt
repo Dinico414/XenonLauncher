@@ -154,6 +154,7 @@ fun AppsSection(
     onPinApp: (String, Int) -> Unit,
     onReorderApp: (Int, Int) -> Unit,
     onUnpinApp: (String) -> Unit,
+    isAppDrawerVisible: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -171,7 +172,8 @@ fun AppsSection(
                 onAppClick = onAppClick,
                 onPinApp = onPinApp,
                 onReorderApp = onReorderApp,
-                onUnpinApp = onUnpinApp
+                onUnpinApp = onUnpinApp,
+                isAppDrawerVisible = isAppDrawerVisible
             )
         } else {
             Box(contentAlignment = Alignment.Center) {
@@ -194,6 +196,7 @@ fun FixedAppSection(
     onPinApp: (String, Int) -> Unit,
     onReorderApp: (Int, Int) -> Unit,
     onUnpinApp: (String) -> Unit,
+    isAppDrawerVisible: Boolean,
 ) {
     val dragDropState = LocalDragDropState.current
     val density = LocalDensity.current
@@ -203,6 +206,7 @@ fun FixedAppSection(
     val currentOnPinApp by rememberUpdatedState(onPinApp)
     val currentOnReorderApp by rememberUpdatedState(onReorderApp)
     val currentOnUnpinApp by rememberUpdatedState(onUnpinApp)
+    val currentIsAppDrawerVisible by rememberUpdatedState(isAppDrawerVisible)
 
     val groupedNotifications = remember(notifications) {
         notifications.groupBy { it.packageName }
@@ -332,7 +336,7 @@ fun FixedAppSection(
                 finger.y > bounds.bottom -> finger.y - bounds.bottom
                 else -> 0f
             }
-            val pulledOut = verticalDist > unpinThresholdPx
+            val pulledOut = verticalDist > unpinThresholdPx && currentIsAppDrawerVisible
 
             val x = (finger.x - bounds.left).coerceIn(0f, bounds.width)
 
@@ -505,7 +509,7 @@ fun FixedAppSection(
                                             finalPos.y > dock.bottom -> finalPos.y - dock.bottom
                                             else -> 0f
                                         }
-                                        val isOutside = verticalDist > unpinThresholdPx
+                                        val isOutside = verticalDist > unpinThresholdPx && currentIsAppDrawerVisible
 
                                         restoreScrollPx =
                                             if (listState.canScrollForward || listState.canScrollBackward) {
