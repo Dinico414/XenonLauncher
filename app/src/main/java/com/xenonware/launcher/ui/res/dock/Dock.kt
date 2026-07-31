@@ -12,6 +12,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -198,6 +199,11 @@ fun DockPill(
                     },
                     onDragCancel = { totalVerticalDrag = 0f }
                 )
+            }
+            .pointerInput(Unit) {
+                // Consume horizontal drags to prevent them from reaching the HorizontalPager
+                // behind the dock. LazyRow children will still get them first.
+                detectHorizontalDragGestures { _, _ -> }
             }
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },

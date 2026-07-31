@@ -208,10 +208,12 @@ fun LauncherScreen(
                             }
                         )
                 ) {
+                    val dragDropState = com.xenonware.launcher.util.LocalDragDropState.current
                     HorizontalPager(
                         state = pagerState,
                         modifier = Modifier.fillMaxSize(),
-                        beyondViewportPageCount = 1
+                        beyondViewportPageCount = 1,
+                        userScrollEnabled = !dragDropState.isDragging
                     ) { page ->
                         when (page) {
                             0 -> MediaPage(

@@ -99,7 +99,7 @@ fun MediaSection(
     val contrastRatio = remember(backgroundColor, dockColor) {
         ColorUtils.calculateContrastRatio(backgroundColor, dockColor)
     }
-    val borderAlpha = ((1.05f - contrastRatio) * 10f).coerceIn(0f, 0.5f)
+    val borderAlpha = ((1.05f - contrastRatio) * 10f).coerceIn(0f, 0.3f)
 
     Surface(
         onClick = {
