@@ -54,12 +54,20 @@ data class WeatherState(
     val condition: String = "Sunny"
 )
 
+data class CalendarInfo(
+    val id: String,
+    val name: String,
+    val color: Int,
+    val accountName: String
+)
+
 data class CalendarEvent(
     val title: String,
     val startTime: Long,
     val endTime: Long,
     val location: String?,
-    val isAllDay: Boolean
+    val isAllDay: Boolean,
+    val calendarId: String
 )
 
 class LauncherViewModel(application: Application) : AndroidViewModel(application) {
@@ -89,6 +97,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             "drawer_icon_shadow" -> _drawerIconShadow.value = prefManager.drawerIconShadow
             "blur_enabled" -> _blurEnabled.value = prefManager.blurEnabled
             "app_overrides" -> loadApps()
+            "visible_calendars" -> {
+                _visibleCalendars.value = prefManager.visibleCalendars
+                loadCalendarEvents()
+            }
         }
     }
 
@@ -275,6 +287,15 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val _calendarEvents = MutableStateFlow<List<CalendarEvent>>(emptyList())
     val calendarEvents: StateFlow<List<CalendarEvent>> = _calendarEvents
 
+    private val _availableCalendars = MutableStateFlow<List<CalendarInfo>>(emptyList())
+    val availableCalendars: StateFlow<List<CalendarInfo>> = _availableCalendars
+
+    private val _showCalendarSelectionDialog = MutableStateFlow(false)
+    val showCalendarSelectionDialog: StateFlow<Boolean> = _showCalendarSelectionDialog
+
+    private val _visibleCalendars = MutableStateFlow(prefManager.visibleCalendars)
+    val visibleCalendars: StateFlow<List<String>> = _visibleCalendars
+
     val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
     val dateFormatter = DateTimeFormatter.ofPattern("EEE, MMM d")
 
@@ -286,6 +307,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         startMediaUpdates()
         startTimeUpdates()
         startWeatherUpdates()
+        loadAvailableCalendars()
         loadCalendarEvents()
 
         val packageFilter = IntentFilter().apply {
@@ -963,6 +985,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 return@launch
             }
 
+            val visibleCalendars = prefManager.visibleCalendars
             val events = mutableListOf<CalendarEvent>()
             val uri = android.provider.CalendarContract.Events.CONTENT_URI
             val projection = arrayOf(
@@ -970,20 +993,30 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 android.provider.CalendarContract.Events.DTSTART,
                 android.provider.CalendarContract.Events.DTEND,
                 android.provider.CalendarContract.Events.EVENT_LOCATION,
-                android.provider.CalendarContract.Events.ALL_DAY
+                android.provider.CalendarContract.Events.ALL_DAY,
+                android.provider.CalendarContract.Events.CALENDAR_ID
             )
             val now = System.currentTimeMillis()
             val tomorrow = now + 24 * 60 * 60 * 1000
-            val selection = "${android.provider.CalendarContract.Events.DTSTART} >= ? AND ${android.provider.CalendarContract.Events.DTSTART} <= ?"
-            val selectionArgs = arrayOf(now.toString(), tomorrow.toString())
+            
+            var selection = "${android.provider.CalendarContract.Events.DTSTART} >= ? AND ${android.provider.CalendarContract.Events.DTSTART} <= ?"
+            val selectionArgsList = mutableListOf(now.toString(), tomorrow.toString())
+            
+            if (visibleCalendars.isNotEmpty()) {
+                val placeholders = visibleCalendars.joinToString(",") { "?" }
+                selection += " AND ${android.provider.CalendarContract.Events.CALENDAR_ID} IN ($placeholders)"
+                selectionArgsList.addAll(visibleCalendars)
+            }
+            
             val sortOrder = "${android.provider.CalendarContract.Events.DTSTART} ASC"
 
-            context.contentResolver.query(uri, projection, selection, selectionArgs, sortOrder)?.use { cursor ->
+            context.contentResolver.query(uri, projection, selection, selectionArgsList.toTypedArray(), sortOrder)?.use { cursor ->
                 val titleIdx = cursor.getColumnIndex(android.provider.CalendarContract.Events.TITLE)
                 val startIdx = cursor.getColumnIndex(android.provider.CalendarContract.Events.DTSTART)
                 val endIdx = cursor.getColumnIndex(android.provider.CalendarContract.Events.DTEND)
                 val locIdx = cursor.getColumnIndex(android.provider.CalendarContract.Events.EVENT_LOCATION)
                 val allDayIdx = cursor.getColumnIndex(android.provider.CalendarContract.Events.ALL_DAY)
+                val calIdIdx = cursor.getColumnIndex(android.provider.CalendarContract.Events.CALENDAR_ID)
 
                 while (cursor.moveToNext() && events.size < 5) {
                     val title = cursor.getString(titleIdx) ?: "No Title"
@@ -993,13 +1026,71 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                             startTime = cursor.getLong(startIdx),
                             endTime = cursor.getLong(endIdx),
                             location = cursor.getString(locIdx),
-                            isAllDay = cursor.getInt(allDayIdx) != 0
+                            isAllDay = cursor.getInt(allDayIdx) != 0,
+                            calendarId = cursor.getString(calIdIdx)
                         )
                     )
                 }
             }
             _calendarEvents.value = events
         }
+    }
+
+    fun loadAvailableCalendars() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val context = getApplication<Application>()
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
+                return@launch
+            }
+
+            val calendars = mutableListOf<CalendarInfo>()
+            val uri = android.provider.CalendarContract.Calendars.CONTENT_URI
+            val projection = arrayOf(
+                android.provider.CalendarContract.Calendars._ID,
+                android.provider.CalendarContract.Calendars.CALENDAR_DISPLAY_NAME,
+                android.provider.CalendarContract.Calendars.CALENDAR_COLOR,
+                android.provider.CalendarContract.Calendars.ACCOUNT_NAME
+            )
+
+            context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
+                val idIdx = cursor.getColumnIndex(android.provider.CalendarContract.Calendars._ID)
+                val nameIdx = cursor.getColumnIndex(android.provider.CalendarContract.Calendars.CALENDAR_DISPLAY_NAME)
+                val colorIdx = cursor.getColumnIndex(android.provider.CalendarContract.Calendars.CALENDAR_COLOR)
+                val accountIdx = cursor.getColumnIndex(android.provider.CalendarContract.Calendars.ACCOUNT_NAME)
+
+                while (cursor.moveToNext()) {
+                    calendars.add(
+                        CalendarInfo(
+                            id = cursor.getString(idIdx),
+                            name = cursor.getString(nameIdx) ?: "Unknown",
+                            color = cursor.getInt(colorIdx),
+                            accountName = cursor.getString(accountIdx) ?: ""
+                        )
+                    )
+                }
+            }
+            _availableCalendars.value = calendars.sortedBy { it.name.lowercase() }
+        }
+    }
+
+    fun setShowCalendarSelectionDialog(show: Boolean) {
+        if (show) loadAvailableCalendars()
+        _showCalendarSelectionDialog.value = show
+    }
+
+    fun setVisibleCalendars(calendars: List<String>) {
+        prefManager.visibleCalendars = calendars
+        _visibleCalendars.value = calendars
+    }
+
+    fun toggleCalendarVisibility(calendarId: String) {
+        val current = _visibleCalendars.value.toMutableList()
+        if (current.contains(calendarId)) {
+            current.remove(calendarId)
+        } else {
+            current.add(calendarId)
+        }
+        setVisibleCalendars(current)
     }
 
     private fun saveWidgets() {

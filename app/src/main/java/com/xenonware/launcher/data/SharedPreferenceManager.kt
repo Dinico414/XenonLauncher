@@ -80,6 +80,10 @@ class SharedPreferenceManager(context: Context) {
         get() = prefs.getString("hidden_apps", "")?.split(",")?.filter { it.isNotEmpty() } ?: emptyList()
         set(value) = prefs.edit().putString("hidden_apps", value.joinToString(",")).apply()
 
+    var visibleCalendars: List<String>
+        get() = prefs.getString("visible_calendars", "")?.split(",")?.filter { it.isNotEmpty() } ?: emptyList()
+        set(value) = prefs.edit().putString("visible_calendars", value.joinToString(",")).apply()
+
     var showHiddenAppsInSearch: Boolean
         get() = prefs.getBoolean("show_hidden_apps_in_search", false)
         set(value) = prefs.edit().putBoolean("show_hidden_apps_in_search", value).apply()

@@ -42,6 +42,7 @@ import com.xenonware.launcher.ui.layouts.main.AppDrawer
 import com.xenonware.launcher.ui.pages.MediaPage
 import com.xenonware.launcher.ui.pages.NotificationPage
 import com.xenonware.launcher.ui.pages.WidgetPage
+import com.xenonware.launcher.ui.res.CalendarSelectionDialog
 import com.xenonware.launcher.ui.res.ShortcutConfigDialog
 import com.xenonware.launcher.ui.res.dock.DockPill
 import com.xenonware.launcher.ui.theme.XenonLauncherTheme
@@ -103,6 +104,10 @@ class MainActivity : ComponentActivity() {
                 val dockSafeDrawIme by viewModel.dockSafeDrawIme.collectAsState()
                 val configShortcutType by viewModel.configShortcutType.collectAsState()
                 val blurSetting by viewModel.blurEnabled.collectAsState()
+                
+                val showCalendarSelectionDialog by viewModel.showCalendarSelectionDialog.collectAsState()
+                val availableCalendars by viewModel.availableCalendars.collectAsState()
+                val visibleCalendars by viewModel.visibleCalendars.collectAsState()
 
                 LauncherScreen(
                     viewModel = viewModel,
@@ -121,6 +126,9 @@ class MainActivity : ComponentActivity() {
                     batteryLevel = batteryLevel,
                     isCharging = isCharging,
                     calendarEvents = calendarEvents,
+                    availableCalendars = availableCalendars,
+                    visibleCalendars = visibleCalendars,
+                    showCalendarSelectionDialog = showCalendarSelectionDialog,
                     dockSafeDrawIme = dockSafeDrawIme,
                     configShortcutType = configShortcutType,
                     blurSetting = blurSetting,
@@ -152,6 +160,9 @@ fun LauncherScreen(
     batteryLevel: Float,
     isCharging: Boolean,
     calendarEvents: List<com.xenonware.launcher.viewmodel.CalendarEvent>,
+    availableCalendars: List<com.xenonware.launcher.viewmodel.CalendarInfo>,
+    visibleCalendars: List<String>,
+    showCalendarSelectionDialog: Boolean,
     dockSafeDrawIme: Boolean,
     configShortcutType: LauncherViewModel.ShortcutType?,
     blurSetting: Boolean,
@@ -234,8 +245,11 @@ fun LauncherScreen(
                                 notifications = notifications,
                                 apps = apps,
                                 calendarEvents = calendarEvents,
+                                hazeState = hazeState,
+                                blurSetting = blurSetting,
                                 onDismissNotification = { viewModel.dismissNotification(it) },
-                                onDismissAllNotifications = { viewModel.dismissAllNotifications() }
+                                onDismissAllNotifications = { viewModel.dismissAllNotifications() },
+                                onOpenSettings = onOpenSettings
                             )
                             2 -> WidgetPage(
                                 viewModel = viewModel,
@@ -327,6 +341,17 @@ fun LauncherScreen(
                     showShadow = showShadow,
                     onDismiss = { viewModel.setConfigShortcut(null) },
                     onSave = { viewModel.saveShortcut(type, it) }
+                )
+            }
+            
+            if (showCalendarSelectionDialog) {
+                CalendarSelectionDialog(
+                    availableCalendars = availableCalendars,
+                    selectedCalendars = visibleCalendars,
+                    onDismiss = { viewModel.setShowCalendarSelectionDialog(false) },
+                    onToggleCalendar = { viewModel.toggleCalendarVisibility(it) },
+                    onSelectAll = { viewModel.setVisibleCalendars(emptyList()) },
+                    onClearAll = { viewModel.setVisibleCalendars(listOf("__NONE__")) }
                 )
             }
         }

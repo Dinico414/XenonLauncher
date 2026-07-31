@@ -10,6 +10,7 @@ import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -44,11 +45,14 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.NotificationsActive
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Wallpaper
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.Surface
@@ -104,10 +108,17 @@ fun NotificationPage(
     notifications: List<LauncherNotification>,
     apps: List<AppInfo>,
     calendarEvents: List<com.xenonware.launcher.viewmodel.CalendarEvent>,
+    hazeState: dev.chrisbanes.haze.HazeState?,
+    blurSetting: Boolean,
     onDismissNotification: (String) -> Unit,
-    onDismissAllNotifications: () -> Unit
+    onDismissAllNotifications: () -> Unit,
+    onOpenSettings: () -> Unit
 ) {
     var selectedPackage by remember { mutableStateOf<String?>(null) }
+    var showDropDown by remember { mutableStateOf(false) }
+    var dropDownOffset by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+    
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val offsets = remember { mutableStateMapOf<String, Float>() }
     var deleteButtonBounds by remember { mutableStateOf(Rect.Zero) }
 
@@ -158,7 +169,16 @@ fun NotificationPage(
                     AtAGlanceSection(
                         currentDate = currentDate,
                         calendarEvents = calendarEvents,
-                        isLandscape = true
+                        isLandscape = true,
+                        modifier = Modifier.pointerInput(Unit) {
+                            detectTapGestures(
+                                onLongPress = { offset ->
+                                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                    dropDownOffset = offset
+                                    showDropDown = true
+                                }
+                            )
+                        }
                     )
                 }
 
@@ -321,10 +341,19 @@ fun NotificationPage(
                     verticalArrangement = Arrangement.Center
                 ) {
                     AtAGlanceSection(
-                        currentDate = currentDate,
-                        calendarEvents = calendarEvents,
-                        isLandscape = false
-                    )
+                    currentDate = currentDate,
+                    calendarEvents = calendarEvents,
+                    isLandscape = false,
+                    modifier = Modifier.pointerInput(Unit) {
+                        detectTapGestures(
+                            onLongPress = { offset ->
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                dropDownOffset = offset
+                                showDropDown = true
+                            }
+                        )
+                    }
+                )
                 }
 
                 Column(
@@ -501,6 +530,37 @@ fun NotificationPage(
                 }
             }
         }
+        // Dropdown menu
+        if (showDropDown) {
+            val context = androidx.compose.ui.platform.LocalContext.current
+            com.xenonware.launcher.ui.res.XenonDropDown(
+                expanded = showDropDown,
+                onDismissRequest = { showDropDown = false },
+                items = listOf(
+                    com.xenonware.launcher.ui.res.MenuItem(
+                        text = "At a Glance Settings",
+                        onClick = { viewModel.setShowCalendarSelectionDialog(true) },
+                        leadingIcon = { Icon(Icons.Rounded.CalendarToday, null) }
+                    ),
+                    com.xenonware.launcher.ui.res.MenuItem(
+                        text = "Settings",
+                        onClick = { onOpenSettings() },
+                        leadingIcon = { Icon(Icons.Rounded.Settings, null) }
+                    ),
+                    com.xenonware.launcher.ui.res.MenuItem(
+                        text = "Background",
+                        onClick = {
+                            val intent = android.content.Intent(android.content.Intent.ACTION_SET_WALLPAPER)
+                            context.startActivity(android.content.Intent.createChooser(intent, "Select Wallpaper"))
+                        },
+                        leadingIcon = { Icon(Icons.Rounded.Wallpaper, null) }
+                    )
+                ),
+                hazeState = if (blurSetting) hazeState else null,
+                anchorPos = dropDownOffset,
+                alignment = androidx.compose.ui.Alignment.Center
+            )
+        }
     }
 }
 
@@ -508,14 +568,18 @@ fun NotificationPage(
 fun AtAGlanceSection(
     currentDate: String,
     calendarEvents: List<com.xenonware.launcher.viewmodel.CalendarEvent>,
-    isLandscape: Boolean
+    isLandscape: Boolean,
+    modifier: Modifier = Modifier
 ) {
     val dateFontSize = if (isLandscape) 18.sp else 16.sp
     val eventTitleFontSize = if (isLandscape) 32.sp else 24.sp
     val subtitleFontSize = if (isLandscape) 16.sp else 14.sp
     val spacing = if (isLandscape) 8.dp else 4.dp
 
-    Column(verticalArrangement = Arrangement.spacedBy(spacing)) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(spacing)
+    ) {
         Text(
             text = currentDate,
             fontSize = dateFontSize,

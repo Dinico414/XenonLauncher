@@ -57,6 +57,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -257,7 +258,7 @@ fun XenonDialog(
     ) {
         val configuration = LocalConfiguration.current
         val screenHeight = configuration.screenHeightDp.dp
-        val maxDialogHeight = screenHeight * 0.9f
+        val maxDialogHeight = screenHeight * 0.8f
 
         Surface(
             modifier = modifier
@@ -441,11 +442,26 @@ fun XenonDialog(
                         action2Composable != null
 
                 if (anyButtonPresent) {
+                    val allThreeVisible = action1Composable != null &&
+                            confirmComposable != null &&
+                            action2Composable != null
+
+                    val effectiveButtonRowPadding = if (allThreeVisible) {
+                        PaddingValues(
+                            start = buttonRowPadding.calculateStartPadding(LayoutDirection.Ltr) / 2,
+                            end = buttonRowPadding.calculateEndPadding(LayoutDirection.Ltr) / 2,
+                            top = buttonRowPadding.calculateTopPadding(),
+                            bottom = buttonRowPadding.calculateBottomPadding()
+                        )
+                    } else {
+                        buttonRowPadding
+                    }
+
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = LargestPadding)
-                            .padding(buttonRowPadding),
+                            .padding(effectiveButtonRowPadding),
                         horizontalArrangement = Arrangement.spacedBy(
                             8.dp, Alignment.CenterHorizontally
                         ),
@@ -531,7 +547,13 @@ private fun DialogButtonContent(
 
         (leadIcon ?: icon)?.Render(iconModifier)
 
-        text?.let { Text(it) }
+        text?.let {
+            Text(
+                it,
+                maxLines = 2,
+                textAlign = TextAlign.Center
+            )
+        }
 
         trailingIcon?.Render(iconModifier)
     }

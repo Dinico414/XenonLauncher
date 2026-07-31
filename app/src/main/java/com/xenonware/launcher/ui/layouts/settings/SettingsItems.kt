@@ -500,46 +500,61 @@ fun SettingsItems(
     }
     Spacer(Modifier.height(actualOuterGroupSpacing))
 
-    // --- Notification ---
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(tileBackgroundColor, standaloneShape)
-            .padding(16.dp)
-    ) {
-        Text(
-            stringResource(id = R.string.notification_badges),
-            color = tileContentColor,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.padding(bottom = 12.dp)
+    // --- Notification & At a Glance ---
+    Column {
+        SettingsTile(
+            title = "At a Glance",
+            subtitle = "Manage events and information shown",
+            onClick = { viewModel.setShowCalendarSelectionDialog(true) },
+            icon = { Icon(Icons.Default.CalendarToday, null, tint = tileSubtitleColor) },
+            shape = tileShapeOverride ?: topShape,
+            backgroundColor = tileBackgroundColor,
+            contentColor = tileContentColor,
+            subtitleColor = tileSubtitleColor,
+            horizontalPadding = tileHorizontalPadding,
+            verticalPadding = tileVerticalPadding
         )
-        XenonSingleChoiceButtonGroup(
-            options = listOf(0, 1, 2),
-            selectedOption = badgeType,
-            onOptionSelect = { viewModel.setNotificationBadgeType(it) },
-            label = { type ->
-                when (type) {
-                    0 -> stringResource(id = R.string.none)
-                    1 -> stringResource(id = R.string.dot)
-                    2 -> stringResource(id = R.string.number)
-                    else -> ""
-                }
-            },
-            unselectedIcon = { type ->
-                Icon(
-                    imageVector = when (type) {
-                        0 -> Icons.Default.NotificationsOff
-                        1 -> Icons.Default.Circle
-                        else -> Icons.Default.Numbers
-                    },
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                    tint = tileSubtitleColor
-                )
-            },
-            modifier = Modifier.fillMaxWidth()
-        )
+        Spacer(Modifier.height(actualInnerGroupSpacing))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(tileBackgroundColor, bottomShape)
+                .padding(16.dp)
+        ) {
+            Text(
+                stringResource(id = R.string.notification_badges),
+                color = tileContentColor,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+            XenonSingleChoiceButtonGroup(
+                options = listOf(0, 1, 2),
+                selectedOption = badgeType,
+                onOptionSelect = { viewModel.setNotificationBadgeType(it) },
+                label = { type ->
+                    when (type) {
+                        0 -> stringResource(id = R.string.none)
+                        1 -> stringResource(id = R.string.dot)
+                        2 -> stringResource(id = R.string.number)
+                        else -> ""
+                    }
+                },
+                unselectedIcon = { type ->
+                    Icon(
+                        imageVector = when (type) {
+                            0 -> Icons.Default.NotificationsOff
+                            1 -> Icons.Default.Circle
+                            else -> Icons.Default.Numbers
+                        },
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = tileSubtitleColor
+                    )
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
     }
     Spacer(Modifier.height(actualOuterGroupSpacing))
 

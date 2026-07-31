@@ -151,6 +151,15 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _weatherShortcut = MutableStateFlow(sharedPreferenceManager.weatherShortcut)
     val weatherShortcut: StateFlow<String> = _weatherShortcut.asStateFlow()
 
+    private val _visibleCalendars = MutableStateFlow(sharedPreferenceManager.visibleCalendars)
+    val visibleCalendars: StateFlow<List<String>> = _visibleCalendars.asStateFlow()
+
+    private val _availableCalendars = MutableStateFlow<List<com.xenonware.launcher.viewmodel.CalendarInfo>>(emptyList())
+    val availableCalendars: StateFlow<List<com.xenonware.launcher.viewmodel.CalendarInfo>> = _availableCalendars.asStateFlow()
+
+    private val _showCalendarSelectionDialog = MutableStateFlow(false)
+    val showCalendarSelectionDialog: StateFlow<Boolean> = _showCalendarSelectionDialog.asStateFlow()
+
     private val _hasWallpaperAccess = MutableStateFlow(checkWallpaperAccess())
     val hasWallpaperAccess: StateFlow<Boolean> = _hasWallpaperAccess.asStateFlow()
 
@@ -309,6 +318,63 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setWeatherShortcut(value: String) {
         sharedPreferenceManager.weatherShortcut = value
         _weatherShortcut.value = value
+    }
+
+    fun setVisibleCalendars(calendars: List<String>) {
+        sharedPreferenceManager.visibleCalendars = calendars
+        _visibleCalendars.value = calendars
+    }
+
+    fun toggleCalendarVisibility(calendarId: String) {
+        val current = _visibleCalendars.value.toMutableList()
+        if (current.contains(calendarId)) {
+            current.remove(calendarId)
+        } else {
+            current.add(calendarId)
+        }
+        setVisibleCalendars(current)
+    }
+
+    fun setShowCalendarSelectionDialog(show: Boolean) {
+        if (show) loadAvailableCalendars()
+        _showCalendarSelectionDialog.value = show
+    }
+
+    private fun loadAvailableCalendars() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val context = getApplication<Application>()
+            if (context.checkSelfPermission(android.Manifest.permission.READ_CALENDAR) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                return@launch
+            }
+
+            val calendars = mutableListOf<com.xenonware.launcher.viewmodel.CalendarInfo>()
+            val uri = android.provider.CalendarContract.Calendars.CONTENT_URI
+            val projection = arrayOf(
+                android.provider.CalendarContract.Calendars._ID,
+                android.provider.CalendarContract.Calendars.CALENDAR_DISPLAY_NAME,
+                android.provider.CalendarContract.Calendars.CALENDAR_COLOR,
+                android.provider.CalendarContract.Calendars.ACCOUNT_NAME
+            )
+
+            context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
+                val idIdx = cursor.getColumnIndex(android.provider.CalendarContract.Calendars._ID)
+                val nameIdx = cursor.getColumnIndex(android.provider.CalendarContract.Calendars.CALENDAR_DISPLAY_NAME)
+                val colorIdx = cursor.getColumnIndex(android.provider.CalendarContract.Calendars.CALENDAR_COLOR)
+                val accountIdx = cursor.getColumnIndex(android.provider.CalendarContract.Calendars.ACCOUNT_NAME)
+
+                while (cursor.moveToNext()) {
+                    calendars.add(
+                        com.xenonware.launcher.viewmodel.CalendarInfo(
+                            id = cursor.getString(idIdx),
+                            name = cursor.getString(nameIdx) ?: "Unknown",
+                            color = cursor.getInt(colorIdx),
+                            accountName = cursor.getString(accountIdx) ?: ""
+                        )
+                    )
+                }
+            }
+            _availableCalendars.value = calendars.sortedBy { it.name.lowercase() }
+        }
     }
 
     fun onThemeOptionSelectedInDialog(index: Int) {

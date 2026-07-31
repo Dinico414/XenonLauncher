@@ -57,6 +57,7 @@ import com.xenon.mylibrary.values.NoSpacing
 import com.xenonware.launcher.BuildConfig
 import com.xenonware.launcher.presentation.sign_in.GoogleAuthUiClient
 import com.xenonware.launcher.presentation.sign_in.SignInState
+import com.xenonware.launcher.ui.res.CalendarSelectionDialog
 import com.xenonware.launcher.ui.res.ShortcutConfigDialog
 import com.xenonware.launcher.ui.res.XenonDialog
 import com.xenonware.launcher.viewmodel.LauncherViewModel
@@ -148,6 +149,9 @@ fun DefaultSettings(
 
             val apps by viewModel.apps.collectAsState()
             val hiddenApps by viewModel.hiddenApps.collectAsState()
+            val showCalendarSelectionDialog by viewModel.showCalendarSelectionDialog.collectAsState()
+            val availableCalendars by viewModel.availableCalendars.collectAsState()
+            val visibleCalendars by viewModel.visibleCalendars.collectAsState()
             val timeShortcut by viewModel.timeShortcut.collectAsState()
             val dateShortcut by viewModel.dateShortcut.collectAsState()
             val weatherShortcut by viewModel.weatherShortcut.collectAsState()
@@ -425,6 +429,25 @@ fun DefaultSettings(
                     )
                 }
             }
+
+            if (showCalendarSelectionDialog) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .then(if (blurEnabled) Modifier.hazeEffect(hazeState) else Modifier)
+                        .background(if (blurEnabled) Color.Transparent else MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
+                ) {
+                    CalendarSelectionDialog(
+                        availableCalendars = availableCalendars,
+                        selectedCalendars = visibleCalendars,
+                        onDismiss = { viewModel.setShowCalendarSelectionDialog(false) },
+                        onToggleCalendar = { viewModel.toggleCalendarVisibility(it) },
+                        onSelectAll = { viewModel.setVisibleCalendars(emptyList()) },
+                        onClearAll = { viewModel.setVisibleCalendars(listOf("__NONE__")) }
+                    )
+                }
+            }
+
             if (showSignOutDialog) {
                 Box(
                     modifier = Modifier
