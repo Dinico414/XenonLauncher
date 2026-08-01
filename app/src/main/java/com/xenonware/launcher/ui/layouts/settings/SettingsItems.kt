@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Numbers
 import androidx.compose.material.icons.filled.Schedule
@@ -508,6 +509,19 @@ fun SettingsItems(
             onClick = { viewModel.setShowCalendarSelectionDialog(true) },
             icon = { Icon(Icons.Default.CalendarToday, null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: topShape,
+            backgroundColor = tileBackgroundColor,
+            contentColor = tileContentColor,
+            subtitleColor = tileSubtitleColor,
+            horizontalPadding = tileHorizontalPadding,
+            verticalPadding = tileVerticalPadding
+        )
+        Spacer(Modifier.height(actualInnerGroupSpacing))
+        SettingsTile(
+            title = "Notification Manager",
+            subtitle = "Choose which apps show notifications",
+            onClick = { viewModel.setShowNotificationManagerDialog(true) },
+            icon = { Icon(Icons.Default.NotificationsActive, null, tint = tileSubtitleColor) },
+            shape = tileShapeOverride ?: middleShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,

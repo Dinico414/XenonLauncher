@@ -101,6 +101,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 _visibleCalendars.value = prefManager.visibleCalendars
                 loadCalendarEvents()
             }
+            "visible_notification_apps" -> {
+                _visibleNotificationApps.value = prefManager.visibleNotificationApps
+            }
         }
     }
 
@@ -295,6 +298,12 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private val _visibleCalendars = MutableStateFlow(prefManager.visibleCalendars)
     val visibleCalendars: StateFlow<List<String>> = _visibleCalendars
+
+    private val _showNotificationManagerDialog = MutableStateFlow(false)
+    val showNotificationManagerDialog: StateFlow<Boolean> = _showNotificationManagerDialog
+
+    private val _visibleNotificationApps = MutableStateFlow(prefManager.visibleNotificationApps)
+    val visibleNotificationApps: StateFlow<List<String>> = _visibleNotificationApps
 
     val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
     val dateFormatter = DateTimeFormatter.ofPattern("EEE, MMM d")
@@ -1091,6 +1100,25 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             current.add(calendarId)
         }
         setVisibleCalendars(current)
+    }
+
+    fun setShowNotificationManagerDialog(show: Boolean) {
+        _showNotificationManagerDialog.value = show
+    }
+
+    fun setVisibleNotificationApps(apps: List<String>) {
+        prefManager.visibleNotificationApps = apps
+        _visibleNotificationApps.value = apps
+    }
+
+    fun toggleNotificationAppVisibility(packageName: String) {
+        val current = _visibleNotificationApps.value.toMutableList()
+        if (current.contains(packageName)) {
+            current.remove(packageName)
+        } else {
+            current.add(packageName)
+        }
+        setVisibleNotificationApps(current)
     }
 
     private fun saveWidgets() {

@@ -160,6 +160,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _showCalendarSelectionDialog = MutableStateFlow(false)
     val showCalendarSelectionDialog: StateFlow<Boolean> = _showCalendarSelectionDialog.asStateFlow()
 
+    private val _showNotificationManagerDialog = MutableStateFlow(false)
+    val showNotificationManagerDialog: StateFlow<Boolean> = _showNotificationManagerDialog.asStateFlow()
+
+    private val _visibleNotificationApps = MutableStateFlow(sharedPreferenceManager.visibleNotificationApps)
+    val visibleNotificationApps: StateFlow<List<String>> = _visibleNotificationApps.asStateFlow()
+
     private val _hasWallpaperAccess = MutableStateFlow(checkWallpaperAccess())
     val hasWallpaperAccess: StateFlow<Boolean> = _hasWallpaperAccess.asStateFlow()
 
@@ -338,6 +344,25 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setShowCalendarSelectionDialog(show: Boolean) {
         if (show) loadAvailableCalendars()
         _showCalendarSelectionDialog.value = show
+    }
+
+    fun setShowNotificationManagerDialog(show: Boolean) {
+        _showNotificationManagerDialog.value = show
+    }
+
+    fun setVisibleNotificationApps(apps: List<String>) {
+        sharedPreferenceManager.visibleNotificationApps = apps
+        _visibleNotificationApps.value = apps
+    }
+
+    fun toggleNotificationAppVisibility(packageName: String) {
+        val current = _visibleNotificationApps.value.toMutableList()
+        if (current.contains(packageName)) {
+            current.remove(packageName)
+        } else {
+            current.add(packageName)
+        }
+        setVisibleNotificationApps(current)
     }
 
     private fun loadAvailableCalendars() {

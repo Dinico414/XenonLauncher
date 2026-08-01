@@ -56,7 +56,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import com.xenonware.launcher.ui.res.MorphingBackCloseIcon
-import com.xenonware.launcher.ui.res.MorphingBackCloseIcon
 import kotlin.math.max
 import androidx.compose.material.icons.automirrored.rounded.ViewList
 import androidx.compose.material.icons.rounded.Delete
@@ -173,6 +172,8 @@ fun AppDrawer(
     onToggleOpenKeyboard: () -> Unit = {},
     onProgress: (Float) -> Unit = {},
     blurEnabled: Boolean = true,
+    onSearchActiveChange: (Boolean) -> Unit = {},
+    closeSearchTrigger: Int = 0
 ) {
     val dragDropState = LocalDragDropState.current
     val context = LocalContext.current
@@ -246,15 +247,23 @@ fun AppDrawer(
 
     var isSearchFocused by remember { mutableStateOf(false) }
     var searchResultPressOffset by remember { mutableStateOf(Offset.Zero) }
-    var isSearchActive by remember { mutableStateOf(false) }
+    var isSearchActiveInternal by remember { mutableStateOf(false) }
 
-    LaunchedEffect(isSearchFocused, searchQuery, selectedSearchType, openKeyboard, isSearchPressed) {
+    val isSearchUIActive = isSearchFocused || searchQuery.isNotEmpty() || isSearchActiveInternal
+
+    LaunchedEffect(isSearchUIActive) {
+        onSearchActiveChange(isSearchUIActive)
+    }
+
+    LaunchedEffect(isSearchFocused, searchQuery, selectedSearchType, isSearchPressed) {
         if (selectedSearchType != SearchType.Apps ||
             searchQuery.isNotEmpty() ||
             isSearchPressed ||
-            (!openKeyboard && isSearchFocused)
+            isSearchFocused
         ) {
-            isSearchActive = true
+            isSearchActiveInternal = true
+        } else if (!isSearchFocused && searchQuery.isEmpty()) {
+            isSearchActiveInternal = false
         }
     }
 
@@ -352,10 +361,10 @@ fun AppDrawer(
     }
 
     fun closeSearchOrDismiss() {
-        if (isSearchFocused || searchQuery.isNotEmpty() || isSearchActive) {
+        if (isSearchUIActive) {
             searchQuery = ""
             selectedSearchType = SearchType.Apps
-            isSearchActive = false
+            isSearchActiveInternal = false
             focusManager.clearFocus()
             keyboardController?.hide()
         } else {
@@ -387,7 +396,11 @@ fun AppDrawer(
     val searchBackProgress = remember { Animatable(0f) }
     val currentOnDismiss by rememberUpdatedState(onDismiss)
 
-    val isSearchUIActive = isSearchFocused || searchQuery.isNotEmpty() || isSearchActive
+    LaunchedEffect(closeSearchTrigger) {
+        if (closeSearchTrigger > 0) {
+            closeSearchOrDismiss()
+        }
+    }
 
     val searchActiveProgress by animateFloatAsState(
         targetValue = if (isSearchUIActive) 0f else 1f,
@@ -406,7 +419,7 @@ fun AppDrawer(
             // Committed: Close search
             scope.launch {
                 // Simultaneously start the layout shrink and finish the fade
-                isSearchActive = false
+                isSearchActiveInternal = false
                 searchQuery = ""
                 selectedSearchType = SearchType.Apps
                 focusManager.clearFocus()
@@ -957,7 +970,7 @@ fun AppDrawer(
                             .graphicsLayer(clip = false)
                     ) {
                         this@Column.AnimatedVisibility(
-                            visible = isSearchActive && advancedSearchEnabled,
+                            visible = isSearchUIActive && advancedSearchEnabled,
                             enter = slideInVertically(animationSpec = tween(300, 500)) { -it } + expandVertically(
                                 expandFrom = Alignment.Top,
                                 animationSpec = tween(200),
@@ -1013,7 +1026,7 @@ fun AppDrawer(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = null
                                 ) {
-                                    isSearchActive = true
+                                    isSearchActiveInternal = true
                                     focusRequester.requestFocus()
                                 },
                             verticalAlignment = Alignment.CenterVertically

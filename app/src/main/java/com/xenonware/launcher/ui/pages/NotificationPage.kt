@@ -80,6 +80,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -115,8 +116,12 @@ fun NotificationPage(
     onOpenSettings: () -> Unit
 ) {
     var selectedPackage by remember { mutableStateOf<String?>(null) }
-    var showDropDown by remember { mutableStateOf(false) }
-    var dropDownOffset by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+    var showAtAGlanceMenu by remember { mutableStateOf(false) }
+    var showPageMenu by remember { mutableStateOf(false) }
+    var dropDownOffset by remember { mutableStateOf(Offset.Zero) }
+    
+    var atAGlanceSectionPos by remember { mutableStateOf(Offset.Zero) }
+    var pageContainerPos by remember { mutableStateOf(Offset.Zero) }
     
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val offsets = remember { mutableStateMapOf<String, Float>() }
@@ -148,6 +153,16 @@ fun NotificationPage(
         .statusBarsPadding()
         .padding(top = topPadding)
         .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
+        .onGloballyPositioned { pageContainerPos = it.positionInRoot() }
+        .pointerInput(Unit) {
+            detectTapGestures(
+                onLongPress = { offset ->
+                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                    dropDownOffset = pageContainerPos + offset
+                    showPageMenu = true
+                }
+            )
+        }
     ) {
         if (useLandscapeLayout) {
             // Landscape side-by-side layout
@@ -170,15 +185,17 @@ fun NotificationPage(
                         currentDate = currentDate,
                         calendarEvents = calendarEvents,
                         isLandscape = true,
-                        modifier = Modifier.pointerInput(Unit) {
-                            detectTapGestures(
-                                onLongPress = { offset ->
-                                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                                    dropDownOffset = offset
-                                    showDropDown = true
-                                }
-                            )
-                        }
+                        modifier = Modifier
+                            .onGloballyPositioned { atAGlanceSectionPos = it.positionInRoot() }
+                            .pointerInput(Unit) {
+                                detectTapGestures(
+                                    onLongPress = { offset ->
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                        dropDownOffset = atAGlanceSectionPos + offset
+                                        showAtAGlanceMenu = true
+                                    }
+                                )
+                            }
                     )
                 }
 
@@ -344,15 +361,17 @@ fun NotificationPage(
                     currentDate = currentDate,
                     calendarEvents = calendarEvents,
                     isLandscape = false,
-                    modifier = Modifier.pointerInput(Unit) {
-                        detectTapGestures(
-                            onLongPress = { offset ->
-                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                                dropDownOffset = offset
-                                showDropDown = true
-                            }
-                        )
-                    }
+                    modifier = Modifier
+                        .onGloballyPositioned { atAGlanceSectionPos = it.positionInRoot() }
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onLongPress = { offset ->
+                                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                    dropDownOffset = atAGlanceSectionPos + offset
+                                    showAtAGlanceMenu = true
+                                }
+                            )
+                        }
                 )
                 }
 
@@ -530,17 +549,21 @@ fun NotificationPage(
                 }
             }
         }
-        // Dropdown menu
-        if (showDropDown) {
-            val context = androidx.compose.ui.platform.LocalContext.current
+        // Dropdown menus
+        val context = androidx.compose.ui.platform.LocalContext.current
+        
+        if (showAtAGlanceMenu) {
             com.xenonware.launcher.ui.res.XenonDropDown(
-                expanded = showDropDown,
-                onDismissRequest = { showDropDown = false },
+                expanded = showAtAGlanceMenu,
+                onDismissRequest = { showAtAGlanceMenu = false },
                 items = listOf(
                     com.xenonware.launcher.ui.res.MenuItem(
-                        text = "At a Glance Settings",
-                        onClick = { viewModel.setShowCalendarSelectionDialog(true) },
-                        leadingIcon = { Icon(Icons.Rounded.CalendarToday, null) }
+                        text = "Wallpaper",
+                        onClick = {
+                            val intent = android.content.Intent(android.content.Intent.ACTION_SET_WALLPAPER)
+                            context.startActivity(android.content.Intent.createChooser(intent, "Select Wallpaper"))
+                        },
+                        leadingIcon = { Icon(Icons.Rounded.Wallpaper, null) }
                     ),
                     com.xenonware.launcher.ui.res.MenuItem(
                         text = "Settings",
@@ -548,17 +571,44 @@ fun NotificationPage(
                         leadingIcon = { Icon(Icons.Rounded.Settings, null) }
                     ),
                     com.xenonware.launcher.ui.res.MenuItem(
-                        text = "Background",
+                        text = "At a Glance Settings",
+                        onClick = { viewModel.setShowCalendarSelectionDialog(true) },
+                        leadingIcon = { Icon(Icons.Rounded.CalendarToday, null) }
+                    )
+                ),
+                hazeState = if (blurSetting) hazeState else null,
+                anchorPos = dropDownOffset,
+                alignment = Alignment.Center
+            )
+        }
+
+        if (showPageMenu) {
+            com.xenonware.launcher.ui.res.XenonDropDown(
+                expanded = showPageMenu,
+                onDismissRequest = { showPageMenu = false },
+                items = listOf(
+                    com.xenonware.launcher.ui.res.MenuItem(
+                        text = "Wallpaper",
                         onClick = {
                             val intent = android.content.Intent(android.content.Intent.ACTION_SET_WALLPAPER)
                             context.startActivity(android.content.Intent.createChooser(intent, "Select Wallpaper"))
                         },
                         leadingIcon = { Icon(Icons.Rounded.Wallpaper, null) }
+                    ),
+                    com.xenonware.launcher.ui.res.MenuItem(
+                        text = "Settings",
+                        onClick = { onOpenSettings() },
+                        leadingIcon = { Icon(Icons.Rounded.Settings, null) }
+                    ),
+                    com.xenonware.launcher.ui.res.MenuItem(
+                        text = "Notification Manager",
+                        onClick = { viewModel.setShowNotificationManagerDialog(true) },
+                        leadingIcon = { Icon(Icons.Rounded.NotificationsActive, null) }
                     )
                 ),
                 hazeState = if (blurSetting) hazeState else null,
                 anchorPos = dropDownOffset,
-                alignment = androidx.compose.ui.Alignment.Center
+                alignment = Alignment.Center
             )
         }
     }

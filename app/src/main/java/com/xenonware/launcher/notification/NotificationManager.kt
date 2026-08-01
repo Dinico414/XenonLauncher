@@ -45,6 +45,8 @@ object NotificationManager {
     private val _notifications = MutableStateFlow<List<LauncherNotification>>(emptyList())
     val notifications: StateFlow<List<LauncherNotification>> = _notifications
 
+    var visibleApps: Set<String>? = null
+
 
     fun removeNotificationOptimistically(key: String) {
         val current = _notifications.value
@@ -86,6 +88,13 @@ object NotificationManager {
                 val ranking = Ranking()
                 val hasRanking = rankingMap?.getRanking(sbn.key, ranking) ?: false
                 val notification = sbn.notification
+
+                // 0. App Filter
+                val apps = visibleApps
+                if (apps != null && apps.isNotEmpty()) {
+                    if (apps.contains("__NONE__")) return@filter false
+                    if (!apps.contains(sbn.packageName)) return@filter false
+                }
 
                 // 1. Core System Filters
                 if (sbn.packageName == ownPackageName) return@filter false

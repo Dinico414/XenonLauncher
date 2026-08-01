@@ -58,6 +58,7 @@ import com.xenonware.launcher.BuildConfig
 import com.xenonware.launcher.presentation.sign_in.GoogleAuthUiClient
 import com.xenonware.launcher.presentation.sign_in.SignInState
 import com.xenonware.launcher.ui.res.CalendarSelectionDialog
+import com.xenonware.launcher.ui.res.NotificationManagerDialog
 import com.xenonware.launcher.ui.res.ShortcutConfigDialog
 import com.xenonware.launcher.ui.res.XenonDialog
 import com.xenonware.launcher.viewmodel.LauncherViewModel
@@ -152,6 +153,8 @@ fun DefaultSettings(
             val showCalendarSelectionDialog by viewModel.showCalendarSelectionDialog.collectAsState()
             val availableCalendars by viewModel.availableCalendars.collectAsState()
             val visibleCalendars by viewModel.visibleCalendars.collectAsState()
+            val showNotificationManagerDialog by viewModel.showNotificationManagerDialog.collectAsState()
+            val visibleNotificationApps by viewModel.visibleNotificationApps.collectAsState()
             val timeShortcut by viewModel.timeShortcut.collectAsState()
             val dateShortcut by viewModel.dateShortcut.collectAsState()
             val weatherShortcut by viewModel.weatherShortcut.collectAsState()
@@ -444,6 +447,26 @@ fun DefaultSettings(
                         onToggleCalendar = { viewModel.toggleCalendarVisibility(it) },
                         onSelectAll = { viewModel.setVisibleCalendars(emptyList()) },
                         onClearAll = { viewModel.setVisibleCalendars(listOf("__NONE__")) }
+                    )
+                }
+            }
+
+            if (showNotificationManagerDialog) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .then(if (blurEnabled) Modifier.hazeEffect(hazeState) else Modifier)
+                        .background(if (blurEnabled) Color.Transparent else MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
+                ) {
+                    NotificationManagerDialog(
+                        allApps = apps,
+                        visibleApps = visibleNotificationApps,
+                        onDismiss = { viewModel.setShowNotificationManagerDialog(false) },
+                        onToggleApp = { viewModel.toggleNotificationAppVisibility(it) },
+                        onSelectAll = { viewModel.setVisibleNotificationApps(emptyList()) },
+                        onClearAll = { viewModel.setVisibleNotificationApps(listOf("__NONE__")) },
+                        iconShape = iconShape,
+                        showShadow = showShadow
                     )
                 }
             }

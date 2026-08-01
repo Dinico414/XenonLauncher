@@ -1,7 +1,9 @@
 package com.xenonware.launcher.notification
 
+import android.content.SharedPreferences
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import com.xenonware.launcher.data.SharedPreferenceManager
 
 class XenonNotificationService : NotificationListenerService() {
 
@@ -33,12 +35,27 @@ class XenonNotificationService : NotificationListenerService() {
         updateNotificationCount()
     }
 
+    private lateinit var prefManager: SharedPreferenceManager
+
+    private val preferenceListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key == "visible_notification_apps") {
+            NotificationManager.visibleApps = prefManager.visibleNotificationApps.toSet()
+            updateNotificationCount()
+        }
+    }
+
     override fun onListenerConnected() {
         instance = this
+        prefManager = SharedPreferenceManager(this)
+        NotificationManager.visibleApps = prefManager.visibleNotificationApps.toSet()
+        prefManager.registerListener(preferenceListener)
         updateNotificationCount()
     }
 
     override fun onListenerDisconnected() {
+        if (::prefManager.isInitialized) {
+            prefManager.unregisterListener(preferenceListener)
+        }
         instance = null
         super.onListenerDisconnected()
     }

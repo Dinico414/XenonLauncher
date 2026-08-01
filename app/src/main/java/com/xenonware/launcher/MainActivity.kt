@@ -27,6 +27,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -108,6 +109,8 @@ class MainActivity : ComponentActivity() {
                 val showCalendarSelectionDialog by viewModel.showCalendarSelectionDialog.collectAsState()
                 val availableCalendars by viewModel.availableCalendars.collectAsState()
                 val visibleCalendars by viewModel.visibleCalendars.collectAsState()
+                val showNotificationManagerDialog by viewModel.showNotificationManagerDialog.collectAsState()
+                val visibleNotificationApps by viewModel.visibleNotificationApps.collectAsState()
 
                 LauncherScreen(
                     viewModel = viewModel,
@@ -129,6 +132,8 @@ class MainActivity : ComponentActivity() {
                     availableCalendars = availableCalendars,
                     visibleCalendars = visibleCalendars,
                     showCalendarSelectionDialog = showCalendarSelectionDialog,
+                    showNotificationManagerDialog = showNotificationManagerDialog,
+                    visibleNotificationApps = visibleNotificationApps,
                     dockSafeDrawIme = dockSafeDrawIme,
                     configShortcutType = configShortcutType,
                     blurSetting = blurSetting,
@@ -163,6 +168,8 @@ fun LauncherScreen(
     availableCalendars: List<com.xenonware.launcher.viewmodel.CalendarInfo>,
     visibleCalendars: List<String>,
     showCalendarSelectionDialog: Boolean,
+    showNotificationManagerDialog: Boolean,
+    visibleNotificationApps: List<String>,
     dockSafeDrawIme: Boolean,
     configShortcutType: LauncherViewModel.ShortcutType?,
     blurSetting: Boolean,
@@ -173,6 +180,9 @@ fun LauncherScreen(
     val pagerState = rememberPagerState(initialPage = 1) { 3 }
     var isAppDrawerVisible by remember { mutableStateOf(false) }
     var drawerInteractiveProgress by remember { mutableFloatStateOf(1f) }
+    
+    var isSearchActiveInDrawer by remember { mutableStateOf(false) }
+    var closeSearchTrigger by remember { mutableIntStateOf(0) }
 
     val appDrawerBlurProgress by animateFloatAsState(
         targetValue = if (isAppDrawerVisible) drawerInteractiveProgress else 0f,
@@ -191,11 +201,16 @@ fun LauncherScreen(
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
 
+    val iconShape by viewModel.drawerIconShape.collectAsState()
+    val showShadow by viewModel.drawerIconShadow.collectAsState()
+
     LaunchedEffect(isAppDrawerVisible) {
         if (!isAppDrawerVisible) {
             focusManager.clearFocus()
             keyboardController?.hide()
             drawerInteractiveProgress = 1f
+            isSearchActiveInDrawer = false
+            closeSearchTrigger = 0
         }
     }
 
@@ -285,7 +300,9 @@ fun LauncherScreen(
                         openKeyboard = openKeyboard,
                         onToggleOpenKeyboard = { viewModel.setOpenKeyboard(!openKeyboard) },
                         onProgress = { drawerInteractiveProgress = it },
-                        blurEnabled = blurSetting
+                        blurEnabled = blurSetting,
+                        onSearchActiveChange = { isSearchActiveInDrawer = it },
+                        closeSearchTrigger = closeSearchTrigger
                     )
                 }
             }
@@ -305,7 +322,13 @@ fun LauncherScreen(
                     weatherCondition = weatherCondition,
                     onAppClick = onAppClick,
                     onSettingsClick = onOpenSettings,
-                    onFabClick = { isAppDrawerVisible = !isAppDrawerVisible },
+                    onFabClick = {
+                        if (isAppDrawerVisible && isSearchActiveInDrawer && drawerInteractiveProgress > 0.99f) {
+                            closeSearchTrigger++
+                        } else {
+                            isAppDrawerVisible = !isAppDrawerVisible
+                        }
+                    },
                     onMediaPlayPause = { viewModel.togglePlayPause() },
                     onMediaSkipNext = { viewModel.skipNext() },
                     onOpenMediaPermission = { viewModel.openNotificationAccessSettings() },
@@ -330,8 +353,6 @@ fun LauncherScreen(
                     LauncherViewModel.ShortcutType.DATE -> prefs.dateShortcut
                     LauncherViewModel.ShortcutType.WEATHER -> prefs.weatherShortcut
                 }
-                val iconShape by viewModel.drawerIconShape.collectAsState()
-                val showShadow by viewModel.drawerIconShadow.collectAsState()
                 
                 ShortcutConfigDialog(
                     type = type,
@@ -352,6 +373,19 @@ fun LauncherScreen(
                     onToggleCalendar = { viewModel.toggleCalendarVisibility(it) },
                     onSelectAll = { viewModel.setVisibleCalendars(emptyList()) },
                     onClearAll = { viewModel.setVisibleCalendars(listOf("__NONE__")) }
+                )
+            }
+
+            if (showNotificationManagerDialog) {
+                com.xenonware.launcher.ui.res.NotificationManagerDialog(
+                    allApps = apps,
+                    visibleApps = visibleNotificationApps,
+                    onDismiss = { viewModel.setShowNotificationManagerDialog(false) },
+                    onToggleApp = { viewModel.toggleNotificationAppVisibility(it) },
+                    onSelectAll = { viewModel.setVisibleNotificationApps(emptyList()) },
+                    onClearAll = { viewModel.setVisibleNotificationApps(listOf("__NONE__")) },
+                    iconShape = iconShape,
+                    showShadow = showShadow
                 )
             }
         }
