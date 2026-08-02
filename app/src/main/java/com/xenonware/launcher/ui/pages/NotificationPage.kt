@@ -134,6 +134,13 @@ fun NotificationPage(
         notifications.groupBy { it.packageName }
     }
 
+    // Reset selection if the selected app has no notifications left
+    androidx.compose.runtime.LaunchedEffect(notifications) {
+        if (selectedPackage != null && !groupedNotifications.containsKey(selectedPackage)) {
+            selectedPackage = null
+        }
+    }
+
     val sortedAppPackages = remember(groupedNotifications) {
         groupedNotifications.keys.sortedByDescending { pkg ->
             groupedNotifications[pkg]?.maxOfOrNull { it.postTime } ?: 0L
