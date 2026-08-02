@@ -50,6 +50,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -107,6 +108,8 @@ fun NotificationItem(
     isLast: Boolean,
     offsetAbove: Float = 0f,
     offsetBelow: Float = 0f,
+    replyingNotificationKey: String? = null,
+    onReplyOpen: (String?) -> Unit = {},
     onOffsetChanged: (Float) -> Unit = {},
     onSwipeActiveChange: (Boolean) -> Unit = {},
     onOpen: () -> Unit,
@@ -148,6 +151,16 @@ fun NotificationItem(
 
     val currentOffsetAbove by rememberUpdatedState(offsetAbove)
     val currentOffsetBelow by rememberUpdatedState(offsetBelow)
+
+    var selectedActionForReply by remember { mutableStateOf<LauncherNotificationAction?>(null) }
+    var replyTextValue by remember { mutableStateOf("") }
+
+    LaunchedEffect(replyingNotificationKey) {
+        if (replyingNotificationKey != notification.key) {
+            selectedActionForReply = null
+            replyTextValue = ""
+        }
+    }
 
     val topStartRadius by animateDpAsState(
         targetValue = if (isFirst) largeRadius else lerp(smallRadius, largeRadius, max(swipeProgress, (currentOffsetAbove / dismissThreshold).coerceIn(0f, 1f))),
@@ -531,8 +544,6 @@ fun NotificationItem(
                     exit = fadeOut() + shrinkVertically(animationSpec = spring(stiffness = 800f))
                 ) {
                     Column(modifier = Modifier.padding(top = 16.dp)) {
-                        var selectedActionForReply by remember { mutableStateOf<LauncherNotificationAction?>(null) }
-                        var replyTextValue by remember { mutableStateOf("") }
                         val context = LocalContext.current
 
                         AnimatedVisibility(
@@ -583,6 +594,7 @@ fun NotificationItem(
                                                 }
                                                 selectedActionForReply = null
                                                 replyTextValue = ""
+                                                onReplyOpen(null)
                                             }
                                         }
                                     },
@@ -639,9 +651,11 @@ fun NotificationItem(
                                         if (action.remoteInput != null) {
                                             if (selectedActionForReply == action) {
                                                 selectedActionForReply = null
+                                                onReplyOpen(null)
                                             } else {
                                                 selectedActionForReply = action
                                                 replyTextValue = ""
+                                                onReplyOpen(notification.key)
                                             }
                                         } else {
                                             try {

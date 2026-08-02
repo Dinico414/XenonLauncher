@@ -128,6 +128,7 @@ fun NotificationPage(
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val offsets = remember { mutableStateMapOf<String, Float>() }
     var deleteButtonBounds by remember { mutableStateOf(Rect.Zero) }
+    var replyingNotificationKey by remember { mutableStateOf<String?>(null) }
 
     val groupedNotifications = remember(notifications) {
         notifications.groupBy { it.packageName }
@@ -301,6 +302,8 @@ fun NotificationPage(
                                         isLast = index == notificationsInGroup.size - 1,
                                         offsetAbove = offsetAbove,
                                         offsetBelow = offsetBelow,
+                                        replyingNotificationKey = replyingNotificationKey,
+                                        onReplyOpen = { replyingNotificationKey = it },
                                         onOffsetChanged = { offsets[notification.key] = it },
                                         modifier = Modifier.animateItem(
                                             fadeInSpec = tween(durationMillis = 200),
@@ -495,6 +498,8 @@ fun NotificationPage(
                                             isLast = index == notificationsInGroup.size - 1,
                                             offsetAbove = offsetAbove,
                                             offsetBelow = offsetBelow,
+                                            replyingNotificationKey = replyingNotificationKey,
+                                            onReplyOpen = { replyingNotificationKey = it },
                                             onOffsetChanged = { offsets[notification.key] = it },
                                             modifier = Modifier.animateItem(
                                                 fadeInSpec = tween(durationMillis = 200),
