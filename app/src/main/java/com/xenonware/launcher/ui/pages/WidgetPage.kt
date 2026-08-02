@@ -1119,12 +1119,14 @@ fun WidgetPage(
                                 leadingIcon = { Icon(Icons.Rounded.Edit, null) }
                             ) else null
                         ) + gridOptions.map { cols ->
+                            val isSelected = widgetColumns == cols
                             val targetRowCount = getRowCountForColumns(cols)
                             MenuItem(
                                 text = "Grid Size ${cols}x$targetRowCount",
                                 onClick = { viewModel.setWidgetColumns(cols) },
                                 leadingIcon = { Icon(Icons.Rounded.AspectRatio, null) },
-                                textColor = if (widgetColumns == cols) primaryColor else null
+                                textColor = if (isSelected) primaryColor else null,
+                                containerColor = if (isSelected) primaryColor.copy(alpha = 0.15f) else null
                             )
                         }
                     }
