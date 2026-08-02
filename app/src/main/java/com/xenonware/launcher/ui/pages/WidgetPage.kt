@@ -1,8 +1,13 @@
 package com.xenonware.launcher.ui.pages
 
 import android.appwidget.AppWidgetHost
+import android.appwidget.AppWidgetHostView
 import android.appwidget.AppWidgetManager
+import android.appwidget.AppWidgetProviderInfo
 import android.content.Intent
+import android.os.Build
+import android.os.Bundle
+import android.util.SizeF
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -91,6 +96,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
@@ -103,7 +109,31 @@ import com.xenonware.launcher.viewmodel.LauncherViewModel
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.launch
+import kotlin.math.ceil
 import kotlin.math.roundToInt
+
+/**
+ * Tells an AppWidgetHostView how large it actually is.
+ *
+ * Without this, the host view keeps the provider's declared minWidth/minHeight, so responsive
+ * widgets (Calendar's event list, Maps' shortcut row, Chrome's search bar) inflate their smallest
+ * RemoteViews variant no matter how big the cell is on screen.
+ */
+private fun AppWidgetHostView.applyGridSize(widthDp: Int, heightDp: Int) {
+    if (widthDp <= 0 || heightDp <= 0) return
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        updateAppWidgetSize(
+            Bundle(),
+            listOf(SizeF(widthDp.toFloat(), heightDp.toFloat()))
+        )
+    } else {
+        @Suppress("DEPRECATION")
+        updateAppWidgetSize(Bundle(), widthDp, heightDp, widthDp, heightDp)
+    }
+}
+
+/** AppWidgetProviderInfo dimensions are in pixels, not dp. Convert before comparing to cell sizes. */
+private fun Int.pxToDp(density: Density): Float = with(density) { this@pxToDp.toDp().value }
 
 @Composable
 fun WidgetPage(
@@ -122,6 +152,10 @@ fun WidgetPage(
     val horizontalPadding = 16.dp
     val topGridPadding = 8.dp
     val bottomGridPadding = 8.dp
+
+    // Inner padding applied to each widget cell — subtracted before reporting size to the provider
+    val cellInsetHorizontal = 2.dp
+    val cellInsetVertical = 4.dp
 
     val horizontalSafePadding = WindowInsets.safeDrawing.asPaddingValues().run {
         calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr) + calculateRightPadding(
@@ -178,9 +212,39 @@ fun WidgetPage(
     var showWidgetSelector by remember { mutableStateOf(false) }
     var isDraggingBody by remember { mutableStateOf(false) }
 
+    // Tracks an allocated-but-not-yet-bound widget id so it can be released if the user cancels
+    var pendingWidgetId by remember { mutableIntStateOf(-1) }
+
     val hazeState = rememberHazeState()
 
     val isEditing = selectedWidgetId != -1
+
+    /**
+     * Picks a sensible default span for a newly added widget.
+     * Prefers the provider's declared target cell span (API 31+), otherwise derives it from
+     * minWidth/minHeight converted from px to dp.
+     */
+    val defaultSpanFor = remember(cellWidthDp, cellHeightDp, widgetColumns, rowCount, density) {
+        { info: AppWidgetProviderInfo? ->
+            if (info == null) {
+                Pair(2.coerceAtMost(widgetColumns), 2.coerceAtMost(rowCount))
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                info.targetCellWidth > 0 && info.targetCellHeight > 0
+            ) {
+                Pair(
+                    info.targetCellWidth.coerceIn(1, widgetColumns),
+                    info.targetCellHeight.coerceIn(1, rowCount)
+                )
+            } else {
+                val w = ceil(info.minWidth.pxToDp(density) / cellWidthDp.value).toInt()
+                val h = ceil(info.minHeight.pxToDp(density) / cellHeightDp.value).toInt()
+                Pair(
+                    w.coerceAtLeast(2).coerceIn(1, widgetColumns),
+                    h.coerceAtLeast(2).coerceIn(1, rowCount)
+                )
+            }
+        }
+    }
 
     // Helper to check for collisions and boundaries
     val isAreaVacant = remember(widgets, widgetColumns, rowCount) {
@@ -247,8 +311,8 @@ fun WidgetPage(
             val data = result.data
             val appWidgetId = data?.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1) ?: -1
             if (appWidgetId != -1) {
-                val w = 2.coerceAtMost(widgetColumns)
-                val h = 2
+                val info = appWidgetManager.getAppWidgetInfo(appWidgetId)
+                val (w, h) = defaultSpanFor(info)
                 val space = findFirstAvailableSpace(w, h, pagerState.currentPage)
                 if (space != null) {
                     viewModel.addWidget(appWidgetId, space.first, space.second, space.third, w, h)
@@ -258,6 +322,13 @@ fun WidgetPage(
                 } else {
                     viewModel.addWidget(appWidgetId, pagerState.currentPage, 0, 0, w, h)
                 }
+                pendingWidgetId = -1
+            }
+        } else {
+            // Bind was cancelled or denied — release the id instead of leaking it
+            if (pendingWidgetId != -1) {
+                runCatching { appWidgetHost.deleteAppWidgetId(pendingWidgetId) }
+                pendingWidgetId = -1
             }
         }
     }
@@ -268,7 +339,7 @@ fun WidgetPage(
         if (result.resultCode == android.app.Activity.RESULT_OK) {
             val data = result.data ?: return@rememberLauncherForActivityResult
             val intent =
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     data.getParcelableExtra(Intent.EXTRA_SHORTCUT_INTENT, Intent::class.java)
                 } else {
                     @Suppress("DEPRECATION")
@@ -276,7 +347,7 @@ fun WidgetPage(
                 }
             val name = data.getStringExtra(Intent.EXTRA_SHORTCUT_NAME)
             val iconRes =
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     data.getParcelableExtra(
                         Intent.EXTRA_SHORTCUT_ICON_RESOURCE,
                         Intent.ShortcutIconResource::class.java
@@ -287,7 +358,7 @@ fun WidgetPage(
                 }
 
             val iconBitmap =
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     data.getParcelableExtra(
                         Intent.EXTRA_SHORTCUT_ICON,
                         android.graphics.Bitmap::class.java
@@ -529,15 +600,43 @@ fun WidgetPage(
                                 val currentWidget by rememberUpdatedState(widget)
                                 val currentWidgetColumns by rememberUpdatedState(widgetColumns)
                                 val currentRowCount by rememberUpdatedState(rowCount)
-                                val currentIsEditing by rememberUpdatedState(isEditing)
-                                val currentIsSelected by rememberUpdatedState(isSelected)
 
-                                val minW =
-                                    if (widgetInfo != null) (widgetInfo.minWidth / cellWidthDp.value).roundToInt()
-                                        .coerceIn(1, widgetColumns) else 1
-                                val minH =
-                                    if (widgetInfo != null) (widgetInfo.minHeight / cellHeightDp.value).roundToInt()
-                                        .coerceIn(1, rowCount) else 1
+                                // Provider minimums are in px; convert to dp before dividing by cell size.
+                                // Prefer minResizeWidth/Height when the provider declares a smaller
+                                // resizable floor than its default minWidth/minHeight.
+                                val minW = if (widgetInfo != null) {
+                                    val floorPx =
+                                        if (widgetInfo.minResizeWidth in 1 until widgetInfo.minWidth)
+                                            widgetInfo.minResizeWidth else widgetInfo.minWidth
+                                    ceil(floorPx.pxToDp(density) / cellWidthDp.value).toInt()
+                                        .coerceIn(1, widgetColumns)
+                                } else 1
+
+                                val minH = if (widgetInfo != null) {
+                                    val floorPx =
+                                        if (widgetInfo.minResizeHeight in 1 until widgetInfo.minHeight)
+                                            widgetInfo.minResizeHeight else widgetInfo.minHeight
+                                    ceil(floorPx.pxToDp(density) / cellHeightDp.value).toInt()
+                                        .coerceIn(1, rowCount)
+                                } else 1
+
+                                // Size reported to the widget provider, in dp, minus cell insets.
+                                // Derived from grid spans (not the animated dp) so the provider is
+                                // only notified once per resize instead of on every animation frame.
+                                val reportedWidthDp = remember(
+                                    widget.width, cellWidthDp, cellInsetHorizontal
+                                ) {
+                                    (widget.width * cellWidthDp.value - cellInsetHorizontal.value * 2)
+                                        .roundToInt().coerceAtLeast(1)
+                                }
+                                val reportedHeightDp = remember(
+                                    widget.height, cellHeightDp, cellInsetVertical
+                                ) {
+                                    (widget.height * cellHeightDp.value - cellInsetVertical.value * 2)
+                                        .roundToInt().coerceAtLeast(1)
+                                }
+                                val lastAppliedSize =
+                                    remember(widget.id) { mutableStateOf<Pair<Int, Int>?>(null) }
 
                                 val animX by animateDpAsState(
                                     targetValue = (widget.x * cellWidthDp.value).dp,
@@ -576,7 +675,10 @@ fun WidgetPage(
                                             y = animY + firstRowTopOffset
                                         )
                                         .size(width = animW, height = animH)
-                                        .padding(horizontal = 2.dp, vertical = 4.dp)
+                                        .padding(
+                                            horizontal = cellInsetHorizontal,
+                                            vertical = cellInsetVertical
+                                        )
                                         .scale(liftScale)
                                         .zIndex(if (isSelected) 1f else 0f)
                                 ) {
@@ -606,7 +708,19 @@ fun WidgetPage(
                                                         }
                                                     }
                                                 },
-                                                update = { _ -> },
+                                                update = { hostView ->
+                                                    val target =
+                                                        reportedWidthDp to reportedHeightDp
+                                                    if (lastAppliedSize.value != target) {
+                                                        lastAppliedSize.value = target
+                                                        runCatching {
+                                                            hostView.applyGridSize(
+                                                                reportedWidthDp,
+                                                                reportedHeightDp
+                                                            )
+                                                        }
+                                                    }
+                                                },
                                                 modifier = Modifier.fillMaxSize()
                                             )
                                         }
@@ -1059,6 +1173,12 @@ fun WidgetPage(
                         Button(
                             onClick = {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                // Release the host's app widget id so it isn't leaked.
+                                // Shortcuts use launcher-generated ids, so skip those.
+                                val target = widgets.firstOrNull { it.id == selectedWidgetId }
+                                if (target != null && target.type != "shortcut") {
+                                    runCatching { appWidgetHost.deleteAppWidgetId(target.id) }
+                                }
                                 viewModel.removeWidget(selectedWidgetId)
                                 selectedWidgetId = -1
                             },
@@ -1078,8 +1198,6 @@ fun WidgetPage(
                 }
 
                 if (showDropDown) {
-                    val dropDownOffsetDpX = with(density) { dropDownOffset.x.toDp() }
-                    val dropDownOffsetDpY = with(density) { dropDownOffset.y.toDp() }
                     val gridOptions = if (isLandscape) listOf(6, 8, 10) else listOf(4, 5)
                     val primaryColor = colorScheme.primary
 
@@ -1189,8 +1307,9 @@ fun WidgetPage(
                     val appWidgetId = appWidgetHost.allocateAppWidgetId()
                     val success =
                         appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)
-                    val w = 2.coerceAtMost(widgetColumns)
-                    val h = 2
+
+                    // Size the new widget from what the provider actually asks for
+                    val (w, h) = defaultSpanFor(info)
                     val space = findFirstAvailableSpace(w, h, pagerState.currentPage)
                     val (targetPage, targetX, targetY) = space ?: Triple(
                         pagerState.currentPage,
@@ -1204,6 +1323,7 @@ fun WidgetPage(
                             pagerState.animateScrollToPage(targetPage)
                         }
                     } else {
+                        pendingWidgetId = appWidgetId
                         val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_BIND).apply {
                             putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
                             putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, info.provider)
