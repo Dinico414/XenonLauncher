@@ -13,6 +13,7 @@ media3 = "1.10.1"
 coil = "2.7.0"
 datastore = "1.2.1"
 accompanist = "0.37.3"
+accompanistSystemUiController = "0.36.0"
 playServicesLocation = "21.4.0"
 playServicesAuth = "21.3.0"
 firebaseBom = "33.9.0"
@@ -52,6 +53,7 @@ androidx-media3-exoplayer = { group = "androidx.media3", name = "media3-exoplaye
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
 accompanist-permissions = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "accompanist" }
+accompanist-systemuicontroller = { group = "com.google.accompanist", name = "accompanist-systemuicontroller", version.ref = "accompanistSystemUiController" }
 play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "playServicesLocation" }
 play-services-auth = { module = "com.google.android.gms:play-services-auth", version.ref = "playServicesAuth" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }

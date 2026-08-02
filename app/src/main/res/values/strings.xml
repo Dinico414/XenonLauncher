@@ -47,6 +47,10 @@
     <string name="reset_settings">Reset Settings</string>
     <string name="reset_all_settings_description">Restore all settings to default</string>
     <string name="version">Version</string>
+    <string name="app_version">App Version</string>
+    <string name="xenon_ui_version">Xenon UI Version</string>
+    <string name="xenon_commons_version">Xenon Commons Version</string>
+    <string name="more_infos">More Infos</string>
     <string name="developer_options_title">Developer Options</string>
     <string name="dev_settings_description">Advanced launcher settings</string>
     <string name="ok">OK</string>

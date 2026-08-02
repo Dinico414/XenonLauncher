@@ -27,7 +27,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:enableOnBackInvokedCallback="true"
         android:supportsRtl="true"
-        android:theme="@style/Theme.XenonLauncher">
+        android:theme="@style/Theme.Xenon">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -35,7 +35,7 @@
             android:clearTaskOnLaunch="true"
             android:stateNotNeeded="true"
             android:windowSoftInputMode="adjustNothing"
-            android:theme="@style/Theme.XenonLauncher">
+            android:theme="@style/Theme.Xenon">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -49,13 +49,13 @@
             android:name=".SettingsActivity"
             android:exported="true"
             android:label="Settings"
-            android:theme="@style/Theme.XenonLauncher.Settings" />
+            android:theme="@style/Theme.Xenon" />
 
         <activity
             android:name=".DevSettingsActivity"
             android:exported="true"
             android:label="Developer Options"
-            android:theme="@style/Theme.XenonLauncher.Settings" />
+            android:theme="@style/Theme.Xenon" />
 
         <service
             android:name=".notification.XenonNotificationService"

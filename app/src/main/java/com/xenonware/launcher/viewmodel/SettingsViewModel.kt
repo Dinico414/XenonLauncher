@@ -17,6 +17,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.xenonware.launcher.R
 import com.xenonware.launcher.data.SharedPreferenceManager
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.util.generateCustomIcon
@@ -44,7 +45,143 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _apps = MutableStateFlow<List<AppInfo>>(emptyList())
     val apps = _apps.asStateFlow()
 
+    private val _currentThemeTitle = MutableStateFlow(
+        themeOptions.getOrElse(sharedPreferenceManager.theme) { themeOptions.first { it.nightModeFlag == AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM } }.title
+    )
+    val currentThemeTitle: StateFlow<String> = _currentThemeTitle.asStateFlow()
+
+    private val _blackedOutModeEnabled = MutableStateFlow(sharedPreferenceManager.blackedOutModeEnabled)
+    val blackedOutModeEnabled: StateFlow<Boolean> = _blackedOutModeEnabled.asStateFlow()
+
+    private val _blurEnabled = MutableStateFlow(sharedPreferenceManager.blurEnabled)
+    val blurEnabled: StateFlow<Boolean> = _blurEnabled.asStateFlow()
+
+    private val _isGridLayout = MutableStateFlow(sharedPreferenceManager.isGridLayout)
+    val isGridLayout: StateFlow<Boolean> = _isGridLayout.asStateFlow()
+
+    private val _openKeyboard = MutableStateFlow(sharedPreferenceManager.openKeyboard)
+    val openKeyboard: StateFlow<Boolean> = _openKeyboard.asStateFlow()
+
+    private val _advancedSearchEnabled = MutableStateFlow(sharedPreferenceManager.advancedSearchEnabled)
+    val advancedSearchEnabled: StateFlow<Boolean> = _advancedSearchEnabled.asStateFlow()
+
+    private val _showHiddenAppsInSearch = MutableStateFlow(sharedPreferenceManager.showHiddenAppsInSearch)
+    val showHiddenAppsInSearch: StateFlow<Boolean> = _showHiddenAppsInSearch.asStateFlow()
+
+    private val _hiddenApps = MutableStateFlow(sharedPreferenceManager.hiddenApps)
+    val hiddenApps: StateFlow<List<String>> = _hiddenApps.asStateFlow()
+
+    private val _notificationBadgeType = MutableStateFlow(sharedPreferenceManager.notificationBadgeType)
+    val notificationBadgeType: StateFlow<Int> = _notificationBadgeType.asStateFlow()
+
+    private val _dockSafeDrawIme = MutableStateFlow(sharedPreferenceManager.dockSafeDrawIme)
+    val dockSafeDrawIme: StateFlow<Boolean> = _dockSafeDrawIme.asStateFlow()
+
+    private val _drawerIconShape = MutableStateFlow(com.xenonware.launcher.ui.res.IconShape.valueOf(sharedPreferenceManager.drawerIconShape))
+    val drawerIconShape: StateFlow<com.xenonware.launcher.ui.res.IconShape> = _drawerIconShape.asStateFlow()
+
+    private val _drawerIconShadow = MutableStateFlow(sharedPreferenceManager.drawerIconShadow)
+    val drawerIconShadow: StateFlow<Boolean> = _drawerIconShadow.asStateFlow()
+
+    private val _timeShortcut = MutableStateFlow(sharedPreferenceManager.timeShortcut)
+    val timeShortcut: StateFlow<String> = _timeShortcut.asStateFlow()
+
+    private val _dateShortcut = MutableStateFlow(sharedPreferenceManager.dateShortcut)
+    val dateShortcut: StateFlow<String> = _dateShortcut.asStateFlow()
+
+    private val _weatherShortcut = MutableStateFlow(sharedPreferenceManager.weatherShortcut)
+    val weatherShortcut: StateFlow<String> = _weatherShortcut.asStateFlow()
+
+    private val _visibleCalendars = MutableStateFlow(sharedPreferenceManager.visibleCalendars)
+    val visibleCalendars: StateFlow<List<String>> = _visibleCalendars.asStateFlow()
+
+    private val _availableCalendars = MutableStateFlow<List<CalendarInfo>>(emptyList())
+    val availableCalendars: StateFlow<List<CalendarInfo>> = _availableCalendars.asStateFlow()
+
+    private val _showCalendarSelectionDialog = MutableStateFlow(false)
+    val showCalendarSelectionDialog: StateFlow<Boolean> = _showCalendarSelectionDialog.asStateFlow()
+
+    private val _showNotificationManagerDialog = MutableStateFlow(false)
+    val showNotificationManagerDialog: StateFlow<Boolean> = _showNotificationManagerDialog.asStateFlow()
+
+    private val _visibleNotificationApps = MutableStateFlow(sharedPreferenceManager.visibleNotificationApps)
+    val visibleNotificationApps: StateFlow<List<String>> = _visibleNotificationApps.asStateFlow()
+
+    private val _hasWallpaperAccess = MutableStateFlow(checkWallpaperAccess())
+    val hasWallpaperAccess: StateFlow<Boolean> = _hasWallpaperAccess.asStateFlow()
+
+    private val _currentLanguage = MutableStateFlow("English")
+    val currentLanguage: StateFlow<String> = _currentLanguage.asStateFlow()
+
+    private val _showThemeDialog = MutableStateFlow(false)
+    val showThemeDialog: StateFlow<Boolean> = _showThemeDialog.asStateFlow()
+
+    private val _showClearDataDialog = MutableStateFlow(false)
+    val showClearDataDialog: StateFlow<Boolean> = _showClearDataDialog.asStateFlow()
+
+    private val _showResetSettingsDialog = MutableStateFlow(false)
+    val showResetSettingsDialog: StateFlow<Boolean> = _showResetSettingsDialog.asStateFlow()
+
+    private val _showCoverSelectionDialog = MutableStateFlow(false)
+    val showCoverSelectionDialog: StateFlow<Boolean> = _showCoverSelectionDialog.asStateFlow()
+
+    private val _showLanguageDialog = MutableStateFlow(false)
+    val showLanguageDialog: StateFlow<Boolean> = _showLanguageDialog.asStateFlow()
+
+    private val _showVersionDialog = MutableStateFlow(false)
+    val showVersionDialog: StateFlow<Boolean> = _showVersionDialog.asStateFlow()
+
+    private val _showSignOutDialog = MutableStateFlow(false)
+    val showSignOutDialog: StateFlow<Boolean> = _showSignOutDialog.asStateFlow()
+
+    private val _developerModeEnabled = MutableStateFlow(sharedPreferenceManager.developerModeEnabled)
+    val developerModeEnabled: StateFlow<Boolean> = _developerModeEnabled.asStateFlow()
+
+    private val _persistedThemeIndexFlow = MutableStateFlow(sharedPreferenceManager.theme)
+    val persistedThemeIndex: StateFlow<Int> = _persistedThemeIndexFlow.asStateFlow()
+
+    private val _dialogPreviewThemeIndex = MutableStateFlow(sharedPreferenceManager.theme)
+    val dialogPreviewThemeIndex: StateFlow<Int> = _dialogPreviewThemeIndex.asStateFlow()
+
+    private val _enableCoverTheme = MutableStateFlow(sharedPreferenceManager.coverThemeEnabled)
+    val enableCoverTheme: StateFlow<Boolean> = _enableCoverTheme.asStateFlow()
+
+    private val _showDeveloperOptions = MutableStateFlow(false)
+    val showDeveloperOptions: StateFlow<Boolean> = _showDeveloperOptions.asStateFlow()
+
+    private var infoTileTapCount = 0
+    private var singleTapJob: Job? = null
+    private var resetTapsJob: Job? = null
+    private val requiredTaps = 7
+    private val tapTimeoutMillis = 500L
+    private var lastMultiTapTime: Long = 0
+    private val multiTapCooldownMillis = 500L
+    private var currentToast: Toast? = null
+
+    val activeNightModeFlag: StateFlow<Int> = combine(
+        _persistedThemeIndexFlow,
+        _dialogPreviewThemeIndex,
+        _showThemeDialog
+    ) { persistedIndex, previewIndex, isDialogShowing ->
+        val themeIndexToUse = if (isDialogShowing) previewIndex else persistedIndex
+        themeFlags.getOrElse(themeIndexToUse) { AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = themeFlags.getOrElse(sharedPreferenceManager.theme) { AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM }
+    )
+
     init {
+        viewModelScope.launch {
+            activeNightModeFlag.collect { nightMode ->
+                AppCompatDelegate.setDefaultNightMode(nightMode)
+            }
+        }
+        viewModelScope.launch {
+            _persistedThemeIndexFlow.collect { index ->
+                _currentThemeTitle.value = themeOptions.getOrElse(index) { themeOptions.first { it.nightModeFlag == AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM } }.title
+            }
+        }
         loadApps()
     }
 
@@ -104,142 +241,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    private val _currentThemeTitle = MutableStateFlow(
-        themeOptions.getOrElse(sharedPreferenceManager.theme) { themeOptions.last() }.title
-    )
-    val currentThemeTitle: StateFlow<String> = _currentThemeTitle.asStateFlow()
-
-    private val _blackedOutModeEnabled = MutableStateFlow(sharedPreferenceManager.blackedOutModeEnabled)
-    val blackedOutModeEnabled: StateFlow<Boolean> = _blackedOutModeEnabled.asStateFlow()
-
-    private val _blurEnabled = MutableStateFlow(sharedPreferenceManager.blurEnabled)
-    val blurEnabled: StateFlow<Boolean> = _blurEnabled.asStateFlow()
-
-    private val _isGridLayout = MutableStateFlow(sharedPreferenceManager.isGridLayout)
-    val isGridLayout: StateFlow<Boolean> = _isGridLayout.asStateFlow()
-
-    private val _openKeyboard = MutableStateFlow(sharedPreferenceManager.openKeyboard)
-    val openKeyboard: StateFlow<Boolean> = _openKeyboard.asStateFlow()
-
-    private val _advancedSearchEnabled = MutableStateFlow(sharedPreferenceManager.advancedSearchEnabled)
-    val advancedSearchEnabled: StateFlow<Boolean> = _advancedSearchEnabled.asStateFlow()
-
-    private val _showHiddenAppsInSearch = MutableStateFlow(sharedPreferenceManager.showHiddenAppsInSearch)
-    val showHiddenAppsInSearch: StateFlow<Boolean> = _showHiddenAppsInSearch.asStateFlow()
-
-    private val _hiddenApps = MutableStateFlow(sharedPreferenceManager.hiddenApps)
-    val hiddenApps: StateFlow<List<String>> = _hiddenApps.asStateFlow()
-
-    private val _notificationBadgeType = MutableStateFlow(sharedPreferenceManager.notificationBadgeType)
-    val notificationBadgeType: StateFlow<Int> = _notificationBadgeType.asStateFlow()
-
-    private val _dockSafeDrawIme = MutableStateFlow(sharedPreferenceManager.dockSafeDrawIme)
-    val dockSafeDrawIme: StateFlow<Boolean> = _dockSafeDrawIme.asStateFlow()
-
-    private val _drawerIconShape = MutableStateFlow(com.xenonware.launcher.ui.res.IconShape.valueOf(sharedPreferenceManager.drawerIconShape))
-    val drawerIconShape: StateFlow<com.xenonware.launcher.ui.res.IconShape> = _drawerIconShape.asStateFlow()
-
-    private val _drawerIconShadow = MutableStateFlow(sharedPreferenceManager.drawerIconShadow)
-    val drawerIconShadow: StateFlow<Boolean> = _drawerIconShadow.asStateFlow()
-
-    private val _timeShortcut = MutableStateFlow(sharedPreferenceManager.timeShortcut)
-    val timeShortcut: StateFlow<String> = _timeShortcut.asStateFlow()
-
-    private val _dateShortcut = MutableStateFlow(sharedPreferenceManager.dateShortcut)
-    val dateShortcut: StateFlow<String> = _dateShortcut.asStateFlow()
-
-    private val _weatherShortcut = MutableStateFlow(sharedPreferenceManager.weatherShortcut)
-    val weatherShortcut: StateFlow<String> = _weatherShortcut.asStateFlow()
-
-    private val _visibleCalendars = MutableStateFlow(sharedPreferenceManager.visibleCalendars)
-    val visibleCalendars: StateFlow<List<String>> = _visibleCalendars.asStateFlow()
-
-    private val _availableCalendars = MutableStateFlow<List<com.xenonware.launcher.viewmodel.CalendarInfo>>(emptyList())
-    val availableCalendars: StateFlow<List<com.xenonware.launcher.viewmodel.CalendarInfo>> = _availableCalendars.asStateFlow()
-
-    private val _showCalendarSelectionDialog = MutableStateFlow(false)
-    val showCalendarSelectionDialog: StateFlow<Boolean> = _showCalendarSelectionDialog.asStateFlow()
-
-    private val _showNotificationManagerDialog = MutableStateFlow(false)
-    val showNotificationManagerDialog: StateFlow<Boolean> = _showNotificationManagerDialog.asStateFlow()
-
-    private val _visibleNotificationApps = MutableStateFlow(sharedPreferenceManager.visibleNotificationApps)
-    val visibleNotificationApps: StateFlow<List<String>> = _visibleNotificationApps.asStateFlow()
-
-    private val _hasWallpaperAccess = MutableStateFlow(checkWallpaperAccess())
-    val hasWallpaperAccess: StateFlow<Boolean> = _hasWallpaperAccess.asStateFlow()
-
-    private val _currentLanguage = MutableStateFlow("English")
-    val currentLanguage: StateFlow<String> = _currentLanguage.asStateFlow()
-
-    private val _showThemeDialog = MutableStateFlow(false)
-    val showThemeDialog: StateFlow<Boolean> = _showThemeDialog.asStateFlow()
-
-    private val _showClearDataDialog = MutableStateFlow(false)
-    val showClearDataDialog: StateFlow<Boolean> = _showClearDataDialog.asStateFlow()
-
-    private val _showResetSettingsDialog = MutableStateFlow(false)
-    val showResetSettingsDialog: StateFlow<Boolean> = _showResetSettingsDialog.asStateFlow()
-
-    private val _showCoverSelectionDialog = MutableStateFlow(false)
-    val showCoverSelectionDialog: StateFlow<Boolean> = _showCoverSelectionDialog.asStateFlow()
-
-    private val _showLanguageDialog = MutableStateFlow(false)
-    val showLanguageDialog: StateFlow<Boolean> = _showLanguageDialog.asStateFlow()
-
-    private val _showVersionDialog = MutableStateFlow(false)
-    val showVersionDialog: StateFlow<Boolean> = _showVersionDialog.asStateFlow()
-
-    private val _showSignOutDialog = MutableStateFlow(false)
-    val showSignOutDialog: StateFlow<Boolean> = _showSignOutDialog.asStateFlow()
-
-    private val _showDeveloperOptions = MutableStateFlow(false)
-    val showDeveloperOptions: StateFlow<Boolean> = _showDeveloperOptions.asStateFlow()
-
-    private val _developerModeEnabled = MutableStateFlow(sharedPreferenceManager.developerModeEnabled)
-    val developerModeEnabled: StateFlow<Boolean> = _developerModeEnabled.asStateFlow()
-
-    private val _persistedThemeIndexFlow = MutableStateFlow(sharedPreferenceManager.theme)
-    val persistedThemeIndex: StateFlow<Int> = _persistedThemeIndexFlow.asStateFlow()
-
-    private val _dialogPreviewThemeIndex = MutableStateFlow(sharedPreferenceManager.theme)
-    val dialogPreviewThemeIndex: StateFlow<Int> = _dialogPreviewThemeIndex.asStateFlow()
-
-    private val _enableCoverTheme = MutableStateFlow(sharedPreferenceManager.coverThemeEnabled)
-    val enableCoverTheme: StateFlow<Boolean> = _enableCoverTheme.asStateFlow()
-
-    private var infoTileTapCount = 0
-    private var singleTapJob: Job? = null
-    private var resetTapsJob: Job? = null
-    private val requiredTaps = 7
-    private val tapTimeoutMillis = 500L
-    private var lastMultiTapTime: Long = 0
-    private val multiTapCooldownMillis = 500L
-    private var currentToast: Toast? = null
-
-    val activeNightModeFlag: StateFlow<Int> = combine(
-        _persistedThemeIndexFlow,
-        _dialogPreviewThemeIndex,
-        _showThemeDialog
-    ) { persistedIndex, previewIndex, isDialogShowing ->
-        val themeIndexToUse = if (isDialogShowing) previewIndex else persistedIndex
-        themeFlags.getOrElse(themeIndexToUse) { AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM }
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = themeFlags.getOrElse(sharedPreferenceManager.theme) { AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM }
-    )
-
     private fun checkWallpaperAccess(): Boolean {
         val context = getApplication<Application>()
         return when {
-            true -> {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> {
                 Environment.isExternalStorageManager()
-            }
-            true -> {
-                context.checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) ==
-                        android.content.pm.PackageManager.PERMISSION_GRANTED ||
-                        Environment.isExternalStorageManager()
             }
             else -> {
                 context.checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) ==
@@ -336,13 +342,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         val allAvailable = _availableCalendars.value.map { it.id }
 
         val new = if (current.isEmpty()) {
-            // "Select All" is active, so we unselect the one clicked
             allAvailable.toMutableList().apply { remove(calendarId) }
         } else if (current.contains("__NONE__")) {
-            // "Clear All" is active, so we select the one clicked
             mutableListOf(calendarId)
         } else {
-            // Specific selection active
             if (current.contains(calendarId)) {
                 current.remove(calendarId)
                 if (current.isEmpty()) mutableListOf("__NONE__") else current
@@ -373,13 +376,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         val allAvailable = _apps.value.map { it.packageName }
 
         val new = if (current.isEmpty()) {
-            // "Select All" is active, so we unselect the one clicked
             allAvailable.toMutableList().apply { remove(packageName) }
         } else if (current.contains("__NONE__")) {
-            // "Clear All" is active, so we select the one clicked
             mutableListOf(packageName)
         } else {
-            // Specific selection active
             if (current.contains(packageName)) {
                 current.remove(packageName)
                 if (current.isEmpty()) mutableListOf("__NONE__") else current
@@ -398,7 +398,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 return@launch
             }
 
-            val calendars = mutableListOf<com.xenonware.launcher.viewmodel.CalendarInfo>()
+            val calendars = mutableListOf<CalendarInfo>()
             val uri = android.provider.CalendarContract.Calendars.CONTENT_URI
             val projection = arrayOf(
                 android.provider.CalendarContract.Calendars._ID,
@@ -415,7 +415,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
                 while (cursor.moveToNext()) {
                     calendars.add(
-                        com.xenonware.launcher.viewmodel.CalendarInfo(
+                        CalendarInfo(
                             id = cursor.getString(idIdx),
                             name = cursor.getString(nameIdx) ?: "Unknown",
                             color = cursor.getInt(colorIdx),
@@ -524,42 +524,14 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun confirmResetSettings() {
         viewModelScope.launch {
             val context = getApplication<Application>()
-            sharedPreferenceManager.theme = 2
-            sharedPreferenceManager.blurEnabled = true
-            sharedPreferenceManager.isGridLayout = true
-            sharedPreferenceManager.openKeyboard = false
-            sharedPreferenceManager.advancedSearchEnabled = true
-            sharedPreferenceManager.notificationBadgeType = 1
-            sharedPreferenceManager.dockSafeDrawIme = false
-            sharedPreferenceManager.drawerIconShape = "Circle"
-            sharedPreferenceManager.drawerIconShadow = false
-            sharedPreferenceManager.timeShortcut = ""
-            sharedPreferenceManager.dateShortcut = ""
-            sharedPreferenceManager.weatherShortcut = ""
-            sharedPreferenceManager.hiddenApps = emptyList()
-            sharedPreferenceManager.showHiddenAppsInSearch = false
-            sharedPreferenceManager.coverThemeEnabled = false
-            sharedPreferenceManager.developerModeEnabled = false
-            sharedPreferenceManager.blackedOutModeEnabled = false
+            sharedPreferenceManager.clearSettings()
 
-            _persistedThemeIndexFlow.value = 2
-            _dialogPreviewThemeIndex.value = 2
-            _blackedOutModeEnabled.value = false
-            _blurEnabled.value = true
-            _isGridLayout.value = true
-            _openKeyboard.value = false
-            _advancedSearchEnabled.value = true
-            _notificationBadgeType.value = 1
-            _dockSafeDrawIme.value = false
-            _drawerIconShape.value = com.xenonware.launcher.ui.res.IconShape.Circle
-            _drawerIconShadow.value = false
-            _timeShortcut.value = ""
-            _dateShortcut.value = ""
-            _weatherShortcut.value = ""
-            _hiddenApps.value = emptyList()
-            _showHiddenAppsInSearch.value = false
-            _enableCoverTheme.value = false
-            _developerModeEnabled.value = false
+            val defaultThemeIndex = 2
+            _persistedThemeIndexFlow.value = defaultThemeIndex
+            _dialogPreviewThemeIndex.value = defaultThemeIndex
+            _blackedOutModeEnabled.value = sharedPreferenceManager.blackedOutModeEnabled
+            _enableCoverTheme.value = sharedPreferenceManager.coverThemeEnabled
+            refreshDeveloperModeState()
 
             _showResetSettingsDialog.value = false
             delay(1000)

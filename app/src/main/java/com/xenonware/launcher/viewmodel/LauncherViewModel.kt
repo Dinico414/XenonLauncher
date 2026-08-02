@@ -106,6 +106,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             "visible_notification_apps" -> {
                 _visibleNotificationApps.value = prefManager.visibleNotificationApps
             }
+            "theme" -> _theme.value = prefManager.theme
+            "blacked_out_mode_enabled" -> _blackedOutModeEnabled.value = prefManager.blackedOutModeEnabled
+            "cover_theme_enabled" -> _coverThemeEnabled.value = prefManager.coverThemeEnabled
         }
     }
 
@@ -176,6 +179,19 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private val _configShortcutType = MutableStateFlow<ShortcutType?>(null)
     val configShortcutType: StateFlow<ShortcutType?> = _configShortcutType
+
+    private val _theme = MutableStateFlow(prefManager.theme)
+    val theme: StateFlow<Int> = _theme
+
+    private val _blackedOutModeEnabled = MutableStateFlow(prefManager.blackedOutModeEnabled)
+    val blackedOutModeEnabled: StateFlow<Boolean> = _blackedOutModeEnabled
+
+    private val _coverThemeEnabled = MutableStateFlow(prefManager.coverThemeEnabled)
+    val coverThemeEnabled: StateFlow<Boolean> = _coverThemeEnabled
+
+    fun isCoverThemeApplied(size: androidx.compose.ui.unit.IntSize): Boolean {
+        return prefManager.isCoverThemeApplied(size)
+    }
 
     enum class ShortcutType { TIME, DATE, WEATHER }
 

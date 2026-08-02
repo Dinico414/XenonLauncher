@@ -1,7 +1,6 @@
 package com.xenonware.launcher
 
 import android.content.Intent
-import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -36,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
@@ -46,7 +46,7 @@ import com.xenonware.launcher.ui.pages.WidgetPage
 import com.xenonware.launcher.ui.res.CalendarSelectionDialog
 import com.xenonware.launcher.ui.res.ShortcutConfigDialog
 import com.xenonware.launcher.ui.res.dock.DockPill
-import com.xenonware.launcher.ui.theme.XenonLauncherTheme
+import com.xenonware.launcher.ui.theme.ScreenEnvironment
 import com.xenonware.launcher.util.DragHandler
 import com.xenonware.launcher.util.WindowBlurBehind
 import com.xenonware.launcher.util.rememberBlurAvailable
@@ -65,7 +65,19 @@ class MainActivity : ComponentActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
 
         setContent {
-            XenonLauncherTheme {
+            val theme by viewModel.theme.collectAsState()
+            val blackedOut by viewModel.blackedOutModeEnabled.collectAsState()
+            val coverThemeEnabled by viewModel.coverThemeEnabled.collectAsState()
+            val containerSize = LocalWindowInfo.current.containerSize
+            val applyCoverTheme = remember(containerSize, coverThemeEnabled) {
+                viewModel.isCoverThemeApplied(containerSize)
+            }
+
+            ScreenEnvironment(
+                themePreference = theme,
+                coverTheme = applyCoverTheme,
+                blackedOutModeEnabled = blackedOut
+            ) { layoutType, isLandscape ->
                 val permissions = mutableListOf(
                     android.Manifest.permission.ACCESS_COARSE_LOCATION,
                     android.Manifest.permission.ACCESS_FINE_LOCATION,
@@ -73,10 +85,8 @@ class MainActivity : ComponentActivity() {
                     android.Manifest.permission.READ_CALENDAR
                 )
 
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    permissions.add(android.Manifest.permission.READ_MEDIA_IMAGES)
-                    permissions.add(android.Manifest.permission.POST_NOTIFICATIONS)
-                }
+                permissions.add(android.Manifest.permission.READ_MEDIA_IMAGES)
+                permissions.add(android.Manifest.permission.POST_NOTIFICATIONS)
 
                 val permissionsState = rememberMultiplePermissionsState(permissions = permissions)
 

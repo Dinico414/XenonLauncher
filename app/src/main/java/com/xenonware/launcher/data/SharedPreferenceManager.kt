@@ -2,6 +2,7 @@ package com.xenonware.launcher.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import com.xenonware.launcher.model.AppOverride
 import org.json.JSONObject
 
@@ -10,111 +11,111 @@ class SharedPreferenceManager(context: Context) {
 
     var theme: Int
         get() = prefs.getInt("theme", 2) // 2: System
-        set(value) = prefs.edit().putInt("theme", value).apply()
+        set(value) = prefs.edit { putInt("theme", value) }
 
     var blurEnabled: Boolean
         get() = prefs.getBoolean("blur_enabled", true)
-        set(value) = prefs.edit().putBoolean("blur_enabled", value).apply()
+        set(value) = prefs.edit { putBoolean("blur_enabled", value) }
 
     var pinnedApps: List<String>
         get() = prefs.getString("pinned_apps", "")?.split(",")?.filter { it.isNotEmpty() } ?: emptyList()
-        set(value) = prefs.edit().putString("pinned_apps", value.joinToString(",")).apply()
+        set(value) = prefs.edit { putString("pinned_apps", value.joinToString(",")) }
 
     var isGridLayout: Boolean
         get() = prefs.getBoolean("is_grid_layout", true)
-        set(value) = prefs.edit().putBoolean("is_grid_layout", value).apply()
+        set(value) = prefs.edit { putBoolean("is_grid_layout", value) }
 
     var openKeyboard: Boolean
         get() = prefs.getBoolean("open_keyboard", false)
-        set(value) = prefs.edit().putBoolean("open_keyboard", value).apply()
+        set(value) = prefs.edit { putBoolean("open_keyboard", value) }
 
     var appUsage: String
         get() = prefs.getString("app_usage", "") ?: ""
-        set(value) = prefs.edit().putString("app_usage", value).apply()
+        set(value) = prefs.edit { putString("app_usage", value) }
 
     var widgetColumnsPortrait: Int
         get() = prefs.getInt("widget_columns_portrait", 4)
-        set(value) = prefs.edit().putInt("widget_columns_portrait", value).apply()
+        set(value) = prefs.edit { putInt("widget_columns_portrait", value) }
 
     var widgetColumnsLandscape: Int
         get() = prefs.getInt("widget_columns_landscape", 6)
-        set(value) = prefs.edit().putInt("widget_columns_landscape", value).apply()
+        set(value) = prefs.edit { putInt("widget_columns_landscape", value) }
 
     var widgetLayoutPortrait: String
         get() = prefs.getString("widget_layout_portrait", "") ?: ""
-        set(value) = prefs.edit().putString("widget_layout_portrait", value).apply()
+        set(value) = prefs.edit { putString("widget_layout_portrait", value) }
 
     var widgetLayoutLandscape: String
         get() = prefs.getString("widget_layout_landscape", "") ?: ""
-        set(value) = prefs.edit().putString("widget_layout_landscape", value).apply()
+        set(value) = prefs.edit { putString("widget_layout_landscape", value) }
 
     var advancedSearchEnabled: Boolean
         get() = prefs.getBoolean("advanced_search_enabled", true)
-        set(value) = prefs.edit().putBoolean("advanced_search_enabled", value).apply()
+        set(value) = prefs.edit { putBoolean("advanced_search_enabled", value) }
 
     var notificationBadgeType: Int
         get() = prefs.getInt("notification_badge_type", 1) // 0: None, 1: Dot, 2: Number
-        set(value) = prefs.edit().putInt("notification_badge_type", value).apply()
+        set(value) = prefs.edit { putInt("notification_badge_type", value) }
 
     var searchHistory: String
         get() = prefs.getString("search_history", "") ?: ""
-        set(value) = prefs.edit().putString("search_history", value).apply()
+        set(value) = prefs.edit { putString("search_history", value) }
 
     var dockSafeDrawIme: Boolean
         get() = prefs.getBoolean("dock_safedraw_ime", false)
-        set(value) = prefs.edit().putBoolean("dock_safedraw_ime", value).apply()
+        set(value) = prefs.edit { putBoolean("dock_safedraw_ime", value) }
 
     var timeShortcut: String
         get() = prefs.getString("time_shortcut", "") ?: ""
-        set(value) = prefs.edit().putString("time_shortcut", value).apply()
+        set(value) = prefs.edit { putString("time_shortcut", value) }
 
     var dateShortcut: String
         get() = prefs.getString("date_shortcut", "") ?: ""
-        set(value) = prefs.edit().putString("date_shortcut", value).apply()
+        set(value) = prefs.edit { putString("date_shortcut", value) }
 
     var weatherShortcut: String
         get() = prefs.getString("weather_shortcut", "") ?: ""
-        set(value) = prefs.edit().putString("weather_shortcut", value).apply()
+        set(value) = prefs.edit { putString("weather_shortcut", value) }
 
     var hiddenApps: List<String>
         get() = prefs.getString("hidden_apps", "")?.split(",")?.filter { it.isNotEmpty() } ?: emptyList()
-        set(value) = prefs.edit().putString("hidden_apps", value.joinToString(",")).apply()
+        set(value) = prefs.edit { putString("hidden_apps", value.joinToString(",")) }
 
     var visibleCalendars: List<String>
         get() = prefs.getString("visible_calendars", "")?.split(",")?.filter { it.isNotEmpty() } ?: emptyList()
-        set(value) = prefs.edit().putString("visible_calendars", value.joinToString(",")).apply()
+        set(value) = prefs.edit { putString("visible_calendars", value.joinToString(",")) }
 
     var visibleNotificationApps: List<String>
         get() = prefs.getString("visible_notification_apps", "")?.split(",")?.filter { it.isNotEmpty() } ?: emptyList()
-        set(value) = prefs.edit().putString("visible_notification_apps", value.joinToString(",")).apply()
+        set(value) = prefs.edit { putString("visible_notification_apps", value.joinToString(",")) }
 
     var showHiddenAppsInSearch: Boolean
         get() = prefs.getBoolean("show_hidden_apps_in_search", false)
-        set(value) = prefs.edit().putBoolean("show_hidden_apps_in_search", value).apply()
+        set(value) = prefs.edit { putBoolean("show_hidden_apps_in_search", value) }
 
     var drawerIconShape: String
         get() = prefs.getString("drawer_icon_shape", "Circle") ?: "Circle"
-        set(value) = prefs.edit().putString("drawer_icon_shape", value).apply()
+        set(value) = prefs.edit { putString("drawer_icon_shape", value) }
 
     var drawerIconShadow: Boolean
         get() = prefs.getBoolean("drawer_icon_shadow", false)
-        set(value) = prefs.edit().putBoolean("drawer_icon_shadow", value).apply()
+        set(value) = prefs.edit { putBoolean("drawer_icon_shadow", value) }
 
     var blackedOutModeEnabled: Boolean
         get() = prefs.getBoolean("blacked_out_mode_enabled", false)
-        set(value) = prefs.edit().putBoolean("blacked_out_mode_enabled", value).apply()
+        set(value) = prefs.edit { putBoolean("blacked_out_mode_enabled", value) }
 
     var developerModeEnabled: Boolean
         get() = prefs.getBoolean("developer_mode_enabled", false)
-        set(value) = prefs.edit().putBoolean("developer_mode_enabled", value).apply()
+        set(value) = prefs.edit { putBoolean("developer_mode_enabled", value) }
 
     var isUserLoggedIn: Boolean
         get() = prefs.getBoolean("is_user_logged_in", false)
-        set(value) = prefs.edit().putBoolean("is_user_logged_in", value).apply()
+        set(value) = prefs.edit { putBoolean("is_user_logged_in", value) }
 
     var coverThemeEnabled: Boolean
         get() = prefs.getBoolean("cover_theme_enabled", false)
-        set(value) = prefs.edit().putBoolean("cover_theme_enabled", value).apply()
+        set(value) = prefs.edit { putBoolean("cover_theme_enabled", value) }
 
     var coverDisplaySize: androidx.compose.ui.unit.IntSize
         get() {
@@ -123,10 +124,10 @@ class SharedPreferenceManager(context: Context) {
             return androidx.compose.ui.unit.IntSize(dim1, dim2)
         }
         set(value) {
-            prefs.edit().apply {
+            prefs.edit {
                 putInt("cover_display_dimension_1", kotlin.math.min(value.width, value.height))
                 putInt("cover_display_dimension_2", kotlin.math.max(value.width, value.height))
-            }.apply()
+            }
         }
 
     fun isCoverThemeApplied(currentDisplaySize: androidx.compose.ui.unit.IntSize): Boolean {
@@ -186,7 +187,31 @@ class SharedPreferenceManager(context: Context) {
             obj.put("borderWidth", override.borderWidth.toDouble())
             json.put(pkg, obj)
         }
-        prefs.edit().putString("app_overrides", json.toString()).apply()
+        prefs.edit { putString("app_overrides", json.toString()) }
+    }
+
+    fun clearSettings() {
+        prefs.edit {
+            remove("theme")
+            remove("blacked_out_mode_enabled")
+            remove("blur_enabled")
+            remove("is_grid_layout")
+            remove("open_keyboard")
+            remove("advanced_search_enabled")
+            remove("notification_badge_type")
+            remove("dock_safedraw_ime")
+            remove("drawer_icon_shape")
+            remove("drawer_icon_shadow")
+            remove("time_shortcut")
+            remove("date_shortcut")
+            remove("weather_shortcut")
+            remove("hidden_apps")
+            remove("show_hidden_apps_in_search")
+            remove("cover_theme_enabled")
+            remove("developer_mode_enabled")
+            remove("cover_display_dimension_1")
+            remove("cover_display_dimension_2")
+        }
     }
 
     fun registerListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
