@@ -1,11 +1,9 @@
 package com.xenonware.launcher.ui.pages
 
-import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetHostView
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
 import android.content.Intent
-import android.os.Build
 import android.os.Bundle
 import android.util.SizeF
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -105,6 +103,8 @@ import com.xenonware.launcher.ui.res.MenuItem
 import com.xenonware.launcher.ui.res.WidgetEditBorder
 import com.xenonware.launcher.ui.res.WidgetSelectorDialog
 import com.xenonware.launcher.ui.res.XenonDropDown
+import com.xenonware.launcher.util.InteractiveAppWidgetHost
+import com.xenonware.launcher.util.WidgetInteractionUtil
 import com.xenonware.launcher.viewmodel.LauncherViewModel
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
@@ -121,15 +121,10 @@ import kotlin.math.roundToInt
  */
 private fun AppWidgetHostView.applyGridSize(widthDp: Int, heightDp: Int) {
     if (widthDp <= 0 || heightDp <= 0) return
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        updateAppWidgetSize(
-            Bundle(),
-            listOf(SizeF(widthDp.toFloat(), heightDp.toFloat()))
-        )
-    } else {
-        @Suppress("DEPRECATION")
-        updateAppWidgetSize(Bundle(), widthDp, heightDp, widthDp, heightDp)
-    }
+    updateAppWidgetSize(
+        Bundle(),
+        listOf(SizeF(widthDp.toFloat(), heightDp.toFloat()))
+    )
 }
 
 /** AppWidgetProviderInfo dimensions are in pixels, not dp. Convert before comparing to cell sizes. */
@@ -204,7 +199,7 @@ fun WidgetPage(
     val firstRowTopOffset = gridTopOffset
 
     val appWidgetManager = remember { AppWidgetManager.getInstance(context) }
-    val appWidgetHost = remember { AppWidgetHost(context, 1024) }
+    val appWidgetHost = remember { InteractiveAppWidgetHost(context, 1024) }
 
     var showDropDown by remember { mutableStateOf(false) }
     var dropDownOffset by remember { mutableStateOf(Offset.Zero) }
@@ -228,8 +223,7 @@ fun WidgetPage(
         { info: AppWidgetProviderInfo? ->
             if (info == null) {
                 Pair(2.coerceAtMost(widgetColumns), 2.coerceAtMost(rowCount))
-            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                info.targetCellWidth > 0 && info.targetCellHeight > 0
+            } else if (info.targetCellWidth > 0 && info.targetCellHeight > 0
             ) {
                 Pair(
                     info.targetCellWidth.coerceIn(1, widgetColumns),
@@ -339,34 +333,19 @@ fun WidgetPage(
         if (result.resultCode == android.app.Activity.RESULT_OK) {
             val data = result.data ?: return@rememberLauncherForActivityResult
             val intent =
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    data.getParcelableExtra(Intent.EXTRA_SHORTCUT_INTENT, Intent::class.java)
-                } else {
-                    @Suppress("DEPRECATION")
-                    data.getParcelableExtra(Intent.EXTRA_SHORTCUT_INTENT)
-                }
+                data.getParcelableExtra(Intent.EXTRA_SHORTCUT_INTENT, Intent::class.java)
             val name = data.getStringExtra(Intent.EXTRA_SHORTCUT_NAME)
             val iconRes =
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    data.getParcelableExtra(
-                        Intent.EXTRA_SHORTCUT_ICON_RESOURCE,
-                        Intent.ShortcutIconResource::class.java
-                    )
-                } else {
-                    @Suppress("DEPRECATION")
-                    data.getParcelableExtra(Intent.EXTRA_SHORTCUT_ICON_RESOURCE)
-                }
+                data.getParcelableExtra(
+                    Intent.EXTRA_SHORTCUT_ICON_RESOURCE,
+                    Intent.ShortcutIconResource::class.java
+                )
 
             val iconBitmap =
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    data.getParcelableExtra(
-                        Intent.EXTRA_SHORTCUT_ICON,
-                        android.graphics.Bitmap::class.java
-                    )
-                } else {
-                    @Suppress("DEPRECATION")
-                    data.getParcelableExtra(Intent.EXTRA_SHORTCUT_ICON) as? android.graphics.Bitmap
-                }
+                data.getParcelableExtra(
+                    Intent.EXTRA_SHORTCUT_ICON,
+                    android.graphics.Bitmap::class.java
+                )
 
             if (intent != null && name != null) {
                 val w = 1
@@ -450,9 +429,9 @@ fun WidgetPage(
                             val cornerPx = 24.dp.toPx()
                             val path = Path().apply {
                                 moveTo(0f, size.height - cornerPx)
-                                quadraticBezierTo(0f, size.height, cornerPx, size.height)
+                                quadraticTo(0f, size.height, cornerPx, size.height)
                                 lineTo(size.width - cornerPx, size.height)
-                                quadraticBezierTo(
+                                quadraticTo(
                                     size.width,
                                     size.height,
                                     size.width,
@@ -483,9 +462,9 @@ fun WidgetPage(
                             val cornerPx = 24.dp.toPx()
                             val path = Path().apply {
                                 moveTo(0f, cornerPx)
-                                quadraticBezierTo(0f, 0f, cornerPx, 0f)
+                                quadraticTo(0f, 0f, cornerPx, 0f)
                                 lineTo(size.width - cornerPx, 0f)
-                                quadraticBezierTo(size.width, 0f, size.width, cornerPx)
+                                quadraticTo(size.width, 0f, size.width, cornerPx)
                             }
                             drawPath(
                                 path = path,
@@ -693,20 +672,22 @@ fun WidgetPage(
                                         } else {
                                             AndroidView(
                                                 factory = { ctx ->
-                                                    appWidgetHost.createView(
+                                                    val hostView = appWidgetHost.createView(
                                                         ctx,
                                                         widget.id,
                                                         widgetInfo
-                                                    ).apply {
-                                                        setPadding(0, 0, 0, 0)
-                                                        setOnLongClickListener {
-                                                            selectedWidgetId = widget.id
-                                                            haptic.performHapticFeedback(
-                                                                HapticFeedbackType.LongPress
-                                                            )
-                                                            true
-                                                        }
+                                                    )
+                                                    hostView.setPadding(0, 0, 0, 0)
+                                                    // Long press enters edit mode; taps, scrolls
+                                                    // and pinches still reach the widget itself.
+                                                    (hostView as? WidgetInteractionUtil)
+                                                        ?.onWidgetLongPress = {
+                                                        haptic.performHapticFeedback(
+                                                            HapticFeedbackType.LongPress
+                                                        )
+                                                        selectedWidgetId = widget.id
                                                     }
+                                                    hostView
                                                 },
                                                 update = { hostView ->
                                                     val target =
