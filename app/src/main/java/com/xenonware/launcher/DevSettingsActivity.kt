@@ -8,8 +8,11 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.ViewModelProvider
+import com.xenonware.launcher.data.SharedPreferenceManager
 import com.xenonware.launcher.ui.layouts.dev_settings.DevSettingsLayout
 import com.xenonware.launcher.ui.theme.ScreenEnvironment
 import com.xenonware.launcher.viewmodel.DevSettingsViewModel
@@ -19,9 +22,16 @@ class DevSettingsActivity : ComponentActivity() {
 
     private lateinit var devSettingsViewModel: DevSettingsViewModel
     private lateinit var mainSettingsViewModel: SettingsViewModel
+    private lateinit var sharedPreferenceManager: SharedPreferenceManager
+
+    private var lastAppliedTheme: Int = -1
+    private var lastAppliedCoverThemeEnabled: Boolean = false
+    private var lastAppliedBlackedOutMode: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        enableEdgeToEdge()
 
         mainSettingsViewModel = ViewModelProvider(
             this,
@@ -29,25 +39,38 @@ class DevSettingsActivity : ComponentActivity() {
         )[SettingsViewModel::class.java]
 
         devSettingsViewModel = ViewModelProvider(this)[DevSettingsViewModel::class.java]
+        sharedPreferenceManager = SharedPreferenceManager(applicationContext)
 
-        enableEdgeToEdge()
+        val initialThemePref = sharedPreferenceManager.theme
+        val initialCoverThemeEnabledSetting = sharedPreferenceManager.coverThemeEnabled
+        val initialBlackedOutMode = sharedPreferenceManager.blackedOutModeEnabled
+
+        updateAppCompatDelegateTheme(initialThemePref)
+
+        lastAppliedTheme = initialThemePref
+        lastAppliedCoverThemeEnabled = initialCoverThemeEnabledSetting
+        lastAppliedBlackedOutMode = initialBlackedOutMode
 
         setContent {
-            val activeNightMode by mainSettingsViewModel.activeNightModeFlag.collectAsState()
             val currentContainerSize = LocalWindowInfo.current.containerSize
+            
+            val activeNightMode by mainSettingsViewModel.activeNightModeFlag.collectAsState()
             LaunchedEffect(activeNightMode) {
                 AppCompatDelegate.setDefaultNightMode(activeNightMode)
             }
 
-            val persistedAppThemeIndex by mainSettingsViewModel.persistedThemeIndex.collectAsState()
-            val blackedOutEnabled by mainSettingsViewModel.blackedOutModeEnabled.collectAsState()
+            val themePref by mainSettingsViewModel.persistedThemeIndex.collectAsState()
+            val blackedOut by mainSettingsViewModel.blackedOutModeEnabled.collectAsState()
             val coverThemeEnabled by mainSettingsViewModel.enableCoverTheme.collectAsState()
-            val containerSize = LocalWindowInfo.current.containerSize
-            val applyCoverTheme = mainSettingsViewModel.applyCoverTheme(containerSize)
 
+            val applyCoverTheme = remember(currentContainerSize, coverThemeEnabled) {
+                mainSettingsViewModel.applyCoverTheme(currentContainerSize)
+            }
 
             ScreenEnvironment(
-                persistedAppThemeIndex, applyCoverTheme, blackedOutEnabled
+                themePreference = themePref,
+                coverTheme = applyCoverTheme,
+                blackedOutModeEnabled = blackedOut
             ) { layoutType, isLandscape ->
                 DevSettingsLayout(
                     onNavigateBack = { finish() },
@@ -57,6 +80,37 @@ class DevSettingsActivity : ComponentActivity() {
                     appSize = currentContainerSize
                 )
             }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+
+        val currentThemePref = sharedPreferenceManager.theme
+        val currentCoverThemeEnabledSetting = sharedPreferenceManager.coverThemeEnabled
+        val currentBlackedOutMode = sharedPreferenceManager.blackedOutModeEnabled
+
+        if (currentThemePref != lastAppliedTheme ||
+            currentCoverThemeEnabledSetting != lastAppliedCoverThemeEnabled ||
+            currentBlackedOutMode != lastAppliedBlackedOutMode
+        ) {
+            if (currentThemePref != lastAppliedTheme) {
+                updateAppCompatDelegateTheme(currentThemePref)
+            }
+
+            lastAppliedTheme = currentThemePref
+            lastAppliedCoverThemeEnabled = currentCoverThemeEnabledSetting
+            lastAppliedBlackedOutMode = currentBlackedOutMode
+
+            recreate()
+        }
+    }
+
+    private fun updateAppCompatDelegateTheme(themePref: Int) {
+        if (themePref >= 0 && themePref < sharedPreferenceManager.themeFlag.size) {
+            AppCompatDelegate.setDefaultNightMode(sharedPreferenceManager.themeFlag[themePref])
+        } else {
+            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
         }
     }
 }

@@ -1,7 +1,7 @@
 package com.xenonware.launcher.ui.pages
 
 import android.app.ActivityOptions
-import android.os.Build
+import android.text.format.DateFormat
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
@@ -48,10 +48,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.EmojiEvents
-import android.text.format.DateFormat
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Locale
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.NotificationsActive
@@ -100,6 +96,9 @@ import com.xenonware.launcher.util.ColorUtils
 import com.xenonware.launcher.util.shouldDisableLandscapeLayout
 import com.xenonware.launcher.viewmodel.LauncherViewModel
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.absoluteValue
 
@@ -323,13 +322,10 @@ fun NotificationPage(
                                         onOpen = {
                                             try {
                                                 val options = ActivityOptions.makeBasic()
-                                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                                                    options.setPendingIntentBackgroundActivityStartMode(
-                                                        ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
-                                                    )
-                                                }
+                                                options.pendingIntentBackgroundActivityStartMode =
+                                                    ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
                                                 notification.contentIntent?.send(context, 0, null, null, null, null, options.toBundle())
-                                            } catch (e: Exception) {
+                                            } catch (_: Exception) {
                                                 try { notification.contentIntent?.send() } catch (_: Exception) {}
                                             }
                                         },
@@ -519,11 +515,8 @@ fun NotificationPage(
                                             onOpen = {
                                                 try {
                                                     val options = ActivityOptions.makeBasic()
-                                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                                                        options.setPendingIntentBackgroundActivityStartMode(
-                                                            ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
-                                                        )
-                                                    }
+                                                    options.pendingIntentBackgroundActivityStartMode =
+                                                        ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
                                                     notification.contentIntent?.send(
                                                         context,
                                                         0,
@@ -533,7 +526,7 @@ fun NotificationPage(
                                                         null,
                                                         options.toBundle()
                                                     )
-                                                } catch (e: Exception) {
+                                                } catch (_: Exception) {
                                                     try {
                                                         notification.contentIntent?.send()
                                                     } catch (_: Exception) {

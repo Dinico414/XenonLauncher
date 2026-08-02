@@ -42,6 +42,7 @@ import com.xenonware.launcher.util.DragDropState
 
 @Composable
 fun AppDrawerGridLayout(
+    modifier: Modifier = Modifier,
     app: AppInfo,
     notificationCount: Int,
     badgeType: Int,
@@ -52,7 +53,6 @@ fun AppDrawerGridLayout(
     onLongPress: ((Offset) -> Unit)? = null,
     iconShape: com.xenonware.launcher.ui.res.IconShape = com.xenonware.launcher.ui.res.IconShape.Circle,
     showShadow: Boolean = false,
-    modifier: Modifier = Modifier,
 ) {
     var itemPos by remember { mutableStateOf(Offset.Zero) }
     var pressOffset by remember { mutableStateOf(Offset.Zero) }

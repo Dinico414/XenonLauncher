@@ -55,8 +55,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import com.xenonware.launcher.ui.res.MorphingBackCloseIcon
-import kotlin.math.max
 import androidx.compose.material.icons.automirrored.rounded.ViewList
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
@@ -132,6 +130,7 @@ import com.xenonware.launcher.model.SearchResult
 import com.xenonware.launcher.ui.res.AllAppsDivider
 import com.xenonware.launcher.ui.res.AppEditDialog
 import com.xenonware.launcher.ui.res.MenuItem
+import com.xenonware.launcher.ui.res.MorphingBackCloseIcon
 import com.xenonware.launcher.ui.res.XenonDropDown
 import com.xenonware.launcher.ui.res.XenonSingleChoiceButtonGroup
 import com.xenonware.launcher.ui.res.notification.NotificationBadge
@@ -148,6 +147,7 @@ import dev.chrisbanes.haze.materials.HazeMaterials
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.max
 import kotlin.time.Duration.Companion.milliseconds
 
 
@@ -165,6 +165,7 @@ fun AppDrawer(
     onAppClick: (String) -> Unit,
     onSettingsClick: () -> Unit,
     onDismiss: () -> Unit,
+    isVisible: Boolean = true,
     onPinApp: (String, Int) -> Unit = { _, _ -> },
     isGridLayout: Boolean = true,
     onToggleLayout: () -> Unit = {},
@@ -262,7 +263,7 @@ fun AppDrawer(
             isSearchFocused
         ) {
             isSearchActiveInternal = true
-        } else if (!isSearchFocused && searchQuery.isEmpty()) {
+        } else if (searchQuery.isEmpty()) {
             isSearchActiveInternal = false
         }
     }
@@ -410,7 +411,7 @@ fun AppDrawer(
     val iconMorphProgress = max(searchActiveProgress, searchBackProgress.value)
 
     // 1. Search Back Handler: Handles dismissing search/categories
-    PredictiveBackHandler(enabled = isSearchUIActive) { progress ->
+    PredictiveBackHandler(enabled = isVisible && isSearchUIActive) { progress ->
         try {
             progress.collect { backEvent ->
                 val eased = FastOutSlowInEasing.transform(backEvent.progress)
@@ -436,7 +437,7 @@ fun AppDrawer(
     }
 
     // 2. Drawer Back Handler: Handles dismissing the whole drawer
-    PredictiveBackHandler(enabled = !isSearchUIActive) { progress ->
+    PredictiveBackHandler(enabled = isVisible && !isSearchUIActive) { progress ->
         try {
             progress.collect { backEvent ->
                 val eased = FastOutSlowInEasing.transform(backEvent.progress)

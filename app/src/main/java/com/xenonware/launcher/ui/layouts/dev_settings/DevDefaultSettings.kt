@@ -21,12 +21,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.xenon.mylibrary.ActivityScreen
 import com.xenon.mylibrary.theme.DeviceConfigProvider
+import com.xenon.mylibrary.theme.LayoutType
 import com.xenon.mylibrary.theme.LocalDeviceConfig
 import com.xenon.mylibrary.values.MediumPadding
 import com.xenon.mylibrary.values.NoSpacing
 import com.xenonware.launcher.R
 import com.xenonware.launcher.viewmodel.DevSettingsViewModel
-import com.xenonware.launcher.viewmodel.LayoutType
 import com.xenonware.launcher.viewmodel.SettingsViewModel
 import com.xenonware.launcher.viewmodel.classes.DevSettingsItems
 import dev.chrisbanes.haze.hazeSource

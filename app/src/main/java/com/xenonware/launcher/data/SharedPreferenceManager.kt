@@ -9,6 +9,12 @@ import org.json.JSONObject
 class SharedPreferenceManager(context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("launcher_prefs", Context.MODE_PRIVATE)
 
+    val themeFlag = arrayOf(
+        androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO,
+        androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES,
+        androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+    )
+
     var theme: Int
         get() = prefs.getInt("theme", 2) // 2: System
         set(value) = prefs.edit { putInt("theme", value) }

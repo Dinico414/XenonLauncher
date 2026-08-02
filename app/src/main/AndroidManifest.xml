@@ -27,7 +27,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:enableOnBackInvokedCallback="true"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Xenon">
+        android:theme="@style/Theme.Xenon.Launcher">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -35,7 +35,7 @@
             android:clearTaskOnLaunch="true"
             android:stateNotNeeded="true"
             android:windowSoftInputMode="adjustNothing"
-            android:theme="@style/Theme.Xenon">
+            android:theme="@style/Theme.Xenon.Launcher">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

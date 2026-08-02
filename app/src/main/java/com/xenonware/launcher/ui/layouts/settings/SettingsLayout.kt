@@ -5,9 +5,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.IntSize
+import com.xenon.mylibrary.theme.LayoutType
 import com.xenonware.launcher.presentation.sign_in.GoogleAuthUiClient
 import com.xenonware.launcher.presentation.sign_in.SignInState
-import com.xenonware.launcher.viewmodel.LayoutType
 import com.xenonware.launcher.viewmodel.SettingsViewModel
 
 @Composable

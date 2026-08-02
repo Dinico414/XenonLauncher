@@ -116,7 +116,6 @@ fun SettingsItems(
     val blurEnabled by viewModel.blurEnabled.collectAsState()
     val developerModeEnabled by viewModel.developerModeEnabled.collectAsState()
     val isGridLayout by viewModel.isGridLayout.collectAsState()
-    val openKeyboard by viewModel.openKeyboard.collectAsState()
     val advancedSearchEnabled by viewModel.advancedSearchEnabled.collectAsState()
     val showHiddenAppsInSearch by viewModel.showHiddenAppsInSearch.collectAsState()
     val dockSafeDrawIme by viewModel.dockSafeDrawIme.collectAsState()

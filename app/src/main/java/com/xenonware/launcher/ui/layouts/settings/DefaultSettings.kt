@@ -34,6 +34,7 @@ import com.xenon.mylibrary.res.DialogThemeSelection
 import com.xenon.mylibrary.res.DialogVersionNumber
 import com.xenon.mylibrary.res.ThemeSetting
 import com.xenon.mylibrary.theme.DeviceConfigProvider
+import com.xenon.mylibrary.theme.LayoutType
 import com.xenon.mylibrary.theme.LocalDeviceConfig
 import com.xenon.mylibrary.values.LargestPadding
 import com.xenon.mylibrary.values.MediumPadding
@@ -42,7 +43,10 @@ import com.xenonware.launcher.BuildConfig
 import com.xenonware.launcher.R
 import com.xenonware.launcher.presentation.sign_in.GoogleAuthUiClient
 import com.xenonware.launcher.presentation.sign_in.SignInState
-import com.xenonware.launcher.viewmodel.LayoutType
+import com.xenonware.launcher.ui.res.CalendarSelectionDialog
+import com.xenonware.launcher.ui.res.NotificationManagerDialog
+import com.xenonware.launcher.ui.res.ShortcutConfigDialog
+import com.xenonware.launcher.viewmodel.LauncherViewModel
 import com.xenonware.launcher.viewmodel.SettingsViewModel
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
@@ -79,6 +83,22 @@ fun DefaultSettings(
         val showVersionDialog by viewModel.showVersionDialog.collectAsState()
         val showSignOutDialog by viewModel.showSignOutDialog.collectAsState()
         val currentLanguage by viewModel.currentLanguage.collectAsState()
+
+        val showCalendarSelectionDialog by viewModel.showCalendarSelectionDialog.collectAsState()
+        val availableCalendars by viewModel.availableCalendars.collectAsState()
+        val visibleCalendars by viewModel.visibleCalendars.collectAsState()
+        val showNotificationManagerDialog by viewModel.showNotificationManagerDialog.collectAsState()
+        val visibleNotificationApps by viewModel.visibleNotificationApps.collectAsState()
+        val showHiddenAppsDialog by viewModel.showHiddenAppsDialog.collectAsState()
+        val hiddenApps by viewModel.hiddenApps.collectAsState()
+        val configShortcutType by viewModel.configShortcutType.collectAsState()
+        val apps by viewModel.apps.collectAsState()
+        val iconShape by viewModel.drawerIconShape.collectAsState()
+        val showShadow by viewModel.drawerIconShadow.collectAsState()
+
+        val timeShortcut by viewModel.timeShortcut.collectAsState()
+        val dateShortcut by viewModel.dateShortcut.collectAsState()
+        val weatherShortcut by viewModel.weatherShortcut.collectAsState()
 
 
         val packageManager = context.packageManager
@@ -159,8 +179,8 @@ fun DefaultSettings(
                         onNavigateToDeveloperOptions = onNavigateToDeveloperOptions,
                         onSignInClick = onSignInClick,
                         onSignOutClick = onSignOutClick,
-                        onShowHiddenApps = { /* Handle if needed */ },
-                        onConfigShortcut = { /* Handle if needed */ }
+                        onShowHiddenApps = { viewModel.setShowHiddenApps(true) },
+                        onConfigShortcut = { viewModel.setConfigShortcut(it) }
                     )
                 }
             })
@@ -264,6 +284,63 @@ fun DefaultSettings(
                     descriptionText = stringResource(id = R.string.sign_out_description)
                 )
             }
+        }
+
+        if (showCalendarSelectionDialog) {
+            CalendarSelectionDialog(
+                availableCalendars = availableCalendars,
+                selectedCalendars = visibleCalendars,
+                onDismiss = { viewModel.setShowCalendarSelectionDialog(false) },
+                onToggleCalendar = { viewModel.toggleCalendarVisibility(it) },
+                onSelectAll = { viewModel.setVisibleCalendars(emptyList()) },
+                onClearAll = { viewModel.setVisibleCalendars(listOf("__NONE__")) }
+            )
+        }
+
+        if (showNotificationManagerDialog) {
+            NotificationManagerDialog(
+                allApps = apps,
+                visibleApps = visibleNotificationApps,
+                onDismiss = { viewModel.setShowNotificationManagerDialog(false) },
+                onToggleApp = { viewModel.toggleNotificationAppVisibility(it) },
+                onSelectAll = { viewModel.setVisibleNotificationApps(emptyList()) },
+                onClearAll = { viewModel.setVisibleNotificationApps(listOf("__NONE__")) },
+                iconShape = iconShape,
+                showShadow = showShadow
+            )
+        }
+
+        if (showHiddenAppsDialog) {
+            NotificationManagerDialog(
+                allApps = apps,
+                visibleApps = hiddenApps,
+                onDismiss = { viewModel.setShowHiddenApps(false) },
+                onToggleApp = { 
+                    if (it in hiddenApps) viewModel.unhideApp(it)
+                    else viewModel.hideApp(it)
+                },
+                onSelectAll = { /* Not applicable for hidden apps */ },
+                onClearAll = { viewModel.setVisibleCalendars(emptyList()) }, // Just clear all if needed
+                iconShape = iconShape,
+                showShadow = showShadow
+            )
+        }
+
+        configShortcutType?.let { type ->
+            val initialValue = when (type) {
+                LauncherViewModel.ShortcutType.TIME -> timeShortcut
+                LauncherViewModel.ShortcutType.DATE -> dateShortcut
+                LauncherViewModel.ShortcutType.WEATHER -> weatherShortcut
+            }
+            ShortcutConfigDialog(
+                type = type,
+                apps = apps,
+                initialValue = initialValue,
+                iconShape = iconShape,
+                showShadow = showShadow,
+                onDismiss = { viewModel.setConfigShortcut(null) },
+                onSave = { viewModel.saveShortcut(type, it) }
+            )
         }
     }
 }

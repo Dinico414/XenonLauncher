@@ -31,6 +31,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -70,6 +71,7 @@ import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.exp
 import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.milliseconds
 
 private const val MAX_PINNED = 6
 
@@ -247,7 +249,7 @@ fun FixedAppSection(
     // its scroll to the first visible KEY when the order changes, which shunts the
     // viewport sideways by an item; this puts the pixels back where they were.
     // Left at -1 when the row cannot scroll, so no needless remeasure is forced.
-    var restoreScrollPx by remember { mutableStateOf(-1f) }
+    var restoreScrollPx by remember { mutableFloatStateOf(-1f) }
     // True from the long press until the finger lifts. While set, LazyRow's own
     // scroll gesture is disabled so it cannot consume -- and thereby cancel -- the
     // drag. Programmatic scrollBy (the auto-scroll) is unaffected.
@@ -268,7 +270,7 @@ fun FixedAppSection(
     }
     LaunchedEffect(commit) {
         if (commit != null) {
-            delay(CommitTimeoutMs)
+            delay(CommitTimeoutMs.milliseconds)
             commit = null // upstream never applied the change; fall back to truth
         }
     }
@@ -352,7 +354,7 @@ fun FixedAppSection(
                 } else {
                     val itemPx = anchor.size.toFloat().takeIf { it > 0f } ?: fallbackItemPx
                     val pitch = itemPx + spacingPx
-                    // + centre shift, because that is a draw-time translation the
+                    // + center shift, because that is a draw-time translation the
                     // layout knows nothing about: without it the slot grid drifts
                     // half a pitch away from the icons the user can actually see.
                     val gridStart = anchor.offset - anchor.index * pitch + centerAnim.value
@@ -568,7 +570,7 @@ fun FixedAppSection(
                                 }
                             )
                         }
-                        // Offscreen layer + mask stay OUTSIDE the centre shift, so the
+                        // Offscreen layer + mask stay OUTSIDE the center shift, so the
                         // edge fades stay pinned to the viewport instead of sliding
                         // with the content.
                         .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
@@ -621,7 +623,6 @@ fun FixedAppSection(
                         val isBeingDragged = isDragging &&
                                 app.packageName == dragDropState.draggedApp?.packageName
 
-                        val held = activeCommit
                         val targetShift: Float
                         val targetAlpha: Float
                         when {
@@ -638,17 +639,18 @@ fun FixedAppSection(
                             // Held after release: keep the exact picture the drag
                             // ended on until the real list catches up. For an unpin
                             // that means the CLOSED row the drag was already showing.
-                            held != null && held.unpinned -> {
-                                targetAlpha = if (app.packageName == held.packageName) 0f else 1f
-                                targetShift = gapShift(index, held.source, -1, pitchPx)
+                            activeCommit != null && activeCommit.unpinned -> {
+                                targetAlpha = if (app.packageName == activeCommit.packageName) 0f else 1f
+                                targetShift = gapShift(index, activeCommit.source, -1, pitchPx)
                             }
 
-                            held != null -> {
+                            activeCommit != null -> {
                                 targetAlpha = 1f
-                                targetShift = if (app.packageName == held.packageName) {
-                                    (held.target - held.source) * pitchPx
+                                targetShift = if (app.packageName == activeCommit.packageName) {
+                                    (activeCommit.target - activeCommit.source) * pitchPx
                                 } else {
-                                    gapShift(index, held.source, held.target, pitchPx)
+                                    gapShift(index, activeCommit.source,
+                                        activeCommit.target, pitchPx)
                                 }
                             }
 

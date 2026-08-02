@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
@@ -37,8 +38,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.dp
+import androidx.core.view.WindowCompat
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import com.xenonware.launcher.data.SharedPreferenceManager
 import com.xenonware.launcher.ui.layouts.main.AppDrawer
 import com.xenonware.launcher.ui.pages.MediaPage
 import com.xenonware.launcher.ui.pages.NotificationPage
@@ -56,28 +59,46 @@ import dev.chrisbanes.haze.rememberHazeState
 
 class MainActivity : ComponentActivity() {
     private val viewModel: LauncherViewModel by viewModels()
+    private lateinit var sharedPreferenceManager: SharedPreferenceManager
+
+    private var lastAppliedTheme: Int = -1
+    private var lastAppliedCoverThemeEnabled: Boolean = false
+    private var lastAppliedBlackedOutMode: Boolean = false
 
     @OptIn(ExperimentalPermissionsApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         enableEdgeToEdge()
 
         window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
 
+        sharedPreferenceManager = SharedPreferenceManager(applicationContext)
+
+        val initialThemePref = sharedPreferenceManager.theme
+        val initialCoverThemeEnabledSetting = sharedPreferenceManager.coverThemeEnabled
+        val initialBlackedOutMode = sharedPreferenceManager.blackedOutModeEnabled
+
+        updateAppCompatDelegateTheme(initialThemePref)
+
+        lastAppliedTheme = initialThemePref
+        lastAppliedCoverThemeEnabled = initialCoverThemeEnabledSetting
+        lastAppliedBlackedOutMode = initialBlackedOutMode
+
         setContent {
-            val theme by viewModel.theme.collectAsState()
+            val themePref by viewModel.theme.collectAsState()
             val blackedOut by viewModel.blackedOutModeEnabled.collectAsState()
             val coverThemeEnabled by viewModel.coverThemeEnabled.collectAsState()
-            val containerSize = LocalWindowInfo.current.containerSize
-            val applyCoverTheme = remember(containerSize, coverThemeEnabled) {
-                viewModel.isCoverThemeApplied(containerSize)
+            val currentContainerSize = LocalWindowInfo.current.containerSize
+            val applyCoverTheme = remember(currentContainerSize, coverThemeEnabled) {
+                viewModel.isCoverThemeApplied(currentContainerSize)
             }
 
             ScreenEnvironment(
-                themePreference = theme,
+                themePreference = themePref,
                 coverTheme = applyCoverTheme,
                 blackedOutModeEnabled = blackedOut
-            ) { layoutType, isLandscape ->
+            ) { _, _ ->
                 val permissions = mutableListOf(
                     android.Manifest.permission.ACCESS_COARSE_LOCATION,
                     android.Manifest.permission.ACCESS_FINE_LOCATION,
@@ -149,10 +170,41 @@ class MainActivity : ComponentActivity() {
                     blurSetting = blurSetting,
                     onAppClick = { viewModel.launchApp(it) },
                     onOpenSettings = {
-                        startActivity(Intent(this, SettingsActivity::class.java))
+                        startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
                     }
                 )
             }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+
+        val currentThemePref = sharedPreferenceManager.theme
+        val currentCoverThemeEnabledSetting = sharedPreferenceManager.coverThemeEnabled
+        val currentBlackedOutMode = sharedPreferenceManager.blackedOutModeEnabled
+
+        if (currentThemePref != lastAppliedTheme ||
+            currentCoverThemeEnabledSetting != lastAppliedCoverThemeEnabled ||
+            currentBlackedOutMode != lastAppliedBlackedOutMode
+        ) {
+            if (currentThemePref != lastAppliedTheme) {
+                updateAppCompatDelegateTheme(currentThemePref)
+            }
+
+            lastAppliedTheme = currentThemePref
+            lastAppliedCoverThemeEnabled = currentCoverThemeEnabledSetting
+            lastAppliedBlackedOutMode = currentBlackedOutMode
+
+            recreate()
+        }
+    }
+
+    private fun updateAppCompatDelegateTheme(themePref: Int) {
+        if (themePref >= 0 && themePref < sharedPreferenceManager.themeFlag.size) {
+            AppCompatDelegate.setDefaultNightMode(sharedPreferenceManager.themeFlag[themePref])
+        } else {
+            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
         }
     }
 }
@@ -304,6 +356,7 @@ fun LauncherScreen(
                         onAppClick = onAppClick,
                         onSettingsClick = onOpenSettings,
                         onDismiss = { isAppDrawerVisible = false },
+                        isVisible = isAppDrawerVisible,
                         onPinApp = { pkg, index -> viewModel.pinApp(pkg, index) },
                         isGridLayout = isGridLayout,
                         onToggleLayout = { viewModel.setGridLayout(!isGridLayout) },
@@ -357,7 +410,7 @@ fun LauncherScreen(
             
             configShortcutType?.let { type ->
                 val context = androidx.compose.ui.platform.LocalContext.current
-                val prefs = remember { com.xenonware.launcher.data.SharedPreferenceManager(context) }
+                val prefs = remember { SharedPreferenceManager(context) }
                 val initialValue = when (type) {
                     LauncherViewModel.ShortcutType.TIME -> prefs.timeShortcut
                     LauncherViewModel.ShortcutType.DATE -> prefs.dateShortcut

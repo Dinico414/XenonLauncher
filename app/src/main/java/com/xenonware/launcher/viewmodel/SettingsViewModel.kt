@@ -1,5 +1,6 @@
 package com.xenonware.launcher.viewmodel
 
+import android.Manifest
 import android.app.ActivityManager
 import android.app.Application
 import android.content.Context
@@ -7,8 +8,8 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
 import android.net.Uri
-import android.os.Build
-import android.os.Environment
+import android.os.Process
+import android.provider.CalendarContract
 import android.provider.Settings
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatDelegate
@@ -17,11 +18,13 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.xenonware.launcher.R
+import com.xenon.mylibrary.res.ThemeSetting
 import com.xenonware.launcher.data.SharedPreferenceManager
 import com.xenonware.launcher.model.AppInfo
+import com.xenonware.launcher.ui.res.IconShape
 import com.xenonware.launcher.util.generateCustomIcon
 import com.xenonware.launcher.util.loadIconFromPack
+import com.xenonware.launcher.util.normalizeIcon
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -32,14 +35,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-
-enum class LayoutType {
-    COVER, SMALL, COMPACT, MEDIUM, EXPANDED
-}
+import kotlin.time.Duration.Companion.milliseconds
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
     private val sharedPreferenceManager = SharedPreferenceManager(application)
-    val themeOptions = com.xenon.mylibrary.res.ThemeSetting.entries.toTypedArray()
+    val themeOptions = ThemeSetting.entries.toTypedArray()
     val themeFlags = themeOptions.map { it.nightModeFlag }.toTypedArray()
 
     private val _apps = MutableStateFlow<List<AppInfo>>(emptyList())
@@ -77,8 +77,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _dockSafeDrawIme = MutableStateFlow(sharedPreferenceManager.dockSafeDrawIme)
     val dockSafeDrawIme: StateFlow<Boolean> = _dockSafeDrawIme.asStateFlow()
 
-    private val _drawerIconShape = MutableStateFlow(com.xenonware.launcher.ui.res.IconShape.valueOf(sharedPreferenceManager.drawerIconShape))
-    val drawerIconShape: StateFlow<com.xenonware.launcher.ui.res.IconShape> = _drawerIconShape.asStateFlow()
+    private val _drawerIconShape = MutableStateFlow(IconShape.valueOf(sharedPreferenceManager.drawerIconShape))
+    val drawerIconShape: StateFlow<IconShape> = _drawerIconShape.asStateFlow()
 
     private val _drawerIconShadow = MutableStateFlow(sharedPreferenceManager.drawerIconShadow)
     val drawerIconShadow: StateFlow<Boolean> = _drawerIconShadow.asStateFlow()
@@ -107,9 +107,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _visibleNotificationApps = MutableStateFlow(sharedPreferenceManager.visibleNotificationApps)
     val visibleNotificationApps: StateFlow<List<String>> = _visibleNotificationApps.asStateFlow()
 
-    private val _hasWallpaperAccess = MutableStateFlow(checkWallpaperAccess())
-    val hasWallpaperAccess: StateFlow<Boolean> = _hasWallpaperAccess.asStateFlow()
-
     private val _currentLanguage = MutableStateFlow("English")
     val currentLanguage: StateFlow<String> = _currentLanguage.asStateFlow()
 
@@ -126,13 +123,15 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     val showCoverSelectionDialog: StateFlow<Boolean> = _showCoverSelectionDialog.asStateFlow()
 
     private val _showLanguageDialog = MutableStateFlow(false)
-    val showLanguageDialog: StateFlow<Boolean> = _showLanguageDialog.asStateFlow()
 
     private val _showVersionDialog = MutableStateFlow(false)
     val showVersionDialog: StateFlow<Boolean> = _showVersionDialog.asStateFlow()
 
     private val _showSignOutDialog = MutableStateFlow(false)
     val showSignOutDialog: StateFlow<Boolean> = _showSignOutDialog.asStateFlow()
+
+    private val _showHiddenAppsDialog = MutableStateFlow(false)
+    val showHiddenAppsDialog: StateFlow<Boolean> = _showHiddenAppsDialog.asStateFlow()
 
     private val _developerModeEnabled = MutableStateFlow(sharedPreferenceManager.developerModeEnabled)
     val developerModeEnabled: StateFlow<Boolean> = _developerModeEnabled.asStateFlow()
@@ -146,8 +145,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _enableCoverTheme = MutableStateFlow(sharedPreferenceManager.coverThemeEnabled)
     val enableCoverTheme: StateFlow<Boolean> = _enableCoverTheme.asStateFlow()
 
-    private val _showDeveloperOptions = MutableStateFlow(false)
-    val showDeveloperOptions: StateFlow<Boolean> = _showDeveloperOptions.asStateFlow()
+    private val _configShortcutType = MutableStateFlow<LauncherViewModel.ShortcutType?>(null)
+    val configShortcutType: StateFlow<LauncherViewModel.ShortcutType?> = _configShortcutType.asStateFlow()
 
     private var infoTileTapCount = 0
     private var singleTapJob: Job? = null
@@ -198,7 +197,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             val currentShape = _drawerIconShape.value
             
             val resolvedInfos = pm.queryIntentActivities(intent, 0)
-            val appList = resolvedInfos.mapNotNull {
+            val appList = resolvedInfos.mapNotNull { it ->
                 val pkgName = it.activityInfo.packageName
                 if (pkgName == launcherPackage) return@mapNotNull null
 
@@ -208,7 +207,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                     
                     val override = overrides[pkgName]
                     var finalLabel = originalLabel
-                    var finalIcon: Drawable? = null
+                    var finalIcon: Drawable?
                     var isCustomized = false
 
                     if (override != null) {
@@ -223,7 +222,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                         
                         finalIcon = generateCustomIcon(context, baseIcon, override, currentShape)
                     } else {
-                        finalIcon = com.xenonware.launcher.util.normalizeIcon(context, originalIcon)
+                        finalIcon = normalizeIcon(context, originalIcon)
                     }
 
                     AppInfo(
@@ -233,24 +232,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                         label = finalLabel,
                         isCustomized = isCustomized
                     )
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     null
                 }
             }.sortedBy { it.label.lowercase() }
             _apps.value = appList
-        }
-    }
-
-    private fun checkWallpaperAccess(): Boolean {
-        val context = getApplication<Application>()
-        return when {
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> {
-                Environment.isExternalStorageManager()
-            }
-            else -> {
-                context.checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) ==
-                        android.content.pm.PackageManager.PERMISSION_GRANTED
-            }
         }
     }
 
@@ -274,11 +260,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         _isGridLayout.value = enabled
     }
 
-    fun setOpenKeyboard(enabled: Boolean) {
-        sharedPreferenceManager.openKeyboard = enabled
-        _openKeyboard.value = enabled
-    }
-
     fun setAdvancedSearchEnabled(enabled: Boolean) {
         sharedPreferenceManager.advancedSearchEnabled = enabled
         _advancedSearchEnabled.value = enabled
@@ -296,6 +277,15 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         _hiddenApps.value = current
     }
 
+    fun hideApp(packageName: String) {
+        val current = sharedPreferenceManager.hiddenApps.toMutableList()
+        if (!current.contains(packageName)) {
+            current.add(packageName)
+            sharedPreferenceManager.hiddenApps = current
+            _hiddenApps.value = current
+        }
+    }
+
     fun setNotificationBadgeType(type: Int) {
         sharedPreferenceManager.notificationBadgeType = type
         _notificationBadgeType.value = type
@@ -306,7 +296,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         _dockSafeDrawIme.value = enabled
     }
 
-    fun setDrawerIconShape(shape: com.xenonware.launcher.ui.res.IconShape) {
+    fun setDrawerIconShape(shape: IconShape) {
         sharedPreferenceManager.drawerIconShape = shape.name
         _drawerIconShape.value = shape
         loadApps()
@@ -315,21 +305,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setDrawerIconShadow(enabled: Boolean) {
         sharedPreferenceManager.drawerIconShadow = enabled
         _drawerIconShadow.value = enabled
-    }
-
-    fun setTimeShortcut(value: String) {
-        sharedPreferenceManager.timeShortcut = value
-        _timeShortcut.value = value
-    }
-
-    fun setDateShortcut(value: String) {
-        sharedPreferenceManager.dateShortcut = value
-        _dateShortcut.value = value
-    }
-
-    fun setWeatherShortcut(value: String) {
-        sharedPreferenceManager.weatherShortcut = value
-        _weatherShortcut.value = value
     }
 
     fun setVisibleCalendars(calendars: List<String>) {
@@ -394,24 +369,24 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private fun loadAvailableCalendars() {
         viewModelScope.launch(Dispatchers.IO) {
             val context = getApplication<Application>()
-            if (context.checkSelfPermission(android.Manifest.permission.READ_CALENDAR) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            if (context.checkSelfPermission(Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
                 return@launch
             }
 
             val calendars = mutableListOf<CalendarInfo>()
-            val uri = android.provider.CalendarContract.Calendars.CONTENT_URI
+            val uri = CalendarContract.Calendars.CONTENT_URI
             val projection = arrayOf(
-                android.provider.CalendarContract.Calendars._ID,
-                android.provider.CalendarContract.Calendars.CALENDAR_DISPLAY_NAME,
-                android.provider.CalendarContract.Calendars.CALENDAR_COLOR,
-                android.provider.CalendarContract.Calendars.ACCOUNT_NAME
+                CalendarContract.Calendars._ID,
+                CalendarContract.Calendars.CALENDAR_DISPLAY_NAME,
+                CalendarContract.Calendars.CALENDAR_COLOR,
+                CalendarContract.Calendars.ACCOUNT_NAME
             )
 
             context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
-                val idIdx = cursor.getColumnIndex(android.provider.CalendarContract.Calendars._ID)
-                val nameIdx = cursor.getColumnIndex(android.provider.CalendarContract.Calendars.CALENDAR_DISPLAY_NAME)
-                val colorIdx = cursor.getColumnIndex(android.provider.CalendarContract.Calendars.CALENDAR_COLOR)
-                val accountIdx = cursor.getColumnIndex(android.provider.CalendarContract.Calendars.ACCOUNT_NAME)
+                val idIdx = cursor.getColumnIndex(CalendarContract.Calendars._ID)
+                val nameIdx = cursor.getColumnIndex(CalendarContract.Calendars.CALENDAR_DISPLAY_NAME)
+                val colorIdx = cursor.getColumnIndex(CalendarContract.Calendars.CALENDAR_COLOR)
+                val accountIdx = cursor.getColumnIndex(CalendarContract.Calendars.ACCOUNT_NAME)
 
                 while (cursor.moveToNext()) {
                     calendars.add(
@@ -471,22 +446,14 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun onLanguageSettingClicked(context: Context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            try {
-                context.startActivity(Intent(Settings.ACTION_APP_LOCALE_SETTINGS).apply {
-                    data = Uri.fromParts("package", context.packageName, null)
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                })
-            } catch (_: Exception) {
-                _showLanguageDialog.value = true
-            }
-        } else {
+        try {
+            context.startActivity(Intent(Settings.ACTION_APP_LOCALE_SETTINGS).apply {
+                data = Uri.fromParts("package", context.packageName, null)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            })
+        } catch (_: Exception) {
             _showLanguageDialog.value = true
         }
-    }
-
-    fun dismissLanguageDialog() {
-        _showLanguageDialog.value = false
     }
 
     fun onClearDataClicked() {
@@ -505,7 +472,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 } else {
                     openAppInfo(context)
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 openAppInfo(context)
             } finally {
                 _showClearDataDialog.value = false
@@ -534,7 +501,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             refreshDeveloperModeState()
 
             _showResetSettingsDialog.value = false
-            delay(1000)
+            delay(1000.milliseconds)
             restartApplication(context)
         }
     }
@@ -562,7 +529,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
         if (infoTileTapCount == 1) {
             singleTapJob = viewModelScope.launch {
-                delay(tapTimeoutMillis)
+                delay(tapTimeoutMillis.milliseconds)
                 _showVersionDialog.value = true
                 infoTileTapCount = 0
             }
@@ -581,7 +548,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 val remaining = requiredTaps - infoTileTapCount
                 Toast.makeText(context, "$remaining taps to developer", Toast.LENGTH_SHORT).show()
                 resetTapsJob = viewModelScope.launch {
-                    delay(multiTapCooldownMillis)
+                    delay(multiTapCooldownMillis.milliseconds)
                     infoTileTapCount = 0
                 }
             }
@@ -604,12 +571,32 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         _showSignOutDialog.value = false
     }
 
-    fun showDeveloperOptions() {
-        _showDeveloperOptions.value = true
+    fun refreshDeveloperModeState() {
+        _developerModeEnabled.value = sharedPreferenceManager.developerModeEnabled
     }
 
-    fun dismissDeveloperOptions() {
-        _showDeveloperOptions.value = false
+    fun setCoverThemeEnabled(enabled: Boolean) {
+        sharedPreferenceManager.coverThemeEnabled = enabled
+        _enableCoverTheme.value = enabled
+    }
+
+    fun setConfigShortcut(type: LauncherViewModel.ShortcutType?) {
+        _configShortcutType.value = type
+    }
+
+    fun saveShortcut(type: LauncherViewModel.ShortcutType, value: String) {
+        when (type) {
+            LauncherViewModel.ShortcutType.TIME -> sharedPreferenceManager.timeShortcut = value
+            LauncherViewModel.ShortcutType.DATE -> sharedPreferenceManager.dateShortcut = value
+            LauncherViewModel.ShortcutType.WEATHER -> sharedPreferenceManager.weatherShortcut = value
+        }
+        _timeShortcut.value = sharedPreferenceManager.timeShortcut
+        _dateShortcut.value = sharedPreferenceManager.dateShortcut
+        _weatherShortcut.value = sharedPreferenceManager.weatherShortcut
+    }
+
+    fun setShowHiddenApps(show: Boolean) {
+        _showHiddenAppsDialog.value = show
     }
 
     fun isDefaultLauncher(context: Context): Boolean {
@@ -624,7 +611,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         try {
             context.startActivity(intent)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             val selectorIntent = Intent(Intent.ACTION_MAIN)
             selectorIntent.addCategory(Intent.CATEGORY_HOME)
             selectorIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -643,7 +630,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         if (intent != null) {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
             context.startActivity(intent)
-            android.os.Process.killProcess(android.os.Process.myPid())
+            Process.killProcess(Process.myPid())
         }
     }
 
@@ -653,15 +640,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         context.startActivity(intent)
-    }
-
-    fun refreshDeveloperModeState() {
-        _developerModeEnabled.value = sharedPreferenceManager.developerModeEnabled
-    }
-
-    fun setCoverThemeEnabled(enabled: Boolean) {
-        sharedPreferenceManager.coverThemeEnabled = enabled
-        _enableCoverTheme.value = enabled
     }
 
     class SettingsViewModelFactory(private val application: Application) : ViewModelProvider.Factory {
@@ -674,24 +652,4 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun requestWallpaperAccess(context: android.content.Context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val intent = android.content.Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
-                data = android.net.Uri.parse("package:${context.packageName}")
-                addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            try {
-                context.startActivity(intent)
-            } catch (e: Exception) {
-                val genericIntent = android.content.Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION).apply {
-                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                context.startActivity(genericIntent)
-            }
-        }
-    }
-
-    fun refreshWallpaperAccess() {
-        _hasWallpaperAccess.value = checkWallpaperAccess()
-    }
 }

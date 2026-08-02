@@ -3,6 +3,8 @@ package com.xenonware.launcher.viewmodel
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Application
+import android.appwidget.AppWidgetManager
+import android.appwidget.AppWidgetProviderInfo
 import android.content.BroadcastReceiver
 import android.content.ContentUris
 import android.content.Context
@@ -10,6 +12,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
+import android.content.pm.ResolveInfo
 import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
 import android.location.Location
@@ -18,9 +21,10 @@ import android.os.BatteryManager
 import android.provider.CalendarContract
 import android.provider.ContactsContract
 import android.provider.MediaStore
-import android.util.Patterns
 import android.util.Size
+import androidx.compose.ui.unit.IntSize
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.location.FusedLocationProviderClient
@@ -33,23 +37,32 @@ import com.xenonware.launcher.media.MediaState
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.model.AppOverride
 import com.xenonware.launcher.model.SearchResult
+import com.xenonware.launcher.model.WidgetItem
+import com.xenonware.launcher.notification.NotificationManager
+import com.xenonware.launcher.notification.XenonNotificationService
+import com.xenonware.launcher.ui.res.IconShape
 import com.xenonware.launcher.util.generateCustomIcon
 import com.xenonware.launcher.util.loadIconFromPack
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import com.xenonware.launcher.util.matches
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import com.xenonware.launcher.util.matches
 import com.xenonware.launcher.util.matchesSearch
+import com.xenonware.launcher.util.normalizeIcon
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.net.HttpURLConnection
+import java.net.URL
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.util.Calendar
+import java.util.UUID
 import kotlin.coroutines.resume
+import kotlin.time.Duration.Companion.milliseconds
 
 data class WeatherState(
     val temperature: String = "24°C",
@@ -93,7 +106,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 loadApps()
             }
             "drawer_icon_shape" -> {
-                _drawerIconShape.value = com.xenonware.launcher.ui.res.IconShape.valueOf(prefManager.drawerIconShape)
+                _drawerIconShape.value = IconShape.valueOf(prefManager.drawerIconShape)
                 loadApps() // Reload icons when shape changes
             }
             "drawer_icon_shadow" -> _drawerIconShadow.value = prefManager.drawerIconShadow
@@ -124,8 +137,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val _showHiddenAppsInSearch = MutableStateFlow(prefManager.showHiddenAppsInSearch)
     val showHiddenAppsInSearch: StateFlow<Boolean> = _showHiddenAppsInSearch
 
-    private val _drawerIconShape = MutableStateFlow(com.xenonware.launcher.ui.res.IconShape.valueOf(prefManager.drawerIconShape))
-    val drawerIconShape: StateFlow<com.xenonware.launcher.ui.res.IconShape> = _drawerIconShape
+    private val _drawerIconShape = MutableStateFlow(IconShape.valueOf(prefManager.drawerIconShape))
+    val drawerIconShape: StateFlow<IconShape> = _drawerIconShape
 
     private val _drawerIconShadow = MutableStateFlow(prefManager.drawerIconShadow)
     val drawerIconShadow: StateFlow<Boolean> = _drawerIconShadow
@@ -154,8 +167,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val _widgetColumns = MutableStateFlow(prefManager.widgetColumnsPortrait)
     val widgetColumns: StateFlow<Int> = _widgetColumns
 
-    private val _widgets = MutableStateFlow<List<com.xenonware.launcher.model.WidgetItem>>(emptyList())
-    val widgets: StateFlow<List<com.xenonware.launcher.model.WidgetItem>> = _widgets
+    private val _widgets = MutableStateFlow<List<WidgetItem>>(emptyList())
+    val widgets: StateFlow<List<WidgetItem>> = _widgets
 
     private val _installedWidgets = MutableStateFlow<Map<AppWidgetGroup, List<WidgetPickerItemData>>>(emptyMap())
     val installedWidgets: StateFlow<Map<AppWidgetGroup, List<WidgetPickerItemData>>> = _installedWidgets
@@ -163,9 +176,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     data class WidgetPickerItemData(
         val label: String,
         val isWidget: Boolean,
-        val widgetInfo: android.appwidget.AppWidgetProviderInfo? = null,
-        val shortcutInfo: android.content.pm.ResolveInfo? = null,
-        val id: String = java.util.UUID.randomUUID().toString()
+        val widgetInfo: AppWidgetProviderInfo? = null,
+        val shortcutInfo: ResolveInfo? = null,
+        val id: String = UUID.randomUUID().toString()
     )
 
     private val _advancedSearchEnabled = MutableStateFlow(prefManager.advancedSearchEnabled)
@@ -174,7 +187,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val _dockSafeDrawIme = MutableStateFlow(prefManager.dockSafeDrawIme)
     val dockSafeDrawIme: StateFlow<Boolean> = _dockSafeDrawIme
 
-    private val _searchHistory = MutableStateFlow<List<String>>(loadSearchHistory())
+    private val _searchHistory = MutableStateFlow(loadSearchHistory())
     val searchHistory: StateFlow<List<String>> = _searchHistory
 
     private val _configShortcutType = MutableStateFlow<ShortcutType?>(null)
@@ -189,7 +202,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val _coverThemeEnabled = MutableStateFlow(prefManager.coverThemeEnabled)
     val coverThemeEnabled: StateFlow<Boolean> = _coverThemeEnabled
 
-    fun isCoverThemeApplied(size: androidx.compose.ui.unit.IntSize): Boolean {
+    fun isCoverThemeApplied(size: IntSize): Boolean {
         return prefManager.isCoverThemeApplied(size)
     }
 
@@ -218,7 +231,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         if (shortcut.startsWith("link:")) {
             val url = shortcut.substring(5)
             try {
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                val intent = Intent(Intent.ACTION_VIEW, url.toUri()).apply {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
                 context.startActivity(intent)
@@ -245,7 +258,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     data class AppWidgetGroup(
         val appName: String,
-        val icon: android.graphics.drawable.Drawable?
+        val icon: Drawable?
     ) : Comparable<AppWidgetGroup> {
         override fun compareTo(other: AppWidgetGroup): Int = appName.compareTo(other.appName)
     }
@@ -275,22 +288,22 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val fusedLocationClient: FusedLocationProviderClient =
         LocationServices.getFusedLocationProviderClient(application)
 
-    val notificationCount = com.xenonware.launcher.notification.NotificationManager.notificationCount
-    val notifications = com.xenonware.launcher.notification.NotificationManager.notifications
+    val notificationCount = NotificationManager.notificationCount
+    val notifications = NotificationManager.notifications
 
     fun dismissNotification(key: String) {
-        com.xenonware.launcher.notification.NotificationManager.removeNotificationOptimistically(key)
-        com.xenonware.launcher.notification.XenonNotificationService.dismissNotification(key)
+        NotificationManager.removeNotificationOptimistically(key)
+        XenonNotificationService.dismissNotification(key)
     }
 
     fun dismissAllNotifications() {
-        com.xenonware.launcher.notification.NotificationManager.removeAllNotificationsOptimistically()
-        com.xenonware.launcher.notification.XenonNotificationService.dismissAllNotifications()
+        NotificationManager.removeAllNotificationsOptimistically()
+        XenonNotificationService.dismissAllNotifications()
     }
 
     fun dismissNotificationsByPackage(packageName: String) {
-        com.xenonware.launcher.notification.NotificationManager.removeNotificationsByPackageOptimistically(packageName)
-        com.xenonware.launcher.notification.XenonNotificationService.dismissNotificationsByPackage(packageName)
+        NotificationManager.removeNotificationsByPackageOptimistically(packageName)
+        XenonNotificationService.dismissNotificationsByPackage(packageName)
     }
 
     private val _currentTime = MutableStateFlow(LocalDateTime.now())
@@ -323,8 +336,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val _visibleNotificationApps = MutableStateFlow(prefManager.visibleNotificationApps)
     val visibleNotificationApps: StateFlow<List<String>> = _visibleNotificationApps
 
-    val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
-    val dateFormatter = DateTimeFormatter.ofPattern("EEE, MMM d")
+    val timeFormatter: DateTimeFormatter? = DateTimeFormatter.ofPattern("HH:mm")
+    val dateFormatter: DateTimeFormatter? = DateTimeFormatter.ofPattern("EEE, MMM d")
 
     init {
         prefManager.registerListener(preferenceListener)
@@ -359,7 +372,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             while (true) {
                 val gotReading = updateWeatherOnce()
                 // If we couldn't get a fix/reading yet, retry soon; otherwise refresh every 15 min.
-                delay(if (gotReading) 900_000L else 60_000L)
+                delay((if (gotReading) 900_000L else 60_000L).milliseconds)
             }
         }
     }
@@ -369,10 +382,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         return withContext(Dispatchers.IO) {
             try {
                 // With coordinates wttr.in reports your exact location, like Google Weather.
-                // Without them it falls back to IP-based geolocation (less accurate).
+                // Without them, it falls back to IP-based geolocation (less accurate).
                 val locationPath = location?.let { "/${it.latitude},${it.longitude}" } ?: ""
-                val url = java.net.URL("https://wttr.in$locationPath?format=%t;%C")
-                val connection = url.openConnection() as java.net.HttpURLConnection
+                val url = URL("https://wttr.in$locationPath?format=%t;%C")
+                val connection = url.openConnection() as HttpURLConnection
                 connection.connectTimeout = 5000
                 connection.readTimeout = 5000
 
@@ -388,7 +401,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                     }
                 }
                 false
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 false
             }
         }
@@ -434,7 +447,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             while (true) {
                 _currentTime.value = LocalDateTime.now()
                 val second = LocalDateTime.now().second
-                delay((60 - second) * 1000L + 500L)
+                delay(((60 - second) * 1000L + 500L).milliseconds)
             }
         }
     }
@@ -443,7 +456,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             while (true) {
                 mediaControllerManager.updateActiveSession()
-                delay(1000)
+                delay(1000.milliseconds)
             }
         }
     }
@@ -484,7 +497,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             val currentShape = _drawerIconShape.value
             
             val resolvedInfos = pm.queryIntentActivities(intent, 0)
-            val appList = resolvedInfos.mapNotNull {
+            val appList = resolvedInfos.mapNotNull { it ->
                 val pkgName = it.activityInfo.packageName
                 if (pkgName == launcherPackage) return@mapNotNull null
 
@@ -494,7 +507,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                     
                     val override = overrides[pkgName]
                     var finalLabel = originalLabel
-                    var finalIcon: Drawable? = null
+                    var finalIcon: Drawable?
                     var isCustomized = false
 
                     if (override != null) {
@@ -509,7 +522,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                         
                         finalIcon = generateCustomIcon(context, baseIcon, override, currentShape)
                     } else {
-                        finalIcon = com.xenonware.launcher.util.normalizeIcon(context, originalIcon)
+                        finalIcon = normalizeIcon(context, originalIcon)
                     }
 
                     AppInfo(
@@ -519,7 +532,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                         label = finalLabel,
                         isCustomized = isCustomized
                     )
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     null
                 }
             }.sortedBy { it.label.lowercase() }
@@ -549,13 +562,13 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         return prefManager.getAppOverrides()[packageName]
     }
 
-    fun getInstalledIconPacks(): List<android.content.pm.ResolveInfo> {
+    fun getInstalledIconPacks(): List<ResolveInfo> {
         val pm = getApplication<Application>().packageManager
         val intent = Intent("com.novalauncher.THEME")
         val adwIntent = Intent("org.adw.launcher.THEMES")
         val goIntent = Intent("com.gau.go.launcherex.theme")
         
-        val list = mutableListOf<android.content.pm.ResolveInfo>()
+        val list = mutableListOf<ResolveInfo>()
         list.addAll(pm.queryIntentActivities(intent, PackageManager.GET_META_DATA))
         list.addAll(pm.queryIntentActivities(adwIntent, PackageManager.GET_META_DATA))
         list.addAll(pm.queryIntentActivities(goIntent, PackageManager.GET_META_DATA))
@@ -579,11 +592,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         loadApps()
     }
 
-    fun setShowHiddenAppsInSearch(enabled: Boolean) {
-        _showHiddenAppsInSearch.value = enabled
-        prefManager.showHiddenAppsInSearch = enabled
-    }
-
     private fun recordLaunch(packageName: String) {
         val now = System.currentTimeMillis()
         val usageStr = prefManager.appUsage
@@ -593,7 +601,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         val oneDayAgo = now - 24 * 60 * 60 * 1000
         val filteredEntries = entries.filter { 
             val parts = it.split("|")
-            parts.size == 2 && parts[1].toLongOrNull() ?: 0L > oneDayAgo
+            parts.size == 2 && (parts[1].toLongOrNull() ?: 0L) > oneDayAgo
         }
         
         prefManager.appUsage = filteredEntries.joinToString(",")
@@ -701,16 +709,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         prefManager.advancedSearchEnabled = enabled
     }
 
-    fun setDrawerIconShape(shape: com.xenonware.launcher.ui.res.IconShape) {
-        _drawerIconShape.value = shape
-        prefManager.drawerIconShape = shape.name
-    }
-
-    fun setDrawerIconShadow(enabled: Boolean) {
-        _drawerIconShadow.value = enabled
-        prefManager.drawerIconShadow = enabled
-    }
-
     private fun loadSearchHistory(): List<String> {
         return prefManager.searchHistory.split(",").filter { it.isNotEmpty() }
     }
@@ -787,7 +785,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 val photoUriStr = cursor.getString(photoIdx)
                 
                 if (name.matchesSearch(query)) {
-                    results.add(SearchResult.Contact(id, name, number, photoUriStr?.let { Uri.parse(it) }))
+                    results.add(SearchResult.Contact(id, name, number, photoUriStr?.toUri()))
                 }
             }
         }
@@ -822,17 +820,15 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 if (!name.matchesSearch(query)) continue
 
                 // Filter out directories
-                if (path != null && java.io.File(path).isDirectory) continue
+                if (path != null && File(path).isDirectory) continue
 
                 val id = cursor.getLong(idIdx)
                 val uri = Uri.withAppendedPath(externalUri, id.toString())
 
                 var preview: Bitmap? = null
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                    try {
-                        preview = context.contentResolver.loadThumbnail(uri, Size(128, 128), null)
-                    } catch (e: Exception) {}
-                }
+                try {
+                    preview = context.contentResolver.loadThumbnail(uri, Size(128, 128), null)
+                } catch (_: Exception) {}
 
                 results.add(SearchResult.File(name, path, uri, mimeType, preview))
             }
@@ -842,7 +838,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private fun loadInstalledWidgets() {
         viewModelScope.launch(Dispatchers.IO) {
-            val manager = android.appwidget.AppWidgetManager.getInstance(getApplication())
+            val manager = AppWidgetManager.getInstance(getApplication())
             val pm = getApplication<Application>().packageManager
             
             val providers = manager.installedProviders
@@ -854,12 +850,12 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             val grouped = allPackages.map { pkg ->
                 val appName = try {
                     pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     pkg
                 }
                 val icon = try {
                     pm.getApplicationIcon(pkg)
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     null
                 }
                 
@@ -915,7 +911,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                     id = nextShortcutId--
                 }
 
-                com.xenonware.launcher.model.WidgetItem(
+                WidgetItem(
                     id = id,
                     page = page,
                     x = x,
@@ -929,7 +925,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 )
             } else if (parts.size == 5) {
                 // Backward compatibility
-                com.xenonware.launcher.model.WidgetItem(
+                WidgetItem(
                     parts[0].toIntOrNull() ?: -1,
                     0,
                     parts[1].toIntOrNull() ?: 0,
@@ -949,15 +945,15 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     fun addWidget(id: Int, page: Int, x: Int, y: Int, w: Int, h: Int) {
         val current = _widgets.value.toMutableList()
-        current.add(com.xenonware.launcher.model.WidgetItem(id, page, x, y, w, h))
+        current.add(WidgetItem(id, page, x, y, w, h))
         _widgets.value = current
         saveWidgets()
     }
 
-    fun addShortcut(page: Int, x: Int, y: Int, w: Int, h: Int, label: String, intent: String, iconRes: String?, iconBitmap: android.graphics.Bitmap? = null) {
+    fun addShortcut(page: Int, x: Int, y: Int, w: Int, h: Int, label: String, intent: String, iconRes: String?, iconBitmap: Bitmap? = null) {
         val current = _widgets.value.toMutableList()
         // Generate a unique ID that isn't -1 or -2
-        val id = (current.map { it.id }.minOrNull() ?: 0).coerceAtMost(0) - 100
+        val id = (current.minOfOrNull { it.id } ?: 0).coerceAtMost(0) - 100
         
         var finalIconRes = iconRes
         if (iconBitmap != null) {
@@ -965,25 +961,27 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 val context = getApplication<Application>()
                 val fileName = "shortcut_icon_${System.currentTimeMillis()}.png"
                 context.openFileOutput(fileName, Context.MODE_PRIVATE).use { 
-                    iconBitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+                    iconBitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
                 }
                 finalIconRes = "file:$fileName"
             } catch (_: Exception) {
             }
         }
 
-        current.add(com.xenonware.launcher.model.WidgetItem(
-            id = id,
-            page = page,
-            x = x,
-            y = y,
-            width = w,
-            height = h,
-            type = "shortcut",
-            shortcutLabel = label,
-            shortcutIntent = intent,
-            shortcutIconRes = finalIconRes
-        ))
+        current.add(
+            WidgetItem(
+                id = id,
+                page = page,
+                x = x,
+                y = y,
+                width = w,
+                height = h,
+                type = "shortcut",
+                shortcutLabel = label,
+                shortcutIntent = intent,
+                shortcutIconRes = finalIconRes
+            )
+        )
         _widgets.value = current
         saveWidgets()
     }
@@ -1018,13 +1016,13 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             val now = System.currentTimeMillis()
             
             // Calculate end of tomorrow
-            val calendar = java.util.Calendar.getInstance()
+            val calendar = Calendar.getInstance()
             calendar.timeInMillis = now
-            calendar.add(java.util.Calendar.DAY_OF_YEAR, 1)
-            calendar.set(java.util.Calendar.HOUR_OF_DAY, 23)
-            calendar.set(java.util.Calendar.MINUTE, 59)
-            calendar.set(java.util.Calendar.SECOND, 59)
-            calendar.set(java.util.Calendar.MILLISECOND, 999)
+            calendar.add(Calendar.DAY_OF_YEAR, 1)
+            calendar.set(Calendar.HOUR_OF_DAY, 23)
+            calendar.set(Calendar.MINUTE, 59)
+            calendar.set(Calendar.SECOND, 59)
+            calendar.set(Calendar.MILLISECOND, 999)
             val endOfTomorrow = calendar.timeInMillis
 
             // Use Instances table to correctly expand recurring events and handle all-day events
@@ -1090,19 +1088,19 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             }
 
             val calendars = mutableListOf<CalendarInfo>()
-            val uri = android.provider.CalendarContract.Calendars.CONTENT_URI
+            val uri = CalendarContract.Calendars.CONTENT_URI
             val projection = arrayOf(
-                android.provider.CalendarContract.Calendars._ID,
-                android.provider.CalendarContract.Calendars.CALENDAR_DISPLAY_NAME,
-                android.provider.CalendarContract.Calendars.CALENDAR_COLOR,
-                android.provider.CalendarContract.Calendars.ACCOUNT_NAME
+                CalendarContract.Calendars._ID,
+                CalendarContract.Calendars.CALENDAR_DISPLAY_NAME,
+                CalendarContract.Calendars.CALENDAR_COLOR,
+                CalendarContract.Calendars.ACCOUNT_NAME
             )
 
             context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
-                val idIdx = cursor.getColumnIndex(android.provider.CalendarContract.Calendars._ID)
-                val nameIdx = cursor.getColumnIndex(android.provider.CalendarContract.Calendars.CALENDAR_DISPLAY_NAME)
-                val colorIdx = cursor.getColumnIndex(android.provider.CalendarContract.Calendars.CALENDAR_COLOR)
-                val accountIdx = cursor.getColumnIndex(android.provider.CalendarContract.Calendars.ACCOUNT_NAME)
+                val idIdx = cursor.getColumnIndex(CalendarContract.Calendars._ID)
+                val nameIdx = cursor.getColumnIndex(CalendarContract.Calendars.CALENDAR_DISPLAY_NAME)
+                val colorIdx = cursor.getColumnIndex(CalendarContract.Calendars.CALENDAR_COLOR)
+                val accountIdx = cursor.getColumnIndex(CalendarContract.Calendars.ACCOUNT_NAME)
 
                 while (cursor.moveToNext()) {
                     calendars.add(

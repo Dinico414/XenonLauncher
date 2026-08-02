@@ -1,6 +1,7 @@
 package com.xenonware.launcher.ui.theme
 
 import android.app.Activity
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -125,7 +126,12 @@ fun Color.adjustTone(targetTone: Float): Color {
 fun ColorScheme.toBlackedOut(): ColorScheme {
     return this.copy(
         background = Color.Black,
+        surface = Color.Black,
         surfaceContainer = Color.Black,
+        surfaceContainerLow = Color.Black,
+        surfaceContainerLowest = Color.Black,
+        surfaceContainerHigh = Color.Black,
+        surfaceContainerHighest = Color.Black,
         surfaceBright = surfaceDim,
         surfaceDim = surfaceDim.adjustTone(2f)
     )
@@ -134,14 +140,19 @@ fun ColorScheme.toBlackedOut(): ColorScheme {
 fun ColorScheme.toCoverMode(): ColorScheme {
     return this.copy(
         background = Color.Black,
+        surface = Color.Black,
         surfaceContainer = Color.Black,
+        surfaceContainerLow = Color.Black,
+        surfaceContainerLowest = Color.Black,
+        surfaceContainerHigh = Color.Black,
+        surfaceContainerHighest = Color.Black,
         surfaceBright = Color.Black
     )
 }
 
 @Composable
 fun XenonTheme(
-    darkTheme: Boolean,
+    darkTheme: Boolean = isSystemInDarkTheme(),
     useBlackedOutDarkTheme: Boolean = false,
     isCoverMode: Boolean = false,
     dynamicColor: Boolean = true,

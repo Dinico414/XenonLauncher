@@ -5,8 +5,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.IntSize
+import com.xenon.mylibrary.theme.LayoutType
 import com.xenonware.launcher.viewmodel.DevSettingsViewModel
-import com.xenonware.launcher.viewmodel.LayoutType
 
 @Composable
 fun DevSettingsLayout(
