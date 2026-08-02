@@ -1049,6 +1049,7 @@ fun WidgetPage(
                                 containerColor = colorScheme.secondaryContainer,
                                 contentColor = colorScheme.onSecondaryContainer
                             ),
+                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
                             shape = RoundedCornerShape(20.dp),
                             modifier = Modifier.padding(bottom = 8.dp)
                         ) {
