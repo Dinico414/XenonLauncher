@@ -1,97 +1,101 @@
 package com.xenonware.launcher.ui.res.notification
 
- import android.app.ActivityOptions
- import android.app.RemoteInput
- import android.content.Intent
- import android.os.Build
- import android.os.Bundle
- import androidx.compose.animation.AnimatedVisibility
- import androidx.compose.animation.core.Animatable
- import androidx.compose.animation.core.CubicBezierEasing
- import androidx.compose.animation.core.Spring
- import androidx.compose.animation.core.animateDpAsState
- import androidx.compose.animation.core.spring
- import androidx.compose.animation.core.tween
- import androidx.compose.animation.expandVertically
- import androidx.compose.animation.fadeIn
- import androidx.compose.animation.fadeOut
- import androidx.compose.animation.shrinkVertically
- import androidx.compose.foundation.Image
- import androidx.compose.foundation.background
- import androidx.compose.foundation.gestures.Orientation
- import androidx.compose.foundation.gestures.draggable
- import androidx.compose.foundation.gestures.rememberDraggableState
- import androidx.compose.foundation.horizontalScroll
- import androidx.compose.foundation.layout.Arrangement
- import androidx.compose.foundation.layout.Box
- import androidx.compose.foundation.layout.Column
- import androidx.compose.foundation.layout.Row
- import androidx.compose.foundation.layout.aspectRatio
- import androidx.compose.foundation.layout.fillMaxWidth
- import androidx.compose.foundation.layout.height
- import androidx.compose.foundation.layout.heightIn
- import androidx.compose.foundation.layout.offset
- import androidx.compose.foundation.layout.padding
- import androidx.compose.foundation.layout.size
- import androidx.compose.foundation.rememberScrollState
- import androidx.compose.foundation.shape.CircleShape
- import androidx.compose.foundation.shape.RoundedCornerShape
- import androidx.compose.foundation.text.KeyboardOptions
- import androidx.compose.material.icons.Icons
- import androidx.compose.material.icons.automirrored.rounded.Send
- import androidx.compose.material.icons.rounded.ExpandLess
- import androidx.compose.material.icons.rounded.ExpandMore
- import androidx.compose.material3.Icon
- import androidx.compose.material3.MaterialTheme
- import androidx.compose.material3.MaterialTheme.colorScheme
- import androidx.compose.material3.Surface
- import androidx.compose.material3.Text
- import androidx.compose.material3.TextField
- import androidx.compose.material3.TextFieldDefaults
- import androidx.compose.runtime.Composable
- import androidx.compose.runtime.DisposableEffect
- import androidx.compose.runtime.derivedStateOf
- import androidx.compose.runtime.getValue
- import androidx.compose.runtime.mutableFloatStateOf
- import androidx.compose.runtime.mutableStateOf
- import androidx.compose.runtime.remember
- import androidx.compose.runtime.rememberCoroutineScope
- import androidx.compose.runtime.rememberUpdatedState
- import androidx.compose.runtime.setValue
- import androidx.compose.ui.Alignment
- import androidx.compose.ui.Modifier
- import androidx.compose.ui.draw.clip
- import androidx.compose.ui.geometry.Offset
- import androidx.compose.ui.graphics.Color
- import androidx.compose.ui.graphics.ColorFilter
- import androidx.compose.ui.graphics.asImageBitmap
- import androidx.compose.ui.graphics.graphicsLayer
- import androidx.compose.ui.hapticfeedback.HapticFeedbackType
- import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
- import androidx.compose.ui.input.nestedscroll.NestedScrollSource
- import androidx.compose.ui.input.nestedscroll.nestedScroll
- import androidx.compose.ui.layout.ContentScale
- import androidx.compose.ui.platform.LocalContext
- import androidx.compose.ui.platform.LocalDensity
- import androidx.compose.ui.platform.LocalHapticFeedback
- import androidx.compose.ui.platform.LocalView
- import androidx.compose.ui.text.font.FontWeight
- import androidx.compose.ui.text.input.ImeAction
- import androidx.compose.ui.text.style.TextOverflow
- import androidx.compose.ui.unit.IntOffset
- import androidx.compose.ui.unit.dp
- import androidx.compose.ui.unit.lerp
- import androidx.compose.ui.unit.sp
- import androidx.core.graphics.drawable.toBitmap
- import com.xenonware.launcher.notification.LauncherNotification
- import com.xenonware.launcher.notification.LauncherNotificationAction
- import com.xenonware.launcher.util.ColorUtils
- import kotlinx.coroutines.launch
- import kotlin.math.abs
- import kotlin.math.max
- import kotlin.math.pow
- import kotlin.math.roundToInt
- import kotlin.math.sign
+import android.app.ActivityOptions
+import android.app.RemoteInput
+import android.content.Intent
+import android.os.Bundle
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitHorizontalTouchSlopOrCancellation
+import androidx.compose.foundation.gestures.horizontalDrag
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Send
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MaterialTheme.colorScheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.input.pointer.util.addPointerInputChange
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
+import androidx.compose.ui.unit.sp
+import androidx.core.graphics.drawable.toBitmap
+import com.xenonware.launcher.notification.LauncherNotification
+import com.xenonware.launcher.notification.LauncherNotificationAction
+import com.xenonware.launcher.util.ColorUtils
+import kotlinx.coroutines.launch
+import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.pow
+import kotlin.math.roundToInt
+import kotlin.math.sign
 
 
 @Composable
@@ -104,6 +108,7 @@ fun NotificationItem(
     offsetAbove: Float = 0f,
     offsetBelow: Float = 0f,
     onOffsetChanged: (Float) -> Unit = {},
+    onSwipeActiveChange: (Boolean) -> Unit = {},
     onOpen: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -117,7 +122,7 @@ fun NotificationItem(
     var isStuck by remember { mutableStateOf(true) }
     var isDismissing by remember { mutableStateOf(false) }
 
-    val dismissThreshold = remember(density) { 
+    val dismissThreshold = remember(density) {
         val threshold = with(density) { 100.dp.toPx() }
         if (threshold <= 0f) 1f else threshold
     }
@@ -126,6 +131,13 @@ fun NotificationItem(
     val finalAppColor = if (appColor == Color.Unspecified) colorScheme.primary else appColor
     val finalContrastColor = remember(finalAppColor) { ColorUtils.getContrastColor(finalAppColor) }
     var expanded by remember { mutableStateOf(false) }
+
+    // The gesture loop below is keyed on notification.key and therefore captures the
+    // callbacks from the composition in which it started. Keep live references so a
+    // list reorder can never dismiss a stale notification.
+    val currentOnDismiss by rememberUpdatedState(onDismiss)
+    val currentOnOffsetChanged by rememberUpdatedState(onOffsetChanged)
+    val currentOnSwipeActiveChange by rememberUpdatedState(onSwipeActiveChange)
 
     val swipeProgress by remember {
         derivedStateOf { (abs(offsetX.value) / dismissThreshold).coerceIn(0f, 1f) }
@@ -161,6 +173,90 @@ fun NotificationItem(
     DisposableEffect(notification.key) {
         onDispose {
             onOffsetChanged(0f)
+            onSwipeActiveChange(false)
+        }
+    }
+
+    // --- Swipe logic, extracted so the raw pointer loop can drive it ---
+
+    fun handleDragStart() {
+        rawDragOffset = offsetX.value
+        isStuck = abs(rawDragOffset) < dismissThreshold
+        currentOnSwipeActiveChange(true)
+    }
+
+    fun handleDelta(delta: Float) {
+        coroutineScope.launch {
+            val restickDist = dismissThreshold * 0.8f
+
+            val newRawDrag = rawDragOffset + delta
+            val newStuck = if (isStuck) {
+                abs(newRawDrag) < dismissThreshold
+            } else {
+                abs(newRawDrag) < restickDist
+            }
+
+            if (newStuck != isStuck) {
+                haptic.performHapticFeedback(
+                    if (newStuck) HapticFeedbackType.GestureThresholdActivate
+                    else HapticFeedbackType.Confirm
+                )
+                isStuck = newStuck
+            }
+
+            rawDragOffset = newRawDrag
+            val friction = 1.8f
+            val intendedOffset = rawDragOffset / if (isStuck) friction else 1f
+
+            val targetDrag = 1f.applyStretch(intendedOffset, dismissThreshold)
+                .coerceIn(-stretchLimit, stretchLimit)
+
+            offsetX.animateTo(
+                targetValue = targetDrag,
+                animationSpec = spring(
+                    dampingRatio = 0.65f,
+                    stiffness = 1500f
+                )
+            ) {
+                currentOnOffsetChanged(value)
+            }
+        }
+    }
+
+    fun handleDragStop(velocity: Float) {
+        currentOnSwipeActiveChange(false)
+        coroutineScope.launch {
+            val isDismiss = !isStuck || abs(velocity) > 4000f
+            if (isDismiss) {
+                isDismissing = true
+                // Moderate target to clear screen without "jumping"
+                val target = if (offsetX.value > 0) stretchLimit * 4 else -stretchLimit * 4
+
+                // Sequential: Wait for flight (200ms) then dismiss
+                offsetX.animateTo(
+                    targetValue = target,
+                    animationSpec = tween(
+                        durationMillis = 200,
+                        easing = CubicBezierEasing(0.3f, 0f, 0.1f, 1f)
+                    )
+                ) {
+                    currentOnOffsetChanged(value)
+                }
+
+                currentOnDismiss()
+            } else {
+                offsetX.animateTo(
+                    targetValue = 0f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessLow
+                    )
+                ) {
+                    currentOnOffsetChanged(value)
+                }
+                currentOnOffsetChanged(0f)
+            }
+            isStuck = true
         }
     }
 
@@ -179,83 +275,41 @@ fun NotificationItem(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
                 .offset { IntOffset(offsetX.value.roundToInt(), 0) }
-                .draggable(
-                    orientation = Orientation.Horizontal,
-                    onDragStarted = {
-                        view.parent?.requestDisallowInterceptTouchEvent(true)
-                        rawDragOffset = offsetX.value
-                        isStuck = abs(rawDragOffset) < dismissThreshold
-                    },
-                    state = rememberDraggableState { delta ->
-                        coroutineScope.launch {
-                            val restickDist = dismissThreshold * 0.8f
+                // Raw pointer handling instead of Modifier.draggable: the horizontal
+                // pointer changes are consumed, so the parent HorizontalPager never
+                // sees enough movement to start its own page swipe. Nested scroll
+                // cannot be used here because draggable/this gesture does not
+                // dispatch it, and requestDisallowInterceptTouchEvent only affects
+                // the Android View hierarchy, not Compose's pager.
+                .pointerInput(notification.key) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
 
-                            val newRawDrag = rawDragOffset + delta
-                            val newStuck = if (isStuck) {
-                                abs(newRawDrag) < dismissThreshold
-                            } else {
-                                abs(newRawDrag) < restickDist
-                            }
+                        // Do not consume anything yet: if the user moves vertically
+                        // first, the LazyColumn wins and this returns null.
+                        var overSlop = 0f
+                        val drag = awaitHorizontalTouchSlopOrCancellation(down.id) { change, over ->
+                            change.consume()
+                            overSlop = over
+                        } ?: return@awaitEachGesture
 
-                            if (newStuck != isStuck) {
-                                haptic.performHapticFeedback(if (newStuck) HapticFeedbackType.GestureThresholdActivate else HapticFeedbackType.Confirm)
-                                isStuck = newStuck
-                            }
+                        handleDragStart()
 
-                            rawDragOffset = newRawDrag
-                            val friction = 1.8f
-                            val intendedOffset = rawDragOffset / if (isStuck) friction else 1f
+                        val tracker = VelocityTracker()
+                        tracker.addPointerInputChange(drag)
+                        handleDelta(overSlop)
 
-                            val targetDrag = applyStretch(intendedOffset, dismissThreshold, 1f)
-                                .coerceIn(-stretchLimit, stretchLimit)
-
-                            offsetX.animateTo(
-                                targetValue = targetDrag,
-                                animationSpec = spring(
-                                    dampingRatio = 0.65f,
-                                    stiffness = 1500f
-                                )
-                            ) {
-                                onOffsetChanged(value)
-                            }
+                        val completed = horizontalDrag(drag.id) { change ->
+                            tracker.addPointerInputChange(change)
+                            handleDelta(change.positionChange().x)
+                            change.consume()
                         }
-                    },
-                    onDragStopped = { velocity ->
-                        coroutineScope.launch {
-                            val isDismiss = !isStuck || abs(velocity) > 4000f
-                            if (isDismiss) {
-                                isDismissing = true
-                                // Moderate target to clear screen without "jumping"
-                                val target = if (offsetX.value > 0) stretchLimit * 4 else -stretchLimit * 4
-                                
-                                // Sequential: Wait for flight (200ms) then dismiss
-                                offsetX.animateTo(
-                                    targetValue = target,
-                                    animationSpec = tween(
-                                        durationMillis = 200,
-                                        easing = CubicBezierEasing(0.3f, 0f, 0.1f, 1f)
-                                    )
-                                ) {
-                                    onOffsetChanged(value)
-                                }
 
-                                onDismiss()
-                            } else {
-                                offsetX.animateTo(
-                                    targetValue = 0f,
-                                    animationSpec = spring(
-                                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                                        stiffness = Spring.StiffnessLow
-                                    )
-                                ) {
-                                    onOffsetChanged(value)
-                                }
-                                onOffsetChanged(0f)
-                            }
-                            isStuck = true
-                        }
+                        handleDragStop(
+                            if (completed) tracker.calculateVelocity().x else 0f
+                        )
                     }
-                ),
+                },
             shape = mainShape,
             color = colorScheme.surfaceBright.copy(alpha = 0.8f),
         ) {
@@ -277,7 +331,7 @@ fun NotificationItem(
                                 null
                             }
                         }
-                        
+
                         Box(
                             modifier = Modifier
                                 .size(40.dp)
@@ -303,7 +357,7 @@ fun NotificationItem(
                     ) {
                         val hasTitle = !notification.title.isNullOrBlank()
                         val displayTitle = if (hasTitle) notification.title else notification.text
-                        
+
                         displayTitle?.let {
                             Text(
                                 text = it,
@@ -372,12 +426,12 @@ fun NotificationItem(
                         val hasTitle = !notification.title.isNullOrBlank()
                         val displayText = if (hasTitle) notification.text else null
                         val displayTitle = if (hasTitle) notification.title else notification.text
-                        
-                        val canExpand = notification.actions.isNotEmpty() || 
-                                       (displayText != null && displayText.length > 50) || 
-                                       (displayTitle != null && displayTitle.length > 40) ||
-                                       notification.mediaImage != null || 
-                                       notification.senderIcon != null
+
+                        val canExpand = notification.actions.isNotEmpty() ||
+                                (displayText != null && displayText.length > 50) ||
+                                (displayTitle != null && displayTitle.length > 40) ||
+                                notification.mediaImage != null ||
+                                notification.senderIcon != null
 
                         if (canExpand) {
                             Surface(
@@ -418,7 +472,7 @@ fun NotificationItem(
                 // Message content (Below the top row)
                 val hasTitle = !notification.title.isNullOrBlank()
                 val bodyText = if (hasTitle) notification.text else null
-                
+
                 if (!bodyText.isNullOrBlank()) {
                     Text(
                         text = bodyText,
@@ -521,10 +575,8 @@ fun NotificationItem(
                                                 }
                                                 try {
                                                     val options = ActivityOptions.makeBasic()
-                                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                                                        options.pendingIntentBackgroundActivityStartMode =
-                                                            ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
-                                                    }
+                                                    options.pendingIntentBackgroundActivityStartMode =
+                                                        ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
 
                                                     action.actionIntent?.send(context, 0, fillInIntent, null, null, null, options.toBundle())
                                                 } catch (_: Exception) {
@@ -594,14 +646,10 @@ fun NotificationItem(
                                         } else {
                                             try {
                                                 val options = ActivityOptions.makeBasic()
-                                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                                                    options.pendingIntentBackgroundActivityStartMode =
-                                                        ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
-                                                }
+                                                options.pendingIntentBackgroundActivityStartMode =
+                                                    ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
 
-                                                action.actionIntent?.let { intent ->
-                                                    intent.send(context, 0, null, null, null, null, options.toBundle())
-                                                }
+                                                action.actionIntent?.send(context, 0, null, null, null, null, options.toBundle())
                                             } catch (_: Exception) {
                                                 try {
                                                     action.actionIntent?.send()
@@ -644,7 +692,7 @@ private fun formatNotificationTime(postTime: Long): String {
     }
 }
 
-private fun applyStretch(offset: Float, threshold: Float, stretchFactor: Float = 0.5f): Float {
+private fun Float.applyStretch(offset: Float, threshold: Float): Float {
     val s = sign(offset)
     val a = abs(offset)
 
@@ -653,6 +701,6 @@ private fun applyStretch(offset: Float, threshold: Float, stretchFactor: Float =
     }
 
     val overscroll = a - threshold
-    val stretchedOverscroll = overscroll.pow(1f - stretchFactor)
+    val stretchedOverscroll = overscroll.pow(1f - this)
     return s * (threshold + stretchedOverscroll)
 }

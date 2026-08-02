@@ -4,6 +4,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Application
 import android.content.BroadcastReceiver
+import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -14,6 +15,7 @@ import android.graphics.drawable.Drawable
 import android.location.Location
 import android.net.Uri
 import android.os.BatteryManager
+import android.provider.CalendarContract
 import android.provider.ContactsContract
 import android.provider.MediaStore
 import android.util.Patterns
@@ -996,38 +998,57 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
             val visibleCalendars = prefManager.visibleCalendars
             val events = mutableListOf<CalendarEvent>()
-            val uri = android.provider.CalendarContract.Events.CONTENT_URI
-            val projection = arrayOf(
-                android.provider.CalendarContract.Events.TITLE,
-                android.provider.CalendarContract.Events.DTSTART,
-                android.provider.CalendarContract.Events.DTEND,
-                android.provider.CalendarContract.Events.EVENT_LOCATION,
-                android.provider.CalendarContract.Events.ALL_DAY,
-                android.provider.CalendarContract.Events.CALENDAR_ID
-            )
+            
             val now = System.currentTimeMillis()
-            val tomorrow = now + 24 * 60 * 60 * 1000
             
-            var selection = "${android.provider.CalendarContract.Events.DTSTART} >= ? AND ${android.provider.CalendarContract.Events.DTSTART} <= ?"
-            val selectionArgsList = mutableListOf(now.toString(), tomorrow.toString())
+            // Calculate end of tomorrow
+            val calendar = java.util.Calendar.getInstance()
+            calendar.timeInMillis = now
+            calendar.add(java.util.Calendar.DAY_OF_YEAR, 1)
+            calendar.set(java.util.Calendar.HOUR_OF_DAY, 23)
+            calendar.set(java.util.Calendar.MINUTE, 59)
+            calendar.set(java.util.Calendar.SECOND, 59)
+            calendar.set(java.util.Calendar.MILLISECOND, 999)
+            val endOfTomorrow = calendar.timeInMillis
+
+            // Use Instances table to correctly expand recurring events and handle all-day events
+            val builder = CalendarContract.Instances.CONTENT_URI.buildUpon()
+            ContentUris.appendId(builder, now)
+            ContentUris.appendId(builder, endOfTomorrow)
+            val uri = builder.build()
+
+            val projection = arrayOf(
+                CalendarContract.Instances.TITLE,
+                CalendarContract.Instances.BEGIN,
+                CalendarContract.Instances.END,
+                CalendarContract.Instances.EVENT_LOCATION,
+                CalendarContract.Instances.ALL_DAY,
+                CalendarContract.Instances.CALENDAR_ID
+            )
             
-            if (visibleCalendars.isNotEmpty()) {
+            var selection = ""
+            val selectionArgsList = mutableListOf<String>()
+            
+            if (visibleCalendars.isNotEmpty() && !visibleCalendars.contains("__NONE__")) {
                 val placeholders = visibleCalendars.joinToString(",") { "?" }
-                selection += " AND ${android.provider.CalendarContract.Events.CALENDAR_ID} IN ($placeholders)"
+                selection = "${CalendarContract.Instances.CALENDAR_ID} IN ($placeholders)"
                 selectionArgsList.addAll(visibleCalendars)
+            } else if (visibleCalendars.contains("__NONE__")) {
+                _calendarEvents.value = emptyList()
+                return@launch
             }
             
-            val sortOrder = "${android.provider.CalendarContract.Events.DTSTART} ASC"
+            val sortOrder = "${CalendarContract.Instances.BEGIN} ASC"
 
-            context.contentResolver.query(uri, projection, selection, selectionArgsList.toTypedArray(), sortOrder)?.use { cursor ->
-                val titleIdx = cursor.getColumnIndex(android.provider.CalendarContract.Events.TITLE)
-                val startIdx = cursor.getColumnIndex(android.provider.CalendarContract.Events.DTSTART)
-                val endIdx = cursor.getColumnIndex(android.provider.CalendarContract.Events.DTEND)
-                val locIdx = cursor.getColumnIndex(android.provider.CalendarContract.Events.EVENT_LOCATION)
-                val allDayIdx = cursor.getColumnIndex(android.provider.CalendarContract.Events.ALL_DAY)
-                val calIdIdx = cursor.getColumnIndex(android.provider.CalendarContract.Events.CALENDAR_ID)
+            context.contentResolver.query(uri, projection, selection.ifEmpty { null }, if (selectionArgsList.isEmpty()) null else selectionArgsList.toTypedArray(), sortOrder)?.use { cursor ->
+                val titleIdx = cursor.getColumnIndex(CalendarContract.Instances.TITLE)
+                val startIdx = cursor.getColumnIndex(CalendarContract.Instances.BEGIN)
+                val endIdx = cursor.getColumnIndex(CalendarContract.Instances.END)
+                val locIdx = cursor.getColumnIndex(CalendarContract.Instances.EVENT_LOCATION)
+                val allDayIdx = cursor.getColumnIndex(CalendarContract.Instances.ALL_DAY)
+                val calIdIdx = cursor.getColumnIndex(CalendarContract.Instances.CALENDAR_ID)
 
-                while (cursor.moveToNext() && events.size < 5) {
+                while (cursor.moveToNext() && events.size < 25) {
                     val title = cursor.getString(titleIdx) ?: "No Title"
                     events.add(
                         CalendarEvent(
@@ -1094,12 +1115,25 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     fun toggleCalendarVisibility(calendarId: String) {
         val current = _visibleCalendars.value.toMutableList()
-        if (current.contains(calendarId)) {
-            current.remove(calendarId)
+        val allAvailable = _availableCalendars.value.map { it.id }
+        
+        val new = if (current.isEmpty()) {
+            // "Select All" is active, so we unselect the one clicked
+            allAvailable.toMutableList().apply { remove(calendarId) }
+        } else if (current.contains("__NONE__")) {
+            // "Clear All" is active, so we select the one clicked
+            mutableListOf(calendarId)
         } else {
-            current.add(calendarId)
+            // Specific selection active
+            if (current.contains(calendarId)) {
+                current.remove(calendarId)
+                if (current.isEmpty()) mutableListOf("__NONE__") else current
+            } else {
+                current.add(calendarId)
+                if (current.size >= allAvailable.size) mutableListOf() else current
+            }
         }
-        setVisibleCalendars(current)
+        setVisibleCalendars(new)
     }
 
     fun setShowNotificationManagerDialog(show: Boolean) {

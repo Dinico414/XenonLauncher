@@ -48,6 +48,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.EmojiEvents
+import android.text.format.DateFormat
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.NotificationsActive
@@ -96,8 +100,6 @@ import com.xenonware.launcher.util.ColorUtils
 import com.xenonware.launcher.util.shouldDisableLandscapeLayout
 import com.xenonware.launcher.viewmodel.LauncherViewModel
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.absoluteValue
 
@@ -550,7 +552,7 @@ fun NotificationPage(
             }
         }
         // Dropdown menus
-        val context = androidx.compose.ui.platform.LocalContext.current
+        val context = LocalContext.current
         
         if (showAtAGlanceMenu) {
             com.xenonware.launcher.ui.res.XenonDropDown(
@@ -646,7 +648,20 @@ fun AtAGlanceSection(
             )
         } else {
             val pagerState = rememberPagerState { calendarEvents.size }
-            val timeFormatter = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
+            val context = LocalContext.current
+            val is24Hour = DateFormat.is24HourFormat(context)
+            val timeFormatter = remember(is24Hour) {
+                val locale = Locale.getDefault()
+                if (is24Hour) {
+                    if (locale.language == "de") {
+                        SimpleDateFormat("HH:mm'Uhr'", locale)
+                    } else {
+                        SimpleDateFormat("HH:mm", locale)
+                    }
+                } else {
+                    SimpleDateFormat("h:mm a", locale)
+                }
+            }
             val scope = androidx.compose.runtime.rememberCoroutineScope()
 
             val density = androidx.compose.ui.platform.LocalDensity.current
@@ -754,10 +769,22 @@ fun AtAGlanceSection(
                                 }
                                 .basicMarquee()
                         )
-                        val timeText = if (event.isAllDay) {
-                            "All Day"
-                        } else {
-                            "${timeFormatter.format(event.startTime)} - ${timeFormatter.format(event.endTime)}"
+                        val timeText = remember(event, timeFormatter) {
+                            val tomorrowCal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
+                            val eventStartCal = Calendar.getInstance().apply { timeInMillis = event.startTime }
+                            
+                            val isTomorrow = eventStartCal.get(Calendar.YEAR) == tomorrowCal.get(Calendar.YEAR) &&
+                                             eventStartCal.get(Calendar.DAY_OF_YEAR) == tomorrowCal.get(Calendar.DAY_OF_YEAR)
+                            
+                            val prefix = if (isTomorrow) {
+                                if (Locale.getDefault().language == "de") "Morgen " else "Tomorrow "
+                            } else ""
+                            
+                            if (event.isAllDay) {
+                                prefix + if (Locale.getDefault().language == "de") "Ganztägig" else "All Day"
+                            } else {
+                                prefix + "${timeFormatter.format(event.startTime)} - ${timeFormatter.format(event.endTime)}"
+                            }
                         }
                         Text(
                             text = timeText,
