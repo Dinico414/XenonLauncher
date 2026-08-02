@@ -1,10 +1,17 @@
 package com.xenonware.launcher.ui.res
 
 //import com.xenon.mylibrary.res.XenonDialog
+import android.annotation.SuppressLint
 import android.util.LruCache
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,17 +50,35 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.window.DialogProperties
+import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toBitmap
+import androidx.core.graphics.drawable.toDrawable
 import com.xenonware.launcher.viewmodel.LauncherViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.milliseconds
 
 private val bitmapCache = LruCache<String, ImageBitmap>(100)
+
+/**
+ * Strips resource-type annotations from an int.
+ *
+ * [android.appwidget.AppWidgetProviderInfo.previewLayout] is annotated `@IdRes` in the
+ * framework SDK, but it actually holds a layout resource. Passing it straight to
+ * [android.view.LayoutInflater.inflate] (which expects `@LayoutRes`) therefore trips the
+ * `ResourceType` lint check. Lint does not propagate resource-type annotations through a
+ * function boundary, so routing the id through this helper clears the false positive in
+ * both the IDE inspection and the Gradle lint task.
+ */
+private fun untypedRes(id: Int): Int = id
 
 @Composable
 fun WidgetSelectorDialog(
@@ -285,15 +310,65 @@ fun CategoryHeader(
     isExpanded: Boolean,
     onToggle: () -> Unit,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    var isPressed by remember { mutableStateOf(false) }
+
+    LaunchedEffect(interactionSource) {
+        var pressStartTime = 0L
+        interactionSource.interactions.collect { interaction ->
+            when (interaction) {
+                is PressInteraction.Press -> {
+                    isPressed = true
+                    pressStartTime = System.currentTimeMillis()
+                }
+
+                is PressInteraction.Release -> {
+                    val duration = System.currentTimeMillis() - pressStartTime
+                    if (duration < 200) {
+                        delay((200 - duration).milliseconds)
+                    }
+                    isPressed = false
+                }
+
+                is PressInteraction.Cancel -> {
+                    isPressed = false
+                }
+            }
+        }
+    }
+    val density = LocalDensity.current
+    var rowHeightDp by remember { mutableStateOf(0.dp) }
+    val collapsedRadius = if (rowHeightDp > 0.dp) rowHeightDp / 2 else 28.dp
+
+    val baseRadius by animateDpAsState(
+        targetValue = if (isExpanded) 16.dp else collapsedRadius,
+        label = "baseRadius",
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium
+        )
+    )
+
+    val pressFraction by animateFloatAsState(
+        targetValue = if (isPressed) 1f else 0f,
+        label = "pressFraction",
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium
+        )
+    )
+
+    val cornerRadius = lerp(baseRadius, 8.dp, pressFraction)
+
     Surface(
         onClick = onToggle,
-        shape = RoundedCornerShape(16.dp),
-        color = if (isExpanded) colorScheme.secondaryContainer.copy(alpha = 0.4f) else colorScheme.surfaceVariant.copy(
-            alpha = 0.3f
-        ),
+        interactionSource = interactionSource,
+        shape = RoundedCornerShape(cornerRadius.coerceAtLeast(0.dp)),
+        color = if (isExpanded) colorScheme.primaryContainer else colorScheme.surfaceContainerHighest,
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 2.dp)
+            .onSizeChanged { rowHeightDp = with(density) { it.height.toDp() } }
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -326,6 +401,7 @@ fun CategoryHeader(
     }
 }
 
+@SuppressLint("LocalContextResourcesRead")
 @Composable
 fun WidgetPickerItem(
     item: LauncherViewModel.WidgetPickerItemData,
@@ -345,21 +421,21 @@ fun WidgetPickerItem(
                 val displayMetrics = context.resources.displayMetrics
                 val targetDpi = displayMetrics.densityDpi
 
-                var source = "None"
                 var drawable: android.graphics.drawable.Drawable? = null
 
                 if (item.isWidget && item.widgetInfo != null) {
                     val info = item.widgetInfo
 
                     // 1. On Android 12+, try previewLayout FIRST
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S && info.previewLayout != 0) {
+                    if (info.previewLayout != 0) {
                         try {
-                            source = "PreviewLayout"
                             withContext(Dispatchers.Main) {
                                 val remoteContext =
                                     context.createPackageContext(info.provider.packageName, 0)
                                 val inflater = android.view.LayoutInflater.from(remoteContext)
-                                val view = inflater.inflate(info.previewLayout, null, false)
+                                // previewLayout is mis-annotated as @IdRes in the SDK; see untypedRes().
+                                val view =
+                                    inflater.inflate(untypedRes(info.previewLayout), null, false)
 
                                 val widthPx = info.minWidth.coerceAtLeast(200)
                                 val heightPx = info.minHeight.coerceAtLeast(200)
@@ -373,16 +449,13 @@ fun WidgetPickerItem(
                                 )
                                 view.layout(0, 0, view.measuredWidth, view.measuredHeight)
 
-                                val canvasBitmap = android.graphics.Bitmap.createBitmap(
+                                val canvasBitmap = createBitmap(
                                     view.measuredWidth.coerceAtLeast(1),
-                                    view.measuredHeight.coerceAtLeast(1),
-                                    android.graphics.Bitmap.Config.ARGB_8888
+                                    view.measuredHeight.coerceAtLeast(1)
                                 )
                                 val canvas = android.graphics.Canvas(canvasBitmap)
                                 view.draw(canvas)
-                                drawable = android.graphics.drawable.BitmapDrawable(
-                                    context.resources, canvasBitmap
-                                )
+                                drawable = canvasBitmap.toDrawable(context.resources)
                             }
                         } catch (_: Exception) {
                         }
@@ -392,18 +465,15 @@ fun WidgetPickerItem(
                     if (drawable == null) {
                         val preview = info.loadPreviewImage(context, targetDpi)
                         if (preview != null) {
-                            source = "Preview"
                             drawable = preview
                         }
                     }
 
                     // 3. Fallback to app icon
                     if (drawable == null) {
-                        source = "Icon"
                         drawable = info.loadIcon(context, targetDpi)
                     }
                 } else if (item.shortcutInfo != null) {
-                    source = "ShortcutIcon"
                     drawable = item.shortcutInfo.loadIcon(pm)
                 }
 
@@ -415,11 +485,10 @@ fun WidgetPickerItem(
                     val intrinsicH = d.intrinsicHeight.coerceAtLeast(1)
                     val aspect = intrinsicW.toFloat() / intrinsicH.toFloat()
 
-                    val w = targetWidthPx
                     val h = (targetWidthPx / aspect).toInt().coerceIn(10, 400)
 
                     val b =
-                        d.toBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888).asImageBitmap()
+                        d.toBitmap(targetWidthPx, h, android.graphics.Bitmap.Config.ARGB_8888).asImageBitmap()
                     bitmapCache.put(item.id, b)
                     b
                 }
@@ -467,12 +536,10 @@ fun WidgetPickerItem(
         if (item.isWidget && item.widgetInfo != null) {
             val info = item.widgetInfo
 
-            var cols = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            var cols =
                 info.targetCellWidth.coerceAtLeast(0)
-            } else 0
-            var rows = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            var rows =
                 info.targetCellHeight.coerceAtLeast(0)
-            } else 0
 
             if (cols <= 0 || rows <= 0) {
                 val isPixelScale = info.minWidth > 450
@@ -481,8 +548,8 @@ fun WidgetPickerItem(
                 val h =
                     if (isPixelScale) info.minHeight / density.density else info.minHeight.toFloat()
 
-                cols = Math.max(1, ((w + 20) / 60).toInt())
-                rows = Math.max(1, ((h + 20) / 60).toInt())
+                cols = 1.coerceAtLeast(((w + 20) / 60).toInt())
+                rows = 1.coerceAtLeast(((h + 20) / 60).toInt())
             }
 
             Text(
