@@ -49,7 +49,13 @@
             android:name=".SettingsActivity"
             android:exported="true"
             android:label="Settings"
-            android:theme="@style/Theme.XenonLauncher" />
+            android:theme="@style/Theme.XenonLauncher.Settings" />
+
+        <activity
+            android:name=".DevSettingsActivity"
+            android:exported="true"
+            android:label="Developer Options"
+            android:theme="@style/Theme.XenonLauncher.Settings" />
 
         <service
             android:name=".notification.XenonNotificationService"
