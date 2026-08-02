@@ -1,4 +1,4 @@
-package com.xenonware.launcher.util
+package com.xenonware.launcher.ui.res
 
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetHostView
@@ -18,7 +18,7 @@ import kotlin.math.abs
  * long-press timeout has elapsed — at which point Android automatically delivers ACTION_CANCEL to
  * the child, so the widget's own click never fires.
  */
-class WidgetInteractionUtil(context: Context) : AppWidgetHostView(context) {
+class InteractiveAppWidgetHostView(context: Context) : AppWidgetHostView(context) {
 
     /** Invoked once the long-press timeout elapses without the gesture turning into a scroll. */
     var onWidgetLongPress: (() -> Unit)? = null
@@ -97,11 +97,11 @@ class WidgetInteractionUtil(context: Context) : AppWidgetHostView(context) {
     }
 }
 
-/** [AppWidgetHost] that inflates [WidgetInteractionUtil] instead of the plain host view. */
+/** [AppWidgetHost] that inflates [InteractiveAppWidgetHostView] instead of the plain host view. */
 class InteractiveAppWidgetHost(context: Context, hostId: Int) : AppWidgetHost(context, hostId) {
     override fun onCreateView(
         context: Context,
         appWidgetId: Int,
         appWidget: AppWidgetProviderInfo?
-    ): AppWidgetHostView = WidgetInteractionUtil(context)
+    ): AppWidgetHostView = InteractiveAppWidgetHostView(context)
 }
