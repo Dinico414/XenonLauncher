@@ -1147,12 +1147,25 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     fun toggleNotificationAppVisibility(packageName: String) {
         val current = _visibleNotificationApps.value.toMutableList()
-        if (current.contains(packageName)) {
-            current.remove(packageName)
+        val allAvailable = _apps.value.map { it.packageName }
+        
+        val new = if (current.isEmpty()) {
+            // "Select All" is active, so we unselect the one clicked
+            allAvailable.toMutableList().apply { remove(packageName) }
+        } else if (current.contains("__NONE__")) {
+            // "Clear All" is active, so we select the one clicked
+            mutableListOf(packageName)
         } else {
-            current.add(packageName)
+            // Specific selection active
+            if (current.contains(packageName)) {
+                current.remove(packageName)
+                if (current.isEmpty()) mutableListOf("__NONE__") else current
+            } else {
+                current.add(packageName)
+                if (current.size >= allAvailable.size) mutableListOf() else current
+            }
         }
-        setVisibleNotificationApps(current)
+        setVisibleNotificationApps(new)
     }
 
     private fun saveWidgets() {
