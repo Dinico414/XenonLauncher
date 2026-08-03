@@ -18,12 +18,17 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ElectricBolt
 import androidx.compose.material.icons.rounded.Info
@@ -43,11 +48,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.LinearGradientShader
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathMeasure
@@ -59,7 +67,12 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -76,6 +89,7 @@ fun StatusSection(
     isExpanded: Boolean,
     onExpand: () -> Unit,
     notificationCount: Int,
+    calendarEventCount: Int = 0,
     currentTime: String,
     currentDate: String,
     weatherTemp: String,
@@ -395,6 +409,7 @@ fun StatusSection(
                         weatherTemp,
                         weatherCondition,
                         notificationCount,
+                        calendarEventCount = calendarEventCount,
                         onTimeClick = onTimeClick,
                         onDateClick = onDateClick,
                         onWeatherClick = onWeatherClick,
@@ -471,6 +486,138 @@ fun StatusSection(
 
 private enum class StatusViewState {
     Default, Bell, Flash, Battery
+}
+
+@Composable
+fun StatusCounters(
+    notificationCount: Int,
+    calendarEventCount: Int,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        if (notificationCount > 0) {
+            NotificationCounterBadge(count = notificationCount)
+        }
+        if (calendarEventCount > 0) {
+            CalendarCounterIcon(count = calendarEventCount)
+        }
+    }
+}
+
+@Composable
+fun NotificationCounterBadge(
+    count: Int,
+    modifier: Modifier = Modifier,
+    color: Color = colorScheme.primary,
+    contentColor: Color = colorScheme.onPrimary
+) {
+    val text = if (count > 99) "99+" else count.toString()
+    Surface(
+        color = color,
+        shape = CircleShape,
+        modifier = modifier.requiredSize(20.dp)
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = text,
+                color = contentColor,
+                fontSize = if (text.length >= 3) 8.sp else 10.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                style = TextStyle(
+                    platformStyle = PlatformTextStyle(includeFontPadding = false),
+                    textAlign = TextAlign.Center
+                )
+            )
+        }
+    }
+}
+
+@Composable
+fun CalendarCounterIcon(
+    count: Int,
+    modifier: Modifier = Modifier,
+    color: Color = colorScheme.primary,
+) {
+    val text = if (count > 99) "99+" else count.toString()
+    val textMeasurer = rememberTextMeasurer()
+    val textStyle = TextStyle(
+        fontSize = if (text.length >= 3) 7.5.sp else if (text.length == 2) 9.sp else 10.5.sp,
+        fontWeight = FontWeight.Bold,
+        color = Color.Black
+    )
+
+    Canvas(
+        modifier = modifier
+            .requiredSize(20.dp)
+            .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+    ) {
+        val w = size.width
+        val h = size.height
+
+        val topOffset = h * 0.15f
+        val bodyHeight = h - topOffset
+        val cornerRadius = CornerRadius(w * 0.18f, w * 0.18f)
+
+        // Draw calendar main page
+        drawRoundRect(
+            color = color,
+            topLeft = Offset(0f, topOffset),
+            size = Size(w, bodyHeight),
+            cornerRadius = cornerRadius
+        )
+
+        // Draw top binder rings/pegs
+        val ringWidth = w * 0.14f
+        val ringHeight = topOffset * 1.5f
+        val ring1Left = w * 0.26f - ringWidth / 2f
+        val ring2Left = w * 0.74f - ringWidth / 2f
+
+        drawRoundRect(
+            color = color,
+            topLeft = Offset(ring1Left, 0f),
+            size = Size(ringWidth, ringHeight),
+            cornerRadius = CornerRadius(ringWidth / 2f, ringWidth / 2f)
+        )
+        drawRoundRect(
+            color = color,
+            topLeft = Offset(ring2Left, 0f),
+            size = Size(ringWidth, ringHeight),
+            cornerRadius = CornerRadius(ringWidth / 2f, ringWidth / 2f)
+        )
+
+        // Draw horizontal header line cutout
+        val headerY = topOffset + bodyHeight * 0.25f
+        drawLine(
+            color = Color.Black,
+            start = Offset(w * 0.08f, headerY),
+            end = Offset(w * 0.92f, headerY),
+            strokeWidth = 1.5.dp.toPx(),
+            blendMode = BlendMode.Clear
+        )
+
+        // Measure text and draw text cutout inside date area
+        val textLayoutResult = textMeasurer.measure(
+            text = text,
+            style = textStyle
+        )
+        val textWidth = textLayoutResult.size.width
+        val textHeight = textLayoutResult.size.height
+
+        val dateAreaCenterY = headerY + (h - headerY) / 2f
+        val textX = (w - textWidth) / 2f
+        val textY = dateAreaCenterY - textHeight / 2f
+
+        drawText(
+            textLayoutResult = textLayoutResult,
+            topLeft = Offset(textX, textY),
+            blendMode = BlendMode.Clear
+        )
+    }
 }
 
 fun openNotifications(context: Context) {

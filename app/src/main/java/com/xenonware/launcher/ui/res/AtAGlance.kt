@@ -13,11 +13,8 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.MaterialTheme.colorScheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -33,9 +30,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.xenonware.launcher.R
+import com.xenonware.launcher.ui.res.dock.StatusCounters
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Calendar
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun AtAGlance(
@@ -44,12 +43,13 @@ fun AtAGlance(
     temperature: String,
     condition: String,
     notificationCount: Int,
+    calendarEventCount: Int = 0,
     onTimeClick: () -> Unit,
     onDateClick: () -> Unit,
     onWeatherClick: () -> Unit,
     pillInteractionSource: MutableInteractionSource,
-    modifier: Modifier = Modifier
-) {
+    modifier: Modifier = Modifier,
+    ) {
     val contentColor = LocalContentColor.current
     val scope = rememberCoroutineScope()
 
@@ -57,7 +57,7 @@ fun AtAGlance(
         scope.launch {
             val press = PressInteraction.Press(Offset.Zero)
             pillInteractionSource.emit(press)
-            delay(80)
+            delay(80.milliseconds)
             pillInteractionSource.emit(PressInteraction.Release(press))
         }
     }
@@ -177,19 +177,11 @@ fun AtAGlance(
             )
         }
 
-        if (notificationCount > 0) {
-            Surface(
-                color = colorScheme.primary, shape = CircleShape, modifier = Modifier.size(24.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        notificationCount.toString(),
-                        color = colorScheme.onPrimary,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
+        if (notificationCount > 0 || calendarEventCount > 0) {
+            StatusCounters(
+                notificationCount = notificationCount,
+                calendarEventCount = calendarEventCount
+            )
         }
 
         Row(

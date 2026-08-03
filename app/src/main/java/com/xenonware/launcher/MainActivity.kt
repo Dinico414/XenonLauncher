@@ -379,6 +379,7 @@ fun LauncherScreen(
                     mediaState = viewModel.mediaState,
                     isMediaPermissionGranted = viewModel.isMediaPermissionGranted,
                     notificationCount = notificationCount,
+                    calendarEventCount = calendarEvents.size,
                     currentTime = currentTime,
                     currentDate = currentDate,
                     weatherTemp = weatherTemp,
