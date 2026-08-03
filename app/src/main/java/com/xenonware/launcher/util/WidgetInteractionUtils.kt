@@ -7,6 +7,7 @@ import android.content.Context
 import android.view.MotionEvent
 import android.view.ViewConfiguration
 import kotlin.math.abs
+import kotlin.math.hypot
 
 /**
  * An [AppWidgetHostView] that detects a long press without stealing normal interaction.
@@ -23,14 +24,24 @@ class InteractiveAppWidgetHostView(context: Context) : AppWidgetHostView(context
     /** Invoked once the long-press timeout elapses without the gesture turning into a scroll. */
     var onWidgetLongPress: (() -> Unit)? = null
 
-    /** Slightly longer than the system default reduces accidental triggers on scrollable widgets. */
-    var longPressTimeoutMs: Long = ViewConfiguration.getLongPressTimeout().toLong() + 100L
+    /** System default long-press timeout. */
+    var longPressTimeoutMs: Long = ViewConfiguration.getLongPressTimeout().toLong()
 
-    private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
+    /**
+     * Tolerance for stationary hold position (~4dp).
+     * Standard touch slop (~8dp) is designed to distinguish taps from scroll starts.
+     * For long press, 4dp provides enough tolerance for finger micro-movement/tremor while
+     * holding stationary, while immediately cancelling if the finger is swiping horizontally or
+     * vertically (even slowly).
+     */
+    private val holdSlop = 4f * context.resources.displayMetrics.density
 
     private var hasPerformedLongPress = false
-    private var downX = 0f
-    private var downY = 0f
+    private var downRawX = 0f
+    private var downRawY = 0f
+    private var lastRawX = 0f
+    private var lastRawY = 0f
+    private var totalMovement = 0f
 
     private val longPressCheck = Runnable {
         if (parent != null && hasWindowFocus() && !hasPerformedLongPress) {
@@ -52,13 +63,23 @@ class InteractiveAppWidgetHostView(context: Context) : AppWidgetHostView(context
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
         when (ev.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                downX = ev.x
-                downY = ev.y
+                downRawX = ev.rawX
+                downRawY = ev.rawY
+                lastRawX = ev.rawX
+                lastRawY = ev.rawY
+                totalMovement = 0f
                 startLongPressCheck()
             }
 
             MotionEvent.ACTION_MOVE -> {
-                if (abs(ev.x - downX) > touchSlop || abs(ev.y - downY) > touchSlop) {
+                val dx = abs(ev.rawX - downRawX)
+                val dy = abs(ev.rawY - downRawY)
+                val stepDist = hypot(ev.rawX - lastRawX, ev.rawY - lastRawY)
+                totalMovement += stepDist
+                lastRawX = ev.rawX
+                lastRawY = ev.rawY
+
+                if (dx > holdSlop || dy > holdSlop || totalMovement > holdSlop) {
                     clearLongPressCheck()
                 }
             }
