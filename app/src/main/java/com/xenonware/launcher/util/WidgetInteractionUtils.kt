@@ -28,13 +28,12 @@ class InteractiveAppWidgetHostView(context: Context) : AppWidgetHostView(context
     var longPressTimeoutMs: Long = ViewConfiguration.getLongPressTimeout().toLong()
 
     /**
-     * Tolerance for stationary hold position (~4dp).
-     * Standard touch slop (~8dp) is designed to distinguish taps from scroll starts.
-     * For long press, 4dp provides enough tolerance for finger micro-movement/tremor while
-     * holding stationary, while immediately cancelling if the finger is swiping horizontally or
-     * vertically (even slowly).
+     * Strict tolerance for stationary hold position (~2dp, max 6px).
+     * Finger micro-tremor while stationary is typically <3px.
+     * Decreasing this threshold ensures that sliding or swiping across a widget (even very slowly)
+     * immediately cancels long press, preventing accidental edit mode triggers.
      */
-    private val holdSlop = 4f * context.resources.displayMetrics.density
+    private val holdSlop = (2f * context.resources.displayMetrics.density).coerceAtMost(6f)
 
     private var hasPerformedLongPress = false
     private var downRawX = 0f
@@ -60,6 +59,19 @@ class InteractiveAppWidgetHostView(context: Context) : AppWidgetHostView(context
         removeCallbacks(longPressCheck)
     }
 
+    private fun checkAndCancelIfMoved(rawX: Float, rawY: Float) {
+        val dx = abs(rawX - downRawX)
+        val dy = abs(rawY - downRawY)
+        val stepDist = hypot(rawX - lastRawX, rawY - lastRawY)
+        totalMovement += stepDist
+        lastRawX = rawX
+        lastRawY = rawY
+
+        if (dx > holdSlop || dy > holdSlop || totalMovement > holdSlop) {
+            clearLongPressCheck()
+        }
+    }
+
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
         when (ev.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
@@ -72,16 +84,7 @@ class InteractiveAppWidgetHostView(context: Context) : AppWidgetHostView(context
             }
 
             MotionEvent.ACTION_MOVE -> {
-                val dx = abs(ev.rawX - downRawX)
-                val dy = abs(ev.rawY - downRawY)
-                val stepDist = hypot(ev.rawX - lastRawX, ev.rawY - lastRawY)
-                totalMovement += stepDist
-                lastRawX = ev.rawX
-                lastRawY = ev.rawY
-
-                if (dx > holdSlop || dy > holdSlop || totalMovement > holdSlop) {
-                    clearLongPressCheck()
-                }
+                checkAndCancelIfMoved(ev.rawX, ev.rawY)
             }
 
             // A second finger means a pinch/zoom (Maps) — not a long press
@@ -96,8 +99,11 @@ class InteractiveAppWidgetHostView(context: Context) : AppWidgetHostView(context
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        // Always consume. Without this, a touch on a non-interactive part of the widget would fall
-        // through to the Compose parent and open the wallpaper/settings menu on top of the widget.
+        if (event.actionMasked == MotionEvent.ACTION_MOVE) {
+            checkAndCancelIfMoved(event.rawX, event.rawY)
+        } else if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
+            clearLongPressCheck()
+        }
         return true
     }
 
