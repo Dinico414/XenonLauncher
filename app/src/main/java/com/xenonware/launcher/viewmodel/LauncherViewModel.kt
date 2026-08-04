@@ -13,11 +13,14 @@ import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
+import android.database.ContentObserver
 import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
 import android.location.Location
 import android.net.Uri
 import android.os.BatteryManager
+import android.os.Handler
+import android.os.Looper
 import android.provider.CalendarContract
 import android.provider.ContactsContract
 import android.provider.MediaStore
@@ -63,6 +66,7 @@ import java.util.Calendar
 import java.util.UUID
 import kotlin.coroutines.resume
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 
 data class WeatherState(
     val temperature: String = "24°C",
@@ -339,6 +343,14 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     val timeFormatter: DateTimeFormatter? = DateTimeFormatter.ofPattern("HH:mm")
     val dateFormatter: DateTimeFormatter? = DateTimeFormatter.ofPattern("EEE, MMM d")
 
+    private var calendarObserver: ContentObserver? = null
+
+    private val timeTickReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            loadCalendarEvents()
+        }
+    }
+
     init {
         prefManager.registerListener(preferenceListener)
         loadApps()
@@ -349,6 +361,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         startWeatherUpdates()
         loadAvailableCalendars()
         loadCalendarEvents()
+        startCalendarUpdates()
 
         val packageFilter = IntentFilter().apply {
             addAction(Intent.ACTION_PACKAGE_ADDED)
@@ -358,6 +371,25 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         }
         application.registerReceiver(packageReceiver, packageFilter)
         application.registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+
+        val timeFilter = IntentFilter().apply {
+            addAction(Intent.ACTION_TIME_TICK)
+            addAction(Intent.ACTION_TIME_CHANGED)
+            addAction(Intent.ACTION_TIMEZONE_CHANGED)
+            addAction(Intent.ACTION_DATE_CHANGED)
+        }
+        application.registerReceiver(timeTickReceiver, timeFilter)
+
+        val providerFilter = IntentFilter(Intent.ACTION_PROVIDER_CHANGED).apply {
+            addDataScheme("content")
+            addDataAuthority("com.android.calendar", null)
+        }
+        ContextCompat.registerReceiver(
+            application,
+            timeTickReceiver,
+            providerFilter,
+            ContextCompat.RECEIVER_EXPORTED
+        )
     }
 
     override fun onCleared() {
@@ -365,6 +397,14 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         prefManager.unregisterListener(preferenceListener)
         getApplication<Application>().unregisterReceiver(packageReceiver)
         getApplication<Application>().unregisterReceiver(batteryReceiver)
+        try {
+            getApplication<Application>().unregisterReceiver(timeTickReceiver)
+        } catch (_: Exception) {}
+        calendarObserver?.let {
+            try {
+                getApplication<Application>().contentResolver.unregisterContentObserver(it)
+            } catch (_: Exception) {}
+        }
     }
 
     private fun startWeatherUpdates() {
@@ -1003,12 +1043,46 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    private fun setupCalendarObserver() {
+        if (calendarObserver == null) {
+            val context = getApplication<Application>()
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
+                return
+            }
+            
+            calendarObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
+                override fun onChange(selfChange: Boolean, uri: Uri?) {
+                    loadCalendarEvents()
+                }
+            }
+            try {
+                context.contentResolver.registerContentObserver(
+                    CalendarContract.CONTENT_URI,
+                    true,
+                    calendarObserver!!
+                )
+            } catch (_: Exception) {}
+        }
+    }
+
+    private fun startCalendarUpdates() {
+        setupCalendarObserver()
+        viewModelScope.launch {
+            while (true) {
+                delay(5.minutes)
+                loadCalendarEvents()
+            }
+        }
+    }
+
     fun loadCalendarEvents() {
         viewModelScope.launch(Dispatchers.IO) {
             val context = getApplication<Application>()
             if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
                 return@launch
             }
+
+            setupCalendarObserver()
 
             val visibleCalendars = prefManager.visibleCalendars
             val events = mutableListOf<CalendarEvent>()
@@ -1054,7 +1128,11 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             
             val sortOrder = "${CalendarContract.Instances.BEGIN} ASC"
 
-            context.contentResolver.query(uri, projection, selection.ifEmpty { null }, if (selectionArgsList.isEmpty()) null else selectionArgsList.toTypedArray(), sortOrder)?.use { cursor ->
+            context.contentResolver.query(
+                uri, projection, selection.ifEmpty { null },
+                if (selectionArgsList.isEmpty()) null else selectionArgsList.toTypedArray(),
+                sortOrder
+            )?.use { cursor ->
                 val titleIdx = cursor.getColumnIndex(CalendarContract.Instances.TITLE)
                 val startIdx = cursor.getColumnIndex(CalendarContract.Instances.BEGIN)
                 val endIdx = cursor.getColumnIndex(CalendarContract.Instances.END)
@@ -1062,15 +1140,38 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 val allDayIdx = cursor.getColumnIndex(CalendarContract.Instances.ALL_DAY)
                 val calIdIdx = cursor.getColumnIndex(CalendarContract.Instances.CALENDAR_ID)
 
+                val startOfTodayCal = Calendar.getInstance().apply {
+                    timeInMillis = now
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+                val startOfToday = startOfTodayCal.timeInMillis
+
                 while (cursor.moveToNext() && events.size < 25) {
                     val title = cursor.getString(titleIdx) ?: "No Title"
+                    val startTime = cursor.getLong(startIdx)
+                    val endTime = cursor.getLong(endIdx)
+                    val isAllDay = cursor.getInt(allDayIdx) != 0
+
+                    // 1. Filter out past events that have already ended
+                    if (endTime <= now) {
+                        continue
+                    }
+
+                    // 2. Filter out all-day events from previous days (before today 00:00)
+                    if (isAllDay && startTime < startOfToday) {
+                        continue
+                    }
+
                     events.add(
                         CalendarEvent(
                             title = title,
-                            startTime = cursor.getLong(startIdx),
-                            endTime = cursor.getLong(endIdx),
+                            startTime = startTime,
+                            endTime = endTime,
                             location = cursor.getString(locIdx),
-                            isAllDay = cursor.getInt(allDayIdx) != 0,
+                            isAllDay = isAllDay,
                             calendarId = cursor.getString(calIdIdx)
                         )
                     )
