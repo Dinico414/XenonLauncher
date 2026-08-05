@@ -25,20 +25,17 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Accessibility
 import androidx.compose.material.icons.filled.BlurOn
-import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Circle
-import androidx.compose.material.icons.filled.Cloud
-import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Numbers
-import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SwitchColors
@@ -65,9 +62,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.xenon.mylibrary.res.SettingsGoogleTile
-import com.xenon.mylibrary.res.SettingsSwitchMenuTile
-import com.xenon.mylibrary.res.SettingsSwitchTile
-import com.xenon.mylibrary.res.SettingsTile
+import com.xenon.mylibrary.theme.LayoutType
 import com.xenon.mylibrary.values.ExtraLargeSpacing
 import com.xenon.mylibrary.values.LargerPadding
 import com.xenon.mylibrary.values.NoCornerRadius
@@ -75,7 +70,13 @@ import com.xenonware.launcher.R
 import com.xenonware.launcher.presentation.sign_in.GoogleAuthUiClient
 import com.xenonware.launcher.presentation.sign_in.SignInState
 import com.xenonware.launcher.ui.res.IconShape
+import com.xenonware.launcher.ui.res.SettingsSwitchMenuTile
+import com.xenonware.launcher.ui.res.SettingsSwitchTile
+import com.xenonware.launcher.ui.res.SettingsSwitchTileContext
+import com.xenonware.launcher.ui.res.SettingsTile
+import com.xenonware.launcher.ui.res.SettingsTileContext
 import com.xenonware.launcher.ui.res.XenonSingleChoiceButtonGroup
+import com.xenonware.launcher.viewmodel.LauncherViewModel
 import com.xenonware.launcher.viewmodel.SettingsViewModel
 import kotlinx.coroutines.delay
 import kotlin.math.abs
@@ -89,6 +90,7 @@ fun SettingsItems(
     coverThemeEnabled: Boolean,
     currentLanguage: String,
     appVersion: String,
+    layoutType: LayoutType = LayoutType.COMPACT,
     innerGroupRadius: Dp = 4.dp,
     outerGroupRadius: Dp = 24.dp,
     innerGroupSpacing: Dp = 2.dp,
@@ -107,7 +109,7 @@ fun SettingsItems(
     onSignOutClick: () -> Unit,
     onShowHiddenApps: () -> Unit,
     onNavigateToDeveloperOptions: () -> Unit,
-    onConfigShortcut: (com.xenonware.launcher.viewmodel.LauncherViewModel.ShortcutType) -> Unit
+    onConfigShortcut: (LauncherViewModel.ShortcutType) -> Unit
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
@@ -119,6 +121,7 @@ fun SettingsItems(
     val advancedSearchEnabled by viewModel.advancedSearchEnabled.collectAsState()
     val showHiddenAppsInSearch by viewModel.showHiddenAppsInSearch.collectAsState()
     val dockSafeDrawIme by viewModel.dockSafeDrawIme.collectAsState()
+    val dockSafeDrawImePortraitOnly by viewModel.dockSafeDrawImePortraitOnly.collectAsState()
     val drawerIconShape by viewModel.drawerIconShape.collectAsState()
     val drawerIconShadow by viewModel.drawerIconShadow.collectAsState()
     val badgeType by viewModel.notificationBadgeType.collectAsState()
@@ -203,7 +206,7 @@ fun SettingsItems(
             title = "Accessibility Settings",
             subtitle = "Open system accessibility settings",
             onClick = { viewModel.openAccessibilitySettings(context) },
-            icon = { Icon(Icons.Default.Accessibility, null, tint = tileSubtitleColor) },
+            icon = {  Icon(painterResource(R.drawable.accessibility), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: bottomShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -217,7 +220,7 @@ fun SettingsItems(
             title = "Accessibility Settings",
             subtitle = "Open system accessibility settings",
             onClick = { viewModel.openAccessibilitySettings(context) },
-            icon = { Icon(Icons.Default.Accessibility, null, tint = tileSubtitleColor) },
+            icon = {  Icon(painterResource(R.drawable.accessibility), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: standaloneShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -316,7 +319,7 @@ fun SettingsItems(
             checked = isGridLayout,
             onCheckedChange = { viewModel.setGridLayout(it) },
             onClick = { viewModel.setGridLayout(!isGridLayout) },
-            icon = { Icon(Icons.Default.GridView, null, tint = tileSubtitleColor) },
+            icon = {  Icon(painterResource(R.drawable.grid), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: topShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -328,86 +331,83 @@ fun SettingsItems(
         Spacer(Modifier.height(actualInnerGroupSpacing))
         
         // Icon Shape Selector
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(tileBackgroundColor, middleShape)
-                .padding(vertical = 16.dp)
-        ) {
-            Text(
-                stringResource(id = R.string.icon_shape),
-                color = tileContentColor,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
-            )
-            
-            val entries = IconShape.entries
-            val interactionSources = remember { entries.map { MutableInteractionSource() } }
-            val pressedStates = remember { mutableStateListOf<Boolean>().apply { repeat(entries.size) { add(false) } } }
+        SettingsTileContext(
+            title = stringResource(id = R.string.icon_shape),
+            icon = {  Icon(painterResource(R.drawable.shape), null, tint = tileSubtitleColor) },
+            shape = tileShapeOverride ?: middleShape,
+            backgroundColor = tileBackgroundColor,
+            contentColor = tileContentColor,
+            subtitleColor = tileSubtitleColor,
+            horizontalPadding = tileHorizontalPadding,
+            verticalPadding = tileVerticalPadding,
+            enableRipple = false,
+            contextContent = {
+                val entries = IconShape.entries
+                val interactionSources = remember { entries.map { MutableInteractionSource() } }
+                val pressedStates = remember { mutableStateListOf<Boolean>().apply { repeat(entries.size) { add(false) } } }
 
-            entries.forEachIndexed { index, _ ->
-                LaunchedEffect(interactionSources[index]) {
-                    var pressStartTime = 0L
-                    interactionSources[index].interactions.collect { interaction ->
-                        when (interaction) {
-                            is PressInteraction.Press -> {
-                                pressedStates[index] = true
-                                pressStartTime = System.currentTimeMillis()
+                entries.forEachIndexed { index, _ ->
+                    LaunchedEffect(interactionSources[index]) {
+                        var pressStartTime = 0L
+                        interactionSources[index].interactions.collect { interaction ->
+                            when (interaction) {
+                                is PressInteraction.Press -> {
+                                    pressedStates[index] = true
+                                    pressStartTime = System.currentTimeMillis()
+                                }
+                                is PressInteraction.Release -> {
+                                    val duration = System.currentTimeMillis() - pressStartTime
+                                    if (duration < 200) delay((200 - duration).milliseconds)
+                                    pressedStates[index] = false
+                                }
+                                is PressInteraction.Cancel -> pressedStates[index] = false
                             }
-                            is PressInteraction.Release -> {
-                                val duration = System.currentTimeMillis() - pressStartTime
-                                if (duration < 200) delay((200 - duration).milliseconds)
-                                pressedStates[index] = false
-                            }
-                            is PressInteraction.Cancel -> pressedStates[index] = false
                         }
                     }
                 }
-            }
 
-            val pressedIndex = pressedStates.indexOfFirst { it }
+                val pressedIndex = pressedStates.indexOfFirst { it }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = if (isSystemInDarkTheme())0.5f else 1f))
-                    .padding(vertical = 12.dp)
-                    .horizontalScroll(rememberScrollState())
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp).height(64.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = if (isSystemInDarkTheme())0.5f else 1f))
+                        .padding(vertical = 12.dp)
+                        .horizontalScroll(rememberScrollState())
                 ) {
-                    entries.forEachIndexed { index, shape ->
-                        val isSelected = shape == drawerIconShape
-                        val isPressed = pressedStates[index]
-                        val isNeighborPressed = pressedIndex != -1 && abs(index - pressedIndex) == 1
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp).height(64.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        entries.forEachIndexed { index, shape ->
+                            val isSelected = shape == drawerIconShape
+                            val isPressed = pressedStates[index]
+                            val isNeighborPressed = pressedIndex != -1 && abs(index - pressedIndex) == 1
 
-                        val targetWidth = when {
-                            isPressed -> {
-                                val neighbors = if (index == 0 || index == entries.size - 1) 1 else 2
-                                64.dp + (if (neighbors == 1) 6.dp else 12.dp)
+                            val targetWidth = when {
+                                isPressed -> {
+                                    val neighbors = if (index == 0 || index == entries.size - 1) 1 else 2
+                                    64.dp + (if (neighbors == 1) 6.dp else 12.dp)
+                                }
+                                isNeighborPressed -> 58.dp
+                                else -> 64.dp
                             }
-                            isNeighborPressed -> 58.dp
-                            else -> 64.dp
-                        }
 
-                        val containerWidth by animateDpAsState(
-                            targetValue = targetWidth,
-                            label = "containerWidth",
-                            animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
-                        )
+                            val containerWidth by animateDpAsState(
+                                targetValue = targetWidth,
+                                label = "containerWidth",
+                                animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
+                            )
 
-                        val containerRadius by animateDpAsState(
-                            targetValue = when {
-                                isPressed -> 6.dp
-                                isSelected -> 16.dp
-                                else -> 32.dp
-                            }, label = "containerRadius", animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
+                            val containerRadius by animateDpAsState(
+                                targetValue = when {
+                                    isPressed -> 6.dp
+                                    isSelected -> 16.dp
+                                    else -> 32.dp
+                                }, label = "containerRadius", animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
                         )
 
                         val containerShape = RoundedCornerShape(containerRadius)
@@ -428,7 +428,7 @@ fun SettingsItems(
                     }
                 }
             }
-        }
+        })
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsSwitchTile(
             title = stringResource(id = R.string.icon_shadows),
@@ -436,7 +436,7 @@ fun SettingsItems(
             checked = drawerIconShadow,
             onCheckedChange = { viewModel.setDrawerIconShadow(it) },
             onClick = { viewModel.setDrawerIconShadow(!drawerIconShadow) },
-            icon = { Icon(Icons.Default.BlurOn, null, tint = tileSubtitleColor) },
+            icon = {  Icon(painterResource(R.drawable.shadow), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: bottomShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -482,7 +482,7 @@ fun SettingsItems(
             switchColors = switchColorsOverride ?: defaultSwitchColors
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
-        SettingsSwitchTile(
+        SettingsSwitchTileContext(
             title = stringResource(id = R.string.move_with_keyboard),
             subtitle = if (dockSafeDrawIme) stringResource(id = R.string.dock_move_up_description) else stringResource(id = R.string.dock_stay_bottom_description),
             checked = dockSafeDrawIme,
@@ -495,7 +495,46 @@ fun SettingsItems(
             subtitleColor = tileSubtitleColor,
             horizontalPadding = tileHorizontalPadding,
             verticalPadding = tileVerticalPadding,
-            switchColors = switchColorsOverride ?: defaultSwitchColors
+            switchColors = switchColorsOverride ?: defaultSwitchColors,
+            showContext = dockSafeDrawIme && (layoutType == LayoutType.SMALL || layoutType == LayoutType.COMPACT),
+            contextContent = {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = if (isSystemInDarkTheme()) 0.5f else 1f))
+                        .clickable { viewModel.setDockSafeDrawImePortraitOnly(!dockSafeDrawImePortraitOnly) }
+                        .padding(12.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                stringResource(id = R.string.move_only_in_portrait),
+                                color = tileContentColor,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                stringResource(id = R.string.move_only_in_portrait_description),
+                                color = tileSubtitleColor,
+                                fontSize = 14.sp
+                            )
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Checkbox(
+                            checked = dockSafeDrawImePortraitOnly,
+                            onCheckedChange = { viewModel.setDockSafeDrawImePortraitOnly(it) },
+                            colors = CheckboxDefaults.colors(
+                                checkedColor = MaterialTheme.colorScheme.primary,
+                                uncheckedColor = tileSubtitleColor
+                            )
+                        )
+                    }
+                }
+            }
         )
     }
     Spacer(Modifier.height(actualOuterGroupSpacing))
@@ -506,7 +545,7 @@ fun SettingsItems(
             title = "At a Glance",
             subtitle = "Manage events and information shown",
             onClick = { viewModel.setShowCalendarSelectionDialog(true) },
-            icon = { Icon(Icons.Default.CalendarToday, null, tint = tileSubtitleColor) },
+            icon = { Icon(painterResource(R.drawable.at_a_glance), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: topShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -528,46 +567,45 @@ fun SettingsItems(
             verticalPadding = tileVerticalPadding
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(tileBackgroundColor, bottomShape)
-                .padding(16.dp)
-        ) {
-            Text(
-                stringResource(id = R.string.notification_badges),
-                color = tileContentColor,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.padding(bottom = 12.dp)
-            )
-            XenonSingleChoiceButtonGroup(
-                options = listOf(0, 1, 2),
-                selectedOption = badgeType,
-                onOptionSelect = { viewModel.setNotificationBadgeType(it) },
-                label = { type ->
-                    when (type) {
-                        0 -> stringResource(id = R.string.none)
-                        1 -> stringResource(id = R.string.dot)
-                        2 -> stringResource(id = R.string.number)
-                        else -> ""
-                    }
-                },
-                unselectedIcon = { type ->
-                    Icon(
-                        imageVector = when (type) {
-                            0 -> Icons.Default.NotificationsOff
-                            1 -> Icons.Default.Circle
-                            else -> Icons.Default.Numbers
-                        },
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                        tint = tileSubtitleColor
-                    )
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
+        SettingsTileContext(
+            title = stringResource(id = R.string.notification_badges),
+            icon = {  Icon(painterResource(R.drawable.badge), null, tint = tileSubtitleColor) },
+            shape = tileShapeOverride ?: bottomShape,
+            backgroundColor = tileBackgroundColor,
+            contentColor = tileContentColor,
+            subtitleColor = tileSubtitleColor,
+            horizontalPadding = tileHorizontalPadding,
+            verticalPadding = tileVerticalPadding,
+            enableRipple = false,
+            contextContent = {
+                XenonSingleChoiceButtonGroup(
+                    options = listOf(0, 1, 2),
+                    selectedOption = badgeType,
+                    onOptionSelect = { viewModel.setNotificationBadgeType(it) },
+                    label = { type ->
+                        when (type) {
+                            0 -> stringResource(id = R.string.none)
+                            1 -> stringResource(id = R.string.dot)
+                            2 -> stringResource(id = R.string.number)
+                            else -> ""
+                        }
+                    },
+                    unselectedIcon = { type ->
+                        Icon(
+                            imageVector = when (type) {
+                                0 -> Icons.Default.NotificationsOff
+                                1 -> Icons.Default.Circle
+                                else -> Icons.Default.Numbers
+                            },
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                            tint = tileSubtitleColor
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                )
+            }
+        )
     }
     Spacer(Modifier.height(actualOuterGroupSpacing))
 
@@ -576,8 +614,8 @@ fun SettingsItems(
         SettingsTile(
             title = stringResource(id = R.string.time_shortcut),
             subtitle = timeShortcut.ifEmpty { stringResource(id = R.string.not_set) },
-            onClick = { onConfigShortcut(com.xenonware.launcher.viewmodel.LauncherViewModel.ShortcutType.TIME) },
-            icon = { Icon(Icons.Default.Schedule, null, tint = tileSubtitleColor) },
+            onClick = { onConfigShortcut(LauncherViewModel.ShortcutType.TIME) },
+            icon = {  Icon(painterResource(R.drawable.time), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: topShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -589,8 +627,8 @@ fun SettingsItems(
         SettingsTile(
             title = stringResource(id = R.string.date_shortcut),
             subtitle = dateShortcut.ifEmpty { stringResource(id = R.string.not_set) },
-            onClick = { onConfigShortcut(com.xenonware.launcher.viewmodel.LauncherViewModel.ShortcutType.DATE) },
-            icon = { Icon(Icons.Default.CalendarToday, null, tint = tileSubtitleColor) },
+            onClick = { onConfigShortcut(LauncherViewModel.ShortcutType.DATE) },
+            icon = {  Icon(painterResource(R.drawable.date), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: middleShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -602,8 +640,8 @@ fun SettingsItems(
         SettingsTile(
             title = stringResource(id = R.string.weather_shortcut),
             subtitle = weatherShortcut.ifEmpty { stringResource(id = R.string.not_set) },
-            onClick = { onConfigShortcut(com.xenonware.launcher.viewmodel.LauncherViewModel.ShortcutType.WEATHER) },
-            icon = { Icon(Icons.Default.Cloud, null, tint = tileSubtitleColor) },
+            onClick = { onConfigShortcut(LauncherViewModel.ShortcutType.WEATHER) },
+            icon = {  Icon(painterResource(R.drawable.weater), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: bottomShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,

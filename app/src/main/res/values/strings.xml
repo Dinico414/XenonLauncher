@@ -19,6 +19,8 @@
     <string name="apply_depth_description">Apply depth to app icons</string>
     <string name="dock">DOCK</string>
     <string name="move_with_keyboard">Move with keyboard</string>
+    <string name="move_only_in_portrait">Move only in portrait</string>
+    <string name="move_only_in_portrait_description">Keep dock down in landscape</string>
     <string name="dock_move_up_description">Dock moves up to stay visible</string>
     <string name="dock_stay_bottom_description">Dock stays at the bottom</string>
     <string name="notifications">NOTIFICATIONS</string>

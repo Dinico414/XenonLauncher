@@ -77,6 +77,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _dockSafeDrawIme = MutableStateFlow(sharedPreferenceManager.dockSafeDrawIme)
     val dockSafeDrawIme: StateFlow<Boolean> = _dockSafeDrawIme.asStateFlow()
 
+    private val _dockSafeDrawImePortraitOnly = MutableStateFlow(sharedPreferenceManager.dockSafeDrawImePortraitOnly)
+    val dockSafeDrawImePortraitOnly: StateFlow<Boolean> = _dockSafeDrawImePortraitOnly.asStateFlow()
+
     private val _drawerIconShape = MutableStateFlow(IconShape.valueOf(sharedPreferenceManager.drawerIconShape))
     val drawerIconShape: StateFlow<IconShape> = _drawerIconShape.asStateFlow()
 
@@ -294,6 +297,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setDockSafeDrawIme(enabled: Boolean) {
         sharedPreferenceManager.dockSafeDrawIme = enabled
         _dockSafeDrawIme.value = enabled
+    }
+
+    fun setDockSafeDrawImePortraitOnly(enabled: Boolean) {
+        sharedPreferenceManager.dockSafeDrawImePortraitOnly = enabled
+        _dockSafeDrawImePortraitOnly.value = enabled
     }
 
     fun setDrawerIconShape(shape: IconShape) {

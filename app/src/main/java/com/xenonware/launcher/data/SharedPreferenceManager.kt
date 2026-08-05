@@ -71,6 +71,10 @@ class SharedPreferenceManager(context: Context) {
         get() = prefs.getBoolean("dock_safedraw_ime", false)
         set(value) = prefs.edit { putBoolean("dock_safedraw_ime", value) }
 
+    var dockSafeDrawImePortraitOnly: Boolean
+        get() = prefs.getBoolean("dock_safedraw_ime_portrait_only", false)
+        set(value) = prefs.edit { putBoolean("dock_safedraw_ime_portrait_only", value) }
+
     var timeShortcut: String
         get() = prefs.getString("time_shortcut", "") ?: ""
         set(value) = prefs.edit { putString("time_shortcut", value) }
@@ -206,6 +210,7 @@ class SharedPreferenceManager(context: Context) {
             remove("advanced_search_enabled")
             remove("notification_badge_type")
             remove("dock_safedraw_ime")
+            remove("dock_safedraw_ime_portrait_only")
             remove("drawer_icon_shape")
             remove("drawer_icon_shadow")
             remove("time_shortcut")

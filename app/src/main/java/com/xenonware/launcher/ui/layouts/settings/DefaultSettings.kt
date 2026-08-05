@@ -174,6 +174,7 @@ fun DefaultSettings(
                         coverThemeEnabled = coverThemeEnabled,
                         currentLanguage = currentLanguage,
                         appVersion = appVersion,
+                        layoutType = layoutType,
                         state = state,
                         googleAuthUiClient = googleAuthUiClient,
                         onNavigateToDeveloperOptions = onNavigateToDeveloperOptions,

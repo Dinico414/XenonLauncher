@@ -109,13 +109,25 @@ internal fun Modifier.dockSectionSize(isExpanded: Boolean): Modifier {
 
 /** Bottom inset for the dock, following the nav bar and (optionally) the IME. */
 @Composable
-private fun rememberDockBottomPadding(dockSafeDrawIme: Boolean): Dp {
+private fun rememberDockBottomPadding(
+    dockSafeDrawIme: Boolean,
+    dockSafeDrawImePortraitOnly: Boolean = false
+): Dp {
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    
     val navPadding = WindowInsets.navigationBars
         .only(WindowInsetsSides.Bottom).asPaddingValues().calculateBottomPadding()
     val imePadding = WindowInsets.ime
         .only(WindowInsetsSides.Bottom).asPaddingValues().calculateBottomPadding()
 
-    val safeDrawBottom = if (dockSafeDrawIme) maxOf(navPadding, imePadding) else navPadding
+    val shouldMoveForIme = if (dockSafeDrawImePortraitOnly) {
+        dockSafeDrawIme && !isLandscape
+    } else {
+        dockSafeDrawIme
+    }
+
+    val safeDrawBottom = if (shouldMoveForIme) maxOf(navPadding, imePadding) else navPadding
     val target = if (safeDrawBottom < 16.dp) 16.dp else safeDrawBottom + 8.dp
 
     val animated by animateDpAsState(
@@ -162,6 +174,7 @@ fun DockPill(
     progress: Float = 1f,
     isCharging: Boolean = false,
     dockSafeDrawIme: Boolean = false,
+    dockSafeDrawImePortraitOnly: Boolean = false,
     onUnpinApp: (String) -> Unit = {},
     onPinApp: (String, Int) -> Unit = { _, _ -> },
     onReorderApp: (Int, Int) -> Unit = { _, _ -> },
@@ -184,7 +197,7 @@ fun DockPill(
     )
 
     val baseDockColor = colorScheme.surfaceContainer
-    val bottomPadding = rememberDockBottomPadding(dockSafeDrawIme)
+    val bottomPadding = rememberDockBottomPadding(dockSafeDrawIme, dockSafeDrawImePortraitOnly)
 
     Row(
         modifier = modifier

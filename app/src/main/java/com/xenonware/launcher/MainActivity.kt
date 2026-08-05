@@ -134,6 +134,7 @@ class MainActivity : ComponentActivity() {
                 val isCharging by viewModel.isCharging.collectAsState()
                 val calendarEvents by viewModel.calendarEvents.collectAsState()
                 val dockSafeDrawIme by viewModel.dockSafeDrawIme.collectAsState()
+                val dockSafeDrawImePortraitOnly by viewModel.dockSafeDrawImePortraitOnly.collectAsState()
                 val configShortcutType by viewModel.configShortcutType.collectAsState()
                 val blurSetting by viewModel.blurEnabled.collectAsState()
                 
@@ -166,6 +167,7 @@ class MainActivity : ComponentActivity() {
                     showNotificationManagerDialog = showNotificationManagerDialog,
                     visibleNotificationApps = visibleNotificationApps,
                     dockSafeDrawIme = dockSafeDrawIme,
+                    dockSafeDrawImePortraitOnly = dockSafeDrawImePortraitOnly,
                     configShortcutType = configShortcutType,
                     blurSetting = blurSetting,
                     onAppClick = { viewModel.launchApp(it) },
@@ -233,6 +235,7 @@ fun LauncherScreen(
     showNotificationManagerDialog: Boolean,
     visibleNotificationApps: List<String>,
     dockSafeDrawIme: Boolean,
+    dockSafeDrawImePortraitOnly: Boolean = false,
     configShortcutType: LauncherViewModel.ShortcutType?,
     blurSetting: Boolean,
     onAppClick: (String) -> Unit,
@@ -404,6 +407,7 @@ fun LauncherScreen(
                     progress = batteryLevel,
                     isCharging = isCharging,
                     dockSafeDrawIme = dockSafeDrawIme,
+                    dockSafeDrawImePortraitOnly = dockSafeDrawImePortraitOnly,
                     onUnpinApp = { viewModel.unpinApp(it) },
                     onPinApp = { pkg, index -> viewModel.pinApp(pkg, index) },
                     onReorderApp = { from, to -> viewModel.reorderPinnedApp(from, to) }

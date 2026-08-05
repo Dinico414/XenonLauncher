@@ -157,6 +157,7 @@ fun CoverSettings(
                     coverThemeEnabled = coverThemeEnabled,
                     currentLanguage = currentLanguage,
                     appVersion = appVersion,
+                    layoutType = com.xenon.mylibrary.theme.LayoutType.COVER,
                     tileBackgroundColor = coverScreenBackgroundColor,
                     tileContentColor = coverScreenContentColor,
                     tileSubtitleColor = coverScreenContentColor.copy(alpha = 0.7f),

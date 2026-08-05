@@ -104,6 +104,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             "advanced_search_enabled" -> _advancedSearchEnabled.value = prefManager.advancedSearchEnabled
             "search_history" -> _searchHistory.value = loadSearchHistory()
             "dock_safedraw_ime" -> _dockSafeDrawIme.value = prefManager.dockSafeDrawIme
+            "dock_safedraw_ime_portrait_only" -> _dockSafeDrawImePortraitOnly.value = prefManager.dockSafeDrawImePortraitOnly
             "show_hidden_apps_in_search" -> _showHiddenAppsInSearch.value = prefManager.showHiddenAppsInSearch
             "hidden_apps" -> {
                 _hiddenApps.value = prefManager.hiddenApps.toSet()
@@ -190,6 +191,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private val _dockSafeDrawIme = MutableStateFlow(prefManager.dockSafeDrawIme)
     val dockSafeDrawIme: StateFlow<Boolean> = _dockSafeDrawIme
+
+    private val _dockSafeDrawImePortraitOnly = MutableStateFlow(prefManager.dockSafeDrawImePortraitOnly)
+    val dockSafeDrawImePortraitOnly: StateFlow<Boolean> = _dockSafeDrawImePortraitOnly
 
     private val _searchHistory = MutableStateFlow(loadSearchHistory())
     val searchHistory: StateFlow<List<String>> = _searchHistory
