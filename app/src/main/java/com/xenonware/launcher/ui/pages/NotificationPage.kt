@@ -93,6 +93,7 @@ import com.xenonware.launcher.notification.LauncherNotification
 import com.xenonware.launcher.ui.res.notification.NotificationItem
 import com.xenonware.launcher.ui.res.notification.NotificationTabButton
 import com.xenonware.launcher.util.ColorUtils
+import com.xenonware.launcher.util.blockHorizontalPagerSwipe
 import com.xenonware.launcher.util.shouldDisableLandscapeLayout
 import com.xenonware.launcher.viewmodel.LauncherViewModel
 import kotlinx.coroutines.launch
@@ -911,6 +912,7 @@ fun NotificationTabs(
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .blockHorizontalPagerSwipe()
             .padding(horizontal = horizontalPadding),
         verticalAlignment = Alignment.CenterVertically
     ) {

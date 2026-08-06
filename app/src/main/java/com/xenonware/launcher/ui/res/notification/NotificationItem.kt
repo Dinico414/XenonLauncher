@@ -91,6 +91,7 @@ import androidx.core.graphics.drawable.toBitmap
 import com.xenonware.launcher.notification.LauncherNotification
 import com.xenonware.launcher.notification.LauncherNotificationAction
 import com.xenonware.launcher.util.ColorUtils
+import com.xenonware.launcher.util.blockHorizontalPagerSwipe
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.max
@@ -288,6 +289,7 @@ fun NotificationItem(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
                 .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+                .blockHorizontalPagerSwipe()
                 // Raw pointer handling instead of Modifier.draggable: the horizontal
                 // pointer changes are consumed, so the parent HorizontalPager never
                 // sees enough movement to start its own page swipe. Nested scroll

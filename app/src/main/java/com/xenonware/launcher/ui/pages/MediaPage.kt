@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.xenonware.launcher.media.MediaState
+import com.xenonware.launcher.util.blockHorizontalPagerSwipe
 import com.xenonware.launcher.util.shouldDisableLandscapeLayout
 import java.util.Locale
 import kotlin.math.pow
@@ -283,7 +284,7 @@ fun MediaPage(
                         val currentPosition = sliderPosition ?: mediaState.position.toFloat()
                         val duration = mediaState.duration.toFloat().coerceAtLeast(1f)
 
-                        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                        Column(modifier = Modifier.fillMaxWidth().blockHorizontalPagerSwipe() .padding(horizontal = 16.dp)) {
                             Slider(
                                 value = currentPosition.coerceIn(0f, duration),
                                 onValueChange = { sliderPosition = it },
@@ -491,7 +492,7 @@ fun MediaPage(
                     val currentPosition = sliderPosition ?: mediaState.position.toFloat()
                     val duration = mediaState.duration.toFloat().coerceAtLeast(1f)
 
-                    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                    Column(modifier = Modifier.fillMaxWidth().blockHorizontalPagerSwipe() .padding(horizontal = 16.dp)) {
                         Slider(
                             value = currentPosition.coerceIn(0f, duration),
                             onValueChange = { sliderPosition = it },
