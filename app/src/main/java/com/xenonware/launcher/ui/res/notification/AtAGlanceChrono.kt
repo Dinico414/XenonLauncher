@@ -95,7 +95,7 @@ fun ChronoCluster(
                 val cal = Calendar.getInstance().apply { timeInMillis = nextAlarm.triggerTime }
                 SimpleDateFormat(pattern, Locale.getDefault()).format(cal.time)
             }
-            TimePreviewItem(Icons.Rounded.Alarm, alarmText, fontSize)
+            TimePreviewItem(Icons.Rounded.Alarm, alarmText, fontSize, alpha = 0.7f)
         }
     }
 }
@@ -145,7 +145,7 @@ private fun ChronoPreviewItem(chrono: ChronoState, fontSize: TextUnit) {
 }
 
 @Composable
-fun TimePreviewItem(icon: ImageVector, text: String, fontSize: TextUnit) {
+fun TimePreviewItem(icon: ImageVector, text: String, fontSize: TextUnit, alpha: Float = 1f) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -153,14 +153,14 @@ fun TimePreviewItem(icon: ImageVector, text: String, fontSize: TextUnit) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = Color.White.copy(alpha = 0.7f),
+            tint = Color.White.copy(alpha = alpha),
             modifier = Modifier.size(16.dp)
         )
         Text(
             text = text,
             fontSize = fontSize,
             fontWeight = FontWeight.Medium,
-            color = Color.White.copy(alpha = 0.7f)
+            color = Color.White.copy(alpha = alpha)
         )
     }
 }
