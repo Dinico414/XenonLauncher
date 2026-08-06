@@ -8,8 +8,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -36,6 +35,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.PagerDefaults
@@ -61,6 +61,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -193,7 +194,19 @@ fun NotificationPage(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
-                        .padding(horizontal = 24.dp),
+                        .padding(horizontal = 24.dp)
+                        .onGloballyPositioned { atAGlanceSectionPos = it.positionInRoot() }
+                        .combinedClickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onLongClick = {
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                // Approximation of center for menu anchor if no specific offset is provided by combinedClickable
+                                dropDownOffset = atAGlanceSectionPos + Offset(100f, 100f) 
+                                showAtAGlanceMenu = true
+                            },
+                            onClick = {}
+                        ),
                     horizontalAlignment = Alignment.Start,
                     verticalArrangement = Arrangement.Center
                 ) {
@@ -204,17 +217,7 @@ fun NotificationPage(
                         nextAlarm = nextAlarm,
                         timers = timers,
                         stopwatches = stopwatches,
-                        modifier = Modifier
-                            .onGloballyPositioned { atAGlanceSectionPos = it.positionInRoot() }
-                            .pointerInput(Unit) {
-                                detectTapGestures(
-                                    onLongPress = { offset ->
-                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                                        dropDownOffset = atAGlanceSectionPos + offset
-                                        showAtAGlanceMenu = true
-                                    }
-                                )
-                            }
+                        modifier = Modifier.fillMaxHeight()
                     )
                 }
 
@@ -371,7 +374,18 @@ fun NotificationPage(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(0.35f)
-                        .padding(horizontal = 24.dp),
+                        .padding(horizontal = 24.dp)
+                        .onGloballyPositioned { atAGlanceSectionPos = it.positionInRoot() }
+                        .combinedClickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onLongClick = {
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                dropDownOffset = atAGlanceSectionPos + Offset(100f, 100f)
+                                showAtAGlanceMenu = true
+                            },
+                            onClick = {}
+                        ),
                     horizontalAlignment = Alignment.Start,
                     verticalArrangement = Arrangement.Center
                 ) {
@@ -382,17 +396,7 @@ fun NotificationPage(
                         nextAlarm = nextAlarm,
                         timers = timers,
                         stopwatches = stopwatches,
-                        modifier = Modifier
-                            .onGloballyPositioned { atAGlanceSectionPos = it.positionInRoot() }
-                            .pointerInput(Unit) {
-                                detectTapGestures(
-                                    onLongPress = { offset ->
-                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                                        dropDownOffset = atAGlanceSectionPos + offset
-                                        showAtAGlanceMenu = true
-                                    }
-                                )
-                            }
+                        modifier = Modifier.fillMaxHeight()
                     )
                 }
 
@@ -647,236 +651,226 @@ fun AtAGlanceSection(
     val eventTitleFontSize = if (isLandscape) 32.sp else 24.sp
     val subtitleFontSize = if (isLandscape) 16.sp else 14.sp
     val spacing = if (isLandscape) 8.dp else 4.dp
+    val pageHeight = if (isLandscape) 80.dp else 60.dp
 
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(spacing)
+    val pagerState = rememberPagerState { calendarEvents.size.coerceAtLeast(1) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+
+    Box(
+        modifier = modifier.fillMaxHeight(),
+        contentAlignment = Alignment.Center
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = currentDate,
-                fontSize = dateFontSize,
-                fontWeight = FontWeight.Medium,
-                color = Color.White.copy(alpha = 0.7f),
-                modifier = Modifier.weight(1f)
-            )
-
-            // Owns its own 1 Hz ticker, so only this cluster recomposes each second.
-            ChronoCluster(
-                timers = timers,
-                stopwatches = stopwatches,
-                nextAlarm = nextAlarm,
-                fontSize = dateFontSize
-            )
+        // Invisible pager that fills the ENTIRE area to capture swipes anywhere
+        if (calendarEvents.size > 1) {
+            VerticalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize(),
+                flingBehavior = PagerDefaults.flingBehavior(
+                    state = pagerState,
+                    pagerSnapDistance = PagerSnapDistance.atMost(1),
+                    snapPositionalThreshold = 0.5f
+                )
+            ) {
+                Box(Modifier.fillMaxSize())
+            }
         }
 
-        if (calendarEvents.isEmpty()) {
-            Text(
-                text = "No upcoming events",
-                fontSize = eventTitleFontSize,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
-        } else {
-            val pagerState = rememberPagerState { calendarEvents.size }
-            val context = LocalContext.current
-            val is24Hour = DateFormat.is24HourFormat(context)
-            val timeFormatter = remember(is24Hour) {
-                val locale = Locale.getDefault()
-                if (is24Hour) {
-                    if (locale.language == "de") {
-                        SimpleDateFormat("HH:mm'Uhr'", locale)
-                    } else {
-                        SimpleDateFormat("HH:mm", locale)
-                    }
-                } else {
-                    SimpleDateFormat("h:mm a", locale)
-                }
-            }
-            val scope = androidx.compose.runtime.rememberCoroutineScope()
-
-            val density = androidx.compose.ui.platform.LocalDensity.current
-            val pageHeight = if (isLandscape) 80.dp else 60.dp
-            val pageHeightPx = remember(density, pageHeight) { with(density) { pageHeight.toPx() } }
-            var dragAccumulated by remember { mutableFloatStateOf(0f) }
-
-            val connection = remember(pageHeightPx) {
-                object : NestedScrollConnection {
-                    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                        if (source == NestedScrollSource.UserInput) {
-                            val current = dragAccumulated
-                            val next = (current + available.y).coerceIn(-pageHeightPx, pageHeightPx)
-                            val allowed = next - current
-                            dragAccumulated = next
-                            return Offset(0f, available.y - allowed)
-                        }
-                        return Offset.Zero
-                    }
-                }
-            }
-
+        // The "Old Style" layout: Column with Date row and a compact Pager
+        Column(
+            modifier = Modifier.wrapContentHeight(),
+            verticalArrangement = Arrangement.spacedBy(spacing)
+        ) {
             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                VerticalPager(
-                    state = pagerState,
+                Text(
+                    text = currentDate,
+                    fontSize = dateFontSize,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.White.copy(alpha = 0.7f),
+                    modifier = Modifier.weight(1f)
+                )
+
+                ChronoCluster(
+                    timers = timers,
+                    stopwatches = stopwatches,
+                    nextAlarm = nextAlarm,
+                    fontSize = dateFontSize
+                )
+            }
+
+            if (calendarEvents.isEmpty()) {
+                Text(
+                    text = "No upcoming events",
+                    fontSize = eventTitleFontSize,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
                     modifier = Modifier
-                        .weight(1f)
                         .height(pageHeight)
-                        .nestedScroll(connection)
-                        .pointerInput(Unit) {
-                            awaitEachGesture {
-                                awaitFirstDown()
-                                dragAccumulated = 0f
-                            }
+                        .wrapContentHeight(Alignment.CenterVertically)
+                )
+            } else {
+                val context = LocalContext.current
+                val is24Hour = DateFormat.is24HourFormat(context)
+                val timeFormatter = remember(is24Hour) {
+                    val locale = Locale.getDefault()
+                    if (is24Hour) {
+                        if (locale.language == "de") {
+                            SimpleDateFormat("HH:mm'Uhr'", locale)
+                        } else {
+                            SimpleDateFormat("HH:mm", locale)
                         }
-                        .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                        .drawWithContent {
-                            drawContent()
-                            val fadeHeight = 8.dp.toPx()
+                    } else {
+                        SimpleDateFormat("h:mm a", locale)
+                    }
+                }
 
-                            // Top fade
-                            drawRect(
-                                brush = Brush.verticalGradient(
-                                    0f to Color.Transparent,
-                                    fadeHeight / size.height to Color.Black
-                                ),
-                                blendMode = BlendMode.DstIn
-                            )
-
-                            // Bottom fade
-                            drawRect(
-                                brush = Brush.verticalGradient(
-                                    (size.height - fadeHeight) / size.height to Color.Black,
-                                    1f to Color.Transparent
-                                ),
-                                blendMode = BlendMode.DstIn
-                            )
-                        },
-                    horizontalAlignment = Alignment.Start,
-                    flingBehavior = PagerDefaults.flingBehavior(
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // This is the visible pager, using the same state but fixed height
+                    VerticalPager(
                         state = pagerState,
-                        pagerSnapDistance = PagerSnapDistance.atMost(1),
-                        snapPositionalThreshold = 0.5f
-                    )
-                ) { index ->
-                    val event = calendarEvents[index]
-                    Column(
-                        verticalArrangement = Arrangement.Center,
                         modifier = Modifier
-                            .fillMaxHeight()
-                            .graphicsLayer {
-                                val pageOffset = (
-                                        (pagerState.currentPage - index) + pagerState
-                                            .currentPageOffsetFraction
-                                        ).absoluteValue
-                                alpha = 1f - pageOffset.coerceIn(0f, 1f)
-                            }
-                    ) {
-                        Text(
-                            text = event.title,
-                            fontSize = eventTitleFontSize,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            maxLines = 1,
+                            .weight(1f)
+                            .height(pageHeight)
+                            .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                            .drawWithContent {
+                                drawContent()
+                                val fadeHeight = 8.dp.toPx()
+                                drawRect(
+                                    brush = Brush.verticalGradient(
+                                        0f to Color.Transparent,
+                                        fadeHeight / size.height to Color.Black
+                                    ),
+                                    blendMode = BlendMode.DstIn
+                                )
+                                drawRect(
+                                    brush = Brush.verticalGradient(
+                                        (size.height - fadeHeight) / size.height to Color.Black,
+                                        1f to Color.Transparent
+                                    ),
+                                    blendMode = BlendMode.DstIn
+                                )
+                            },
+                        horizontalAlignment = Alignment.Start
+                    ) { index ->
+                        val event = calendarEvents[index]
+                        Column(
+                            verticalArrangement = Arrangement.Center,
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                                .drawWithContent {
-                                    drawContent()
-                                    val fadeWidth = 32.dp.toPx()
-                                    if (size.width > fadeWidth) {
-                                        drawRect(
-                                            brush = Brush.horizontalGradient(
-                                                0f to Color.Black,
-                                                (size.width - fadeWidth) / size.width to Color.Black,
-                                                1f to Color.Transparent
-                                            ),
-                                            blendMode = BlendMode.DstIn
+                                .fillMaxSize()
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null
+                                ) {
+                                    try {
+                                        val uri = android.content.ContentUris.withAppendedId(
+                                            android.provider.CalendarContract.Events.CONTENT_URI,
+                                            event.id
                                         )
+                                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).setData(uri)
+                                        context.startActivity(intent)
+                                    } catch (e: Exception) {
+                                        // Fallback to opening calendar at specific time
+                                        val builder = android.provider.CalendarContract.CONTENT_URI.buildUpon()
+                                            .appendPath("time")
+                                        android.content.ContentUris.appendId(builder, event.startTime)
+                                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).setData(builder.build())
+                                        context.startActivity(intent)
                                     }
                                 }
-                                .basicMarquee()
-                        )
-                        val timeText = remember(event, timeFormatter) {
-                            val tomorrowCal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
-                            val eventStartCal = Calendar.getInstance().apply { timeInMillis = event.startTime }
-
-                            val isTomorrow = eventStartCal.get(Calendar.YEAR) == tomorrowCal.get(Calendar.YEAR) &&
-                                    eventStartCal.get(Calendar.DAY_OF_YEAR) == tomorrowCal.get(Calendar.DAY_OF_YEAR)
-
-                            val prefix = if (isTomorrow) {
-                                if (Locale.getDefault().language == "de") "Morgen " else "Tomorrow "
-                            } else ""
-
-                            if (event.isAllDay) {
-                                prefix + if (Locale.getDefault().language == "de") "Ganztägig" else "All Day"
-                            } else {
-                                prefix + "${timeFormatter.format(event.startTime)} - ${timeFormatter.format(event.endTime)}"
+                        ) {
+                            Text(
+                                text = event.title,
+                                fontSize = eventTitleFontSize,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                maxLines = 1,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                                    .drawWithContent {
+                                        drawContent()
+                                        val fadeWidth = 32.dp.toPx()
+                                        if (size.width > fadeWidth) {
+                                            drawRect(
+                                                brush = Brush.horizontalGradient(
+                                                    0f to Color.Black,
+                                                    (size.width - fadeWidth) / size.width to Color.Black,
+                                                    1f to Color.Transparent
+                                                ),
+                                                blendMode = BlendMode.DstIn
+                                            )
+                                        }
+                                    }
+                                    .basicMarquee()
+                            )
+                            val timeText = remember(event, timeFormatter) {
+                                val tomorrowCal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
+                                val eventStartCal = Calendar.getInstance().apply { timeInMillis = event.startTime }
+                                val isTomorrow = eventStartCal.get(Calendar.YEAR) == tomorrowCal.get(Calendar.YEAR) &&
+                                        eventStartCal.get(Calendar.DAY_OF_YEAR) == tomorrowCal.get(Calendar.DAY_OF_YEAR)
+                                val prefix = if (isTomorrow) {
+                                    if (Locale.getDefault().language == "de") "Morgen " else "Tomorrow "
+                                } else ""
+                                if (event.isAllDay) {
+                                    prefix + if (Locale.getDefault().language == "de") "Ganztägig" else "All Day"
+                                } else {
+                                    prefix + "${timeFormatter.format(event.startTime)} - ${timeFormatter.format(event.endTime)}"
+                                }
                             }
+                            Text(
+                                text = timeText,
+                                fontSize = subtitleFontSize,
+                                color = Color.White.copy(alpha = 0.7f)
+                            )
                         }
-                        Text(
-                            text = timeText,
-                            fontSize = subtitleFontSize,
-                            color = Color.White.copy(alpha = 0.7f)
-                        )
                     }
-                }
 
-                if (calendarEvents.size > 1) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.KeyboardArrowUp,
-                            contentDescription = "Scroll Up",
-                            tint = if (pagerState.currentPage > 0) Color.White.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.15f),
-                            modifier = Modifier
-                                .size(20.dp)
-                                .then(
-                                    if (pagerState.currentPage > 0) {
-                                        Modifier.clickable(
-                                            interactionSource = remember { MutableInteractionSource() },
-                                            indication = null
-                                        ) {
-                                            scope.launch {
-                                                pagerState.animateScrollToPage(pagerState.currentPage - 1)
-                                            }
-                                        }
-                                    } else Modifier
-                                )
-                        )
-                        Text(
-                            text = "${pagerState.currentPage + 1}/${calendarEvents.size}",
-                            color = Color.White.copy(alpha = 0.5f),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Icon(
-                            imageVector = Icons.Rounded.KeyboardArrowDown,
-                            contentDescription = "Scroll Down",
-                            tint = if (pagerState.currentPage < calendarEvents.size - 1) Color.White.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.15f),
-                            modifier = Modifier
-                                .size(20.dp)
-                                .then(
-                                    if (pagerState.currentPage < calendarEvents.size - 1) {
-                                        Modifier.clickable(
-                                            interactionSource = remember { MutableInteractionSource() },
-                                            indication = null
-                                        ) {
-                                            scope.launch {
-                                                pagerState.animateScrollToPage(pagerState.currentPage + 1)
-                                            }
-                                        }
-                                    } else Modifier
-                                )
-                        )
+                    if (calendarEvents.size > 1) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.KeyboardArrowUp,
+                                contentDescription = "Scroll Up",
+                                tint = if (pagerState.currentPage > 0) Color.White.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.15f),
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                        enabled = pagerState.currentPage > 0
+                                    ) {
+                                        scope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
+                                    }
+                            )
+                            Text(
+                                text = "${pagerState.currentPage + 1}/${calendarEvents.size}",
+                                color = Color.White.copy(alpha = 0.5f),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Icon(
+                                imageVector = Icons.Rounded.KeyboardArrowDown,
+                                contentDescription = "Scroll Down",
+                                tint = if (pagerState.currentPage < calendarEvents.size - 1) Color.White.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.15f),
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                        enabled = pagerState.currentPage < calendarEvents.size - 1
+                                    ) {
+                                        scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
+                                    }
+                            )
+                        }
                     }
                 }
             }

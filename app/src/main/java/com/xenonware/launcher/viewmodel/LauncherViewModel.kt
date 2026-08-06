@@ -84,6 +84,7 @@ data class CalendarInfo(
 )
 
 data class CalendarEvent(
+    val id: Long,
     val title: String,
     val startTime: Long,
     val endTime: Long,
@@ -1148,6 +1149,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             val uri = builder.build()
 
             val projection = arrayOf(
+                CalendarContract.Instances.EVENT_ID,
                 CalendarContract.Instances.TITLE,
                 CalendarContract.Instances.BEGIN,
                 CalendarContract.Instances.END,
@@ -1175,6 +1177,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 if (selectionArgsList.isEmpty()) null else selectionArgsList.toTypedArray(),
                 sortOrder
             )?.use { cursor ->
+                val idIdx = cursor.getColumnIndex(CalendarContract.Instances.EVENT_ID)
                 val titleIdx = cursor.getColumnIndex(CalendarContract.Instances.TITLE)
                 val startIdx = cursor.getColumnIndex(CalendarContract.Instances.BEGIN)
                 val endIdx = cursor.getColumnIndex(CalendarContract.Instances.END)
@@ -1192,6 +1195,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 val startOfToday = startOfTodayCal.timeInMillis
 
                 while (cursor.moveToNext() && events.size < 25) {
+                    val id = cursor.getLong(idIdx)
                     val title = cursor.getString(titleIdx) ?: "No Title"
                     val startTime = cursor.getLong(startIdx)
                     val endTime = cursor.getLong(endIdx)
@@ -1209,6 +1213,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
                     events.add(
                         CalendarEvent(
+                            id = id,
                             title = title,
                             startTime = startTime,
                             endTime = endTime,
