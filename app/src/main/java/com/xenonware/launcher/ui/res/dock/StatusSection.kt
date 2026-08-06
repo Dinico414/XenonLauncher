@@ -541,7 +541,7 @@ fun NotificationCounterBadge(
 fun CalendarCounterIcon(
     count: Int,
     modifier: Modifier = Modifier,
-    color: Color = colorScheme.primary,
+    color: Color = colorScheme.tertiary,
 ) {
     val text = if (count > 99) "99+" else count.toString()
     val textMeasurer = rememberTextMeasurer()

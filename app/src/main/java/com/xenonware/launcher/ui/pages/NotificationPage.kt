@@ -58,6 +58,7 @@ import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateMapOf
@@ -90,6 +91,7 @@ import androidx.compose.ui.unit.sp
 import com.xenon.mylibrary.theme.QuicksandTitleVariable
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.notification.LauncherNotification
+import com.xenonware.launcher.ui.res.notification.ChronoCluster
 import com.xenonware.launcher.ui.res.notification.NotificationItem
 import com.xenonware.launcher.ui.res.notification.NotificationTabButton
 import com.xenonware.launcher.util.ColorUtils
@@ -117,14 +119,18 @@ fun NotificationPage(
     onDismissAllNotifications: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
+    val nextAlarm by viewModel.nextAlarm.collectAsState()
+    val timers by viewModel.activeTimers.collectAsState(initial = emptyList())
+    val stopwatches by viewModel.activeStopwatches.collectAsState(initial = emptyList())
+
     var selectedPackage by remember { mutableStateOf<String?>(null) }
     var showAtAGlanceMenu by remember { mutableStateOf(false) }
     var showPageMenu by remember { mutableStateOf(false) }
     var dropDownOffset by remember { mutableStateOf(Offset.Zero) }
-    
+
     var atAGlanceSectionPos by remember { mutableStateOf(Offset.Zero) }
     var pageContainerPos by remember { mutableStateOf(Offset.Zero) }
-    
+
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val offsets = remember { mutableStateMapOf<String, Float>() }
     var deleteButtonBounds by remember { mutableStateOf(Rect.Zero) }
@@ -195,6 +201,9 @@ fun NotificationPage(
                         currentDate = currentDate,
                         calendarEvents = calendarEvents,
                         isLandscape = true,
+                        nextAlarm = nextAlarm,
+                        timers = timers,
+                        stopwatches = stopwatches,
                         modifier = Modifier
                             .onGloballyPositioned { atAGlanceSectionPos = it.positionInRoot() }
                             .pointerInput(Unit) {
@@ -367,21 +376,24 @@ fun NotificationPage(
                     verticalArrangement = Arrangement.Center
                 ) {
                     AtAGlanceSection(
-                    currentDate = currentDate,
-                    calendarEvents = calendarEvents,
-                    isLandscape = false,
-                    modifier = Modifier
-                        .onGloballyPositioned { atAGlanceSectionPos = it.positionInRoot() }
-                        .pointerInput(Unit) {
-                            detectTapGestures(
-                                onLongPress = { offset ->
-                                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                                    dropDownOffset = atAGlanceSectionPos + offset
-                                    showAtAGlanceMenu = true
-                                }
-                            )
-                        }
-                )
+                        currentDate = currentDate,
+                        calendarEvents = calendarEvents,
+                        isLandscape = false,
+                        nextAlarm = nextAlarm,
+                        timers = timers,
+                        stopwatches = stopwatches,
+                        modifier = Modifier
+                            .onGloballyPositioned { atAGlanceSectionPos = it.positionInRoot() }
+                            .pointerInput(Unit) {
+                                detectTapGestures(
+                                    onLongPress = { offset ->
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                        dropDownOffset = atAGlanceSectionPos + offset
+                                        showAtAGlanceMenu = true
+                                    }
+                                )
+                            }
+                    )
                 }
 
                 Column(
@@ -557,9 +569,8 @@ fun NotificationPage(
                 }
             }
         }
+
         // Dropdown menus
-        val context = LocalContext.current
-        
         if (showAtAGlanceMenu) {
             com.xenonware.launcher.ui.res.XenonDropDown(
                 expanded = showAtAGlanceMenu,
@@ -627,6 +638,9 @@ fun AtAGlanceSection(
     currentDate: String,
     calendarEvents: List<com.xenonware.launcher.viewmodel.CalendarEvent>,
     isLandscape: Boolean,
+    nextAlarm: android.app.AlarmManager.AlarmClockInfo?,
+    timers: List<LauncherNotification>,
+    stopwatches: List<LauncherNotification>,
     modifier: Modifier = Modifier
 ) {
     val dateFontSize = if (isLandscape) 18.sp else 16.sp
@@ -638,12 +652,26 @@ fun AtAGlanceSection(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(spacing)
     ) {
-        Text(
-            text = currentDate,
-            fontSize = dateFontSize,
-            fontWeight = FontWeight.Medium,
-            color = Color.White.copy(alpha = 0.7f)
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = currentDate,
+                fontSize = dateFontSize,
+                fontWeight = FontWeight.Medium,
+                color = Color.White.copy(alpha = 0.7f),
+                modifier = Modifier.weight(1f)
+            )
+
+            // Owns its own 1 Hz ticker, so only this cluster recomposes each second.
+            ChronoCluster(
+                timers = timers,
+                stopwatches = stopwatches,
+                nextAlarm = nextAlarm,
+                fontSize = dateFontSize
+            )
+        }
 
         if (calendarEvents.isEmpty()) {
             Text(
@@ -711,7 +739,7 @@ fun AtAGlanceSection(
                         .drawWithContent {
                             drawContent()
                             val fadeHeight = 8.dp.toPx()
-                            
+
                             // Top fade
                             drawRect(
                                 brush = Brush.verticalGradient(
@@ -720,7 +748,7 @@ fun AtAGlanceSection(
                                 ),
                                 blendMode = BlendMode.DstIn
                             )
-                            
+
                             // Bottom fade
                             drawRect(
                                 brush = Brush.verticalGradient(
@@ -778,14 +806,14 @@ fun AtAGlanceSection(
                         val timeText = remember(event, timeFormatter) {
                             val tomorrowCal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
                             val eventStartCal = Calendar.getInstance().apply { timeInMillis = event.startTime }
-                            
+
                             val isTomorrow = eventStartCal.get(Calendar.YEAR) == tomorrowCal.get(Calendar.YEAR) &&
-                                             eventStartCal.get(Calendar.DAY_OF_YEAR) == tomorrowCal.get(Calendar.DAY_OF_YEAR)
-                            
+                                    eventStartCal.get(Calendar.DAY_OF_YEAR) == tomorrowCal.get(Calendar.DAY_OF_YEAR)
+
                             val prefix = if (isTomorrow) {
                                 if (Locale.getDefault().language == "de") "Morgen " else "Tomorrow "
                             } else ""
-                            
+
                             if (event.isAllDay) {
                                 prefix + if (Locale.getDefault().language == "de") "Ganztägig" else "All Day"
                             } else {

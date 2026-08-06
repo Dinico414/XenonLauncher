@@ -2,6 +2,7 @@ package com.xenonware.launcher.viewmodel
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.AlarmManager
 import android.app.Application
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
@@ -24,6 +25,7 @@ import android.os.Looper
 import android.provider.CalendarContract
 import android.provider.ContactsContract
 import android.provider.MediaStore
+import android.util.Log
 import android.util.Size
 import androidx.compose.ui.unit.IntSize
 import androidx.core.content.ContextCompat
@@ -54,6 +56,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -344,6 +347,36 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val _visibleNotificationApps = MutableStateFlow(prefManager.visibleNotificationApps)
     val visibleNotificationApps: StateFlow<List<String>> = _visibleNotificationApps
 
+    private val _nextAlarm = MutableStateFlow<AlarmManager.AlarmClockInfo?>(null)
+    val nextAlarm: StateFlow<AlarmManager.AlarmClockInfo?> = _nextAlarm
+
+    fun updateNextAlarm() {
+        val am = getApplication<Application>().getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        _nextAlarm.value = am.nextAlarmClock
+    }
+
+    val activeTimers = NotificationManager.notifications.map { list ->
+        val timers = list.filter { it.isTimer }
+        if (timers.isNotEmpty()) {
+            Log.d("LauncherViewModel", "Exposing ${timers.size} active timers to UI")
+        }
+        timers
+    }
+
+    val activeStopwatches = NotificationManager.notifications.map { list ->
+        val stopwatches = list.filter { it.isStopwatch }
+        if (stopwatches.isNotEmpty()) {
+            Log.d("LauncherViewModel", "Exposing ${stopwatches.size} active stopwatches to UI")
+        }
+        stopwatches
+    }
+
+    private val alarmReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            updateNextAlarm()
+        }
+    }
+
     val timeFormatter: DateTimeFormatter? = DateTimeFormatter.ofPattern("HH:mm")
     val dateFormatter: DateTimeFormatter? = DateTimeFormatter.ofPattern("EEE, MMM d")
 
@@ -384,6 +417,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         }
         application.registerReceiver(timeTickReceiver, timeFilter)
 
+        application.registerReceiver(alarmReceiver, IntentFilter(AlarmManager.ACTION_NEXT_ALARM_CLOCK_CHANGED))
+        updateNextAlarm()
+
         val providerFilter = IntentFilter(Intent.ACTION_PROVIDER_CHANGED).apply {
             addDataScheme("content")
             addDataAuthority("com.android.calendar", null)
@@ -403,6 +439,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         getApplication<Application>().unregisterReceiver(batteryReceiver)
         try {
             getApplication<Application>().unregisterReceiver(timeTickReceiver)
+        } catch (_: Exception) {}
+        try {
+            getApplication<Application>().unregisterReceiver(alarmReceiver)
         } catch (_: Exception) {}
         calendarObserver?.let {
             try {
@@ -490,8 +529,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             while (true) {
                 _currentTime.value = LocalDateTime.now()
-                val second = LocalDateTime.now().second
-                delay(((60 - second) * 1000L + 500L).milliseconds)
+                delay(1000L.milliseconds)
             }
         }
     }

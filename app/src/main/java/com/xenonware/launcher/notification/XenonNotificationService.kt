@@ -3,6 +3,7 @@ package com.xenonware.launcher.notification
 import android.content.SharedPreferences
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import android.util.Log
 import com.xenonware.launcher.data.SharedPreferenceManager
 
 class XenonNotificationService : NotificationListenerService() {
@@ -28,10 +29,12 @@ class XenonNotificationService : NotificationListenerService() {
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
+        Log.d("XenonNotificationService", "Notification posted: ${sbn?.packageName}")
         updateNotificationCount()
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
+        Log.d("XenonNotificationService", "Notification removed: ${sbn?.packageName}")
         updateNotificationCount()
     }
 
