@@ -293,7 +293,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                     status == BatteryManager.BATTERY_STATUS_FULL
         }
     }
-    
+
     val mediaControllerManager = MediaControllerManager(application)
     val mediaState: MediaState get() = mediaControllerManager.mediaState
 
@@ -316,6 +316,16 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun dismissNotificationsByPackage(packageName: String) {
         NotificationManager.removeNotificationsByPackageOptimistically(packageName)
         XenonNotificationService.dismissNotificationsByPackage(packageName)
+    }
+
+    // Key of the notification whose inline reply is open, or null. Lives here so the
+    // dock can freeze its IME padding and LauncherScreen can close it when the app
+    // drawer opens.
+    private val _replyingNotificationKey = MutableStateFlow<String?>(null)
+    val replyingNotificationKey: StateFlow<String?> = _replyingNotificationKey
+
+    fun setReplyingNotification(key: String?) {
+        _replyingNotificationKey.value = key
     }
 
     private val _currentTime = MutableStateFlow(LocalDateTime.now())
@@ -548,7 +558,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun skipNext() = mediaControllerManager.skipNext()
     fun skipPrevious() = mediaControllerManager.skipPrevious()
     fun seekTo(position: Long) = mediaControllerManager.seekTo(position)
-    
+
     fun openMediaApp() {
         val pkg = mediaState.packageName ?: return
         val pm = getApplication<Application>().packageManager
@@ -558,9 +568,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             getApplication<Application>().startActivity(intent)
         }
     }
-    
+
     val isMediaPermissionGranted: Boolean get() = mediaControllerManager.isPermissionGranted
-    
+
     fun openNotificationAccessSettings() {
         val intent = Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -575,10 +585,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             val intent = Intent(Intent.ACTION_MAIN, null).apply {
                 addCategory(Intent.CATEGORY_LAUNCHER)
             }
-            
+
             val overrides = prefManager.getAppOverrides()
             val currentShape = _drawerIconShape.value
-            
+
             val resolvedInfos = pm.queryIntentActivities(intent, 0)
             val appList = resolvedInfos.mapNotNull { it ->
                 val pkgName = it.activityInfo.packageName
@@ -587,7 +597,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 try {
                     val originalLabel = it.loadLabel(pm).toString()
                     val originalIcon = it.loadIcon(pm)
-                    
+
                     val override = overrides[pkgName]
                     var finalLabel = originalLabel
                     var finalIcon: Drawable?
@@ -596,13 +606,13 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                     if (override != null) {
                         isCustomized = true
                         override.customName?.let { finalLabel = it }
-                        
+
                         val baseIcon = if (override.iconPackPackage != null && override.iconResourceName != null) {
                             loadIconFromPack(context, override.iconPackPackage, override.iconResourceName) ?: originalIcon
                         } else {
                             originalIcon
                         }
-                        
+
                         finalIcon = generateCustomIcon(context, baseIcon, override, currentShape)
                     } else {
                         finalIcon = normalizeIcon(context, originalIcon)
@@ -650,12 +660,12 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         val intent = Intent("com.novalauncher.THEME")
         val adwIntent = Intent("org.adw.launcher.THEMES")
         val goIntent = Intent("com.gau.go.launcherex.theme")
-        
+
         val list = mutableListOf<ResolveInfo>()
         list.addAll(pm.queryIntentActivities(intent, PackageManager.GET_META_DATA))
         list.addAll(pm.queryIntentActivities(adwIntent, PackageManager.GET_META_DATA))
         list.addAll(pm.queryIntentActivities(goIntent, PackageManager.GET_META_DATA))
-        
+
         return list.distinctBy { it.activityInfo.packageName }
     }
 
@@ -680,13 +690,13 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         val usageStr = prefManager.appUsage
         val entries = usageStr.split(",").filter { it.isNotEmpty() }.toMutableList()
         entries.add("$packageName|$now")
-        
+
         val oneDayAgo = now - 24 * 60 * 60 * 1000
-        val filteredEntries = entries.filter { 
+        val filteredEntries = entries.filter {
             val parts = it.split("|")
             parts.size == 2 && (parts[1].toLongOrNull() ?: 0L) > oneDayAgo
         }
-        
+
         prefManager.appUsage = filteredEntries.joinToString(",")
         loadRecentlyOpened()
     }
@@ -697,9 +707,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         val usageStr = prefManager.appUsage
         val recentApps = usageStr.split(",")
             .filter { it.isNotEmpty() }
-            .mapNotNull { 
+            .mapNotNull {
                 val parts = it.split("|")
-                if (parts.size == 2) parts[0] to (parts[1].toLongOrNull() ?: 0L) else null 
+                if (parts.size == 2) parts[0] to (parts[1].toLongOrNull() ?: 0L) else null
             }
             .filter { it.second > oneDayAgo }
             .groupBy { it.first }
@@ -729,13 +739,13 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun pinApp(packageName: String, atIndex: Int = -1) {
         val app = _apps.value.find { it.packageName == packageName } ?: return
         val currentPinned = _pinnedApps.value.toMutableList()
-        
+
         val alreadyPinned = currentPinned.any { it.packageName == packageName }
         if (!alreadyPinned && currentPinned.size >= 6) return
-        
+
         // Remove if already exists to avoid duplicates
         currentPinned.removeAll { it.packageName == packageName }
-        
+
         if (atIndex == -1 || atIndex >= currentPinned.size) {
             currentPinned.add(app)
         } else {
@@ -866,7 +876,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 val name = cursor.getString(nameIdx) ?: ""
                 val number = cursor.getString(numberIdx)
                 val photoUriStr = cursor.getString(photoIdx)
-                
+
                 if (name.matchesSearch(query)) {
                     results.add(SearchResult.Contact(id, name, number, photoUriStr?.toUri()))
                 }
@@ -923,13 +933,13 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch(Dispatchers.IO) {
             val manager = AppWidgetManager.getInstance(getApplication())
             val pm = getApplication<Application>().packageManager
-            
+
             val providers = manager.installedProviders
             val shortcutIntent = Intent(Intent.ACTION_CREATE_SHORTCUT)
             val shortcuts = pm.queryIntentActivities(shortcutIntent, 0)
-            
+
             val allPackages = (providers.map { it.provider.packageName } + shortcuts.map { it.activityInfo.packageName }).toSet()
-            
+
             val grouped = allPackages.map { pkg ->
                 val appName = try {
                     pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
@@ -941,12 +951,12 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 } catch (_: Exception) {
                     null
                 }
-                
+
                 val widgetItems = providers.filter { it.provider.packageName == pkg }.map {
                     val label = it.loadLabel(pm)
                     WidgetPickerItemData(
-                        label = label, 
-                        isWidget = true, 
+                        label = label,
+                        isWidget = true,
                         widgetInfo = it,
                         id = "widget_${it.provider.flattenToString()}_$label"
                     )
@@ -954,19 +964,19 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 val shortcutItems = shortcuts.filter { it.activityInfo.packageName == pkg }.map {
                     val label = it.loadLabel(pm).toString()
                     WidgetPickerItemData(
-                        label = label, 
-                        isWidget = false, 
+                        label = label,
+                        isWidget = false,
                         shortcutInfo = it,
                         id = "shortcut_${it.activityInfo.packageName}_${it.activityInfo.name}_$label"
                     )
                 }
-                
+
                 AppWidgetGroup(appName, icon) to (widgetItems + shortcutItems).sortedBy { it.label }
             }
-            .filter { it.second.isNotEmpty() }
-            .toMap()
-            .toSortedMap()
-            
+                .filter { it.second.isNotEmpty() }
+                .toMap()
+                .toSortedMap()
+
             _installedWidgets.value = grouped
         }
     }
@@ -988,7 +998,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 val width = parts[4].toIntOrNull() ?: 1
                 val height = parts[5].toIntOrNull() ?: 1
                 val type = if (parts.size > 6) parts[6] else "widget"
-                
+
                 // Fix broken IDs (-1 or -2) for shortcuts
                 if (type == "shortcut" && id >= -2) {
                     id = nextShortcutId--
@@ -1019,7 +1029,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             } else null
         }.filter { it.id != -1 || it.type == "shortcut" }
         _widgets.value = items
-        
+
         // If we fixed any IDs, save them back immediately
         if (layout.contains("|-1|shortcut") || layout.contains("|-2|shortcut")) {
             saveWidgets()
@@ -1037,13 +1047,13 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         val current = _widgets.value.toMutableList()
         // Generate a unique ID that isn't -1 or -2
         val id = (current.minOfOrNull { it.id } ?: 0).coerceAtMost(0) - 100
-        
+
         var finalIconRes = iconRes
         if (iconBitmap != null) {
             try {
                 val context = getApplication<Application>()
                 val fileName = "shortcut_icon_${System.currentTimeMillis()}.png"
-                context.openFileOutput(fileName, Context.MODE_PRIVATE).use { 
+                context.openFileOutput(fileName, Context.MODE_PRIVATE).use {
                     iconBitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
                 }
                 finalIconRes = "file:$fileName"
@@ -1092,7 +1102,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
                 return
             }
-            
+
             calendarObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
                 override fun onChange(selfChange: Boolean, uri: Uri?) {
                     loadCalendarEvents()
@@ -1129,9 +1139,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
             val visibleCalendars = prefManager.visibleCalendars
             val events = mutableListOf<CalendarEvent>()
-            
+
             val now = System.currentTimeMillis()
-            
+
             // Calculate end of tomorrow
             val calendar = Calendar.getInstance()
             calendar.timeInMillis = now
@@ -1157,10 +1167,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 CalendarContract.Instances.ALL_DAY,
                 CalendarContract.Instances.CALENDAR_ID
             )
-            
+
             var selection = ""
             val selectionArgsList = mutableListOf<String>()
-            
+
             if (visibleCalendars.isNotEmpty() && !visibleCalendars.contains("__NONE__")) {
                 val placeholders = visibleCalendars.joinToString(",") { "?" }
                 selection = "${CalendarContract.Instances.CALENDAR_ID} IN ($placeholders)"
@@ -1169,7 +1179,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 _calendarEvents.value = emptyList()
                 return@launch
             }
-            
+
             val sortOrder = "${CalendarContract.Instances.BEGIN} ASC"
 
             context.contentResolver.query(
@@ -1278,7 +1288,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun toggleCalendarVisibility(calendarId: String) {
         val current = _visibleCalendars.value.toMutableList()
         val allAvailable = _availableCalendars.value.map { it.id }
-        
+
         val new = if (current.isEmpty()) {
             // "Select All" is active, so we unselect the one clicked
             allAvailable.toMutableList().apply { remove(calendarId) }
@@ -1310,7 +1320,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun toggleNotificationAppVisibility(packageName: String) {
         val current = _visibleNotificationApps.value.toMutableList()
         val allAvailable = _apps.value.map { it.packageName }
-        
+
         val new = if (current.isEmpty()) {
             // "Select All" is active, so we unselect the one clicked
             allAvailable.toMutableList().apply { remove(packageName) }
@@ -1331,7 +1341,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     }
 
     private fun saveWidgets() {
-        val layout = _widgets.value.joinToString(",") { 
+        val layout = _widgets.value.joinToString(",") {
             val base = "${it.id}|${it.page}|${it.x}|${it.y}|${it.width}|${it.height}"
             if (it.type == "shortcut") {
                 // Escape separators in label/intent

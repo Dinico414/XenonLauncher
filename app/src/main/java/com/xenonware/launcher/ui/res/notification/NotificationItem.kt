@@ -4,6 +4,7 @@ import android.app.ActivityOptions
 import android.app.RemoteInput
 import android.content.Intent
 import android.os.Bundle
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
@@ -25,6 +26,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -36,17 +38,22 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.clearText
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -59,12 +66,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -76,6 +91,8 @@ import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.input.pointer.util.addPointerInputChange
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -100,6 +117,7 @@ import kotlin.math.roundToInt
 import kotlin.math.sign
 
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationItem(
     modifier: Modifier = Modifier,
@@ -111,6 +129,7 @@ fun NotificationItem(
     offsetBelow: Float = 0f,
     replyingNotificationKey: String? = null,
     onReplyOpen: (String?) -> Unit = {},
+    onReplyBoundsChanged: (Rect) -> Unit = {},
     onOffsetChanged: (Float) -> Unit = {},
     onSwipeActiveChange: (Boolean) -> Unit = {},
     onOpen: () -> Unit,
@@ -120,6 +139,8 @@ fun NotificationItem(
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
     val view = LocalView.current
+    val context = LocalContext.current
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
 
     val offsetX = remember { Animatable(0f) }
     var rawDragOffset by remember { mutableFloatStateOf(0f) }
@@ -142,6 +163,20 @@ fun NotificationItem(
     val currentOnDismiss by rememberUpdatedState(onDismiss)
     val currentOnOffsetChanged by rememberUpdatedState(onOffsetChanged)
     val currentOnSwipeActiveChange by rememberUpdatedState(onSwipeActiveChange)
+    val currentOnReplyBoundsChanged by rememberUpdatedState(onReplyBoundsChanged)
+
+    // Only the notification currently being replied to reports its position upward;
+    // the page uses it to lift this item clear of the keyboard.
+    val isReplyTarget = replyingNotificationKey == notification.key
+    val focusRequester = remember { FocusRequester() }
+
+    BackHandler(enabled = expanded || isReplyTarget) {
+        if (isReplyTarget) {
+            onReplyOpen(null)
+        } else {
+            expanded = false
+        }
+    }
 
     val swipeProgress by remember {
         derivedStateOf { (abs(offsetX.value) / dismissThreshold).coerceIn(0f, 1f) }
@@ -154,12 +189,46 @@ fun NotificationItem(
     val currentOffsetBelow by rememberUpdatedState(offsetBelow)
 
     var selectedActionForReply by remember { mutableStateOf<LauncherNotificationAction?>(null) }
-    var replyTextValue by remember { mutableStateOf("") }
+    val replyState = rememberTextFieldState()
 
     LaunchedEffect(replyingNotificationKey) {
         if (replyingNotificationKey != notification.key) {
             selectedActionForReply = null
-            replyTextValue = ""
+            replyState.setTextAndPlaceCursorAtEnd("")
+        }
+    }
+
+    fun sendReply() {
+        val action = selectedActionForReply ?: return
+        val remoteInput = action.remoteInput ?: return
+        val text = replyState.text.toString()
+        if (text.isBlank()) return
+
+        val results = Bundle().apply {
+            putString(remoteInput.resultKey, text)
+        }
+        val fillInIntent = Intent().apply {
+            RemoteInput.addResultsToIntent(arrayOf(remoteInput), this, results)
+        }
+        try {
+            val options = ActivityOptions.makeBasic()
+            options.pendingIntentBackgroundActivityStartMode =
+                ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+
+            action.actionIntent?.send(context, 0, fillInIntent, null, null, null, options.toBundle())
+        } catch (_: Exception) {
+        }
+        selectedActionForReply = null
+        replyState.clearText()
+        onReplyOpen(null)
+    }
+
+    // Without focus the IME never opens, so the lift would never trigger. Wait a
+    // couple of frames so the TextField is actually attached before requesting it.
+    LaunchedEffect(selectedActionForReply) {
+        if (selectedActionForReply != null) {
+            repeat(3) { withFrameNanos { } }
+            runCatching { focusRequester.requestFocus() }
         }
     }
 
@@ -277,6 +346,9 @@ fun NotificationItem(
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .onGloballyPositioned {
+                if (isReplyTarget) currentOnReplyBoundsChanged(it.boundsInRoot())
+            }
             .graphicsLayer {
                 // Stay visible longer during dismissal to show the flight animation
                 val fadeThreshold = if (isDismissing) dismissThreshold * 12f else dismissThreshold * 4f
@@ -546,7 +618,6 @@ fun NotificationItem(
                     exit = fadeOut() + shrinkVertically(animationSpec = spring(stiffness = 800f))
                 ) {
                     Column(modifier = Modifier.padding(top = 16.dp)) {
-                        val context = LocalContext.current
 
                         AnimatedVisibility(
                             visible = selectedActionForReply != null,
@@ -560,50 +631,77 @@ fun NotificationItem(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                TextField(
-                                    value = replyTextValue,
-                                    onValueChange = { replyTextValue = it },
-                                    modifier = Modifier.weight(1f),
-                                    placeholder = { Text("Type a message...", fontSize = 13.sp) },
-                                    colors = TextFieldDefaults.colors(
-                                        focusedContainerColor = colorScheme.surfaceContainerLowest.copy(alpha = 0.2f),
-                                        unfocusedContainerColor = colorScheme.surfaceContainerLowest.copy(alpha = 0.2f),
-                                        focusedIndicatorColor = Color.Transparent,
-                                        unfocusedIndicatorColor = Color.Transparent
-                                    ),
-                                    shape = RoundedCornerShape(16.dp),
+                                val replyScrollState = rememberScrollState()
+                                val replyInteractionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                                val lineLimits = TextFieldLineLimits.MultiLine(maxHeightInLines = 5)
+
+                                BasicTextField(
+                                    state = replyState,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .focusRequester(focusRequester)
+                                        .padding(vertical = 4.dp) // Small buffer so clip doesn't cut text
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .drawTextFieldScrollbar(replyScrollState, colorScheme.primary)
+                                        .nestedScroll(remember {
+                                            object : NestedScrollConnection {
+                                                override fun onPostScroll(
+                                                    consumed: Offset,
+                                                    available: Offset,
+                                                    source: NestedScrollSource
+                                                ): Offset {
+                                                    // Only close keyboard, don't close answer
+                                                    if (source == NestedScrollSource.UserInput && available.y > 10f && consumed.y == 0f) {
+                                                        focusManager.clearFocus()
+                                                    }
+                                                    return Offset.Zero
+                                                }
+                                            }
+                                        }),
                                     textStyle = MaterialTheme.typography.bodyMedium.copy(color = colorScheme.onSurface),
-                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send)
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                                    onKeyboardAction = { sendReply() },
+                                    cursorBrush = SolidColor(colorScheme.primary),
+                                    lineLimits = lineLimits,
+                                    scrollState = replyScrollState,
+                                    interactionSource = replyInteractionSource,
+                                    decorator = TextFieldDefaults.decorator(
+                                        state = replyState,
+                                        enabled = true,
+                                        lineLimits = lineLimits,
+                                        outputTransformation = null,
+                                        interactionSource = replyInteractionSource,
+                                        placeholder = { Text("Type a message...", fontSize = 13.sp) },
+                                        colors = TextFieldDefaults.colors(
+                                            focusedContainerColor = colorScheme.surfaceContainerLowest.copy(alpha = 0.2f),
+                                            unfocusedContainerColor = colorScheme.surfaceContainerLowest.copy(alpha = 0.2f),
+                                            focusedIndicatorColor = Color.Transparent,
+                                            unfocusedIndicatorColor = Color.Transparent
+                                        ),
+                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                                        container = {
+                                            TextFieldDefaults.Container(
+                                                enabled = true,
+                                                isError = false,
+                                                interactionSource = replyInteractionSource,
+                                                colors = TextFieldDefaults.colors(
+                                                    focusedContainerColor = colorScheme.surfaceContainerLowest.copy(alpha = 0.2f),
+                                                    unfocusedContainerColor = colorScheme.surfaceContainerLowest.copy(alpha = 0.2f),
+                                                    focusedIndicatorColor = Color.Transparent,
+                                                    unfocusedIndicatorColor = Color.Transparent
+                                                ),
+                                                shape = RoundedCornerShape(16.dp)
+                                            )
+                                        }
+                                    )
                                 )
 
                                 Surface(
-                                    onClick = {
-                                        selectedActionForReply?.let { action ->
-                                            if (replyTextValue.isNotBlank() && action.remoteInput != null) {
-                                                val results = Bundle().apply {
-                                                    putString(action.remoteInput.resultKey, replyTextValue)
-                                                }
-                                                val fillInIntent = Intent().apply {
-                                                    RemoteInput.addResultsToIntent(arrayOf(action.remoteInput), this, results)
-                                                }
-                                                try {
-                                                    val options = ActivityOptions.makeBasic()
-                                                    options.pendingIntentBackgroundActivityStartMode =
-                                                        ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
-
-                                                    action.actionIntent?.send(context, 0, fillInIntent, null, null, null, options.toBundle())
-                                                } catch (_: Exception) {
-                                                }
-                                                selectedActionForReply = null
-                                                replyTextValue = ""
-                                                onReplyOpen(null)
-                                            }
-                                        }
-                                    },
+                                    onClick = { sendReply() },
                                     shape = CircleShape,
                                     color = finalAppColor,
                                     modifier = Modifier.size(40.dp),
-                                    enabled = replyTextValue.isNotBlank()
+                                    enabled = replyState.text.isNotEmpty()
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
                                         Icon(
@@ -656,7 +754,7 @@ fun NotificationItem(
                                                 onReplyOpen(null)
                                             } else {
                                                 selectedActionForReply = action
-                                                replyTextValue = ""
+                                                replyState.setTextAndPlaceCursorAtEnd("")
                                                 onReplyOpen(notification.key)
                                             }
                                         } else {
@@ -696,6 +794,26 @@ fun NotificationItem(
                 }
             }
         }
+    }
+}
+
+fun Modifier.drawTextFieldScrollbar(
+    state: androidx.compose.foundation.ScrollState,
+    color: Color
+): Modifier = drawWithContent {
+    drawContent()
+    if (state.maxValue > 0) {
+        val viewportHeight = size.height
+        val totalHeight = state.maxValue + viewportHeight
+        val scrollbarHeight = (viewportHeight / totalHeight) * viewportHeight
+        val scrollbarOffset = (state.value.toFloat() / totalHeight) * viewportHeight
+
+        drawRoundRect(
+            color = color.copy(alpha = 0.5f),
+            topLeft = Offset(size.width - 10.dp.toPx(), scrollbarOffset + 4.dp.toPx()),
+            size = Size(4.dp.toPx(), (scrollbarHeight - 8.dp.toPx()).coerceAtLeast(16.dp.toPx())),
+            cornerRadius = CornerRadius(2.dp.toPx())
+        )
     }
 }
 

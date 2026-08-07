@@ -1,9 +1,12 @@
 package com.xenonware.launcher.ui.pages
 
 import android.app.ActivityOptions
+import android.content.res.Configuration
 import android.text.format.DateFormat
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.basicMarquee
@@ -26,7 +29,9 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -38,6 +43,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.PagerSnapDistance
 import androidx.compose.foundation.pager.VerticalPager
@@ -58,10 +64,11 @@ import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -69,8 +76,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -85,8 +94,12 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.xenon.mylibrary.theme.QuicksandTitleVariable
@@ -104,7 +117,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import kotlin.math.abs
-import kotlin.math.absoluteValue
+import kotlin.math.roundToInt
 
 @Composable
 fun NotificationPage(
@@ -118,7 +131,8 @@ fun NotificationPage(
     blurSetting: Boolean,
     onDismissNotification: (String) -> Unit,
     onDismissAllNotifications: () -> Unit,
-    onOpenSettings: () -> Unit
+    onOpenSettings: () -> Unit,
+    onContentShiftChanged: (Float) -> Unit = {}
 ) {
     val nextAlarm by viewModel.nextAlarm.collectAsState()
     val timers by viewModel.activeTimers.collectAsState(initial = emptyList())
@@ -135,14 +149,23 @@ fun NotificationPage(
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val offsets = remember { mutableStateMapOf<String, Float>() }
     var deleteButtonBounds by remember { mutableStateOf(Rect.Zero) }
-    var replyingNotificationKey by remember { mutableStateOf<String?>(null) }
+
+    // Owned by the ViewModel so LauncherScreen can close the reply when the app
+    // drawer opens, and so the dock can freeze its IME padding while one is open.
+    val replyingNotificationKey by viewModel.replyingNotificationKey.collectAsState()
+
+    BackHandler(enabled = selectedPackage != null || showAtAGlanceMenu || showPageMenu) {
+        if (showAtAGlanceMenu) showAtAGlanceMenu = false
+        else if (showPageMenu) showPageMenu = false
+        else selectedPackage = null
+    }
 
     val groupedNotifications = remember(notifications) {
         notifications.groupBy { it.packageName }
     }
 
     // Reset selection if the selected app has no notifications left
-    androidx.compose.runtime.LaunchedEffect(notifications) {
+    LaunchedEffect(notifications) {
         if (selectedPackage != null && !groupedNotifications.containsKey(selectedPackage)) {
             selectedPackage = null
         }
@@ -156,7 +179,7 @@ fun NotificationPage(
 
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
-    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val disableLandscape = shouldDisableLandscapeLayout(context)
     val useLandscapeLayout = isLandscape && !disableLandscape
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -164,6 +187,97 @@ fun NotificationPage(
     val navBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     // 72dp (dock) + 8dp (dock padding) + 8dp (gap) + 4dp (to match widget vertical padding)
     val dockAreaHeight = 72.dp + navBarHeight + 8.dp + 8.dp + 4.dp
+
+    // --- Keyboard-aware lift for the notification being replied to ---
+
+    val density = LocalDensity.current
+    val windowHeightPx = LocalWindowInfo.current.containerSize.height.toFloat()
+    val imeBottomPx = WindowInsets.ime.getBottom(density).toFloat()
+
+    val hasHardwareKeyboard = configuration.keyboard != Configuration.KEYBOARD_NOKEYS &&
+            configuration.hardKeyboardHidden == Configuration.HARDKEYBOARDHIDDEN_NO
+
+    val gapPx = with(density) { 16.dp.toPx() }
+    val minTopPx = with(density) { (statusBarHeight + topPadding).toPx() }
+    val dockAreaPx = with(density) { dockAreaHeight.toPx() }
+
+    // Bounds of the notification being replied to, with our own shift removed so the
+    // value is a stable fixed point instead of feeding back into itself.
+    var replyTopPx by remember { mutableFloatStateOf(0f) }
+    var replyBottomPx by remember { mutableFloatStateOf(0f) }
+
+    val isReplying = replyingNotificationKey != null
+
+    // With a hardware keyboard there is no IME, so the dock is the obstruction.
+    val obstructionPx = if (isReplying && hasHardwareKeyboard) {
+        maxOf(imeBottomPx, dockAreaPx)
+    } else {
+        imeBottomPx
+    }
+
+    // Gated on an open reply: without this, any other IME (the app drawer's search,
+    // for example) would re-trigger the lift using the last measured bounds.
+    val targetShiftPx = if (!isReplying || replyBottomPx <= 0f || obstructionPx <= 0f) 0f else {
+        val targetBottom = windowHeightPx - obstructionPx - gapPx
+        val needed = (replyBottomPx - targetBottom).coerceAtLeast(0f)
+        // Never push the top of the item off screen; if the item is taller than the
+        // available space this pins its top instead and the list stays scrollable.
+        val maxShift = (replyTopPx - minTopPx).coerceAtLeast(0f)
+        needed.coerceAtMost(maxShift)
+    }
+
+    val contentShiftPx by animateFloatAsState(
+        targetValue = targetShiftPx,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessHigh
+        ),
+        label = "notificationKeyboardShift"
+    )
+
+    LaunchedEffect(contentShiftPx, hasHardwareKeyboard) {
+        onContentShiftChanged(if (hasHardwareKeyboard) contentShiftPx else 0f)
+    }
+
+    // Bounds are per-reply, so clear them on every transition — including close, so
+    // nothing is left behind for an unrelated keyboard to pick up.
+    LaunchedEffect(replyingNotificationKey) {
+        replyTopPx = 0f
+        replyBottomPx = 0f
+    }
+
+    DisposableEffect(Unit) {
+        onDispose { viewModel.setReplyingNotification(null) }
+    }
+
+    val onReplyBounds: (Rect) -> Unit = { rect ->
+        replyTopPx = rect.top + contentShiftPx
+        replyBottomPx = rect.bottom + contentShiftPx
+    }
+
+    val focusManager = LocalFocusManager.current
+
+    val landscapeListState = rememberLazyListState()
+    val portraitListState = rememberLazyListState()
+
+    val hideKeyboardOnOverscroll = remember {
+        object : NestedScrollConnection {
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource
+            ): Offset {
+                // If the user pulls down (available.y > 0) and the list is at the top (consumed.y == 0)
+                if (source == NestedScrollSource.UserInput && available.y > 10f && consumed.y == 0f) {
+                    focusManager.clearFocus()
+                }
+                return Offset.Zero
+            }
+        }
+    }
+
+    val contentOffset = Modifier.offset { IntOffset(0, -contentShiftPx.roundToInt()) }
+    val wholeScreenOffset = if (hasHardwareKeyboard) contentOffset else Modifier
 
     Box(modifier = Modifier
         .fillMaxSize()
@@ -190,10 +304,13 @@ fun NotificationPage(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Left Side: At a Glance
+                // Sits beside the list, not above it, so it only moves when the whole
+                // screen moves (hardware keyboard).
                 Column(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
+                        .then(wholeScreenOffset)
                         .padding(horizontal = 24.dp)
                         .onGloballyPositioned { atAGlanceSectionPos = it.positionInRoot() }
                         .combinedClickable(
@@ -202,7 +319,7 @@ fun NotificationPage(
                             onLongClick = {
                                 haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
                                 // Approximation of center for menu anchor if no specific offset is provided by combinedClickable
-                                dropDownOffset = atAGlanceSectionPos + Offset(100f, 100f) 
+                                dropDownOffset = atAGlanceSectionPos + Offset(100f, 100f)
                                 showAtAGlanceMenu = true
                             },
                             onClick = {}
@@ -280,32 +397,14 @@ fun NotificationPage(
                             val appColor = remember(app) { ColorUtils.getDominantColor(app?.icon) }
 
                             LazyColumn(
+                                state = landscapeListState,
                                 modifier = Modifier
                                     .weight(1f)
                                     .fillMaxWidth()
-                                    .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                                    .drawWithContent {
-                                        drawContent()
-                                        val fadeHeight = 16.dp.toPx()
-                                        if (size.height > 0) {
-                                            // Top fade
-                                            drawRect(
-                                                brush = Brush.verticalGradient(
-                                                    0f to Color.Transparent,
-                                                    (fadeHeight / size.height).coerceIn(0f, 1f) to Color.Black
-                                                ),
-                                                blendMode = BlendMode.DstIn
-                                            )
-                                            // Bottom fade
-                                            drawRect(
-                                                brush = Brush.verticalGradient(
-                                                    ((size.height - fadeHeight) / size.height).coerceIn(0f, 1f) to Color.Black,
-                                                    1f to Color.Transparent
-                                                ),
-                                                blendMode = BlendMode.DstIn
-                                            )
-                                        }
-                                    },
+                                    .then(contentOffset)
+                                    .nestedScroll(hideKeyboardOnOverscroll)
+                                    .drawVerticalScrollbar(landscapeListState, colorScheme.primary)
+                            ,
                                 verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.Bottom),
                                 contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
                             ) {
@@ -322,7 +421,8 @@ fun NotificationPage(
                                         offsetAbove = offsetAbove,
                                         offsetBelow = offsetBelow,
                                         replyingNotificationKey = replyingNotificationKey,
-                                        onReplyOpen = { replyingNotificationKey = it },
+                                        onReplyOpen = { viewModel.setReplyingNotification(it) },
+                                        onReplyBoundsChanged = onReplyBounds,
                                         onOffsetChanged = { offsets[notification.key] = it },
                                         modifier = Modifier.animateItem(
                                             fadeInSpec = tween(durationMillis = 200),
@@ -357,7 +457,8 @@ fun NotificationPage(
                             onDismissAllNotifications = onDismissAllNotifications,
                             onPackageSelected = { selectedPackage = it },
                             deleteButtonBounds = deleteButtonBounds,
-                            onDeleteButtonBoundsChanged = { deleteButtonBounds = it }
+                            onDeleteButtonBoundsChanged = { deleteButtonBounds = it },
+                            modifier = wholeScreenOffset
                         )
                     }
                 }
@@ -369,11 +470,12 @@ fun NotificationPage(
                     .fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // At a Glance section
+                // At a Glance section — sits above the list, so it lifts with it
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(0.35f)
+                        .then(contentOffset)
                         .padding(horizontal = 24.dp)
                         .onGloballyPositioned { atAGlanceSectionPos = it.positionInRoot() }
                         .combinedClickable(
@@ -432,7 +534,11 @@ fun NotificationPage(
                         }
                         Spacer(Modifier.height(dockAreaHeight))
                     } else {
-                        Box(modifier = Modifier.weight(1f)) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .then(contentOffset)
+                        ) {
                             if (selectedPackage == null) {
                                 Box(
                                     modifier = Modifier
@@ -464,37 +570,12 @@ fun NotificationPage(
                                     remember(app) { ColorUtils.getDominantColor(app?.icon) }
 
                                 LazyColumn(
+                                    state = portraitListState,
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                                        .drawWithContent {
-                                            drawContent()
-                                            val fadeHeight = 16.dp.toPx()
-                                            if (size.height > 0) {
-                                                // Top fade
-                                                drawRect(
-                                                    brush = Brush.verticalGradient(
-                                                        0f to Color.Transparent,
-                                                        (fadeHeight / size.height).coerceIn(
-                                                            0f,
-                                                            1f
-                                                        ) to Color.Black
-                                                    ),
-                                                    blendMode = BlendMode.DstIn
-                                                )
-                                                // Bottom fade
-                                                drawRect(
-                                                    brush = Brush.verticalGradient(
-                                                        ((size.height - fadeHeight) / size.height).coerceIn(
-                                                            0f,
-                                                            1f
-                                                        ) to Color.Black,
-                                                        1f to Color.Transparent
-                                                    ),
-                                                    blendMode = BlendMode.DstIn
-                                                )
-                                            }
-                                        },
+                                        .nestedScroll(hideKeyboardOnOverscroll)
+                                        .drawVerticalScrollbar(portraitListState, colorScheme.primary)
+                                ,
                                     verticalArrangement = Arrangement.spacedBy(
                                         2.dp,
                                         Alignment.Bottom
@@ -519,7 +600,8 @@ fun NotificationPage(
                                             offsetAbove = offsetAbove,
                                             offsetBelow = offsetBelow,
                                             replyingNotificationKey = replyingNotificationKey,
-                                            onReplyOpen = { replyingNotificationKey = it },
+                                            onReplyOpen = { viewModel.setReplyingNotification(it) },
+                                            onReplyBoundsChanged = onReplyBounds,
                                             onOffsetChanged = { offsets[notification.key] = it },
                                             modifier = Modifier.animateItem(
                                                 fadeInSpec = tween(durationMillis = 200),
@@ -567,7 +649,9 @@ fun NotificationPage(
                             onPackageSelected = { selectedPackage = it },
                             deleteButtonBounds = deleteButtonBounds,
                             onDeleteButtonBoundsChanged = { deleteButtonBounds = it },
-                            modifier = Modifier.padding(bottom = dockAreaHeight)
+                            modifier = Modifier
+                                .then(wholeScreenOffset)
+                                .padding(bottom = dockAreaHeight)
                         )
                     }
                 }
@@ -634,6 +718,34 @@ fun NotificationPage(
                 alignment = Alignment.Center
             )
         }
+    }
+}
+
+fun Modifier.drawVerticalScrollbar(
+    state: androidx.compose.foundation.lazy.LazyListState,
+    color: Color
+): Modifier = drawWithContent {
+    drawContent()
+    val layoutInfo = state.layoutInfo
+    val viewportHeight = layoutInfo.viewportSize.height.toFloat()
+    if (layoutInfo.totalItemsCount == 0 || viewportHeight <= 0) return@drawWithContent
+
+    val items = layoutInfo.visibleItemsInfo
+    if (items.isEmpty()) return@drawWithContent
+
+    val totalItems = layoutInfo.totalItemsCount.toFloat()
+    val visibleItems = items.size.toFloat()
+
+    val scrollbarHeight = (visibleItems / totalItems) * viewportHeight
+    val scrollbarOffset = (state.firstVisibleItemIndex.toFloat() / totalItems) * viewportHeight
+
+    if (scrollbarHeight < viewportHeight) {
+        drawRoundRect(
+            color = color.copy(alpha = 0.5f),
+            topLeft = Offset(size.width - 8.dp.toPx(), scrollbarOffset + 4.dp.toPx()),
+            size = Size(4.dp.toPx(), (scrollbarHeight - 8.dp.toPx()).coerceAtLeast(16.dp.toPx())),
+            cornerRadius = CornerRadius(2.dp.toPx())
+        )
     }
 }
 

@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -19,6 +20,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.MaterialTheme
@@ -37,6 +39,7 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -56,6 +59,7 @@ import com.xenonware.launcher.util.rememberBlurAvailable
 import com.xenonware.launcher.viewmodel.LauncherViewModel
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
+import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
     private val viewModel: LauncherViewModel by viewModels()
@@ -137,7 +141,7 @@ class MainActivity : ComponentActivity() {
                 val dockSafeDrawImePortraitOnly by viewModel.dockSafeDrawImePortraitOnly.collectAsState()
                 val configShortcutType by viewModel.configShortcutType.collectAsState()
                 val blurSetting by viewModel.blurEnabled.collectAsState()
-                
+
                 val showCalendarSelectionDialog by viewModel.showCalendarSelectionDialog.collectAsState()
                 val availableCalendars by viewModel.availableCalendars.collectAsState()
                 val visibleCalendars by viewModel.visibleCalendars.collectAsState()
@@ -241,13 +245,29 @@ fun LauncherScreen(
     onAppClick: (String) -> Unit,
     onOpenSettings: () -> Unit
 ) {
+    BackHandler { }
     val hazeState = rememberHazeState()
     val pagerState = rememberPagerState(initialPage = 1) { 3 }
     var isAppDrawerVisible by remember { mutableStateOf(false) }
     var drawerInteractiveProgress by remember { mutableFloatStateOf(1f) }
-    
+
     var isSearchActiveInDrawer by remember { mutableStateOf(false) }
     var closeSearchTrigger by remember { mutableIntStateOf(0) }
+
+    // Non-zero only when a hardware keyboard is attached and a reply is open, so the
+    // dock stays put in the normal soft-keyboard case.
+    var notificationShift by remember { mutableFloatStateOf(0f) }
+
+    // While a notification reply is open, NotificationPage does the lifting itself, so
+    // the dock must not also pad itself for the IME regardless of the user's setting.
+    val replyingNotificationKey by viewModel.replyingNotificationKey.collectAsState()
+    val isReplyingToNotification = replyingNotificationKey != null
+
+    // The drawer's search field raises its own IME. Close any open reply first so the
+    // notification page isn't lifted by a keyboard that has nothing to do with it.
+    LaunchedEffect(isAppDrawerVisible) {
+        if (isAppDrawerVisible) viewModel.setReplyingNotification(null)
+    }
 
     val appDrawerBlurProgress by animateFloatAsState(
         targetValue = if (isAppDrawerVisible) drawerInteractiveProgress else 0f,
@@ -329,7 +349,8 @@ fun LauncherScreen(
                                 blurSetting = blurSetting,
                                 onDismissNotification = { viewModel.dismissNotification(it) },
                                 onDismissAllNotifications = { viewModel.dismissAllNotifications() },
-                                onOpenSettings = onOpenSettings
+                                onOpenSettings = onOpenSettings,
+                                onContentShiftChanged = { notificationShift = it }
                             )
                             2 -> WidgetPage(
                                 viewModel = viewModel,
@@ -373,46 +394,48 @@ fun LauncherScreen(
                 }
             }
 
-                // DOCK LAYER
-                DockPill(
-                    modifier = Modifier.align(Alignment.BottomCenter),
-                    apps = pinnedApps,
-                    notifications = notifications,
-                    badgeType = badgeType,
-                    mediaState = viewModel.mediaState,
-                    isMediaPermissionGranted = viewModel.isMediaPermissionGranted,
-                    notificationCount = notificationCount,
-                    calendarEventCount = calendarEvents.size,
-                    currentTime = currentTime,
-                    currentDate = currentDate,
-                    weatherTemp = weatherTemp,
-                    weatherCondition = weatherCondition,
-                    onAppClick = onAppClick,
-                    onSettingsClick = onOpenSettings,
-                    onFabClick = {
-                        if (isAppDrawerVisible && isSearchActiveInDrawer && drawerInteractiveProgress > 0.99f) {
-                            closeSearchTrigger++
-                        } else {
-                            isAppDrawerVisible = !isAppDrawerVisible
-                        }
-                    },
-                    onMediaPlayPause = { viewModel.togglePlayPause() },
-                    onMediaSkipNext = { viewModel.skipNext() },
-                    onOpenMediaPermission = { viewModel.openNotificationAccessSettings() },
-                    onTimeClick = { viewModel.handleShortcutClick(LauncherViewModel.ShortcutType.TIME) },
-                    onDateClick = { viewModel.handleShortcutClick(LauncherViewModel.ShortcutType.DATE) },
-                    onWeatherClick = { viewModel.handleShortcutClick(LauncherViewModel.ShortcutType.WEATHER) },
-                    isAppDrawerVisible = isAppDrawerVisible,
-                    hazeState = if (blurSetting) hazeState else null,
-                    progress = batteryLevel,
-                    isCharging = isCharging,
-                    dockSafeDrawIme = dockSafeDrawIme,
-                    dockSafeDrawImePortraitOnly = dockSafeDrawImePortraitOnly,
-                    onUnpinApp = { viewModel.unpinApp(it) },
-                    onPinApp = { pkg, index -> viewModel.pinApp(pkg, index) },
-                    onReorderApp = { from, to -> viewModel.reorderPinnedApp(from, to) }
-                )
-            
+            // DOCK LAYER
+            DockPill(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .offset { IntOffset(0, -notificationShift.roundToInt()) },
+                apps = pinnedApps,
+                notifications = notifications,
+                badgeType = badgeType,
+                mediaState = viewModel.mediaState,
+                isMediaPermissionGranted = viewModel.isMediaPermissionGranted,
+                notificationCount = notificationCount,
+                calendarEventCount = calendarEvents.size,
+                currentTime = currentTime,
+                currentDate = currentDate,
+                weatherTemp = weatherTemp,
+                weatherCondition = weatherCondition,
+                onAppClick = onAppClick,
+                onSettingsClick = onOpenSettings,
+                onFabClick = {
+                    if (isAppDrawerVisible && isSearchActiveInDrawer && drawerInteractiveProgress > 0.99f) {
+                        closeSearchTrigger++
+                    } else {
+                        isAppDrawerVisible = !isAppDrawerVisible
+                    }
+                },
+                onMediaPlayPause = { viewModel.togglePlayPause() },
+                onMediaSkipNext = { viewModel.skipNext() },
+                onOpenMediaPermission = { viewModel.openNotificationAccessSettings() },
+                onTimeClick = { viewModel.handleShortcutClick(LauncherViewModel.ShortcutType.TIME) },
+                onDateClick = { viewModel.handleShortcutClick(LauncherViewModel.ShortcutType.DATE) },
+                onWeatherClick = { viewModel.handleShortcutClick(LauncherViewModel.ShortcutType.WEATHER) },
+                isAppDrawerVisible = isAppDrawerVisible,
+                hazeState = if (blurSetting) hazeState else null,
+                progress = batteryLevel,
+                isCharging = isCharging,
+                dockSafeDrawIme = dockSafeDrawIme && !isReplyingToNotification,
+                dockSafeDrawImePortraitOnly = dockSafeDrawImePortraitOnly,
+                onUnpinApp = { viewModel.unpinApp(it) },
+                onPinApp = { pkg, index -> viewModel.pinApp(pkg, index) },
+                onReorderApp = { from, to -> viewModel.reorderPinnedApp(from, to) }
+            )
+
             configShortcutType?.let { type ->
                 val context = androidx.compose.ui.platform.LocalContext.current
                 val prefs = remember { SharedPreferenceManager(context) }
@@ -421,7 +444,7 @@ fun LauncherScreen(
                     LauncherViewModel.ShortcutType.DATE -> prefs.dateShortcut
                     LauncherViewModel.ShortcutType.WEATHER -> prefs.weatherShortcut
                 }
-                
+
                 ShortcutConfigDialog(
                     type = type,
                     apps = apps,
@@ -432,7 +455,7 @@ fun LauncherScreen(
                     onSave = { viewModel.saveShortcut(type, it) }
                 )
             }
-            
+
             if (showCalendarSelectionDialog) {
                 CalendarSelectionDialog(
                     availableCalendars = availableCalendars,
