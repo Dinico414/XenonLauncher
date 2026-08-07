@@ -13,6 +13,7 @@ import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -403,8 +404,26 @@ fun NotificationPage(
                                     .fillMaxWidth()
                                     .then(contentOffset)
                                     .nestedScroll(hideKeyboardOnOverscroll)
-                                    .drawVerticalScrollbar(landscapeListState, colorScheme.primary)
-                            ,
+                                    .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                                    .drawWithContent {
+                                        drawContent()
+                                        val fadeHeight = 16.dp.toPx()
+                                        drawRect(
+                                            brush = Brush.verticalGradient(
+                                                0f to Color.Transparent,
+                                                fadeHeight / size.height to Color.Black
+                                            ),
+                                            blendMode = BlendMode.DstIn
+                                        )
+                                        drawRect(
+                                            brush = Brush.verticalGradient(
+                                                (size.height - fadeHeight) / size.height to Color.Black,
+                                                1f to Color.Transparent
+                                            ),
+                                            blendMode = BlendMode.DstIn
+                                        )
+                                    }
+                                    .drawVerticalScrollbar(landscapeListState, colorScheme.primary),
                                 verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.Bottom),
                                 contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
                             ) {
@@ -574,8 +593,26 @@ fun NotificationPage(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .nestedScroll(hideKeyboardOnOverscroll)
-                                        .drawVerticalScrollbar(portraitListState, colorScheme.primary)
-                                ,
+                                        .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                                        .drawWithContent {
+                                            drawContent()
+                                            val fadeHeight = 16.dp.toPx()
+                                            drawRect(
+                                                brush = Brush.verticalGradient(
+                                                    0f to Color.Transparent,
+                                                    fadeHeight / size.height to Color.Black
+                                                ),
+                                                blendMode = BlendMode.DstIn
+                                            )
+                                            drawRect(
+                                                brush = Brush.verticalGradient(
+                                                    (size.height - fadeHeight) / size.height to Color.Black,
+                                                    1f to Color.Transparent
+                                                ),
+                                                blendMode = BlendMode.DstIn
+                                            )
+                                        }
+                                        .drawVerticalScrollbar(portraitListState, colorScheme.primary),
                                     verticalArrangement = Arrangement.spacedBy(
                                         2.dp,
                                         Alignment.Bottom
@@ -768,26 +805,39 @@ fun AtAGlanceSection(
     val pagerState = rememberPagerState { calendarEvents.size.coerceAtLeast(1) }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
 
+    var totalDrag by remember { mutableStateOf(0f) }
+    var dragTriggered by remember { mutableStateOf(false) }
+    val swipeThreshold = with(LocalDensity.current) { 24.dp.toPx() }
+
     Box(
-        modifier = modifier.fillMaxHeight(),
+        modifier = modifier
+            .fillMaxHeight()
+            .pointerInput(calendarEvents.size) {
+                if (calendarEvents.size <= 1) return@pointerInput
+                detectVerticalDragGestures(
+                    onDragStart = {
+                        totalDrag = 0f
+                        dragTriggered = false
+                    },
+                    onVerticalDrag = { change, dragAmount ->
+                        if (dragTriggered) return@detectVerticalDragGestures
+                        totalDrag += dragAmount
+                        if (abs(totalDrag) > swipeThreshold) {
+                            dragTriggered = true
+                            scope.launch {
+                                if (totalDrag < 0 && pagerState.currentPage < calendarEvents.size - 1) {
+                                    pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                                } else if (totalDrag > 0 && pagerState.currentPage > 0) {
+                                    pagerState.animateScrollToPage(pagerState.currentPage - 1)
+                                }
+                            }
+                        }
+                    }
+                )
+            },
         contentAlignment = Alignment.Center
     ) {
-        // Invisible pager that fills the ENTIRE area to capture swipes anywhere
-        if (calendarEvents.size > 1) {
-            VerticalPager(
-                state = pagerState,
-                modifier = Modifier.fillMaxSize(),
-                flingBehavior = PagerDefaults.flingBehavior(
-                    state = pagerState,
-                    pagerSnapDistance = PagerSnapDistance.atMost(1),
-                    snapPositionalThreshold = 0.5f
-                )
-            ) {
-                Box(Modifier.fillMaxSize())
-            }
-        }
-
-        // The "Old Style" layout: Column with Date row and a compact Pager
+        // The "Old Style" layout: Stationary Column with Date row and a compact Pager
         Column(
             modifier = Modifier.wrapContentHeight(),
             verticalArrangement = Arrangement.spacedBy(spacing)
@@ -846,6 +896,7 @@ fun AtAGlanceSection(
                     // This is the visible pager, using the same state but fixed height
                     VerticalPager(
                         state = pagerState,
+                        userScrollEnabled = false,
                         modifier = Modifier
                             .weight(1f)
                             .height(pageHeight)
