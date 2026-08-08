@@ -140,7 +140,6 @@ fun NotificationItem(
     val density = LocalDensity.current
     val view = LocalView.current
     val context = LocalContext.current
-    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
 
     val offsetX = remember { Animatable(0f) }
     var rawDragOffset by remember { mutableFloatStateOf(0f) }
@@ -624,10 +623,25 @@ fun NotificationItem(
                             enter = fadeIn() + expandVertically(animationSpec = spring(stiffness = 800f)),
                             exit = fadeOut() + shrinkVertically(animationSpec = spring(stiffness = 800f))
                         ) {
+                            val keyboardScrollBlocker = remember {
+                                object : NestedScrollConnection {
+                                    override fun onPostScroll(
+                                        consumed: Offset,
+                                        available: Offset,
+                                        source: NestedScrollSource
+                                    ): Offset {
+                                        // Consume ALL scroll that originates inside this row to ensure
+                                        // it never reaches the parent LazyColumn.
+                                        return if (source == NestedScrollSource.UserInput) available else Offset.Zero
+                                    }
+                                }
+                            }
+
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(bottom = 12.dp),
+                                    .padding(bottom = 12.dp)
+                                    .nestedScroll(keyboardScrollBlocker),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
@@ -642,22 +656,7 @@ fun NotificationItem(
                                         .focusRequester(focusRequester)
                                         .padding(vertical = 4.dp) // Small buffer so clip doesn't cut text
                                         .clip(RoundedCornerShape(16.dp))
-                                        .drawTextFieldScrollbar(replyScrollState, colorScheme.primary)
-                                        .nestedScroll(remember {
-                                            object : NestedScrollConnection {
-                                                override fun onPostScroll(
-                                                    consumed: Offset,
-                                                    available: Offset,
-                                                    source: NestedScrollSource
-                                                ): Offset {
-                                                    // Only close keyboard, don't close answer
-                                                    if (source == NestedScrollSource.UserInput && available.y > 10f && consumed.y == 0f) {
-                                                        focusManager.clearFocus()
-                                                    }
-                                                    return Offset.Zero
-                                                }
-                                            }
-                                        }),
+                                        .drawTextFieldScrollbar(replyScrollState, colorScheme.primary),
                                     textStyle = MaterialTheme.typography.bodyMedium.copy(color = colorScheme.onSurface),
                                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                                     onKeyboardAction = { sendReply() },

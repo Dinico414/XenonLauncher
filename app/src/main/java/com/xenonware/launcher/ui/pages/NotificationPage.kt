@@ -261,6 +261,13 @@ fun NotificationPage(
     val landscapeListState = rememberLazyListState()
     val portraitListState = rememberLazyListState()
 
+    // Hide keyboard when the main list is scrolled (outside the reply field)
+    LaunchedEffect(landscapeListState.isScrollInProgress, portraitListState.isScrollInProgress) {
+        if (landscapeListState.isScrollInProgress || portraitListState.isScrollInProgress) {
+            focusManager.clearFocus()
+        }
+    }
+
     val hideKeyboardOnOverscroll = remember {
         object : NestedScrollConnection {
             override fun onPostScroll(
@@ -1068,6 +1075,7 @@ fun NotificationTabs(
 
     val isScrollable = totalItems > maxVisible
     val view = LocalView.current
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
 
     val itemWidth = if (isScrollable) {
         (availableWidth - (tabSpacing * (maxVisible - 1)) - deleteSpacing) / maxVisible
@@ -1136,14 +1144,21 @@ fun NotificationTabs(
             Spacer(Modifier.width(deleteSpacing - tabSpacing))
 
             Surface(
-                onClick = onDismissAllNotifications,
-                interactionSource = deleteInteractionSource,
                 shape = RoundedCornerShape(deleteCornerRadius),
                 color = colorScheme.error,
                 modifier = Modifier
                     .height(40.dp)
                     .weight(1f)
                     .onGloballyPositioned { onDeleteButtonBoundsChanged(it.boundsInRoot()) }
+                    .combinedClickable(
+                        interactionSource = deleteInteractionSource,
+                        indication = androidx.compose.foundation.LocalIndication.current,
+                        onLongClick = {
+                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                            onDismissAllNotifications()
+                        },
+                        onClick = {}
+                    )
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
@@ -1226,14 +1241,21 @@ fun NotificationTabs(
             Spacer(Modifier.width(deleteSpacing))
 
             Surface(
-                onClick = onDismissAllNotifications,
-                interactionSource = deleteInteractionSource,
                 shape = RoundedCornerShape(deleteCornerRadius),
                 color = colorScheme.error,
                 modifier = Modifier
                     .height(40.dp)
                     .width(itemWidth)
                     .onGloballyPositioned { onDeleteButtonBoundsChanged(it.boundsInRoot()) }
+                    .combinedClickable(
+                        interactionSource = deleteInteractionSource,
+                        indication = androidx.compose.foundation.LocalIndication.current,
+                        onLongClick = {
+                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                            onDismissAllNotifications()
+                        },
+                        onClick = {}
+                    )
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
