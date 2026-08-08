@@ -455,7 +455,7 @@ fun LauncherScreen(
                         apps = apps,
                         recentlyOpened = recentlyOpened,
                         containerColor = if (blurAvailable) {
-                            val lerp = if (isSystemInDarkTheme()) 0.5f else 0.15f
+                            val lerp = if (isDarkTheme) 0.5f else 0.15f
                             lerp(MaterialTheme.colorScheme.surface.copy(alpha = 0.65f), Color.Black.copy(alpha = 0.2f), lerp)
                         } else {
                             MaterialTheme.colorScheme.surfaceContainerHighest

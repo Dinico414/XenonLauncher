@@ -1,7 +1,7 @@
 package com.xenonware.launcher.ui.pages
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
+import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -74,7 +74,7 @@ fun MediaPage(
     mediaState: MediaState,
     progress: Float,
     isPermissionGranted: Boolean,
-    isDarkTheme: Boolean = isSystemInDarkTheme(),
+    isDarkTheme: Boolean = LocalIsDarkTheme.current,
     onOpenSettings: () -> Unit,
     onTogglePlayPause: () -> Unit,
     onSkipNext: () -> Unit,

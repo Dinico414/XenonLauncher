@@ -16,7 +16,7 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.isSystemInDarkTheme
+import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -86,7 +86,7 @@ internal val DockSectionShape = RoundedCornerShape(100.dp)
 
 /** Sections are translucent on dark backgrounds, opaque on light ones. */
 @Composable
-internal fun dockButtonAlpha(): Float = if (isSystemInDarkTheme()) 0.35f else 1f
+internal fun dockButtonAlpha(): Float = if (LocalIsDarkTheme.current) 0.35f else 1f
 
 /**
  * The size behaviour every section shares: full dock height minus the collapse

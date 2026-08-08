@@ -15,7 +15,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.isSystemInDarkTheme
+import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -162,7 +162,7 @@ private data class MediaTheme(
 @Composable
 private fun rememberMediaTheme(mediaState: MediaState): MediaTheme {
     val context = LocalContext.current
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalIsDarkTheme.current
     val scheme = colorScheme
     val surfaceContainerLowest = scheme.surfaceContainerLowest
     val onSurface = scheme.onSurface
