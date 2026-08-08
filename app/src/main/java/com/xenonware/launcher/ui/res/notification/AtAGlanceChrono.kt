@@ -68,6 +68,7 @@ fun ChronoCluster(
     stopwatches: List<LauncherNotification>,
     nextAlarm: AlarmManager.AlarmClockInfo?,
     fontSize: TextUnit,
+    isWallpaperDark: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val items = remember(timers, stopwatches) {
@@ -86,7 +87,7 @@ fun ChronoCluster(
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Each item owns a ticker locked to its own base.
-        items.forEach { chrono -> ChronoPreviewItem(chrono, fontSize) }
+        items.forEach { chrono -> ChronoPreviewItem(chrono, fontSize, isWallpaperDark) }
 
         if (items.isEmpty() && nextAlarm != null) {
             val context = LocalContext.current
@@ -95,13 +96,13 @@ fun ChronoCluster(
                 val cal = Calendar.getInstance().apply { timeInMillis = nextAlarm.triggerTime }
                 SimpleDateFormat(pattern, Locale.getDefault()).format(cal.time)
             }
-            TimePreviewItem(Icons.Rounded.Alarm, alarmText, fontSize, alpha = 0.7f)
+            TimePreviewItem(Icons.Rounded.Alarm, alarmText, fontSize, alpha = 0.7f, isWallpaperDark = isWallpaperDark)
         }
     }
 }
 
 @Composable
-private fun ChronoPreviewItem(chrono: ChronoState, fontSize: TextUnit) {
+private fun ChronoPreviewItem(chrono: ChronoState, fontSize: TextUnit, isWallpaperDark: Boolean) {
     // Both kinds roll over on the same phase: TIMER shows ceil(base - now),
     // STOPWATCH shows floor(now - base), and both change when (now - base) % 1000 == 0.
     val now by rememberChronoTick(enabled = chrono.isRunning, phase = chrono.baseWallTime)
@@ -123,7 +124,8 @@ private fun ChronoPreviewItem(chrono: ChronoState, fontSize: TextUnit) {
                     else -> Icons.Rounded.HourglassBottom
                 },
                 text = if (expired) "-${formatClock(seconds)}" else formatClock(seconds),
-                fontSize = fontSize
+                fontSize = fontSize,
+                isWallpaperDark = isWallpaperDark
             )
         }
 
@@ -136,7 +138,8 @@ private fun ChronoPreviewItem(chrono: ChronoState, fontSize: TextUnit) {
                 icon = if (chrono.isRunning) Icons.Rounded.Timer else Icons.Rounded.PauseCircle,
                 // Floor, matching how a counting-up Chronometer renders.
                 text = formatClock(elapsedMs.coerceAtLeast(0L) / 1000L),
-                fontSize = fontSize
+                fontSize = fontSize,
+                isWallpaperDark = isWallpaperDark
             )
         }
 
@@ -145,7 +148,14 @@ private fun ChronoPreviewItem(chrono: ChronoState, fontSize: TextUnit) {
 }
 
 @Composable
-fun TimePreviewItem(icon: ImageVector, text: String, fontSize: TextUnit, alpha: Float = 1f) {
+fun TimePreviewItem(
+    icon: ImageVector,
+    text: String,
+    fontSize: TextUnit,
+    alpha: Float = 1f,
+    isWallpaperDark: Boolean = false
+) {
+    val baseColor = if (isWallpaperDark) Color.Black else Color.White
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -153,14 +163,14 @@ fun TimePreviewItem(icon: ImageVector, text: String, fontSize: TextUnit, alpha: 
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = Color.White.copy(alpha = alpha),
+            tint = baseColor.copy(alpha = alpha),
             modifier = Modifier.size(16.dp)
         )
         Text(
             text = text,
             fontSize = fontSize,
             fontWeight = FontWeight.Medium,
-            color = Color.White.copy(alpha = alpha)
+            color = baseColor.copy(alpha = alpha)
         )
     }
 }

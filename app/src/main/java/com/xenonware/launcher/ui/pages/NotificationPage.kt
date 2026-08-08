@@ -130,11 +130,13 @@ fun NotificationPage(
     calendarEvents: List<com.xenonware.launcher.viewmodel.CalendarEvent>,
     hazeState: dev.chrisbanes.haze.HazeState?,
     blurSetting: Boolean,
+    wallpaperDarkIcons: Boolean = false,
     onDismissNotification: (String) -> Unit,
     onDismissAllNotifications: () -> Unit,
     onOpenSettings: () -> Unit,
     onContentShiftChanged: (Float) -> Unit = {}
 ) {
+    val baseColor = if (wallpaperDarkIcons) Color.Black else Color.White
     val nextAlarm by viewModel.nextAlarm.collectAsState()
     val timers by viewModel.activeTimers.collectAsState(initial = emptyList())
     val stopwatches by viewModel.activeStopwatches.collectAsState(initial = emptyList())
@@ -342,6 +344,7 @@ fun NotificationPage(
                         nextAlarm = nextAlarm,
                         timers = timers,
                         stopwatches = stopwatches,
+                        isWallpaperDark = wallpaperDarkIcons,
                         modifier = Modifier.fillMaxHeight()
                     )
                 }
@@ -363,12 +366,12 @@ fun NotificationPage(
                                 Icon(
                                     imageVector = Icons.Rounded.EmojiEvents,
                                     contentDescription = null,
-                                    tint = Color.White.copy(alpha = 0.8f),
+                                    tint = baseColor.copy(alpha = 0.8f),
                                     modifier = Modifier.size(64.dp)
                                 )
                                 Text(
                                     text = "You're up to date",
-                                    color = Color.White.copy(alpha = 0.8f),
+                                    color = baseColor.copy(alpha = 0.8f),
                                     fontSize = 18.sp,
                                     fontFamily = QuicksandTitleVariable,
                                     fontWeight = FontWeight.Medium
@@ -387,12 +390,12 @@ fun NotificationPage(
                                     Icon(
                                         imageVector = Icons.Rounded.NotificationsActive,
                                         contentDescription = null,
-                                        tint = Color.White.copy(alpha = 0.8f),
+                                        tint = baseColor.copy(alpha = 0.8f),
                                         modifier = Modifier.size(64.dp)
                                     )
                                     Text(
                                         text = "You have $notificationCount notifications",
-                                        color = Color.White.copy(alpha = 0.8f),
+                                        color = baseColor.copy(alpha = 0.8f),
                                         fontSize = 18.sp,
                                         fontFamily = QuicksandTitleVariable,
                                         fontWeight = FontWeight.Medium
@@ -524,6 +527,7 @@ fun NotificationPage(
                         nextAlarm = nextAlarm,
                         timers = timers,
                         stopwatches = stopwatches,
+                        isWallpaperDark = wallpaperDarkIcons,
                         modifier = Modifier.fillMaxHeight()
                     )
                 }
@@ -546,12 +550,12 @@ fun NotificationPage(
                                 Icon(
                                     imageVector = Icons.Rounded.EmojiEvents,
                                     contentDescription = null,
-                                    tint = Color.White.copy(alpha = 0.8f),
+                                    tint = baseColor.copy(alpha = 0.8f),
                                     modifier = Modifier.size(64.dp)
                                 )
                                 Text(
                                     text = "You're up to date",
-                                    color = Color.White.copy(alpha = 0.8f),
+                                    color = baseColor.copy(alpha = 0.8f),
                                     fontSize = 18.sp,
                                     fontFamily = QuicksandTitleVariable,
                                     fontWeight = FontWeight.Medium
@@ -577,12 +581,12 @@ fun NotificationPage(
                                         Icon(
                                             imageVector = Icons.Rounded.NotificationsActive,
                                             contentDescription = null,
-                                            tint = Color.White.copy(alpha = 0.8f),
+                                            tint = baseColor.copy(alpha = 0.8f),
                                             modifier = Modifier.size(64.dp)
                                         )
                                         Text(
                                             text = "You have $notificationCount notifications",
-                                            color = Color.White.copy(alpha = 0.8f),
+                                            color = baseColor.copy(alpha = 0.8f),
                                             fontSize = 18.sp,
                                             fontFamily = QuicksandTitleVariable,
                                             fontWeight = FontWeight.Medium
@@ -801,8 +805,10 @@ fun AtAGlanceSection(
     nextAlarm: android.app.AlarmManager.AlarmClockInfo?,
     timers: List<LauncherNotification>,
     stopwatches: List<LauncherNotification>,
+    isWallpaperDark: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val baseColor = if (isWallpaperDark) Color.Black else Color.White
     val dateFontSize = if (isLandscape) 18.sp else 16.sp
     val eventTitleFontSize = if (isLandscape) 32.sp else 24.sp
     val subtitleFontSize = if (isLandscape) 16.sp else 14.sp
@@ -857,7 +863,7 @@ fun AtAGlanceSection(
                     text = currentDate,
                     fontSize = dateFontSize,
                     fontWeight = FontWeight.Medium,
-                    color = Color.White.copy(alpha = 0.7f),
+                    color = baseColor.copy(alpha = 0.7f),
                     modifier = Modifier.weight(1f)
                 )
 
@@ -865,7 +871,8 @@ fun AtAGlanceSection(
                     timers = timers,
                     stopwatches = stopwatches,
                     nextAlarm = nextAlarm,
-                    fontSize = dateFontSize
+                    fontSize = dateFontSize,
+                    isWallpaperDark = isWallpaperDark
                 )
             }
 
@@ -874,7 +881,7 @@ fun AtAGlanceSection(
                     text = "No upcoming events",
                     fontSize = eventTitleFontSize,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = baseColor,
                     modifier = Modifier
                         .height(pageHeight)
                         .wrapContentHeight(Alignment.CenterVertically)
@@ -958,7 +965,7 @@ fun AtAGlanceSection(
                                 text = event.title,
                                 fontSize = eventTitleFontSize,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White,
+                                color = baseColor,
                                 maxLines = 1,
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -996,7 +1003,7 @@ fun AtAGlanceSection(
                             Text(
                                 text = timeText,
                                 fontSize = subtitleFontSize,
-                                color = Color.White.copy(alpha = 0.7f)
+                                color = baseColor.copy(alpha = 0.7f)
                             )
                         }
                     }
@@ -1009,7 +1016,7 @@ fun AtAGlanceSection(
                             Icon(
                                 imageVector = Icons.Rounded.KeyboardArrowUp,
                                 contentDescription = "Scroll Up",
-                                tint = if (pagerState.currentPage > 0) Color.White.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.15f),
+                                tint = if (pagerState.currentPage > 0) baseColor.copy(alpha = 0.5f) else baseColor.copy(alpha = 0.15f),
                                 modifier = Modifier
                                     .size(20.dp)
                                     .clickable(
@@ -1022,14 +1029,14 @@ fun AtAGlanceSection(
                             )
                             Text(
                                 text = "${pagerState.currentPage + 1}/${calendarEvents.size}",
-                                color = Color.White.copy(alpha = 0.5f),
+                                color = baseColor.copy(alpha = 0.5f),
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold
                             )
                             Icon(
                                 imageVector = Icons.Rounded.KeyboardArrowDown,
                                 contentDescription = "Scroll Down",
-                                tint = if (pagerState.currentPage < calendarEvents.size - 1) Color.White.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.15f),
+                                tint = if (pagerState.currentPage < calendarEvents.size - 1) baseColor.copy(alpha = 0.5f) else baseColor.copy(alpha = 0.15f),
                                 modifier = Modifier
                                     .size(20.dp)
                                     .clickable(
