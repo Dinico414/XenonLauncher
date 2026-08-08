@@ -21,6 +21,8 @@ fun ScreenEnvironment(
     themePreference: Int,
     coverTheme: Boolean,
     blackedOutModeEnabled: Boolean,
+    statusBarDarkIconsOverride: Boolean? = null,
+    navigationBarDarkIconsOverride: Boolean? = null,
     content: @Composable (layoutType: LayoutType, isLandscape: Boolean) -> Unit
 ) {
     val configuration = LocalConfiguration.current
@@ -66,11 +68,11 @@ fun ScreenEnvironment(
                 SideEffect {
                     systemUiController.setStatusBarColor(
                         color = Color.Transparent,
-                        darkIcons = darkIconsForSystemBars
+                        darkIcons = statusBarDarkIconsOverride ?: darkIconsForSystemBars
                     )
                     systemUiController.setNavigationBarColor(
                         color = Color.Transparent,
-                        darkIcons = darkIconsForSystemBars,
+                        darkIcons = navigationBarDarkIconsOverride ?: darkIconsForSystemBars,
                         navigationBarContrastEnforced = false
                     )
                 }

@@ -1,6 +1,7 @@
 package com.xenonware.launcher.ui.pages
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -73,6 +74,7 @@ fun MediaPage(
     mediaState: MediaState,
     progress: Float,
     isPermissionGranted: Boolean,
+    isDarkTheme: Boolean = isSystemInDarkTheme(),
     onOpenSettings: () -> Unit,
     onTogglePlayPause: () -> Unit,
     onSkipNext: () -> Unit,
@@ -86,6 +88,13 @@ fun MediaPage(
     val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
     val disableLandscape = shouldDisableLandscapeLayout(context)
     val useLandscapeLayout = isLandscape && !disableLandscape
+
+    val contentColor = if (isDarkTheme) Color.White else Color.Black
+    val subContentColor = contentColor.copy(alpha = 0.7f)
+    val overlayColor = if (isDarkTheme) Color.Black.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.45f)
+    val surfaceAlpha = if (isDarkTheme) 0.5f else 0.8f
+    val iconButtonContainerColor = if (isDarkTheme) Color.White else Color.Black
+    val iconButtonContentColor = if (isDarkTheme) Color.Black else Color.White
 
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val topPadding = if (statusBarHeight < 16.dp) {16.dp} else {statusBarHeight}
@@ -147,15 +156,15 @@ fun MediaPage(
                         .blur(30.dp),
                     contentScale = ContentScale.Crop,
                     colorFilter = ColorFilter.tint(
-                        MaterialTheme.colorScheme.inversePrimary.copy(alpha = 0.6f),
+                        MaterialTheme.colorScheme.inversePrimary.copy(alpha = if (isDarkTheme) 0.6f else 0.4f),
                         blendMode = BlendMode.SrcAtop
                     )
                 )
-                // Darken the background for better readability
+                // Darken/Lighten the background for better readability
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.3f))
+                        .background(overlayColor)
                 )
             }
         }
@@ -182,7 +191,7 @@ fun MediaPage(
                             .aspectRatio(1f)
                             .fillMaxSize(0.9f)
                             .clip(RoundedCornerShape(24.dp)),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = surfaceAlpha),
                         tonalElevation = 8.dp
                     ) {
                         if (artModel != null) {
@@ -199,7 +208,7 @@ fun MediaPage(
                             ) {
                                 Text(
                                     "No Art",
-                                    color = Color.White.copy(alpha = 0.5f),
+                                    color = contentColor.copy(alpha = 0.5f),
                                     style = MaterialTheme.typography.bodyLarge
                                 )
                             }
@@ -216,7 +225,7 @@ fun MediaPage(
                     if (!isPermissionGranted) {
                         Text(
                             "Notification Access Required",
-                            color = Color.White,
+                            color = contentColor,
                             style = MaterialTheme.typography.headlineSmall,
                             textAlign = TextAlign.Center
                         )
@@ -228,7 +237,7 @@ fun MediaPage(
                         // App Name
                         Surface(
                             onClick = onOpenSource,
-                            color = Color.White.copy(alpha = 0.1f),
+                            color = contentColor.copy(alpha = 0.1f),
                             shape = RoundedCornerShape(20.dp),
                             modifier = Modifier.height(40.dp)
                         ) {
@@ -248,7 +257,7 @@ fun MediaPage(
                                 }
                                 Text(
                                     text = appName,
-                                    color = Color.White,
+                                    color = contentColor,
                                     style = MaterialTheme.typography.labelLarge,
                                     fontWeight = FontWeight.Medium,
                                     modifier = Modifier.padding(end = 4.dp)
@@ -263,7 +272,7 @@ fun MediaPage(
                             text = mediaState.title ?: "Nothing Playing",
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White,
+                            color = contentColor,
                             textAlign = TextAlign.Center,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -271,7 +280,7 @@ fun MediaPage(
                         Text(
                             text = mediaState.artist ?: "Unknown Artist",
                             style = MaterialTheme.typography.bodyLarge,
-                            color = Color.White.copy(alpha = 0.7f),
+                            color = subContentColor,
                             textAlign = TextAlign.Center,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -294,9 +303,9 @@ fun MediaPage(
                                 },
                                 valueRange = 0f..duration,
                                 colors = SliderDefaults.colors(
-                                    thumbColor = Color.White,
-                                    activeTrackColor = Color.White,
-                                    inactiveTrackColor = Color.White.copy(alpha = 0.3f)
+                                    thumbColor = contentColor,
+                                    activeTrackColor = contentColor,
+                                    inactiveTrackColor = contentColor.copy(alpha = 0.3f)
                                 )
                             )
                             Row(
@@ -305,12 +314,12 @@ fun MediaPage(
                             ) {
                                 Text(
                                     formatTime(currentPosition.toLong()),
-                                    color = Color.White.copy(alpha = 0.6f),
+                                    color = contentColor.copy(alpha = 0.6f),
                                     style = MaterialTheme.typography.labelSmall
                                 )
                                 Text(
                                     formatTime(mediaState.duration),
-                                    color = Color.White.copy(alpha = 0.6f),
+                                    color = contentColor.copy(alpha = 0.6f),
                                     style = MaterialTheme.typography.labelSmall
                                 )
                             }
@@ -331,7 +340,7 @@ fun MediaPage(
                                     Icons.Rounded.SkipPrevious,
                                     contentDescription = "Previous",
                                     modifier = Modifier.size(32.dp),
-                                    tint = Color.White
+                                    tint = contentColor
                                 )
                             }
 
@@ -339,8 +348,8 @@ fun MediaPage(
                                 onClick = onTogglePlayPause,
                                 modifier = Modifier.size(64.dp),
                                 colors = IconButtonDefaults.filledIconButtonColors(
-                                    containerColor = Color.White,
-                                    contentColor = Color.Black
+                                    containerColor = iconButtonContainerColor,
+                                    contentColor = iconButtonContentColor
                                 )
                             ) {
                                 Icon(
@@ -358,7 +367,7 @@ fun MediaPage(
                                     Icons.Rounded.SkipNext,
                                     contentDescription = "Next",
                                     modifier = Modifier.size(32.dp),
-                                    tint = Color.White
+                                    tint = contentColor
                                 )
                             }
                         }
@@ -378,14 +387,14 @@ fun MediaPage(
                 if (!isPermissionGranted) {
                     Text(
                         "Notification Access Required",
-                        color = Color.White,
+                        color = contentColor,
                         style = MaterialTheme.typography.headlineSmall,
                         textAlign = TextAlign.Center
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         "To show and control media playback, Xenon needs notification access.",
-                        color = Color.White.copy(alpha = 0.7f),
+                        color = subContentColor,
                         style = MaterialTheme.typography.bodyMedium,
                         textAlign = TextAlign.Center
                     )
@@ -403,7 +412,7 @@ fun MediaPage(
                     ) {
                         Surface(
                             onClick = onOpenSource,
-                            color = Color.White.copy(alpha = 0.1f),
+                            color = contentColor.copy(alpha = 0.1f),
                             shape = RoundedCornerShape(20.dp),
                             modifier = Modifier.height(40.dp)
                         ) {
@@ -423,7 +432,7 @@ fun MediaPage(
                                 }
                                 Text(
                                     text = appName,
-                                    color = Color.White,
+                                    color = contentColor,
                                     style = MaterialTheme.typography.labelLarge,
                                     fontWeight = FontWeight.Medium,
                                     modifier = Modifier.padding(end = 4.dp)
@@ -440,7 +449,7 @@ fun MediaPage(
                             .size(280.dp)
                             .aspectRatio(1f)
                             .clip(RoundedCornerShape(24.dp)),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = surfaceAlpha),
                         tonalElevation = 8.dp
                     ) {
                         if (artModel != null) {
@@ -457,7 +466,7 @@ fun MediaPage(
                             ) {
                                 Text(
                                     "No Art",
-                                    color = Color.White.copy(alpha = 0.5f),
+                                    color = contentColor.copy(alpha = 0.5f),
                                     style = MaterialTheme.typography.bodyLarge
                                 )
                             }
@@ -471,7 +480,7 @@ fun MediaPage(
                         text = mediaState.title ?: "Nothing Playing",
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White,
+                        color = contentColor,
                         textAlign = TextAlign.Center,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -479,7 +488,7 @@ fun MediaPage(
                     Text(
                         text = mediaState.artist ?: "Unknown Artist",
                         style = MaterialTheme.typography.bodyLarge,
-                        color = Color.White.copy(alpha = 0.7f),
+                        color = subContentColor,
                         textAlign = TextAlign.Center,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -502,9 +511,9 @@ fun MediaPage(
                             },
                             valueRange = 0f..duration,
                             colors = SliderDefaults.colors(
-                                thumbColor = Color.White,
-                                activeTrackColor = Color.White,
-                                inactiveTrackColor = Color.White.copy(alpha = 0.3f)
+                                thumbColor = contentColor,
+                                activeTrackColor = contentColor,
+                                inactiveTrackColor = contentColor.copy(alpha = 0.3f)
                             )
                         )
                         Row(
@@ -513,12 +522,12 @@ fun MediaPage(
                         ) {
                             Text(
                                 formatTime(currentPosition.toLong()),
-                                color = Color.White.copy(alpha = 0.6f),
+                                color = contentColor.copy(alpha = 0.6f),
                                 style = MaterialTheme.typography.labelSmall
                             )
                             Text(
                                 formatTime(mediaState.duration),
-                                color = Color.White.copy(alpha = 0.6f),
+                                color = contentColor.copy(alpha = 0.6f),
                                 style = MaterialTheme.typography.labelSmall
                             )
                         }
@@ -539,7 +548,7 @@ fun MediaPage(
                                 Icons.Rounded.SkipPrevious,
                                 contentDescription = "Previous",
                                 modifier = Modifier.size(32.dp),
-                                tint = Color.White
+                                tint = contentColor
                             )
                         }
 
@@ -547,8 +556,8 @@ fun MediaPage(
                             onClick = onTogglePlayPause,
                             modifier = Modifier.size(64.dp),
                             colors = IconButtonDefaults.filledIconButtonColors(
-                                containerColor = Color.White,
-                                contentColor = Color.Black
+                                containerColor = iconButtonContainerColor,
+                                contentColor = iconButtonContentColor
                             )
                         ) {
                             Icon(
@@ -566,7 +575,7 @@ fun MediaPage(
                                 Icons.Rounded.SkipNext,
                                 contentDescription = "Next",
                                 modifier = Modifier.size(32.dp),
-                                tint = Color.White
+                                tint = contentColor
                             )
                         }
                     }

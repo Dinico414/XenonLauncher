@@ -1,7 +1,11 @@
 package com.xenonware.launcher
 
+import android.app.WallpaperColors
+import android.app.WallpaperManager
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -22,11 +26,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -38,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -98,10 +106,50 @@ class MainActivity : ComponentActivity() {
                 viewModel.isCoverThemeApplied(currentContainerSize)
             }
 
+            var isAppDrawerVisible by remember { mutableStateOf(false) }
+            val pagerState = rememberPagerState(initialPage = 1) { 3 }
+
+            val wallpaperDarkIcons = rememberWallpaperDarkIcons()
+
+            val appIsDarkTheme = when {
+                applyCoverTheme -> true
+                else -> when (themePref) {
+                    0 -> false
+                    1 -> true
+                    else -> isSystemInDarkTheme()
+                }
+            }
+
+            val statusBarDarkIcons by remember(appIsDarkTheme, wallpaperDarkIcons) {
+                derivedStateOf {
+                    if (isAppDrawerVisible) {
+                        // The drawer now follows the wallpaper's status bar logic
+                        // instead of forcing theme-based icon colors.
+                        wallpaperDarkIcons
+                    } else {
+                        val pageOffset = pagerState.currentPage + pagerState.currentPageOffsetFraction
+                        val mediaDarkIcons = !appIsDarkTheme // Light theme -> Dark icons
+                        
+                        if (pageOffset < 1f) {
+                            // Interpolate between mediaDarkIcons and wallpaperDarkIcons
+                            if (mediaDarkIcons == wallpaperDarkIcons) {
+                                mediaDarkIcons
+                            } else {
+                                // Threshold transition
+                                if (pageOffset < 0.5f) mediaDarkIcons else wallpaperDarkIcons
+                            }
+                        } else {
+                            wallpaperDarkIcons
+                        }
+                    }
+                }
+            }
+
             ScreenEnvironment(
                 themePreference = themePref,
                 coverTheme = applyCoverTheme,
-                blackedOutModeEnabled = blackedOut
+                blackedOutModeEnabled = blackedOut,
+                statusBarDarkIconsOverride = statusBarDarkIcons
             ) { _, _ ->
                 val permissions = mutableListOf(
                     android.Manifest.permission.ACCESS_COARSE_LOCATION,
@@ -174,6 +222,10 @@ class MainActivity : ComponentActivity() {
                     dockSafeDrawImePortraitOnly = dockSafeDrawImePortraitOnly,
                     configShortcutType = configShortcutType,
                     blurSetting = blurSetting,
+                    isDarkTheme = appIsDarkTheme,
+                    isAppDrawerVisible = isAppDrawerVisible,
+                    onAppDrawerVisibilityChange = { isAppDrawerVisible = it },
+                    pagerState = pagerState,
                     onAppClick = { viewModel.launchApp(it) },
                     onOpenSettings = {
                         startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
@@ -216,6 +268,31 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
+fun rememberWallpaperDarkIcons(): Boolean {
+    val context = LocalContext.current
+    val wallpaperManager = remember { WallpaperManager.getInstance(context) }
+    var darkIcons by remember { mutableStateOf(false) }
+
+    DisposableEffect(wallpaperManager) {
+        val listener = WallpaperManager.OnColorsChangedListener { colors, _ ->
+            darkIcons = (colors?.colorHints?.and(WallpaperColors.HINT_SUPPORTS_DARK_TEXT)) != 0
+        }
+
+        val colors = wallpaperManager.getWallpaperColors(WallpaperManager.FLAG_SYSTEM)
+        if (colors != null) {
+            darkIcons = (colors.colorHints and WallpaperColors.HINT_SUPPORTS_DARK_TEXT) != 0
+        }
+        wallpaperManager.addOnColorsChangedListener(listener, Handler(Looper.getMainLooper()))
+
+        onDispose {
+            wallpaperManager.removeOnColorsChangedListener(listener)
+        }
+    }
+
+    return darkIcons
+}
+
+@Composable
 fun LauncherScreen(
     viewModel: LauncherViewModel,
     apps: List<com.xenonware.launcher.model.AppInfo>,
@@ -242,13 +319,15 @@ fun LauncherScreen(
     dockSafeDrawImePortraitOnly: Boolean = false,
     configShortcutType: LauncherViewModel.ShortcutType?,
     blurSetting: Boolean,
+    isDarkTheme: Boolean,
+    isAppDrawerVisible: Boolean,
+    onAppDrawerVisibilityChange: (Boolean) -> Unit,
+    pagerState: PagerState,
     onAppClick: (String) -> Unit,
     onOpenSettings: () -> Unit
 ) {
     BackHandler { }
     val hazeState = rememberHazeState()
-    val pagerState = rememberPagerState(initialPage = 1) { 3 }
-    var isAppDrawerVisible by remember { mutableStateOf(false) }
     var drawerInteractiveProgress by remember { mutableFloatStateOf(1f) }
 
     var isSearchActiveInDrawer by remember { mutableStateOf(false) }
@@ -331,6 +410,7 @@ fun LauncherScreen(
                                 mediaState = viewModel.mediaState,
                                 progress = mediaBlurProgress,
                                 isPermissionGranted = viewModel.isMediaPermissionGranted,
+                                isDarkTheme = isDarkTheme,
                                 onOpenSettings = { viewModel.openNotificationAccessSettings() },
                                 onTogglePlayPause = { viewModel.togglePlayPause() },
                                 onSkipNext = { viewModel.skipNext() },
@@ -379,7 +459,7 @@ fun LauncherScreen(
                         },
                         onAppClick = onAppClick,
                         onSettingsClick = onOpenSettings,
-                        onDismiss = { isAppDrawerVisible = false },
+                        onDismiss = { onAppDrawerVisibilityChange(false) },
                         isVisible = isAppDrawerVisible,
                         onPinApp = { pkg, index -> viewModel.pinApp(pkg, index) },
                         isGridLayout = isGridLayout,
@@ -416,7 +496,7 @@ fun LauncherScreen(
                     if (isAppDrawerVisible && isSearchActiveInDrawer && drawerInteractiveProgress > 0.99f) {
                         closeSearchTrigger++
                     } else {
-                        isAppDrawerVisible = !isAppDrawerVisible
+                        onAppDrawerVisibilityChange(!isAppDrawerVisible)
                     }
                 },
                 onMediaPlayPause = { viewModel.togglePlayPause() },
