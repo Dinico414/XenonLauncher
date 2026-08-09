@@ -560,12 +560,28 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun seekTo(position: Long) = mediaControllerManager.seekTo(position)
 
     fun openMediaApp() {
-        val pkg = mediaState.packageName ?: return
-        val pm = getApplication<Application>().packageManager
-        val intent = pm.getLaunchIntentForPackage(pkg)
-        if (intent != null) {
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            getApplication<Application>().startActivity(intent)
+        val pkg = mediaState.packageName
+        val context = getApplication<Application>()
+        if (!pkg.isNullOrEmpty()) {
+            val pm = context.packageManager
+            val intent = pm.getLaunchIntentForPackage(pkg)
+            if (intent != null) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+                return
+            }
+        }
+
+        try {
+            val audioIntent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType("content://media/external/audio/media".toUri(), "audio/*")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            val chooserIntent = Intent.createChooser(audioIntent, "SELECT AUDIO SOURCE").apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(chooserIntent)
+        } catch (_: Exception) {
         }
     }
 

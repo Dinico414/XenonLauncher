@@ -1,7 +1,14 @@
 package com.xenonware.launcher.ui.pages
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,15 +25,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.SkipNext
@@ -37,6 +48,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
@@ -51,19 +63,28 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.xenonware.launcher.media.MediaState
+import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
 import com.xenonware.launcher.util.blockHorizontalPagerSwipe
 import com.xenonware.launcher.util.shouldDisableLandscapeLayout
 import java.util.Locale
@@ -85,22 +106,40 @@ fun MediaPage(
     val context = LocalContext.current
     val pm = remember { context.packageManager }
     val configuration = LocalConfiguration.current
-    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val isLandscape =
+        configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
     val disableLandscape = shouldDisableLandscapeLayout(context)
     val useLandscapeLayout = isLandscape && !disableLandscape
 
-    val contentColor = if (isDarkTheme) Color.White else Color.Black
+    val contentColor = colorScheme.onSurface
     val subContentColor = contentColor.copy(alpha = 0.7f)
-    val overlayColor = if (isDarkTheme) Color.Black.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.45f)
-    val surfaceAlpha = if (isDarkTheme) 0.5f else 0.8f
-    val iconButtonContainerColor = if (isDarkTheme) Color.White else Color.Black
-    val iconButtonContentColor = if (isDarkTheme) Color.Black else Color.White
+    val overlayColor =
+        if (isDarkTheme) Color.Black.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.45f)
+    val iconButtonContainerColor = colorScheme.onSurface
+    val iconButtonContentColor = colorScheme.surface
+
+    val artModel = remember(mediaState.title, mediaState.artist) {
+        mediaState.albumArt ?: mediaState.albumArtUri
+    }
+
+    val surfaceAlpha = if (artModel != null) {
+        if (isDarkTheme) 0.5f else 0.8f
+    } else {
+        if (isDarkTheme) 0.15f else 0.3f
+    }
+
+    val note = rememberMusicNoteAnimation(mediaState.isPlaying)
 
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val topPadding = if (statusBarHeight < 16.dp) {16.dp} else {statusBarHeight}
+    val topPadding = if (statusBarHeight < 16.dp) {
+        16.dp
+    } else {
+        statusBarHeight
+    }
     val safeDrawingPadding = WindowInsets.safeDrawing.asPaddingValues()
     val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
-    val startPadding = safeDrawingPadding.calculateStartPadding(layoutDirection).coerceAtLeast(16.dp)
+    val startPadding =
+        safeDrawingPadding.calculateStartPadding(layoutDirection).coerceAtLeast(16.dp)
     val endPadding = safeDrawingPadding.calculateEndPadding(layoutDirection).coerceAtLeast(16.dp)
     val navBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     // 72dp (dock) + 8dp (dock padding) + 8dp (gap) + 4dp (to match widget vertical padding)
@@ -132,21 +171,25 @@ fun MediaPage(
     // Exponential corner radius: 24.dp to 0.dp
     // Using power of 3 for a more pronounced exponential curve
     val cornerRadius = (24 * (1f - cornerProgress).pow(3)).dp
+    val baseBgAlpha = if (isDarkTheme) 0.6f else 0.4f
+    val backgroundTint = colorScheme.inversePrimary.copy(alpha = baseBgAlpha)
 
-    Box(modifier = Modifier
-        .fillMaxSize()
+    val textShadow = Shadow(
+        color = Color.Black.copy(alpha = 0.3f), offset = Offset(0f, 2f), blurRadius = 4f
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .clip(RoundedCornerShape(cornerRadius))
+            .background(backgroundTint.copy(alpha = baseBgAlpha * bgProgress))
     ) {
         // Background Album Art
-        val artModel = remember(mediaState.title, mediaState.artist) {
-            mediaState.albumArt ?: mediaState.albumArtUri
-        }
-        
         artModel?.let { model ->
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .alpha(bgProgress)
-                    .clip(RoundedCornerShape(cornerRadius))
             ) {
                 AsyncImage(
                     model = model,
@@ -156,8 +199,7 @@ fun MediaPage(
                         .blur(30.dp),
                     contentScale = ContentScale.Crop,
                     colorFilter = ColorFilter.tint(
-                        MaterialTheme.colorScheme.inversePrimary.copy(alpha = if (isDarkTheme) 0.6f else 0.4f),
-                        blendMode = BlendMode.SrcAtop
+                        backgroundTint, blendMode = BlendMode.SrcAtop
                     )
                 )
                 // Darken/Lighten the background for better readability
@@ -188,10 +230,11 @@ fun MediaPage(
                 ) {
                     Surface(
                         modifier = Modifier
+                            .sizeIn(maxWidth = 400.dp)
                             .aspectRatio(1f)
                             .fillMaxSize(0.9f)
                             .clip(RoundedCornerShape(24.dp)),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = surfaceAlpha),
+                        color = colorScheme.surfaceVariant.copy(alpha = surfaceAlpha),
                         tonalElevation = 8.dp
                     ) {
                         if (artModel != null) {
@@ -206,19 +249,25 @@ fun MediaPage(
                                 modifier = Modifier.fillMaxSize(),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    "No Art",
-                                    color = contentColor.copy(alpha = 0.5f),
-                                    style = MaterialTheme.typography.bodyLarge
+                                Icon(
+                                    Icons.Rounded.MusicNote,
+                                    null,
+                                    tint = contentColor,
+                                    modifier = Modifier
+                                        .size(100.dp)
+                                        .musicNote(note)
                                 )
                             }
+
                         }
                     }
                 }
 
                 // Right Side: Controls and Info
                 Column(
-                    modifier = Modifier.weight(1f).padding(end = endPadding),
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = endPadding),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
@@ -260,7 +309,9 @@ fun MediaPage(
                                     color = contentColor,
                                     style = MaterialTheme.typography.labelLarge,
                                     fontWeight = FontWeight.Medium,
-                                    modifier = Modifier.padding(end = 4.dp)
+                                    modifier = Modifier.padding(
+                                        start = if (appName == "Media") 4.dp else 0.dp, end = 4.dp
+                                    )
                                 )
                             }
                         }
@@ -268,23 +319,50 @@ fun MediaPage(
                         Spacer(Modifier.weight(1f))
 
                         // Info
-                        Text(
-                            text = mediaState.title ?: "Nothing Playing",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = contentColor,
-                            textAlign = TextAlign.Center,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = mediaState.artist ?: "Unknown Artist",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = subContentColor,
-                            textAlign = TextAlign.Center,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .fadingEdges(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .basicMarquee(
+                                        iterations = Int.MAX_VALUE,
+                                        repeatDelayMillis = 3000
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = mediaState.title ?: "Nothing Playing",
+                                    style = MaterialTheme.typography.headlineMedium.copy(shadow = textShadow),
+                                    fontWeight = FontWeight.Bold,
+                                    color = contentColor,
+                                    textAlign = TextAlign.Center,
+                                    maxLines = 1,
+                                    modifier = Modifier.padding(horizontal = 16.dp)
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .basicMarquee(
+                                        iterations = Int.MAX_VALUE,
+                                        repeatDelayMillis = 3000
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = mediaState.artist ?: "",
+                                    style = MaterialTheme.typography.bodyLarge.copy(shadow = textShadow),
+                                    color = subContentColor,
+                                    textAlign = TextAlign.Center,
+                                    maxLines = 1,
+                                    modifier = Modifier.padding(horizontal = 16.dp)
+                                )
+                            }
+                        }
 
                         Spacer(Modifier.weight(1f))
 
@@ -293,39 +371,47 @@ fun MediaPage(
                         val currentPosition = sliderPosition ?: mediaState.position.toFloat()
                         val duration = mediaState.duration.toFloat().coerceAtLeast(1f)
 
-                        Column(modifier = Modifier.fillMaxWidth().blockHorizontalPagerSwipe() .padding(horizontal = 16.dp)) {
-                            Slider(
-                                value = currentPosition.coerceIn(0f, duration),
-                                onValueChange = { sliderPosition = it },
-                                onValueChangeFinished = {
-                                    sliderPosition?.let { onSeek(it.toLong()) }
-                                    sliderPosition = null
-                                },
-                                valueRange = 0f..duration,
-                                colors = SliderDefaults.colors(
-                                    thumbColor = contentColor,
-                                    activeTrackColor = contentColor,
-                                    inactiveTrackColor = contentColor.copy(alpha = 0.3f)
-                                )
-                            )
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween
+
+                        if (mediaState.title != null) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .blockHorizontalPagerSwipe()
+                                    .padding(horizontal = 16.dp)
                             ) {
-                                Text(
-                                    formatTime(currentPosition.toLong()),
-                                    color = contentColor.copy(alpha = 0.6f),
-                                    style = MaterialTheme.typography.labelSmall
+                                Slider(
+                                    value = currentPosition.coerceIn(0f, duration),
+                                    onValueChange = { sliderPosition = it },
+                                    onValueChangeFinished = {
+                                        sliderPosition?.let { onSeek(it.toLong()) }
+                                        sliderPosition = null
+                                    },
+                                    valueRange = 0f..duration,
+                                    colors = SliderDefaults.colors(
+                                        thumbColor = contentColor,
+                                        activeTrackColor = contentColor,
+                                        inactiveTrackColor = contentColor.copy(alpha = 0.3f)
+                                    )
                                 )
-                                Text(
-                                    formatTime(mediaState.duration),
-                                    color = contentColor.copy(alpha = 0.6f),
-                                    style = MaterialTheme.typography.labelSmall
-                                )
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 4.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        formatTime(currentPosition.toLong()),
+                                        color = contentColor.copy(alpha = 0.6f),
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                    Text(
+                                        formatTime(mediaState.duration),
+                                        color = contentColor.copy(alpha = 0.6f),
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
                             }
                         }
-
-                        Spacer(Modifier.weight(1f))
 
                         // Controls
                         Row(
@@ -333,11 +419,10 @@ fun MediaPage(
                             horizontalArrangement = Arrangement.spacedBy(24.dp)
                         ) {
                             IconButton(
-                                onClick = onSkipPrevious,
-                                modifier = Modifier.size(48.dp)
+                                onClick = onSkipPrevious, modifier = Modifier.size(48.dp)
                             ) {
-                                Icon(
-                                    Icons.Rounded.SkipPrevious,
+                                ShadowedIcon(
+                                    imageVector = Icons.Rounded.SkipPrevious,
                                     contentDescription = "Previous",
                                     modifier = Modifier.size(32.dp),
                                     tint = contentColor
@@ -346,31 +431,34 @@ fun MediaPage(
 
                             FilledIconButton(
                                 onClick = onTogglePlayPause,
-                                modifier = Modifier.size(64.dp),
+                                modifier = Modifier
+                                    .size(64.dp)
+                                    .shadow(elevation = 12.dp, shape = CircleShape),
                                 colors = IconButtonDefaults.filledIconButtonColors(
                                     containerColor = iconButtonContainerColor,
                                     contentColor = iconButtonContentColor
                                 )
                             ) {
-                                Icon(
-                                    if (mediaState.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                                ShadowedIcon(
+                                    imageVector = if (mediaState.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                                     contentDescription = "Play/Pause",
-                                    modifier = Modifier.size(40.dp)
+                                    modifier = Modifier.size(40.dp),
+                                    tint = iconButtonContentColor
                                 )
                             }
 
                             IconButton(
-                                onClick = onSkipNext,
-                                modifier = Modifier.size(48.dp)
+                                onClick = onSkipNext, modifier = Modifier.size(48.dp)
                             ) {
-                                Icon(
-                                    Icons.Rounded.SkipNext,
+                                ShadowedIcon(
+                                    imageVector = Icons.Rounded.SkipNext,
                                     contentDescription = "Next",
                                     modifier = Modifier.size(32.dp),
                                     tint = contentColor
                                 )
                             }
                         }
+                        Spacer(Modifier.weight(0.5f))
                     }
                 }
             }
@@ -435,7 +523,8 @@ fun MediaPage(
                                     color = contentColor,
                                     style = MaterialTheme.typography.labelLarge,
                                     fontWeight = FontWeight.Medium,
-                                    modifier = Modifier.padding(end = 4.dp)
+                                    modifier = Modifier.padding(start = if (appName == "Media") 4.dp else 0.dp, end = 4.dp
+                                    )
                                 )
                             }
                         }
@@ -449,7 +538,7 @@ fun MediaPage(
                             .size(280.dp)
                             .aspectRatio(1f)
                             .clip(RoundedCornerShape(24.dp)),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = surfaceAlpha),
+                        color = colorScheme.surfaceVariant.copy(alpha = surfaceAlpha),
                         tonalElevation = 8.dp
                     ) {
                         if (artModel != null) {
@@ -464,76 +553,117 @@ fun MediaPage(
                                 modifier = Modifier.fillMaxSize(),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    "No Art",
-                                    color = contentColor.copy(alpha = 0.5f),
-                                    style = MaterialTheme.typography.bodyLarge
+                                Icon(
+                                    Icons.Rounded.MusicNote,
+                                    null,
+                                    tint = contentColor,
+                                    modifier = Modifier
+                                        .size(100.dp)
+                                        .musicNote(note)
                                 )
                             }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(48.dp))
+                    Spacer(modifier = Modifier.weight(1.5f))
 
                     // Info
-                    Text(
-                        text = mediaState.title ?: "Nothing Playing",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = contentColor,
-                        textAlign = TextAlign.Center,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = mediaState.artist ?: "Unknown Artist",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = subContentColor,
-                        textAlign = TextAlign.Center,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .fadingEdges(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .basicMarquee(
+                                    iterations = Int.MAX_VALUE,
+                                    repeatDelayMillis = 3000
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = mediaState.title ?: "Nothing Playing",
+                                style = MaterialTheme.typography.headlineMedium.copy(shadow = textShadow),
+                                fontWeight = FontWeight.Bold,
+                                color = contentColor,
+                                textAlign = TextAlign.Center,
+                                maxLines = 1,
+                                modifier = Modifier.padding(horizontal = 16.dp)
+                            )
+                        }
+                        if (mediaState.artist != "") {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .basicMarquee(
+                                        iterations = Int.MAX_VALUE,
+                                        repeatDelayMillis = 3000
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = mediaState.artist ?: "",
+                                    style = MaterialTheme.typography.bodyLarge.copy(shadow = textShadow),
+                                    color = subContentColor,
+                                    textAlign = TextAlign.Center,
+                                    maxLines = 1,
+                                    modifier = Modifier.padding(horizontal = 16.dp)
+                                )
+                            }
+                        }
+                    }
 
-                    Spacer(modifier = Modifier.height(32.dp))
+                    Spacer(modifier = Modifier.weight(1f))
 
                     // Progress Bar
                     var sliderPosition by remember { mutableStateOf<Float?>(null) }
                     val currentPosition = sliderPosition ?: mediaState.position.toFloat()
                     val duration = mediaState.duration.toFloat().coerceAtLeast(1f)
 
-                    Column(modifier = Modifier.fillMaxWidth().blockHorizontalPagerSwipe() .padding(horizontal = 16.dp)) {
-                        Slider(
-                            value = currentPosition.coerceIn(0f, duration),
-                            onValueChange = { sliderPosition = it },
-                            onValueChangeFinished = {
-                                sliderPosition?.let { onSeek(it.toLong()) }
-                                sliderPosition = null
-                            },
-                            valueRange = 0f..duration,
-                            colors = SliderDefaults.colors(
-                                thumbColor = contentColor,
-                                activeTrackColor = contentColor,
-                                inactiveTrackColor = contentColor.copy(alpha = 0.3f)
-                            )
-                        )
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                    if (mediaState.title != null) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .blockHorizontalPagerSwipe()
+                                .padding(horizontal = 16.dp)
                         ) {
-                            Text(
-                                formatTime(currentPosition.toLong()),
-                                color = contentColor.copy(alpha = 0.6f),
-                                style = MaterialTheme.typography.labelSmall
+                            Slider(
+                                value = currentPosition.coerceIn(0f, duration),
+                                onValueChange = { sliderPosition = it },
+                                onValueChangeFinished = {
+                                    sliderPosition?.let { onSeek(it.toLong()) }
+                                    sliderPosition = null
+                                },
+                                valueRange = 0f..duration,
+                                colors = SliderDefaults.colors(
+                                    thumbColor = contentColor,
+                                    activeTrackColor = contentColor,
+                                    inactiveTrackColor = contentColor.copy(alpha = 0.3f)
+                                )
                             )
-                            Text(
-                                formatTime(mediaState.duration),
-                                color = contentColor.copy(alpha = 0.6f),
-                                style = MaterialTheme.typography.labelSmall
-                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    formatTime(currentPosition.toLong()),
+                                    color = contentColor.copy(alpha = 0.6f),
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                                Text(
+                                    formatTime(mediaState.duration),
+                                    color = contentColor.copy(alpha = 0.6f),
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(32.dp))
+                    Spacer(modifier = Modifier.weight(1f))
 
                     // Controls
                     Row(
@@ -541,11 +671,10 @@ fun MediaPage(
                         horizontalArrangement = Arrangement.spacedBy(24.dp)
                     ) {
                         IconButton(
-                            onClick = onSkipPrevious,
-                            modifier = Modifier.size(48.dp)
+                            onClick = onSkipPrevious, modifier = Modifier.size(48.dp)
                         ) {
-                            Icon(
-                                Icons.Rounded.SkipPrevious,
+                            ShadowedIcon(
+                                imageVector = Icons.Rounded.SkipPrevious,
                                 contentDescription = "Previous",
                                 modifier = Modifier.size(32.dp),
                                 tint = contentColor
@@ -554,37 +683,130 @@ fun MediaPage(
 
                         FilledIconButton(
                             onClick = onTogglePlayPause,
-                            modifier = Modifier.size(64.dp),
+                            modifier = Modifier
+                                .size(64.dp)
+                                .shadow(elevation = 12.dp, shape = CircleShape),
                             colors = IconButtonDefaults.filledIconButtonColors(
                                 containerColor = iconButtonContainerColor,
                                 contentColor = iconButtonContentColor
                             )
                         ) {
-                            Icon(
-                                if (mediaState.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                            ShadowedIcon(
+                                imageVector = if (mediaState.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                                 contentDescription = "Play/Pause",
-                                modifier = Modifier.size(40.dp)
+                                modifier = Modifier.size(40.dp),
+                                tint = iconButtonContentColor
                             )
                         }
 
                         IconButton(
-                            onClick = onSkipNext,
-                            modifier = Modifier.size(48.dp)
+                            onClick = onSkipNext, modifier = Modifier.size(48.dp)
                         ) {
-                            Icon(
-                                Icons.Rounded.SkipNext,
+                            ShadowedIcon(
+                                imageVector = Icons.Rounded.SkipNext,
                                 contentDescription = "Next",
                                 modifier = Modifier.size(32.dp),
                                 tint = contentColor
                             )
                         }
                     }
-                    
+
                     Spacer(modifier = Modifier.weight(1f))
                     Spacer(modifier = Modifier.height(dockAreaHeight))
                 }
             }
         }
+    }
+}
+
+@androidx.compose.runtime.Immutable
+private data class MusicNoteAnimation(
+    val rotation: Float,
+    val scale: Float,
+    val playingFactor: Float,
+)
+
+@Composable
+private fun rememberMusicNoteAnimation(isPlaying: Boolean): MusicNoteAnimation {
+    val infiniteTransition = rememberInfiniteTransition(label = "musicNoteAnim")
+
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = -5f,
+        targetValue = 5f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "musicNoteRotation"
+    )
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.15f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "musicNoteScale"
+    )
+    val playingFactor by animateFloatAsState(
+        targetValue = if (isPlaying) 1f else 0f,
+        label = "musicNotePlayingFactor"
+    )
+
+    return MusicNoteAnimation(rotation, scale, playingFactor)
+}
+
+private fun Modifier.musicNote(note: MusicNoteAnimation) = graphicsLayer {
+    rotationZ = note.rotation * note.playingFactor
+    scaleX = 1f + (note.scale - 1f) * note.playingFactor
+    scaleY = 1f + (note.scale - 1f) * note.playingFactor
+}
+
+private fun Modifier.fadingEdges(length: Dp = 16.dp) = this
+    .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+    .drawWithContent {
+        drawContent()
+        val edgeLengthPx = length.toPx()
+        val width = size.width
+        if (width > 0) {
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    0f to Color.Transparent,
+                    edgeLengthPx / width to Color.Black,
+                    (width - edgeLengthPx) / width to Color.Black,
+                    1f to Color.Transparent
+                ),
+                blendMode = BlendMode.DstIn
+            )
+        }
+    }
+
+@Composable
+private fun ShadowedIcon(
+    imageVector: ImageVector,
+    contentDescription: String?,
+    modifier: Modifier = Modifier,
+    tint: Color,
+    shadowColor: Color = Color.Black.copy(alpha = 0.3f),
+    offset: Dp = 2.dp
+) {
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        Icon(
+            imageVector = imageVector,
+            contentDescription = null,
+            modifier = Modifier
+                .fillMaxSize()
+                .offset(y = offset)
+                .blur(offset)
+                .alpha(0.5f),
+            tint = shadowColor
+        )
+        Icon(
+            imageVector = imageVector,
+            contentDescription = contentDescription,
+            modifier = Modifier.fillMaxSize(),
+            tint = tint
+        )
     }
 }
 
