@@ -23,7 +23,10 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
@@ -366,6 +369,7 @@ fun LauncherScreen(
     val blurAvailable = rememberBlurAvailable() && blurSetting
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    val isImeVisible = WindowInsets.ime.asPaddingValues().calculateBottomPadding() > 0.dp
 
     val iconShape by viewModel.drawerIconShape.collectAsState()
     val showShadow by viewModel.drawerIconShadow.collectAsState()
@@ -496,7 +500,10 @@ fun LauncherScreen(
                 onAppClick = onAppClick,
                 onSettingsClick = onOpenSettings,
                 onFabClick = {
-                    if (isAppDrawerVisible && isSearchActiveInDrawer && drawerInteractiveProgress > 0.99f) {
+                    if (isImeVisible) {
+                        focusManager.clearFocus()
+                        keyboardController?.hide()
+                    } else if (isAppDrawerVisible && isSearchActiveInDrawer && drawerInteractiveProgress > 0.99f) {
                         closeSearchTrigger++
                     } else {
                         onAppDrawerVisibilityChange(!isAppDrawerVisible)

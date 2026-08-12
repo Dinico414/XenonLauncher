@@ -203,7 +203,7 @@ fun DockPill(
         modifier = modifier
             .width(finalMaxDockWidth)
             .padding(bottom = bottomPadding, start = 16.dp, end = 16.dp)
-            .pointerInput(isAppDrawerVisible) {
+            .pointerInput(isAppDrawerVisible, onFabClick) {
                 var totalVerticalDrag = 0f
                 detectVerticalDragGestures(
                     onVerticalDrag = { _, dragAmount -> totalVerticalDrag += dragAmount },
@@ -347,7 +347,7 @@ private fun DockFab(
             .graphicsLayer(clip = false)
             .then(if (hazeState == null) Modifier.shadow(8.dp, fabShape) else Modifier)
             .clip(fabShape)
-            .pointerInput(Unit) {
+            .pointerInput(onClick) {
                 detectTapGestures(
                     onTap = { onClick() },
                     onDoubleTap = { lockScreenOrRequestAccess(context) }
