@@ -42,6 +42,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,6 +71,7 @@ import com.xenonware.launcher.util.rememberBlurAvailable
 import com.xenonware.launcher.viewmodel.LauncherViewModel
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
@@ -109,8 +111,14 @@ class MainActivity : ComponentActivity() {
                 viewModel.isCoverThemeApplied(currentContainerSize)
             }
 
-            var isAppDrawerVisible by remember { mutableStateOf(false) }
+            val isAppDrawerVisible by viewModel.isAppDrawerVisible.collectAsState()
             val pagerState = rememberPagerState(initialPage = 1) { 3 }
+
+            LaunchedEffect(viewModel) {
+                viewModel.navigationEvents.collect { page ->
+                    pagerState.animateScrollToPage(page)
+                }
+            }
 
             val wallpaperDarkIcons = rememberWallpaperDarkIcons()
 
@@ -228,7 +236,7 @@ class MainActivity : ComponentActivity() {
                     isDarkTheme = appIsDarkTheme,
                     wallpaperDarkIcons = wallpaperDarkIcons,
                     isAppDrawerVisible = isAppDrawerVisible,
-                    onAppDrawerVisibilityChange = { isAppDrawerVisible = it },
+                    onAppDrawerVisibilityChange = { viewModel.setAppDrawerVisible(it) },
                     pagerState = pagerState,
                     onAppClick = { viewModel.launchApp(it) },
                     onOpenSettings = {
@@ -259,6 +267,16 @@ class MainActivity : ComponentActivity() {
             lastAppliedBlackedOutMode = currentBlackedOutMode
 
             recreate()
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        val isHomeIntent = intent.hasCategory(Intent.CATEGORY_HOME) || 
+                          (intent.action == Intent.ACTION_MAIN && intent.categories == null)
+        
+        if (isHomeIntent) {
+            viewModel.onHomePressed()
         }
     }
 
@@ -331,8 +349,20 @@ fun LauncherScreen(
     onAppClick: (String) -> Unit,
     onOpenSettings: () -> Unit
 ) {
-    BackHandler { }
     val hazeState = rememberHazeState()
+    val scope = rememberCoroutineScope()
+    
+    val isHome = pagerState.currentPage == 1 && !pagerState.isScrollInProgress
+    BackHandler(enabled = isAppDrawerVisible || !isHome) {
+        if (isAppDrawerVisible) {
+            onAppDrawerVisibilityChange(false)
+        } else {
+            scope.launch {
+                pagerState.animateScrollToPage(1)
+            }
+        }
+    }
+    
     var drawerInteractiveProgress by remember { mutableFloatStateOf(1f) }
 
     var isSearchActiveInDrawer by remember { mutableStateOf(false) }

@@ -54,7 +54,9 @@ import com.xenonware.launcher.util.normalizeIcon
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -208,6 +210,13 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val _theme = MutableStateFlow(prefManager.theme)
     val theme: StateFlow<Int> = _theme
 
+    private val _isAppDrawerVisible = MutableStateFlow(false)
+    val isAppDrawerVisible: StateFlow<Boolean> = _isAppDrawerVisible
+
+    fun setAppDrawerVisible(visible: Boolean) {
+        _isAppDrawerVisible.value = visible
+    }
+
     private val _blackedOutModeEnabled = MutableStateFlow(prefManager.blackedOutModeEnabled)
     val blackedOutModeEnabled: StateFlow<Boolean> = _blackedOutModeEnabled
 
@@ -360,6 +369,17 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private val _nextAlarm = MutableStateFlow<AlarmManager.AlarmClockInfo?>(null)
     val nextAlarm: StateFlow<AlarmManager.AlarmClockInfo?> = _nextAlarm
+
+    private val _navigationEvents = MutableSharedFlow<Int>(replay = 1)
+    val navigationEvents: SharedFlow<Int> = _navigationEvents
+
+    fun onHomePressed() {
+        viewModelScope.launch {
+            _isAppDrawerVisible.value = false
+            delay(100.milliseconds) // Wait for drawer animation or system transition
+            _navigationEvents.emit(1)
+        }
+    }
 
     fun updateNextAlarm() {
         val am = getApplication<Application>().getSystemService(Context.ALARM_SERVICE) as AlarmManager
