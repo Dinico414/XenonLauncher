@@ -15,7 +15,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,6 +34,7 @@ import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
@@ -70,6 +70,7 @@ import coil.imageLoader
 import coil.request.ImageRequest
 import coil.request.SuccessResult
 import com.xenonware.launcher.media.MediaState
+import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
 import com.xenonware.launcher.util.ColorUtils
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
@@ -232,6 +233,7 @@ private fun rememberMediaTheme(mediaState: MediaState): MediaTheme {
             content = content,
             accent = accent,
             scheme = scheme.copy(
+                primary = accent,
                 primaryContainer = accent,
                 onPrimaryContainer = content,
                 onSurface = content
@@ -330,29 +332,42 @@ private fun MediaSectionContent(
             val artModel = remember(mediaState.title, mediaState.artist) {
                 mediaState.albumArt ?: mediaState.albumArtUri
             }
-            if (artModel != null) {
-                AsyncImage(
-                    model = artModel,
-                    contentDescription = "Album Art",
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape),
-                    contentScale = ContentScale.Crop
+            val progress = if (mediaState.duration > 0) {
+                (mediaState.position.toFloat() / mediaState.duration.toFloat()).coerceIn(0f, 1f)
+            } else 0f
+
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(44.dp)) {
+                CircularProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.fillMaxSize(),
+                    color = colorScheme.onPrimaryContainer,
+                    strokeWidth = 2.dp,
+                    trackColor = colorScheme.onSurface.copy(alpha = 0.1f),
                 )
-            } else {
-                Surface(
-                    modifier = Modifier.size(44.dp),
-                    shape = CircleShape,
-                    color = colorScheme.surfaceVariant
-                ) {
-                    Icon(
-                        Icons.Rounded.MusicNote,
-                        null,
-                        tint = colorScheme.onSurfaceVariant,
+                if (artModel != null) {
+                    AsyncImage(
+                        model = artModel,
+                        contentDescription = "Album Art",
                         modifier = Modifier
-                            .padding(10.dp)
-                            .musicNote(note)
+                            .size(40.dp)
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop
                     )
+                } else {
+                    Surface(
+                        modifier = Modifier.size(40.dp),
+                        shape = CircleShape,
+                        color = colorScheme.surfaceVariant
+                    ) {
+                        Icon(
+                            Icons.Rounded.MusicNote,
+                            null,
+                            tint = colorScheme.primaryContainer,
+                            modifier = Modifier
+                                .padding(8.dp)
+                                .musicNote(note)
+                        )
+                    }
                 }
             }
             Column(
