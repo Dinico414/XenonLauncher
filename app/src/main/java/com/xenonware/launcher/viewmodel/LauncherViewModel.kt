@@ -558,6 +558,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun skipNext() = mediaControllerManager.skipNext()
     fun skipPrevious() = mediaControllerManager.skipPrevious()
     fun seekTo(position: Long) = mediaControllerManager.seekTo(position)
+    fun sendCustomAction(action: String) = mediaControllerManager.sendCustomAction(action)
 
     fun openMediaApp() {
         val pkg = mediaState.packageName

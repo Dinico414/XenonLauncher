@@ -26,16 +26,31 @@ class XenonNotificationService : NotificationListenerService() {
                 }
             }
         }
+
+        fun getInstance(): XenonNotificationService? = instance
+
+        fun getNotificationForSession(token: android.media.session.MediaSession.Token): StatusBarNotification? {
+            val active = instance?.activeNotifications ?: return null
+            return active.find { sbn ->
+                val extras = sbn.notification.extras
+                @Suppress("DEPRECATION")
+                val session = extras.getParcelable(android.app.Notification.EXTRA_MEDIA_SESSION) as? android.media.session.MediaSession.Token
+                    ?: extras.getParcelable(android.app.Notification.EXTRA_MEDIA_SESSION, android.media.session.MediaSession.Token::class.java)
+                session == token
+            }
+        }
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
         Log.d("XenonNotificationService", "Notification posted: ${sbn?.packageName}")
         updateNotificationCount()
+        com.xenonware.launcher.media.MediaControllerManager.update()
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
         Log.d("XenonNotificationService", "Notification removed: ${sbn?.packageName}")
         updateNotificationCount()
+        com.xenonware.launcher.media.MediaControllerManager.update()
     }
 
     private lateinit var prefManager: SharedPreferenceManager

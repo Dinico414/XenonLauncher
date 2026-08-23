@@ -70,6 +70,7 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.graphicsLayer
@@ -82,7 +83,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.xenonware.launcher.media.MediaAction
 import com.xenonware.launcher.media.MediaState
 import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
 import com.xenonware.launcher.util.blockHorizontalPagerSwipe
@@ -164,6 +167,11 @@ fun MediaPage(
             }
         }
     }
+
+    val isPhone = configuration.screenWidthDp < 600
+    val leftAction = mediaState.actions.getOrNull(0)
+    val rightAction = mediaState.actions.getOrNull(1)
+    val extraActions = if (isPhone) emptyList() else mediaState.actions.drop(2)
 
     // Normalize progress for the background effects: 0.5f to 1.0f -> 0.0f to 1.0f
     val bgProgress = ((progress - 0.5f) * 2f).coerceIn(0.25f, 1f)
@@ -418,6 +426,10 @@ fun MediaPage(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(24.dp)
                         ) {
+                            leftAction?.let { action ->
+                                MediaActionButton(action, contentColor)
+                            }
+
                             IconButton(
                                 onClick = onSkipPrevious, modifier = Modifier.size(48.dp)
                             ) {
@@ -456,6 +468,14 @@ fun MediaPage(
                                     modifier = Modifier.size(32.dp),
                                     tint = contentColor
                                 )
+                            }
+
+                            rightAction?.let { action ->
+                                MediaActionButton(action, contentColor)
+                            }
+
+                            extraActions.forEach { action ->
+                                MediaActionButton(action, contentColor)
                             }
                         }
                         Spacer(Modifier.weight(0.5f))
@@ -670,6 +690,10 @@ fun MediaPage(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(24.dp)
                     ) {
+                        leftAction?.let { action ->
+                            MediaActionButton(action, contentColor)
+                        }
+
                         IconButton(
                             onClick = onSkipPrevious, modifier = Modifier.size(48.dp)
                         ) {
@@ -708,6 +732,14 @@ fun MediaPage(
                                 modifier = Modifier.size(32.dp),
                                 tint = contentColor
                             )
+                        }
+
+                        rightAction?.let { action ->
+                            MediaActionButton(action, contentColor)
+                        }
+
+                        extraActions.forEach { action ->
+                            MediaActionButton(action, contentColor)
                         }
                     }
 
@@ -819,5 +851,67 @@ private fun formatTime(millis: Long): String {
         String.format(Locale.getDefault(), "%d:%02d:%02d", hours, minutes, seconds)
     } else {
         String.format(Locale.getDefault(), "%d:%02d", minutes, seconds)
+    }
+}
+
+@Composable
+private fun MediaActionButton(
+    action: MediaAction,
+    tint: Color,
+    modifier: Modifier = Modifier
+) {
+    val viewModel: com.xenonware.launcher.viewmodel.LauncherViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    IconButton(
+        onClick = {
+            try {
+                if (action.actionIntent != null) {
+                    action.actionIntent.send()
+                } else if (action.customAction != null) {
+                    viewModel.sendCustomAction(action.customAction)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        },
+        modifier = modifier.size(48.dp)
+    ) {
+        if (action.icon != null) {
+            val bitmap = remember(action.icon) {
+                try {
+                    val drawable = action.icon
+                    val width = drawable.intrinsicWidth.coerceAtLeast(1)
+                    val height = drawable.intrinsicHeight.coerceAtLeast(1)
+                    val bmp = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.ARGB_8888)
+                    val canvas = android.graphics.Canvas(bmp)
+                    drawable.setBounds(0, 0, width, height)
+                    drawable.draw(canvas)
+                    bmp.asImageBitmap()
+                } catch (e: Exception) {
+                    null
+                }
+            }
+            if (bitmap != null) {
+                Icon(
+                    bitmap = bitmap,
+                    contentDescription = action.title,
+                    tint = tint,
+                    modifier = Modifier.size(28.dp)
+                )
+            } else {
+                Text(
+                    text = action.title.take(1),
+                    color = tint,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        } else {
+            Text(
+                text = action.title.take(1),
+                color = tint,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
     }
 }
