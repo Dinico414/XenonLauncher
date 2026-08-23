@@ -85,6 +85,7 @@ class DevSettingsActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        devSettingsViewModel.updateCrashLogStatus()
 
         val currentThemePref = sharedPreferenceManager.theme
         val currentCoverThemeEnabledSetting = sharedPreferenceManager.coverThemeEnabled

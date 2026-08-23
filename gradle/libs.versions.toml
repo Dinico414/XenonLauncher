@@ -7,25 +7,28 @@ espressoCore = "3.7.0"
 lifecycleRuntimeKtx = "2.11.0"
 activityCompose = "1.13.0"
 kotlin = "2.4.10"
-composeBom = "2026.06.01"
+composeBom = "2026.08.00"
 haze = "1.7.2"
-media3 = "1.10.1"
+media3 = "1.11.0"
 coil = "2.7.0"
 datastore = "1.2.1"
 accompanist = "0.37.3"
 accompanistSystemUiController = "0.36.0"
 playServicesLocation = "21.4.0"
-playServicesAuth = "21.3.0"
-firebaseBom = "33.9.0"
-kotlinxSerializationJson = "1.8.0"
-xenon-commons = "2.5.3"
-material3comp = "1.5.0-alpha24"
-remoteCreationCompose = "1.0.0-alpha15"
+playServicesAuth = "21.6.0"
+firebaseBom = "34.18.0"
+kotlinxSerializationJson = "1.11.0"
+material3comp = "1.5.0-alpha26"
+remoteCreationCompose = "1.0.0-alpha17"
 firebaseAuth = "24.2.0"
 credentials = "1.6.0"
 credentialsPlayServicesAuth = "1.6.0"
 googleid = "1.2.0"
 navigationCompose = "2.9.8"
+
+xenonCommons = "2.5.3"
+#noinspection UnusedVersionCatalogEntry
+xenonUi = "4.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -59,7 +62,6 @@ play-services-auth = { module = "com.google.android.gms:play-services-auth", ver
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
 firebase-auth = { module = "com.google.firebase:firebase-auth-ktx" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
-xenon-commons = { group = "com.github.Dinico414", name = "Xenon-Commons", version.ref = "xenon-commons" }
 material3 = { module = "androidx.compose.material3:material3", version.ref = "material3comp" }
 androidx-compose-remote-creation-compose = { group = "androidx.compose.remote", name = "remote-creation-compose", version.ref = "remoteCreationCompose" }
 google-firebase-auth = { group = "com.google.firebase", name = "firebase-auth", version.ref = "firebaseAuth" }
@@ -67,6 +69,8 @@ androidx-credentials = { group = "androidx.credentials", name = "credentials", v
 androidx-credentials-play-services-auth = { group = "androidx.credentials", name = "credentials-play-services-auth", version.ref = "credentialsPlayServicesAuth" }
 googleid = { group = "com.google.android.libraries.identity.googleid", name = "googleid", version.ref = "googleid" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
+xenon-commons = { module = "com.github.Dinico414:Xenon-Commons", version.ref = "xenonCommons" }
+
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
