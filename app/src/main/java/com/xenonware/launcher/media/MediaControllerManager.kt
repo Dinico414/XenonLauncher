@@ -135,7 +135,9 @@ class MediaControllerManager(private val context: Context) {
             val customActions = playbackState?.customActions?.mapNotNull { ca ->
                 val title = ca.name?.toString() ?: ""
                 val actionId = ca.action
-                if (isStandardAction(title, actionId)) return@mapNotNull null
+                val resourceName = getResourceEntryName(packageContext, ca.icon)
+                
+                if (isStandardAction(title, actionId, resourceName)) return@mapNotNull null
 
                 val icon = if (packageContext != null && ca.icon != 0) {
                     try { packageContext.getDrawable(ca.icon) } catch (e: Exception) { null }
@@ -153,12 +155,14 @@ class MediaControllerManager(private val context: Context) {
             val compactActionIndices = notification?.notification?.extras?.getIntArray(android.app.Notification.EXTRA_COMPACT_ACTIONS) ?: intArrayOf()
             val notificationActions = notification?.notification?.actions?.mapIndexedNotNull { index, action ->
                 val title = action.title?.toString() ?: ""
+                val iconRes = action.icon // Use the direct field which is the resource ID
+                val resourceName = getResourceEntryName(packageContext, iconRes)
                 
                 // Exclude if it's marked as a compact action (standard control)
                 if (compactActionIndices.contains(index)) return@mapIndexedNotNull null
                 
-                // Fallback string filter for safety
-                if (isStandardAction(title)) return@mapIndexedNotNull null
+                // Fallback string/resource filter for safety
+                if (isStandardAction(title, null, resourceName)) return@mapIndexedNotNull null
 
                 val icon = try {
                     val iconObj = action.getIcon()
@@ -221,24 +225,40 @@ class MediaControllerManager(private val context: Context) {
         activeController?.transportControls?.sendCustomAction(action, null)
     }
 
-    private fun isStandardAction(title: String, actionId: String? = null): Boolean {
+    private fun getResourceEntryName(packageContext: Context?, resId: Int): String? {
+        if (packageContext == null || resId == 0) return null
+        return try {
+            packageContext.resources.getResourceEntryName(resId)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun isStandardAction(title: String, actionId: String? = null, resourceName: String? = null): Boolean {
         val t = title.lowercase().trim()
         val id = actionId?.lowercase() ?: ""
+        val res = resourceName?.lowercase() ?: ""
         
-        if (t.isBlank()) return true
+        if (t.isBlank() && id.isBlank() && res.isBlank()) return true
         
+        // These terms are almost always used in English in the internal IDs or resource names, 
+        // even if the visible title is German/other.
         val standardKeywords = listOf(
-            "play", "pause", "next", "prev", "skip", "back", "rewind", "forward", "stop",
-            "wiedergabe", "nächster", "vorheriger", "überspringen", "zurück", "spulen", "stopp",
-            "close", "schließen", "beenden", "dismiss", "exit"
+            "play", "pause", "next", "prev", "previous", "skip", "stop",
+            "close", "dismiss", "exit", "cancel", "clear"
         )
         
-        if (standardKeywords.any { t.contains(it) }) return true
-        if (id.isNotEmpty() && standardKeywords.any { id.contains(it) }) return true
+        val isStandard = standardKeywords.any { t.contains(it) } ||
+                (id.isNotEmpty() && standardKeywords.any { id.contains(it) }) ||
+                (res.isNotEmpty() && standardKeywords.any { res.contains(it) })
         
-        // Exact match for "x" which is common for close/dismiss
-        if (t == "x" || id == "x") return true
+        // Log it so we can see exactly why YouTube is still showing these buttons
+        if (isStandard) {
+            android.util.Log.d("MediaControllerManager", "Filtered standard action: title='$t', id='$id', res='$res'")
+        } else {
+            android.util.Log.d("MediaControllerManager", "Found custom action: title='$t', id='$id', res='$res'")
+        }
         
-        return false
+        return isStandard || t == "x" || id == "x" || res == "x"
     }
 }
