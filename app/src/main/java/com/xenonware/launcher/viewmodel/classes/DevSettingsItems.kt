@@ -1,14 +1,20 @@
 package com.xenonware.launcher.viewmodel.classes
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -29,6 +35,8 @@ import com.xenonware.launcher.ui.res.XenonDialog
 import com.xenonware.launcher.ui.res.XenonIcon
 import com.xenonware.launcher.viewmodel.DevSettingsViewModel
 import com.xenonware.launcher.viewmodel.SettingsViewModel
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.rememberHazeState
 
 @Composable
 fun DevSettingsItems(
@@ -40,6 +48,11 @@ fun DevSettingsItems(
     
     var showCrashLogDialog by remember { mutableStateOf(false) }
     var currentCrashLog by remember { mutableStateOf("") }
+
+    var showMediaDumpDialog by remember { mutableStateOf(false) }
+    var currentMediaDump by remember { mutableStateOf("") }
+    val hazeState = rememberHazeState()
+
 
     Column(modifier = Modifier.padding(LargestPadding)) {
         SettingsSwitchTile(
@@ -99,8 +112,40 @@ fun DevSettingsItems(
                 }
             }
         )
-        
+
+        SettingsTileContext(
+            title = "Media Debug",
+            subtitle = "Dump current media session info to Logcat and view details.",
+            icon = { XenonIcon(Icons.Rounded.MusicNote).Render(Modifier) },
+            showContext = true,
+            modifier = Modifier.padding(top = LargestPadding),
+            contextContent = {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    TextButton(
+                        onClick = {
+                            currentMediaDump = viewModel.dumpMediaControls()
+                            showMediaDumpDialog = true
+                        }
+                    ) {
+                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            XenonIcon(Icons.Rounded.Description).Render(Modifier)
+                            Text("Dump Media State")
+                        }
+                    }
+                }
+            }
+        )
         if (showCrashLogDialog) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .hazeEffect(hazeState)
+            ) {
             XenonDialog(
                 onDismissRequest = { showCrashLogDialog = false },
                 title = "Crash Log",
@@ -112,6 +157,29 @@ fun DevSettingsItems(
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(8.dp)
                 )
+            }}
+        }
+        if (showMediaDumpDialog) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .hazeEffect(hazeState)
+            ) {
+            XenonDialog(
+                onDismissRequest = { showMediaDumpDialog = false },
+                title = "Media State Dump",
+                confirmButtonText = "Close",
+                onConfirmButtonClick = { showMediaDumpDialog = false }
+            ) {
+                val scrollState = rememberScrollState()
+                Box(modifier = Modifier.heightIn(max = 400.dp).verticalScroll(scrollState)) {
+                    Text(
+                        text = currentMediaDump,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(8.dp)
+                    )
+                }
+            }
             }
         }
     }

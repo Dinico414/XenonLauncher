@@ -29,6 +29,7 @@ data class LauncherNotification(
     val postTime: Long,
     val isMessaging: Boolean = false,
     val icon: Drawable? = null,
+    val iconKey: String? = null,
     val senderIcon: Drawable? = null,
     val mediaImage: Drawable? = null,
     val contentIntent: PendingIntent? = null,
@@ -281,6 +282,15 @@ object NotificationManager {
                     }
                 }
 
+                val smallIcon = sbn.notification.smallIcon
+                val iconKey = when (smallIcon?.type) {
+                    Icon.TYPE_RESOURCE -> "res:${smallIcon.resPackage}:${smallIcon.resId}"
+                    Icon.TYPE_URI -> "uri:${smallIcon.uri}"
+                    Icon.TYPE_BITMAP -> "bmp:${smallIcon.hashCode()}"
+                    Icon.TYPE_DATA -> "data:${smallIcon.hashCode()}"
+                    else -> null
+                }
+
                 LauncherNotification(
                     key = sbn.key,
                     packageName = sbn.packageName,
@@ -288,7 +298,8 @@ object NotificationManager {
                     text = body,
                     postTime = sbn.postTime,
                     isMessaging = isMessaging,
-                    icon = sbn.notification.smallIcon?.loadDrawable(context),
+                    icon = smallIcon?.loadDrawable(context),
+                    iconKey = iconKey,
                     senderIcon = finalSenderIcon,
                     mediaImage = finalMediaImage,
                     contentIntent = sbn.notification.contentIntent,

@@ -6,6 +6,7 @@ import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.xenonware.launcher.data.SharedPreferenceManager
+import com.xenonware.launcher.media.MediaControllerManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -68,6 +69,11 @@ class DevSettingsViewModel(application: Application) : AndroidViewModel(applicat
         getApplication<Application>().startActivity(Intent.createChooser(intent, "Share Crash Log").apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         })
+    }
+
+    fun dumpMediaControls(): String {
+        val manager = MediaControllerManager.instance
+        return manager?.dumpMediaState() ?: "MediaControllerManager instance not found."
     }
 
     fun triggerExampleDevActionThatRequiresRestart() {

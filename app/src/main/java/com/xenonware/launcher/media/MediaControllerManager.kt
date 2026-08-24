@@ -37,15 +37,16 @@ data class MediaState(
 
 class MediaControllerManager(private val context: Context) {
     companion object {
-        private var instance: MediaControllerManager? = null
-        
+        private var _instance: MediaControllerManager? = null
+        val instance: MediaControllerManager? get() = _instance
+
         fun update() {
-            instance?.updateActiveSession()
+            _instance?.updateActiveSession()
         }
     }
 
     init {
-        instance = this
+        _instance = this
     }
 
     private val sessionManager = context.getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
@@ -223,6 +224,38 @@ class MediaControllerManager(private val context: Context) {
 
     fun sendCustomAction(action: String) {
         activeController?.transportControls?.sendCustomAction(action, null)
+    }
+
+    fun dumpMediaState(): String {
+        val controller = activeController ?: return "No active media controller."
+        val metadata = controller.metadata
+        val playbackState = controller.playbackState
+        val notification = XenonNotificationService.getNotificationForSession(controller.sessionToken)
+            ?: XenonNotificationService.getInstance()?.activeNotifications?.find { it.packageName == controller.packageName }
+
+        val sb = StringBuilder()
+        sb.append("Package: ${controller.packageName}\n")
+        sb.append("Title: ${metadata?.getString(MediaMetadata.METADATA_KEY_TITLE)}\n")
+        sb.append("Artist: ${metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST)}\n")
+        sb.append("PlaybackState: ${playbackState?.state}\n")
+
+        sb.append("\n[PlaybackState Custom Actions]\n")
+        playbackState?.customActions?.forEach { ca ->
+            val resourceName = getResourceEntryName(try { context.createPackageContext(controller.packageName, 0) } catch (e: Exception) { null }, ca.icon)
+            sb.append("- Action: ${ca.action}, Name: ${ca.name}, IconRes: ${ca.icon} ($resourceName)\n")
+        }
+
+        sb.append("\n[Notification Actions]\n")
+        val compactActionIndices = notification?.notification?.extras?.getIntArray(android.app.Notification.EXTRA_COMPACT_ACTIONS) ?: intArrayOf()
+        sb.append("Compact Action Indices: ${compactActionIndices.joinToString()}\n")
+        notification?.notification?.actions?.forEachIndexed { index, action ->
+            val resourceName = getResourceEntryName(try { context.createPackageContext(controller.packageName, 0) } catch (e: Exception) { null }, action.icon)
+            sb.append("- Index $index: Title: ${action.title}, IconRes: ${action.icon} ($resourceName), Intent: ${action.actionIntent != null}\n")
+        }
+
+        val log = sb.toString()
+        android.util.Log.d("MediaControllerManager", "Media State Dump:\n$log")
+        return log
     }
 
     private fun getResourceEntryName(packageContext: Context?, resId: Int): String? {

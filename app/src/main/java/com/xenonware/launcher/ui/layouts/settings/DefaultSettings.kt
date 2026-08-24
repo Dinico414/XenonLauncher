@@ -288,6 +288,11 @@ fun DefaultSettings(
         }
 
         if (showCalendarSelectionDialog) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .hazeEffect(hazeState)
+            ) {
             CalendarSelectionDialog(
                 availableCalendars = availableCalendars,
                 selectedCalendars = visibleCalendars,
@@ -296,9 +301,14 @@ fun DefaultSettings(
                 onSelectAll = { viewModel.setVisibleCalendars(emptyList()) },
                 onClearAll = { viewModel.setVisibleCalendars(listOf("__NONE__")) }
             )
-        }
+        }}
 
         if (showNotificationManagerDialog) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .hazeEffect(hazeState)
+            ) {
             NotificationManagerDialog(
                 allApps = apps,
                 visibleApps = visibleNotificationApps,
@@ -309,9 +319,14 @@ fun DefaultSettings(
                 iconShape = iconShape,
                 showShadow = showShadow
             )
-        }
+        }}
 
         if (showHiddenAppsDialog) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .hazeEffect(hazeState)
+            ) {
             NotificationManagerDialog(
                 allApps = apps,
                 visibleApps = hiddenApps,
@@ -325,7 +340,7 @@ fun DefaultSettings(
                 iconShape = iconShape,
                 showShadow = showShadow
             )
-        }
+        }}
 
         configShortcutType?.let { type ->
             val initialValue = when (type) {

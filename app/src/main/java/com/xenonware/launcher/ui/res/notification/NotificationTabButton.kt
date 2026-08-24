@@ -2,6 +2,8 @@ package com.xenonware.launcher.ui.res.notification
 
 import android.graphics.drawable.Drawable
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.VectorConverter
@@ -34,6 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -70,6 +73,7 @@ fun NotificationTabButton(
     onClick: () -> Unit,
     onDismiss: () -> Unit = {},
     isOverDelete: (androidx.compose.ui.geometry.Rect) -> Boolean = { false },
+    iconKey: String? = null,
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
@@ -83,7 +87,7 @@ fun NotificationTabButton(
     var isDragging by remember { mutableStateOf(false) }
 
     val iconScale = remember { Animatable(1f) }
-    var prevCount by remember { mutableStateOf(notificationCount) }
+    var prevCount by remember { mutableIntStateOf(notificationCount) }
 
     LaunchedEffect(notificationCount) {
         if (notificationCount > prevCount) {
@@ -183,28 +187,44 @@ fun NotificationTabButton(
         Row(
             modifier = Modifier
                 .padding(horizontal = 12.dp)
-                .fillMaxHeight(),
+                .fillMaxHeight()
+                .animateContentSize(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
             val iconToDraw = notificationIcon ?: app?.icon
-            if (iconToDraw != null) {
-                val iconBitmap = remember(iconToDraw) {
-                    try {
-                        iconToDraw.toBitmap(width = 40, height = 40).asImageBitmap()
-                    } catch (e: Exception) {
-                        null
+            val stableKey = remember(iconKey, app?.packageName, iconToDraw) {
+                iconKey ?: app?.packageName ?: iconToDraw?.hashCode()?.toString() ?: "no_icon"
+            }
+
+            Crossfade(targetState = stableKey to iconToDraw, label = "tab_icon_fade") { (_, targetIcon) ->
+                if (targetIcon != null) {
+                    val iconBitmap = remember(stableKey) {
+                        try {
+                            targetIcon.toBitmap(width = 40, height = 40).asImageBitmap()
+                        } catch (e: Exception) {
+                            null
+                        }
                     }
-                }
-                if (iconBitmap != null) {
-                    Image(
-                        bitmap = iconBitmap,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(20.dp)
-                            .scale(iconScale.value),
-                        colorFilter = ColorFilter.tint(iconColor)
-                    )
+                    if (iconBitmap != null) {
+                        Image(
+                            bitmap = iconBitmap,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(20.dp)
+                                .scale(iconScale.value),
+                            colorFilter = ColorFilter.tint(iconColor)
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Rounded.Apps,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(20.dp)
+                                .scale(iconScale.value),
+                            tint = iconColor
+                        )
+                    }
                 } else {
                     Icon(
                         imageVector = Icons.Rounded.Apps,
@@ -215,15 +235,6 @@ fun NotificationTabButton(
                         tint = iconColor
                     )
                 }
-            } else {
-                Icon(
-                    imageVector = Icons.Rounded.Apps,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(20.dp)
-                        .scale(iconScale.value),
-                    tint = iconColor
-                )
             }
 
             AnimatedVisibility(

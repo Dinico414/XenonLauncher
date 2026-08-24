@@ -4,11 +4,22 @@ import android.app.ActivityOptions
 import android.content.res.Configuration
 import android.text.format.DateFormat
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -22,7 +33,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
@@ -45,8 +55,6 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.pager.PagerDefaults
-import androidx.compose.foundation.pager.PagerSnapDistance
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
@@ -69,6 +77,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -179,6 +188,15 @@ fun NotificationPage(
             groupedNotifications[pkg]?.maxOfOrNull { it.postTime } ?: 0L
         }
     }
+
+    // Keep a "last known" set of data for the tabs to prevent them from vanishing
+    // instantly during the exit animation when notifications are cleared.
+    var lastTabsData by remember { mutableStateOf<Pair<List<String>, Map<String, List<LauncherNotification>>>?>(null) }
+    if (sortedAppPackages.isNotEmpty()) {
+        lastTabsData = sortedAppPackages to groupedNotifications
+    }
+    val effectiveTabs = if (notificationCount > 0) sortedAppPackages else lastTabsData?.first ?: emptyList()
+    val effectiveGroups = if (notificationCount > 0) groupedNotifications else lastTabsData?.second ?: emptyMap()
 
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
@@ -354,132 +372,153 @@ fun NotificationPage(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
+                        .animateContentSize(animationSpec = spring(stiffness = Spring.StiffnessMedium))
                 ) {
-                    if (notificationCount == 0) {
-                        Box(modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.EmojiEvents,
-                                    contentDescription = null,
-                                    tint = baseColor.copy(alpha = 0.8f),
-                                    modifier = Modifier.size(64.dp)
-                                )
-                                Text(
-                                    text = "You're up to date",
-                                    color = baseColor.copy(alpha = 0.8f),
-                                    fontSize = 18.sp,
-                                    fontFamily = QuicksandTitleVariable,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-                        }
-                    } else {
-                        if (selectedPackage == null) {
-                            Box(modifier = Modifier
-                                .weight(1f)
-                                .fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.NotificationsActive,
-                                        contentDescription = null,
-                                        tint = baseColor.copy(alpha = 0.8f),
-                                        modifier = Modifier.size(64.dp)
-                                    )
-                                    Text(
-                                        text = "You have $notificationCount notifications",
-                                        color = baseColor.copy(alpha = 0.8f),
-                                        fontSize = 18.sp,
-                                        fontFamily = QuicksandTitleVariable,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                }
-                            }
-                        } else {
-                            val pkg = selectedPackage!!
-                            val app = apps.find { it.packageName == pkg }
-                            val appColor = remember(app) { ColorUtils.getDominantColor(app?.icon) }
+                    val stateKey = when {
+                        notificationCount == 0 -> "empty"
+                        selectedPackage == null -> "summary"
+                        else -> "details|$selectedPackage"
+                    }
 
-                            LazyColumn(
-                                state = landscapeListState,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxWidth()
-                                    .then(contentOffset)
-                                    .nestedScroll(hideKeyboardOnOverscroll)
-                                    .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                                    .drawWithContent {
-                                        drawContent()
-                                        val fadeHeight = 16.dp.toPx()
-                                        drawRect(
-                                            brush = Brush.verticalGradient(
-                                                0f to Color.Transparent,
-                                                fadeHeight / size.height to Color.Black
-                                            ),
-                                            blendMode = BlendMode.DstIn
+                    AnimatedContent(
+                        targetState = stateKey,
+                        transitionSpec = {
+                            (fadeIn(animationSpec = tween(150)) + scaleIn(initialScale = 0.98f, animationSpec = tween(150)))
+                                .togetherWith(fadeOut(animationSpec = tween(80)))
+                        },
+                        label = "notification_content_landscape",
+                        modifier = Modifier.weight(1f).fillMaxWidth()
+                    ) { targetState ->
+                        when {
+                            targetState == "empty" -> {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.EmojiEvents,
+                                            contentDescription = null,
+                                            tint = baseColor.copy(alpha = 0.8f),
+                                            modifier = Modifier.size(64.dp)
                                         )
-                                        drawRect(
-                                            brush = Brush.verticalGradient(
-                                                (size.height - fadeHeight) / size.height to Color.Black,
-                                                1f to Color.Transparent
-                                            ),
-                                            blendMode = BlendMode.DstIn
+                                        Text(
+                                            text = "You're up to date",
+                                            color = baseColor.copy(alpha = 0.8f),
+                                            fontSize = 18.sp,
+                                            fontFamily = QuicksandTitleVariable,
+                                            fontWeight = FontWeight.Medium
                                         )
                                     }
-                                    .drawVerticalScrollbar(landscapeListState, colorScheme.primary),
-                                verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.Bottom),
-                                contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
-                            ) {
-                                val notificationsInGroup = groupedNotifications[pkg]?.reversed() ?: emptyList()
-                                itemsIndexed(notificationsInGroup, key = { _, it -> it.key }) { index, notification ->
-                                    val offsetAbove = if (index > 0) offsets[notificationsInGroup[index - 1].key] ?: 0f else 0f
-                                    val offsetBelow = if (index < notificationsInGroup.size - 1) offsets[notificationsInGroup[index + 1].key] ?: 0f else 0f
+                                }
+                            }
+                            targetState == "summary" -> {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.NotificationsActive,
+                                            contentDescription = null,
+                                            tint = baseColor.copy(alpha = 0.8f),
+                                            modifier = Modifier.size(64.dp)
+                                        )
+                                        Text(
+                                            text = "You have $notificationCount notifications",
+                                            color = baseColor.copy(alpha = 0.8f),
+                                            fontSize = 18.sp,
+                                            fontFamily = QuicksandTitleVariable,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+                                }
+                            }
+                            targetState.startsWith("details|") -> {
+                                val pkg = targetState.substringAfter("|")
+                                val app = apps.find { it.packageName == pkg }
+                                val appColor = remember(app) { ColorUtils.getDominantColor(app?.icon) }
 
-                                    NotificationItem(
-                                        notification = notification,
-                                        appColor = appColor,
-                                        isFirst = index == 0,
-                                        isLast = index == notificationsInGroup.size - 1,
-                                        offsetAbove = offsetAbove,
-                                        offsetBelow = offsetBelow,
-                                        replyingNotificationKey = replyingNotificationKey,
-                                        onReplyOpen = { viewModel.setReplyingNotification(it) },
-                                        onReplyBoundsChanged = onReplyBounds,
-                                        onOffsetChanged = { offsets[notification.key] = it },
-                                        modifier = Modifier.animateItem(
-                                            fadeInSpec = tween(durationMillis = 200),
-                                            placementSpec = spring(
-                                                dampingRatio = Spring.DampingRatioNoBouncy,
-                                                stiffness = Spring.StiffnessMedium
+                                LazyColumn(
+                                    state = landscapeListState,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .then(contentOffset)
+                                        .nestedScroll(hideKeyboardOnOverscroll)
+                                        .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                                        .drawWithContent {
+                                            drawContent()
+                                            val fadeHeight = 16.dp.toPx()
+                                            drawRect(
+                                                brush = Brush.verticalGradient(
+                                                    0f to Color.Transparent,
+                                                    fadeHeight / size.height to Color.Black
+                                                ),
+                                                blendMode = BlendMode.DstIn
+                                            )
+                                            drawRect(
+                                                brush = Brush.verticalGradient(
+                                                    (size.height - fadeHeight) / size.height to Color.Black,
+                                                    1f to Color.Transparent
+                                                ),
+                                                blendMode = BlendMode.DstIn
+                                            )
+                                        }
+                                        .drawVerticalScrollbar(landscapeListState, colorScheme.primary),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.Bottom),
+                                    contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
+                                ) {
+                                    val notificationsInGroup = groupedNotifications[pkg]?.reversed() ?: emptyList()
+                                    itemsIndexed(notificationsInGroup, key = { _, it -> it.key }) { index, notification ->
+                                        val offsetAbove = if (index > 0) offsets[notificationsInGroup[index - 1].key] ?: 0f else 0f
+                                        val offsetBelow = if (index < notificationsInGroup.size - 1) offsets[notificationsInGroup[index + 1].key] ?: 0f else 0f
+
+                                        NotificationItem(
+                                            notification = notification,
+                                            appColor = appColor,
+                                            isFirst = index == 0,
+                                            isLast = index == notificationsInGroup.size - 1,
+                                            offsetAbove = offsetAbove,
+                                            offsetBelow = offsetBelow,
+                                            replyingNotificationKey = replyingNotificationKey,
+                                            onReplyOpen = { viewModel.setReplyingNotification(it) },
+                                            onReplyBoundsChanged = onReplyBounds,
+                                            onOffsetChanged = { offsets[notification.key] = it },
+                                            modifier = Modifier.animateItem(
+                                                fadeInSpec = tween(durationMillis = 120),
+                                                placementSpec = spring(
+                                                    dampingRatio = Spring.DampingRatioNoBouncy,
+                                                    stiffness = Spring.StiffnessHigh
+                                                ),
+                                                fadeOutSpec = tween(durationMillis = 120)
                                             ),
-                                            fadeOutSpec = tween(durationMillis = 200)
-                                        ),
-                                        onOpen = {
-                                            try {
-                                                val options = ActivityOptions.makeBasic()
-                                                options.pendingIntentBackgroundActivityStartMode =
-                                                    ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
-                                                notification.contentIntent?.send(context, 0, null, null, null, null, options.toBundle())
-                                            } catch (_: Exception) {
-                                                try { notification.contentIntent?.send() } catch (_: Exception) {}
-                                            }
-                                        },
-                                        onDismiss = { onDismissNotification(notification.key) }
-                                    )
+                                            onOpen = {
+                                                try {
+                                                    val options = ActivityOptions.makeBasic()
+                                                    options.pendingIntentBackgroundActivityStartMode =
+                                                        ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+                                                    notification.contentIntent?.send(context, 0, null, null, null, null, options.toBundle())
+                                                } catch (_: Exception) {
+                                                    try { notification.contentIntent?.send() } catch (_: Exception) {}
+                                                }
+                                            },
+                                            onDismiss = { onDismissNotification(notification.key) }
+                                        )
+                                    }
                                 }
                             }
                         }
+                    }
 
+                    AnimatedVisibility(
+                        visible = notificationCount > 0,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut(animationSpec = tween(150)) +
+                               shrinkVertically(animationSpec = tween(durationMillis = 200, delayMillis = 150))
+                    ) {
                         NotificationTabs(
-                            sortedAppPackages = sortedAppPackages,
-                            groupedNotifications = groupedNotifications,
+                            sortedAppPackages = effectiveTabs,
+                            groupedNotifications = effectiveGroups,
                             selectedPackage = selectedPackage,
                             apps = apps,
                             viewModel = viewModel,
@@ -503,9 +542,10 @@ fun NotificationPage(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(0.35f)
-                        .then(contentOffset)
+                        .weight(0.28f)
+                        .then(wholeScreenOffset)
                         .padding(horizontal = 24.dp)
+                        .padding(top = 16.dp)
                         .onGloballyPositioned { atAGlanceSectionPos = it.positionInRoot() }
                         .combinedClickable(
                             interactionSource = remember { MutableInteractionSource() },
@@ -518,7 +558,7 @@ fun NotificationPage(
                             onClick = {}
                         ),
                     horizontalAlignment = Alignment.Start,
-                    verticalArrangement = Arrangement.Center
+                    verticalArrangement = Arrangement.Top
                 ) {
                     AtAGlanceSection(
                         currentDate = currentDate,
@@ -527,8 +567,7 @@ fun NotificationPage(
                         nextAlarm = nextAlarm,
                         timers = timers,
                         stopwatches = stopwatches,
-                        isWallpaperDark = wallpaperDarkIcons,
-                        modifier = Modifier.fillMaxHeight()
+                        isWallpaperDark = wallpaperDarkIcons
                     )
                 }
 
@@ -536,43 +575,54 @@ fun NotificationPage(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
+                        .padding(bottom = dockAreaHeight)
+                        .animateContentSize(animationSpec = spring(stiffness = Spring.StiffnessMedium))
                 ) {
-                    if (notificationCount == 0) {
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxWidth(), contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.EmojiEvents,
-                                    contentDescription = null,
-                                    tint = baseColor.copy(alpha = 0.8f),
-                                    modifier = Modifier.size(64.dp)
-                                )
-                                Text(
-                                    text = "You're up to date",
-                                    color = baseColor.copy(alpha = 0.8f),
-                                    fontSize = 18.sp,
-                                    fontFamily = QuicksandTitleVariable,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-                        }
-                        Spacer(Modifier.height(dockAreaHeight))
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .then(contentOffset)
-                        ) {
-                            if (selectedPackage == null) {
+                    val stateKey = when {
+                        notificationCount == 0 -> "empty"
+                        selectedPackage == null -> "summary"
+                        else -> "details|$selectedPackage"
+                    }
+
+                    AnimatedContent(
+                        targetState = stateKey,
+                        transitionSpec = {
+                            (fadeIn(animationSpec = tween(150)) + scaleIn(initialScale = 0.98f, animationSpec = tween(150)))
+                                .togetherWith(fadeOut(animationSpec = tween(80)))
+                        },
+                        label = "notification_content_portrait",
+                        modifier = Modifier.weight(1f).fillMaxWidth()
+                    ) { targetState ->
+                        when {
+                            targetState == "empty" -> {
                                 Box(
-                                    modifier = Modifier
-                                        .fillMaxSize(), contentAlignment = Alignment.Center
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.EmojiEvents,
+                                            contentDescription = null,
+                                            tint = baseColor.copy(alpha = 0.8f),
+                                            modifier = Modifier.size(64.dp)
+                                        )
+                                        Text(
+                                            text = "You're up to date",
+                                            color = baseColor.copy(alpha = 0.8f),
+                                            fontSize = 18.sp,
+                                            fontFamily = QuicksandTitleVariable,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+                                }
+                            }
+                            targetState == "summary" -> {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
                                 ) {
                                     Column(
                                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -593,16 +643,17 @@ fun NotificationPage(
                                         )
                                     }
                                 }
-                            } else {
-                                val pkg = selectedPackage!!
+                            }
+                            targetState.startsWith("details|") -> {
+                                val pkg = targetState.substringAfter("|")
                                 val app = apps.find { it.packageName == pkg }
-                                val appColor =
-                                    remember(app) { ColorUtils.getDominantColor(app?.icon) }
+                                val appColor = remember(app) { ColorUtils.getDominantColor(app?.icon) }
 
                                 LazyColumn(
                                     state = portraitListState,
                                     modifier = Modifier
                                         .fillMaxSize()
+                                        .then(contentOffset)
                                         .nestedScroll(hideKeyboardOnOverscroll)
                                         .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
                                         .drawWithContent {
@@ -624,21 +675,13 @@ fun NotificationPage(
                                             )
                                         }
                                         .drawVerticalScrollbar(portraitListState, colorScheme.primary),
-                                    verticalArrangement = Arrangement.spacedBy(
-                                        2.dp,
-                                        Alignment.Bottom
-                                    ),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.Bottom),
                                     contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
                                 ) {
-                                    val notificationsInGroup =
-                                        groupedNotifications[pkg]?.reversed() ?: emptyList()
-                                    itemsIndexed(
-                                        notificationsInGroup,
-                                        key = { _, it -> it.key }) { index, notification ->
-                                        val offsetAbove =
-                                            if (index > 0) offsets[notificationsInGroup[index - 1].key] ?: 0f else 0f
-                                        val offsetBelow =
-                                            if (index < notificationsInGroup.size - 1) offsets[notificationsInGroup[index + 1].key] ?: 0f else 0f
+                                    val notificationsInGroup = groupedNotifications[pkg]?.reversed() ?: emptyList()
+                                    itemsIndexed(notificationsInGroup, key = { _, it -> it.key }) { index, notification ->
+                                        val offsetAbove = if (index > 0) offsets[notificationsInGroup[index - 1].key] ?: 0f else 0f
+                                        val offsetBelow = if (index < notificationsInGroup.size - 1) offsets[notificationsInGroup[index + 1].key] ?: 0f else 0f
 
                                         NotificationItem(
                                             notification = notification,
@@ -652,32 +695,21 @@ fun NotificationPage(
                                             onReplyBoundsChanged = onReplyBounds,
                                             onOffsetChanged = { offsets[notification.key] = it },
                                             modifier = Modifier.animateItem(
-                                                fadeInSpec = tween(durationMillis = 200),
+                                                fadeInSpec = tween(durationMillis = 120),
                                                 placementSpec = spring(
                                                     dampingRatio = Spring.DampingRatioNoBouncy,
-                                                    stiffness = Spring.StiffnessMedium
+                                                    stiffness = Spring.StiffnessHigh
                                                 ),
-                                                fadeOutSpec = tween(durationMillis = 200)
+                                                fadeOutSpec = tween(durationMillis = 120)
                                             ),
                                             onOpen = {
                                                 try {
                                                     val options = ActivityOptions.makeBasic()
                                                     options.pendingIntentBackgroundActivityStartMode =
                                                         ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
-                                                    notification.contentIntent?.send(
-                                                        context,
-                                                        0,
-                                                        null,
-                                                        null,
-                                                        null,
-                                                        null,
-                                                        options.toBundle()
-                                                    )
+                                                    notification.contentIntent?.send(context, 0, null, null, null, null, options.toBundle())
                                                 } catch (_: Exception) {
-                                                    try {
-                                                        notification.contentIntent?.send()
-                                                    } catch (_: Exception) {
-                                                    }
+                                                    try { notification.contentIntent?.send() } catch (_: Exception) {}
                                                 }
                                             },
                                             onDismiss = { onDismissNotification(notification.key) }
@@ -686,10 +718,17 @@ fun NotificationPage(
                                 }
                             }
                         }
+                    }
 
+                    AnimatedVisibility(
+                        visible = notificationCount > 0,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut(animationSpec = tween(150)) +
+                               shrinkVertically(animationSpec = tween(durationMillis = 200, delayMillis = 150))
+                    ) {
                         NotificationTabs(
-                            sortedAppPackages = sortedAppPackages,
-                            groupedNotifications = groupedNotifications,
+                            sortedAppPackages = effectiveTabs,
+                            groupedNotifications = effectiveGroups,
                             selectedPackage = selectedPackage,
                             apps = apps,
                             viewModel = viewModel,
@@ -697,9 +736,7 @@ fun NotificationPage(
                             onPackageSelected = { selectedPackage = it },
                             deleteButtonBounds = deleteButtonBounds,
                             onDeleteButtonBoundsChanged = { deleteButtonBounds = it },
-                            modifier = Modifier
-                                .then(wholeScreenOffset)
-                                .padding(bottom = dockAreaHeight)
+                            modifier = wholeScreenOffset
                         )
                     }
                 }
@@ -1113,12 +1150,14 @@ fun NotificationTabs(
         modifier = modifier
             .fillMaxWidth()
             .blockHorizontalPagerSwipe()
-            .padding(horizontal = horizontalPadding),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = horizontalPadding)
+            .animateContentSize(animationSpec = spring(stiffness = Spring.StiffnessLow)),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(tabSpacing)
     ) {
         if (!isScrollable) {
             sortedAppPackages.forEach { pkg ->
-                androidx.compose.runtime.key(pkg) {
+                key(pkg) {
                     val app = apps.find { it.packageName == pkg }
                     val notificationsForApp = groupedNotifications[pkg] ?: emptyList()
                     val latestNotification = notificationsForApp.firstOrNull()
@@ -1126,29 +1165,34 @@ fun NotificationTabs(
                     val appColor = remember(app) { ColorUtils.getDominantColor(app?.icon) }
                     val contrastColor = remember(appColor) { ColorUtils.getContrastColor(appColor) }
 
-                    NotificationTabButton(
-                        app = app,
-                        notificationIcon = latestNotification?.icon,
-                        notificationCount = notificationsForApp.size,
-                        isSelected = isSelected,
-                        appColor = appColor,
-                        contrastColor = contrastColor,
-                        onClick = { onPackageSelected(if (isSelected) null else pkg) },
-                        onDismiss = { viewModel.dismissNotificationsByPackage(pkg) },
-                        isOverDelete = { tabRect ->
-                            val intersection = deleteButtonBounds.intersect(tabRect)
-                            val overlapRatio = if (intersection.isEmpty) 0f else {
-                                (intersection.width * intersection.height) / (deleteButtonBounds.width * deleteButtonBounds.height)
-                            }
-                            overlapRatio >= 0.5f || tabRect.center.x >= deleteButtonBounds.left
-                        },
+                    AnimatedVisibility(
+                        visible = true,
+                        enter = fadeIn() + expandHorizontally(),
+                        exit = fadeOut() + shrinkHorizontally(),
                         modifier = Modifier.weight(1f)
-                    )
+                    ) {
+                        NotificationTabButton(
+                            app = app,
+                            notificationIcon = latestNotification?.icon,
+                            notificationCount = notificationsForApp.size,
+                            isSelected = isSelected,
+                            appColor = appColor,
+                            contrastColor = contrastColor,
+                            onClick = { onPackageSelected(if (isSelected) null else pkg) },
+                            onDismiss = { viewModel.dismissNotificationsByPackage(pkg) },
+                            isOverDelete = { tabRect ->
+                                val intersection = deleteButtonBounds.intersect(tabRect)
+                                val overlapRatio = if (intersection.isEmpty) 0f else {
+                                    (intersection.width * intersection.height) / (deleteButtonBounds.width * deleteButtonBounds.height)
+                                }
+                                overlapRatio >= 0.5f || tabRect.center.x >= deleteButtonBounds.left
+                            },
+                            iconKey = latestNotification?.iconKey,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 }
-                Spacer(Modifier.width(tabSpacing))
             }
-
-            Spacer(Modifier.width(deleteSpacing - tabSpacing))
 
             Surface(
                 shape = RoundedCornerShape(deleteCornerRadius),
@@ -1214,7 +1258,7 @@ fun NotificationTabs(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     sortedAppPackages.forEach { pkg ->
-                        androidx.compose.runtime.key(pkg) {
+                        key(pkg) {
                             val app = apps.find { it.packageName == pkg }
                             val notificationsForApp = groupedNotifications[pkg] ?: emptyList()
                             val latestNotification = notificationsForApp.firstOrNull()
@@ -1222,30 +1266,35 @@ fun NotificationTabs(
                             val appColor = remember(app) { ColorUtils.getDominantColor(app?.icon) }
                             val contrastColor = remember(appColor) { ColorUtils.getContrastColor(appColor) }
 
-                            NotificationTabButton(
-                                app = app,
-                                notificationIcon = latestNotification?.icon,
-                                notificationCount = notificationsForApp.size,
-                                isSelected = isSelected,
-                                appColor = appColor,
-                                contrastColor = contrastColor,
-                                onClick = { onPackageSelected(if (isSelected) null else pkg) },
-                                onDismiss = { viewModel.dismissNotificationsByPackage(pkg) },
-                                isOverDelete = { tabRect ->
-                                    val intersection = deleteButtonBounds.intersect(tabRect)
-                                    val overlapRatio = if (intersection.isEmpty) 0f else {
-                                        (intersection.width * intersection.height) / (deleteButtonBounds.width * deleteButtonBounds.height)
-                                    }
-                                    overlapRatio >= 0.5f || tabRect.center.x >= deleteButtonBounds.left
-                                },
-                                modifier = Modifier.width(itemWidth)
-                            )
+                            AnimatedVisibility(
+                                visible = true,
+                                enter = fadeIn() + expandHorizontally(),
+                                exit = fadeOut() + shrinkHorizontally()
+                            ) {
+                                NotificationTabButton(
+                                    app = app,
+                                    notificationIcon = latestNotification?.icon,
+                                    notificationCount = notificationsForApp.size,
+                                    isSelected = isSelected,
+                                    appColor = appColor,
+                                    contrastColor = contrastColor,
+                                    onClick = { onPackageSelected(if (isSelected) null else pkg) },
+                                    onDismiss = { viewModel.dismissNotificationsByPackage(pkg) },
+                                    isOverDelete = { tabRect ->
+                                        val intersection = deleteButtonBounds.intersect(tabRect)
+                                        val overlapRatio = if (intersection.isEmpty) 0f else {
+                                            (intersection.width * intersection.height) / (deleteButtonBounds.width * deleteButtonBounds.height)
+                                        }
+                                        overlapRatio >= 0.5f || tabRect.center.x >= deleteButtonBounds.left
+                                    },
+                                    iconKey = latestNotification?.iconKey,
+                                    modifier = Modifier.width(itemWidth)
+                                )
+                            }
                         }
                     }
                 }
             }
-
-            Spacer(Modifier.width(deleteSpacing))
 
             Surface(
                 shape = RoundedCornerShape(deleteCornerRadius),

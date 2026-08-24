@@ -6,6 +6,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Spring
@@ -406,31 +407,37 @@ fun NotificationItem(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     val iconToDraw = notification.icon
-                    if (iconToDraw != null) {
-                        val iconBitmap = remember(iconToDraw) {
-                            try {
-                                iconToDraw.toBitmap(
-                                    width = (40 * density.density).toInt().coerceAtLeast(1),
-                                    height = (40 * density.density).toInt().coerceAtLeast(1)
-                                ).asImageBitmap()
-                            } catch (_: Exception) {
-                                null
-                            }
-                        }
+                    val stableKey = remember(notification.iconKey, notification.key, iconToDraw) {
+                        notification.iconKey ?: notification.key
+                    }
 
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .background(finalAppColor, RoundedCornerShape(12.dp)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (iconBitmap != null) {
-                                Image(
-                                    bitmap = iconBitmap,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(24.dp),
-                                    colorFilter = ColorFilter.tint(finalContrastColor)
-                                )
+                    Crossfade(targetState = stableKey to iconToDraw, label = "notification_icon_fade") { (_, targetIcon) ->
+                        if (targetIcon != null) {
+                            val iconBitmap = remember(stableKey) {
+                                try {
+                                    targetIcon.toBitmap(
+                                        width = (40 * density.density).toInt().coerceAtLeast(1),
+                                        height = (40 * density.density).toInt().coerceAtLeast(1)
+                                    ).asImageBitmap()
+                                } catch (_: Exception) {
+                                    null
+                                }
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .background(finalAppColor, RoundedCornerShape(12.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (iconBitmap != null) {
+                                    Image(
+                                        bitmap = iconBitmap,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(24.dp),
+                                        colorFilter = ColorFilter.tint(finalContrastColor)
+                                    )
+                                }
                             }
                         }
                     }
