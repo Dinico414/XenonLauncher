@@ -352,11 +352,10 @@ fun LauncherScreen(
     val hazeState = rememberHazeState()
     val scope = rememberCoroutineScope()
     
-    val isHome = pagerState.currentPage == 1 && !pagerState.isScrollInProgress
-    BackHandler(enabled = isAppDrawerVisible || !isHome) {
+    BackHandler(enabled = true) {
         if (isAppDrawerVisible) {
             onAppDrawerVisibilityChange(false)
-        } else {
+        } else if (pagerState.currentPage != 1) {
             scope.launch {
                 pagerState.animateScrollToPage(1)
             }

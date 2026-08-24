@@ -12,12 +12,10 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
-import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.basicMarquee
@@ -30,9 +28,11 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
@@ -94,6 +94,8 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -112,6 +114,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.graphics.drawable.toBitmap
 import com.xenon.mylibrary.theme.QuicksandTitleVariable
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.notification.LauncherNotification
@@ -1093,6 +1096,16 @@ fun AtAGlanceSection(
     }
 }
 
+private data class CachedTabInfo(
+    val app: AppInfo?,
+    val iconBitmap: ImageBitmap?,
+    val iconKey: String?,
+    val notificationCount: Int,
+    val appColor: Color,
+    val contrastColor: Color,
+    val isSelected: Boolean
+)
+
 @Composable
 fun NotificationTabs(
     sortedAppPackages: List<String>,
@@ -1107,223 +1120,260 @@ fun NotificationTabs(
     isLandscape: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    val scrollState = rememberScrollState()
-    val configuration = LocalConfiguration.current
-    val screenWidth = if (isLandscape) configuration.screenWidthDp.dp / 2 else configuration.screenWidthDp.dp
-    val horizontalPadding = 16.dp
-    val availableWidth = screenWidth - (horizontalPadding * 2)
-
-    val tabCount = sortedAppPackages.size
-    val tabSpacing = 4.dp
-    val deleteSpacing = 8.dp
-    val totalItems = tabCount + 1
-    val maxVisible = 5
-
-    val isScrollable = totalItems > maxVisible
-    val view = LocalView.current
-    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
-
-    val itemWidth = if (isScrollable) {
-        (availableWidth - (tabSpacing * (maxVisible - 1)) - deleteSpacing) / maxVisible
-    } else {
-        0.dp
-    }
-
-    val blockPagerScroll = remember {
-        object : NestedScrollConnection {
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (source == NestedScrollSource.UserInput && abs(available.x) > abs(available.y)) {
-                    view.parent?.requestDisallowInterceptTouchEvent(true)
-                }
-                return Offset.Zero
-            }
-
-            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
-                return if (source == NestedScrollSource.UserInput) Offset(x = available.x, y = 0f) else Offset.Zero
-            }
-        }
-    }
-
-    val deleteInteractionSource = remember { MutableInteractionSource() }
-    val isDeletePressed by deleteInteractionSource.collectIsPressedAsState()
-    val deleteCornerRadius by animateDpAsState(if (isDeletePressed) 4.dp else 12.dp, label = "delete_corner")
-
-    Row(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
             .blockHorizontalPagerSwipe()
-            .padding(horizontal = horizontalPadding)
-            .animateContentSize(animationSpec = spring(stiffness = Spring.StiffnessLow)),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(tabSpacing)
     ) {
-        if (!isScrollable) {
-            sortedAppPackages.forEach { pkg ->
-                key(pkg) {
-                    val app = apps.find { it.packageName == pkg }
-                    val notificationsForApp = groupedNotifications[pkg] ?: emptyList()
-                    val latestNotification = notificationsForApp.firstOrNull()
-                    val isSelected = selectedPackage == pkg
-                    val appColor = remember(app) { ColorUtils.getDominantColor(app?.icon) }
-                    val contrastColor = remember(appColor) { ColorUtils.getContrastColor(appColor) }
+        val containerWidth = maxWidth
+        val horizontalPadding = 16.dp
+        val availableWidth = containerWidth - (horizontalPadding * 2)
 
-                    AnimatedVisibility(
-                        visible = true,
-                        enter = fadeIn() + expandHorizontally(),
-                        exit = fadeOut() + shrinkHorizontally(),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        NotificationTabButton(
-                            app = app,
-                            notificationIcon = latestNotification?.icon,
-                            notificationCount = notificationsForApp.size,
-                            isSelected = isSelected,
-                            appColor = appColor,
-                            contrastColor = contrastColor,
-                            onClick = { onPackageSelected(if (isSelected) null else pkg) },
-                            onDismiss = { viewModel.dismissNotificationsByPackage(pkg) },
-                            isOverDelete = { tabRect ->
-                                val intersection = deleteButtonBounds.intersect(tabRect)
-                                val overlapRatio = if (intersection.isEmpty) 0f else {
-                                    (intersection.width * intersection.height) / (deleteButtonBounds.width * deleteButtonBounds.height)
-                                }
-                                overlapRatio >= 0.5f || tabRect.center.x >= deleteButtonBounds.left
-                            },
-                            iconKey = latestNotification?.iconKey,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
+        val tabCount = sortedAppPackages.size
+        val tabSpacing = 4.dp
+        val maxVisible = 5
+        val totalItems = tabCount + 1
+
+        val isScrollable = totalItems > maxVisible
+
+        val visibleCount = totalItems.coerceAtMost(maxVisible)
+        val totalSpacing = tabSpacing * (visibleCount - 1)
+        val targetItemWidth = ((availableWidth - totalSpacing) / visibleCount).coerceAtLeast(40.dp)
+
+        val animatedItemWidth by animateDpAsState(
+            targetValue = targetItemWidth,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioNoBouncy,
+                stiffness = Spring.StiffnessMediumLow
+            ),
+            label = "tab_item_width"
+        )
+
+        var displayedPackages by remember { mutableStateOf(sortedAppPackages) }
+        val leavingPackages = remember { mutableStateMapOf<String, Boolean>() }
+        val cachedTabInfo = remember { mutableStateMapOf<String, CachedTabInfo>() }
+
+        LaunchedEffect(sortedAppPackages) {
+            val currentSet = sortedAppPackages.toSet()
+
+            // 1. Mark items no longer in sortedAppPackages as leaving
+            displayedPackages.forEach { pkg ->
+                if (pkg !in currentSet && leavingPackages[pkg] != true) {
+                    leavingPackages[pkg] = true
                 }
             }
 
-            Surface(
-                shape = RoundedCornerShape(deleteCornerRadius),
-                color = colorScheme.error,
-                modifier = Modifier
-                    .height(40.dp)
-                    .weight(1f)
-                    .onGloballyPositioned { onDeleteButtonBoundsChanged(it.boundsInRoot()) }
-                    .combinedClickable(
-                        interactionSource = deleteInteractionSource,
-                        indication = androidx.compose.foundation.LocalIndication.current,
-                        onLongClick = {
-                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                            onDismissAllNotifications()
-                        },
-                        onClick = {}
-                    )
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Rounded.Delete,
-                        contentDescription = "Clear All",
-                        tint = colorScheme.onError,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+            // 2. Add any new items from sortedAppPackages
+            val existingSet = displayedPackages.toSet()
+            val newItems = sortedAppPackages.filter { it !in existingSet }
+            if (newItems.isNotEmpty()) {
+                displayedPackages = displayedPackages + newItems
             }
-        } else {
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .nestedScroll(blockPagerScroll)
-                    .drawWithContent {
-                        drawContent()
-                        val fadeWidth = 16.dp.toPx()
-                        if (scrollState.value > 0.5f) {
-                            drawRect(
-                                brush = Brush.horizontalGradient(
-                                    colors = listOf(
-                                        Color.Transparent,
-                                        Color.Black
-                                    ), startX = 0f, endX = fadeWidth
-                                ),
-                                blendMode = BlendMode.DstIn
-                            )
-                        }
-                        if (scrollState.value < scrollState.maxValue - 0.5f) {
-                            drawRect(
-                                brush = Brush.horizontalGradient(
-                                    colors = listOf(
-                                        Color.Black,
-                                        Color.Transparent
-                                    ), startX = size.width - fadeWidth, endX = size.width
-                                ),
-                                blendMode = BlendMode.DstIn
-                            )
-                        }
-                    }
-            ) {
-                Row(
-                    modifier = Modifier.horizontalScroll(scrollState),
-                    horizontalArrangement = Arrangement.spacedBy(tabSpacing),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    sortedAppPackages.forEach { pkg ->
-                        key(pkg) {
-                            val app = apps.find { it.packageName == pkg }
-                            val notificationsForApp = groupedNotifications[pkg] ?: emptyList()
-                            val latestNotification = notificationsForApp.firstOrNull()
-                            val isSelected = selectedPackage == pkg
-                            val appColor = remember(app) { ColorUtils.getDominantColor(app?.icon) }
-                            val contrastColor = remember(appColor) { ColorUtils.getContrastColor(appColor) }
+        }
 
-                            AnimatedVisibility(
-                                visible = true,
-                                enter = fadeIn() + expandHorizontally(),
-                                exit = fadeOut() + shrinkHorizontally()
-                            ) {
-                                NotificationTabButton(
-                                    app = app,
-                                    notificationIcon = latestNotification?.icon,
-                                    notificationCount = notificationsForApp.size,
-                                    isSelected = isSelected,
-                                    appColor = appColor,
-                                    contrastColor = contrastColor,
-                                    onClick = { onPackageSelected(if (isSelected) null else pkg) },
-                                    onDismiss = { viewModel.dismissNotificationsByPackage(pkg) },
-                                    isOverDelete = { tabRect ->
-                                        val intersection = deleteButtonBounds.intersect(tabRect)
-                                        val overlapRatio = if (intersection.isEmpty) 0f else {
-                                            (intersection.width * intersection.height) / (deleteButtonBounds.width * deleteButtonBounds.height)
-                                        }
-                                        overlapRatio >= 0.5f || tabRect.center.x >= deleteButtonBounds.left
-                                    },
-                                    iconKey = latestNotification?.iconKey,
-                                    modifier = Modifier.width(itemWidth)
-                                )
-                            }
-                        }
+        val scrollState = rememberScrollState()
+        val view = LocalView.current
+        val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+
+        val blockPagerScroll = remember {
+            object : NestedScrollConnection {
+                override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                    if (source == NestedScrollSource.UserInput && abs(available.x) > abs(available.y)) {
+                        view.parent?.requestDisallowInterceptTouchEvent(true)
                     }
+                    return Offset.Zero
                 }
-            }
 
-            Surface(
-                shape = RoundedCornerShape(deleteCornerRadius),
-                color = colorScheme.error,
-                modifier = Modifier
-                    .height(40.dp)
-                    .width(itemWidth)
-                    .onGloballyPositioned { onDeleteButtonBoundsChanged(it.boundsInRoot()) }
-                    .combinedClickable(
-                        interactionSource = deleteInteractionSource,
-                        indication = androidx.compose.foundation.LocalIndication.current,
-                        onLongClick = {
-                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                            onDismissAllNotifications()
-                        },
-                        onClick = {}
-                    )
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Rounded.Delete,
-                        contentDescription = "Clear All",
-                        tint = colorScheme.onError,
-                        modifier = Modifier.size(20.dp)
-                    )
+                override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                    return if (source == NestedScrollSource.UserInput) Offset(x = available.x, y = 0f) else Offset.Zero
                 }
             }
         }
+
+        val deleteInteractionSource = remember { MutableInteractionSource() }
+        val isDeletePressed by deleteInteractionSource.collectIsPressedAsState()
+        val deleteCornerRadius by animateDpAsState(
+            targetValue = if (isDeletePressed) 4.dp else 12.dp,
+            label = "delete_corner"
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = horizontalPadding),
+            contentAlignment = Alignment.CenterStart
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .nestedScroll(blockPagerScroll)
+                .then(
+                    if (isScrollable) {
+                        Modifier
+                            .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                            .drawWithContent {
+                                drawContent()
+                                val fadeWidth = 16.dp.toPx()
+                                val contentRight = size.width - animatedItemWidth.toPx()
+
+                                if (scrollState.value > 0.5f) {
+                                    drawRect(
+                                        brush = Brush.horizontalGradient(
+                                            colors = listOf(Color.Transparent, Color.Black),
+                                            startX = 0f, endX = fadeWidth
+                                        ),
+                                        blendMode = BlendMode.DstIn
+                                    )
+                                }
+                                if (scrollState.maxValue > 0 && scrollState.value < scrollState.maxValue - 0.5f) {
+                                    drawRect(
+                                        brush = Brush.horizontalGradient(
+                                            colors = listOf(Color.Black, Color.Transparent),
+                                            startX = contentRight - fadeWidth, endX = contentRight
+                                        ),
+                                        blendMode = BlendMode.DstIn
+                                    )
+                                }
+                            }
+                    } else {
+                        Modifier
+                    }
+                )
+                .horizontalScroll(scrollState, enabled = isScrollable)
+                .graphicsLayer {
+                    shape = RoundedCornerShape(
+                        topStart = deleteCornerRadius,
+                        bottomStart = deleteCornerRadius,
+                        topEnd = deleteCornerRadius,
+                        bottomEnd = deleteCornerRadius
+                    )
+                    clip = true
+                },
+            horizontalArrangement = Arrangement.spacedBy(tabSpacing),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            for (pkg in displayedPackages) {
+                key(pkg) {
+                    val isLeaving = leavingPackages[pkg] == true
+                    val isVisible = !isLeaving
+
+                    val tabWidth by animateDpAsState(
+                        targetValue = if (isVisible) animatedItemWidth else 0.dp,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        ),
+                        label = "tab_width_$pkg",
+                        finishedListener = { finalWidth ->
+                            if (isLeaving && finalWidth <= 0.5.dp) {
+                                leavingPackages.remove(pkg)
+                                cachedTabInfo.remove(pkg)
+                                displayedPackages = displayedPackages.filter { it != pkg }
+                            }
+                        }
+                    )
+
+                    if (tabWidth > 0.1.dp) {
+                        Box(
+                            modifier = Modifier
+                                .width(tabWidth)
+                                .graphicsLayer {
+                                    alpha = (tabWidth / animatedItemWidth.coerceAtLeast(1.dp)).coerceIn(0f, 1f)
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            val liveApp = remember(apps, pkg) { apps.find { it.packageName == pkg } }
+                            val liveNotifications = groupedNotifications[pkg] ?: emptyList()
+                            val liveLatestNotification = liveNotifications.firstOrNull()
+                            val liveAppColor = remember(liveApp) { ColorUtils.getDominantColor(liveApp?.icon) }
+                            val liveContrastColor = remember(liveAppColor) { ColorUtils.getContrastColor(liveAppColor) }
+                            val isSelected = selectedPackage == pkg
+
+                            val liveIconBitmap = remember(liveLatestNotification?.iconKey, liveLatestNotification?.icon, liveApp?.icon) {
+                                val drawable = liveLatestNotification?.icon ?: liveApp?.icon
+                                try {
+                                    drawable?.toBitmap(width = 40, height = 40)?.asImageBitmap()
+                                } catch (_: Exception) {
+                                    null
+                                }
+                            }
+
+                            if (liveNotifications.isNotEmpty() && liveIconBitmap != null) {
+                                cachedTabInfo[pkg] = CachedTabInfo(
+                                    app = liveApp,
+                                    iconBitmap = liveIconBitmap,
+                                    iconKey = liveLatestNotification?.iconKey,
+                                    notificationCount = liveNotifications.size,
+                                    appColor = liveAppColor,
+                                    contrastColor = liveContrastColor,
+                                    isSelected = isSelected
+                                )
+                            }
+
+                            val cached = cachedTabInfo[pkg]
+
+                            val appToUse = liveApp ?: cached?.app
+                            val iconBitmapToUse = cached?.iconBitmap ?: liveIconBitmap
+                            val iconKeyToUse = cached?.iconKey ?: liveLatestNotification?.iconKey
+                            val countToUse = if (liveNotifications.isEmpty()) (cached?.notificationCount ?: 1) else liveNotifications.size
+                            val appColorToUse = if (liveNotifications.isEmpty()) (cached?.appColor ?: liveAppColor) else liveAppColor
+                            val contrastColorToUse = if (liveNotifications.isEmpty()) (cached?.contrastColor ?: liveContrastColor) else liveContrastColor
+                            val isSelectedToUse = if (liveNotifications.isEmpty()) (cached?.isSelected ?: isSelected) else isSelected
+
+                            NotificationTabButton(
+                                app = appToUse,
+                                notificationIconBitmap = iconBitmapToUse,
+                                notificationCount = countToUse,
+                                isSelected = isSelectedToUse,
+                                appColor = appColorToUse,
+                                contrastColor = contrastColorToUse,
+                                onClick = { onPackageSelected(if (isSelected) null else pkg) },
+                                onDismiss = { viewModel.dismissNotificationsByPackage(pkg) },
+                                isOverDelete = { tabRect ->
+                                    val intersection = deleteButtonBounds.intersect(tabRect)
+                                    val overlapRatio = if (intersection.isEmpty) 0f else {
+                                        (intersection.width * intersection.height) / (deleteButtonBounds.width * deleteButtonBounds.height)
+                                    }
+                                    overlapRatio >= 0.5f || tabRect.center.x >= deleteButtonBounds.left
+                                },
+                                deleteButtonBounds = deleteButtonBounds,
+                                iconKey = iconKeyToUse,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.width(animatedItemWidth))
+        }
+
+        Surface(
+            shape = RoundedCornerShape(deleteCornerRadius),
+            color = colorScheme.error,
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .height(40.dp)
+                .width(animatedItemWidth)
+                .onGloballyPositioned { onDeleteButtonBoundsChanged(it.boundsInRoot()) }
+                .combinedClickable(
+                    interactionSource = deleteInteractionSource,
+                    indication = androidx.compose.foundation.LocalIndication.current,
+                    onLongClick = {
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                        onDismissAllNotifications()
+                    },
+                    onClick = {}
+                )
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = Icons.Rounded.Delete,
+                    contentDescription = "Clear All",
+                    tint = colorScheme.onError,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
     }
+}
 }

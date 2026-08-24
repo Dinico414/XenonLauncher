@@ -3,7 +3,6 @@ package com.xenonware.launcher.ui.res.notification
 import android.graphics.drawable.Drawable
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.VectorConverter
@@ -45,12 +44,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -65,19 +68,23 @@ import kotlin.math.roundToInt
 @Composable
 fun NotificationTabButton(
     app: AppInfo?,
-    notificationIcon: Drawable?,
+    notificationIcon: Drawable? = null,
+    notificationIconBitmap: ImageBitmap? = null,
     notificationCount: Int,
     isSelected: Boolean,
     appColor: Color,
     contrastColor: Color,
     onClick: () -> Unit,
     onDismiss: () -> Unit = {},
-    isOverDelete: (androidx.compose.ui.geometry.Rect) -> Boolean = { false },
+    isOverDelete: (Rect) -> Boolean = { false },
+    deleteButtonBounds: Rect = Rect.Zero,
+    onDragStateChanged: (Boolean) -> Unit = {},
     iconKey: String? = null,
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
     val view = androidx.compose.ui.platform.LocalView.current
+    val haptic = LocalHapticFeedback.current
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
@@ -143,6 +150,8 @@ fun NotificationTabButton(
                 detectDragGesturesAfterLongPress(
                     onDragStart = { 
                         isDragging = true
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onDragStateChanged(true)
                         view.parent?.requestDisallowInterceptTouchEvent(true)
                     },
                     onDrag = { change, dragAmount ->
@@ -154,15 +163,13 @@ fun NotificationTabButton(
                     },
                     onDragEnd = {
                         isDragging = false
+                        onDragStateChanged(false)
                         val currentRect = androidx.compose.ui.geometry.Rect(
                             itemPos + dragOffset.value,
                             androidx.compose.ui.geometry.Size(itemSize.width.toFloat(), itemSize.height.toFloat())
                         )
                         if (isOverDelete(currentRect)) {
                             onDismiss()
-                            scope.launch {
-                                dragOffset.snapTo(Offset.Zero)
-                            }
                         } else {
                             scope.launch {
                                 dragOffset.animateTo(
@@ -177,6 +184,7 @@ fun NotificationTabButton(
                     },
                     onDragCancel = {
                         isDragging = false
+                        onDragStateChanged(false)
                         scope.launch {
                             dragOffset.animateTo(Offset.Zero)
                         }
@@ -186,45 +194,33 @@ fun NotificationTabButton(
     ) {
         Row(
             modifier = Modifier
-                .padding(horizontal = 12.dp)
-                .fillMaxHeight()
-                .animateContentSize(),
+                .padding(horizontal = 10.dp)
+                .fillMaxHeight(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
             val iconToDraw = notificationIcon ?: app?.icon
-            val stableKey = remember(iconKey, app?.packageName, iconToDraw) {
-                iconKey ?: app?.packageName ?: iconToDraw?.hashCode()?.toString() ?: "no_icon"
+            val stableKey = remember(iconKey, app?.packageName) {
+                iconKey ?: app?.packageName ?: "no_icon"
             }
 
-            Crossfade(targetState = stableKey to iconToDraw, label = "tab_icon_fade") { (_, targetIcon) ->
-                if (targetIcon != null) {
-                    val iconBitmap = remember(stableKey) {
-                        try {
-                            targetIcon.toBitmap(width = 40, height = 40).asImageBitmap()
-                        } catch (e: Exception) {
-                            null
-                        }
+            Crossfade(targetState = stableKey, label = "tab_icon_fade") { currentKey ->
+                val iconBitmap = remember(currentKey, notificationIconBitmap, iconToDraw) {
+                    notificationIconBitmap ?: try {
+                        iconToDraw?.toBitmap(width = 40, height = 40)?.asImageBitmap()
+                    } catch (_: Exception) {
+                        null
                     }
-                    if (iconBitmap != null) {
-                        Image(
-                            bitmap = iconBitmap,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(20.dp)
-                                .scale(iconScale.value),
-                            colorFilter = ColorFilter.tint(iconColor)
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Rounded.Apps,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(20.dp)
-                                .scale(iconScale.value),
-                            tint = iconColor
-                        )
-                    }
+                }
+                if (iconBitmap != null) {
+                    Image(
+                        bitmap = iconBitmap,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(20.dp)
+                            .scale(iconScale.value),
+                        colorFilter = ColorFilter.tint(iconColor)
+                    )
                 } else {
                     Icon(
                         imageVector = Icons.Rounded.Apps,
