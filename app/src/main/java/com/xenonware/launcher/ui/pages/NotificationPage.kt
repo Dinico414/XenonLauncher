@@ -526,6 +526,7 @@ fun NotificationPage(
                             onPackageSelected = { selectedPackage = it },
                             deleteButtonBounds = deleteButtonBounds,
                             onDeleteButtonBoundsChanged = { deleteButtonBounds = it },
+                            isLandscape = true,
                             modifier = wholeScreenOffset
                         )
                     }
@@ -855,7 +856,7 @@ fun AtAGlanceSection(
     val pagerState = rememberPagerState { calendarEvents.size.coerceAtLeast(1) }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
 
-    var totalDrag by remember { mutableStateOf(0f) }
+    var totalDrag by remember { mutableFloatStateOf(0f) }
     var dragTriggered by remember { mutableStateOf(false) }
     val swipeThreshold = with(LocalDensity.current) { 24.dp.toPx() }
 
@@ -1103,11 +1104,12 @@ fun NotificationTabs(
     onPackageSelected: (String?) -> Unit,
     deleteButtonBounds: Rect,
     onDeleteButtonBoundsChanged: (Rect) -> Unit,
+    isLandscape: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
     val configuration = LocalConfiguration.current
-    val screenWidth = configuration.screenWidthDp.dp
+    val screenWidth = if (isLandscape) configuration.screenWidthDp.dp / 2 else configuration.screenWidthDp.dp
     val horizontalPadding = 16.dp
     val availableWidth = screenWidth - (horizontalPadding * 2)
 
