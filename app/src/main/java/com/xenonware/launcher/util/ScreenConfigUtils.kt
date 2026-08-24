@@ -9,27 +9,26 @@ fun shouldDisableLandscapeLayout(context: Context): Boolean {
     val resources = context.resources
     val metrics = resources.displayMetrics
 
-    // 1. Physische Abmessungen in Inches (Zoll) berechnen
-    val widthInches = metrics.widthPixels / metrics.xdpi
-    val heightInches = metrics.heightPixels / metrics.ydpi
-    val screenDiagonalInches = sqrt((widthInches * widthInches) + (heightInches * heightInches))
+    // Sichere Berechnung der DP-Abmessungen über density (160 dp = 1 inch)
+    val density = if (metrics.density > 0f) metrics.density else 1.0f
+    val widthDp = metrics.widthPixels / density
+    val heightDp = metrics.heightPixels / density
+    val screenDiagonalInches = sqrt((widthDp * widthDp) + (heightDp * heightDp)) / 160.0
 
-    // 2. Echtes Seitenverhältnis der Hardware berechnen (Unabhängig von aktueller Orientation)
-    val maxPx = max(metrics.widthPixels, metrics.heightPixels).toDouble()
-    val minPx = min(metrics.widthPixels, metrics.heightPixels).toDouble()
-    val aspectRatio = maxPx / minPx  // z.B. 1.07 beim Mind One, 1.25 beim Foldable
+    val maxDp = max(widthDp, heightDp).toDouble()
+    val minDp = min(widthDp, heightDp).toDouble().coerceAtLeast(1.0)
+    val aspectRatio = maxDp / minDp
 
-    // 3. Bedingungen prüfen:
+    val isAlmostSquare = aspectRatio < 1.35
+    val isSmallScreen = screenDiagonalInches < 5.2
 
-    // Ist der Bildschirm nahezu quadratisch? (Seitenverhältnis unter 1:1.25)
-    val isAlmostSquare = aspectRatio < 1.25
+    return isSmallScreen || (isAlmostSquare && screenDiagonalInches < 6.0)
+}
 
-    // Ist es ein physisch kleiner Bildschirm? (Kleiner als 5.5 Zoll Diagonale)
-    // (Mind One = ~4.0", Clicks = ~4.0", Titan Elite 2 = ~4.0")
-    val isSmallScreen = screenDiagonalInches < 5.5
+fun isLandscapeAllowed(context: Context): Boolean {
+    return !shouldDisableLandscapeLayout(context)
+}
 
-    // ERGEBNIS:
-    // Wenn das Gerät quadratisch UND physisch klein ist -> SCHALTE LANDSCAPE AB!
-    // Wenn es ein Foldable ist (quadratisch, aber > 7 Zoll) -> BLEIBT LANDSCAPE AN!
-    return isAlmostSquare && isSmallScreen
+fun isSmallScreenDevice(context: Context): Boolean {
+    return shouldDisableLandscapeLayout(context)
 }
