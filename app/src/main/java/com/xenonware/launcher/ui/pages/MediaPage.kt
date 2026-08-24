@@ -176,7 +176,7 @@ fun MediaPage(
 
     val isSmallDevice = isSmallScreenDevice(context)
     val verticalSafeDrawHeight = (configuration.screenHeightDp.dp - topPadding - navBarHeight).coerceAtLeast(40.dp)
-    val maxSmallCoverSize = minOf(configuration.screenWidthDp.dp / 3, verticalSafeDrawHeight)
+    val maxSmallCoverSize = minOf(configuration.screenWidthDp.dp / 3, verticalSafeDrawHeight/3)
     val portraitAlbumArtSize = if (isSmallDevice) maxSmallCoverSize else 280.dp
 
     // Normalize progress for the background effects: 0.5f to 1.0f -> 0.0f to 1.0f
@@ -489,7 +489,7 @@ fun MediaPage(
                 }
             }
         } else {
-            // Content
+            // Portrait
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -517,41 +517,44 @@ fun MediaPage(
                         Text("Grant Access")
                     }
                 } else {
-                    // Top App Info / Open Source Button
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .statusBarsPadding(),
-                        horizontalArrangement = Arrangement.Start
-                    ) {
-                        Surface(
-                            onClick = onOpenSource,
-                            color = contentColor.copy(alpha = 0.1f),
-                            shape = RoundedCornerShape(20.dp),
-                            modifier = Modifier.height(40.dp)
+                    if (!isSmallDevice) {
+                        // Top App Info / Open Source Button (Only shown in normal layout)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .statusBarsPadding(),
+                            horizontalArrangement = Arrangement.Start
                         ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            Surface(
+                                onClick = onOpenSource,
+                                color = contentColor.copy(alpha = 0.1f),
+                                shape = RoundedCornerShape(20.dp),
+                                modifier = Modifier.height(40.dp)
                             ) {
-                                if (appIcon != null) {
-                                    AsyncImage(
-                                        model = appIcon,
-                                        contentDescription = null,
-                                        modifier = Modifier
-                                            .size(24.dp)
-                                            .clip(RoundedCornerShape(12.dp))
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    if (appIcon != null) {
+                                        AsyncImage(
+                                            model = appIcon,
+                                            contentDescription = null,
+                                            modifier = Modifier
+                                                .size(24.dp)
+                                                .clip(RoundedCornerShape(12.dp))
+                                        )
+                                    }
+                                    Text(
+                                        text = appName,
+                                        color = contentColor,
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.Medium,
+                                        modifier = Modifier.padding(
+                                            start = if (appName == "Media") 4.dp else 0.dp, end = 4.dp
+                                        )
                                     )
                                 }
-                                Text(
-                                    text = appName,
-                                    color = contentColor,
-                                    style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = FontWeight.Medium,
-                                    modifier = Modifier.padding(start = if (appName == "Media") 4.dp else 0.dp, end = 4.dp
-                                    )
-                                )
                             }
                         }
                     }
@@ -559,53 +562,107 @@ fun MediaPage(
                     Spacer(modifier = Modifier.weight(1f))
 
                     if (isSmallDevice) {
-                        // Small Device Layout: Track Name & Artist Column on left, Album Cover on right
+                        // Small Device Layout:
+                        // Left side: App Info at top, Title & Artist at bottom (height = album cover height)
+                        // Right side: Album Cover
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .padding(vertical = 8.dp)
+                                .fillMaxWidth()
+                                .height(portraitAlbumArtSize),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             Column(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .fadingEdges(),
+                                    .fillMaxHeight(),
+                                verticalArrangement = Arrangement.Top,
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
+                                // Media Source / App Info (Aligned to TOP of Album Cover)
+                                Surface(
+                                    onClick = onOpenSource,
+                                    color = contentColor.copy(alpha = 0.1f),
+                                    shape = RoundedCornerShape(20.dp),
+                                    modifier = Modifier.height(36.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        if (appIcon != null) {
+                                            AsyncImage(
+                                                model = appIcon,
+                                                contentDescription = null,
+                                                modifier = Modifier
+                                                    .size(20.dp)
+                                                    .clip(RoundedCornerShape(10.dp))
+                                            )
+                                        }
+                                        Text(
+                                            text = appName,
+                                            color = contentColor,
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.Medium,
+                                            modifier = Modifier.padding(
+                                                start = if (appName == "Media") 4.dp else 0.dp, end = 4.dp
+                                            )
+                                        )
+                                    }
+                                }
+
+                                // Track Title & Artist (Centered between Media Source and bottom of Album Cover)
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .basicMarquee(
-                                            iterations = Int.MAX_VALUE,
-                                            repeatDelayMillis = 3000
-                                        ),
+                                        .weight(1f),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Text(
-                                        text = mediaState.title ?: "Nothing Playing",
-                                        style = MaterialTheme.typography.headlineSmall.copy(shadow = textShadow),
-                                        fontWeight = FontWeight.Bold,
-                                        color = contentColor,
-                                        textAlign = TextAlign.Center,
-                                        maxLines = 1
-                                    )
-                                }
-                                if (mediaState.artist != "") {
-                                    Box(
+                                    Column(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .basicMarquee(
-                                                iterations = Int.MAX_VALUE,
-                                                repeatDelayMillis = 3000
-                                            ),
-                                        contentAlignment = Alignment.Center
+                                            .fadingEdges(),
+                                        horizontalAlignment = Alignment.CenterHorizontally
                                     ) {
-                                        Text(
-                                            text = mediaState.artist ?: "",
-                                            style = MaterialTheme.typography.bodyMedium.copy(shadow = textShadow),
-                                            color = subContentColor,
-                                            textAlign = TextAlign.Center,
-                                            maxLines = 1
-                                        )
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .basicMarquee(
+                                                    iterations = Int.MAX_VALUE,
+                                                    repeatDelayMillis = 3000
+                                                ),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = mediaState.title ?: "Nothing Playing",
+                                                style = MaterialTheme.typography.headlineSmall.copy(shadow = textShadow),
+                                                fontWeight = FontWeight.Bold,
+                                                color = contentColor,
+                                                textAlign = TextAlign.Center,
+                                                maxLines = 1
+                                            )
+                                        }
+                                        if (mediaState.artist != "") {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .basicMarquee(
+                                                        iterations = Int.MAX_VALUE,
+                                                        repeatDelayMillis = 3000
+                                                    ),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(
+                                                    text = mediaState.artist ?: "",
+                                                    style = MaterialTheme.typography.bodyMedium.copy(shadow = textShadow),
+                                                    color = subContentColor,
+                                                    textAlign = TextAlign.Center,
+                                                    maxLines = 1
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }
