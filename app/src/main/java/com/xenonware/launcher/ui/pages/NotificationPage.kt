@@ -366,6 +366,11 @@ fun NotificationPage(
                         timers = timers,
                         stopwatches = stopwatches,
                         isWallpaperDark = wallpaperDarkIcons,
+                        onLongClick = {
+                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                            dropDownOffset = atAGlanceSectionPos + Offset(100f, 100f)
+                            showAtAGlanceMenu = true
+                        },
                         modifier = Modifier.fillMaxHeight()
                     )
                 }
@@ -571,7 +576,12 @@ fun NotificationPage(
                         nextAlarm = nextAlarm,
                         timers = timers,
                         stopwatches = stopwatches,
-                        isWallpaperDark = wallpaperDarkIcons
+                        isWallpaperDark = wallpaperDarkIcons,
+                        onLongClick = {
+                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                            dropDownOffset = atAGlanceSectionPos + Offset(100f, 100f)
+                            showAtAGlanceMenu = true
+                        }
                     )
                 }
 
@@ -847,6 +857,7 @@ fun AtAGlanceSection(
     timers: List<LauncherNotification>,
     stopwatches: List<LauncherNotification>,
     isWallpaperDark: Boolean = false,
+    onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val baseColor = if (isWallpaperDark) Color.Black else Color.White
@@ -981,26 +992,30 @@ fun AtAGlanceSection(
                             verticalArrangement = Arrangement.Center,
                             modifier = Modifier
                                 .fillMaxSize()
-                                .clickable(
+                                .combinedClickable(
                                     interactionSource = remember { MutableInteractionSource() },
-                                    indication = null
-                                ) {
-                                    try {
-                                        val uri = android.content.ContentUris.withAppendedId(
-                                            android.provider.CalendarContract.Events.CONTENT_URI,
-                                            event.id
-                                        )
-                                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).setData(uri)
-                                        context.startActivity(intent)
-                                    } catch (e: Exception) {
-                                        // Fallback to opening calendar at specific time
-                                        val builder = android.provider.CalendarContract.CONTENT_URI.buildUpon()
-                                            .appendPath("time")
-                                        android.content.ContentUris.appendId(builder, event.startTime)
-                                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).setData(builder.build())
-                                        context.startActivity(intent)
+                                    indication = null,
+                                    onLongClick = {
+                                        onLongClick?.invoke()
+                                    },
+                                    onClick = {
+                                        try {
+                                            val uri = android.content.ContentUris.withAppendedId(
+                                                android.provider.CalendarContract.Events.CONTENT_URI,
+                                                event.id
+                                            )
+                                            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).setData(uri)
+                                            context.startActivity(intent)
+                                        } catch (e: Exception) {
+                                            // Fallback to opening calendar at specific time
+                                            val builder = android.provider.CalendarContract.CONTENT_URI.buildUpon()
+                                                .appendPath("time")
+                                            android.content.ContentUris.appendId(builder, event.startTime)
+                                            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).setData(builder.build())
+                                            context.startActivity(intent)
+                                        }
                                     }
-                                }
+                                )
                         ) {
                             Text(
                                 text = event.title,
