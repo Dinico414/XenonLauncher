@@ -1179,6 +1179,15 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
             val now = System.currentTimeMillis()
 
+            val startOfTodayCal = Calendar.getInstance().apply {
+                timeInMillis = now
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+            val startOfToday = startOfTodayCal.timeInMillis
+
             // Calculate end of tomorrow
             val calendar = Calendar.getInstance()
             calendar.timeInMillis = now
@@ -1189,9 +1198,12 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             calendar.set(Calendar.MILLISECOND, 999)
             val endOfTomorrow = calendar.timeInMillis
 
+            // Search from start of yesterday (24h before startOfToday) to safely include all-day events in all timezones
+            val searchStart = startOfToday - (24 * 60 * 60 * 1000L)
+
             // Use Instances table to correctly expand recurring events and handle all-day events
             val builder = CalendarContract.Instances.CONTENT_URI.buildUpon()
-            ContentUris.appendId(builder, now)
+            ContentUris.appendId(builder, searchStart)
             ContentUris.appendId(builder, endOfTomorrow)
             val uri = builder.build()
 
@@ -1232,15 +1244,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 val allDayIdx = cursor.getColumnIndex(CalendarContract.Instances.ALL_DAY)
                 val calIdIdx = cursor.getColumnIndex(CalendarContract.Instances.CALENDAR_ID)
 
-                val startOfTodayCal = Calendar.getInstance().apply {
-                    timeInMillis = now
-                    set(Calendar.HOUR_OF_DAY, 0)
-                    set(Calendar.MINUTE, 0)
-                    set(Calendar.SECOND, 0)
-                    set(Calendar.MILLISECOND, 0)
-                }
-                val startOfToday = startOfTodayCal.timeInMillis
-
                 while (cursor.moveToNext() && events.size < 25) {
                     val id = cursor.getLong(idIdx)
                     val title = cursor.getString(titleIdx) ?: "No Title"
@@ -1248,13 +1251,14 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                     val endTime = cursor.getLong(endIdx)
                     val isAllDay = cursor.getInt(allDayIdx) != 0
 
-                    // 1. Filter out past events that have already ended
-                    if (endTime <= now) {
-                        continue
+                    // 1. Filter out past events
+                    val isPastEvent = if (isAllDay) {
+                        endTime <= startOfToday
+                    } else {
+                        endTime <= now
                     }
 
-                    // 2. Filter out all-day events from previous days (before today 00:00)
-                    if (isAllDay && startTime < startOfToday) {
+                    if (isPastEvent) {
                         continue
                     }
 
@@ -1320,6 +1324,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun setVisibleCalendars(calendars: List<String>) {
         prefManager.visibleCalendars = calendars
         _visibleCalendars.value = calendars
+        loadCalendarEvents()
     }
 
     fun toggleCalendarVisibility(calendarId: String) {
