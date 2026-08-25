@@ -60,10 +60,18 @@ class MediaControllerManager(private val context: Context) {
 
     private val callback = object : MediaController.Callback() {
         override fun onPlaybackStateChanged(state: PlaybackState?) {
-            updateState()
+            try {
+                updateState()
+            } catch (e: Throwable) {
+                android.util.Log.e("MediaControllerManager", "Error in onPlaybackStateChanged", e)
+            }
         }
         override fun onMetadataChanged(metadata: MediaMetadata?) {
-            updateState()
+            try {
+                updateState()
+            } catch (e: Throwable) {
+                android.util.Log.e("MediaControllerManager", "Error in onMetadataChanged", e)
+            }
         }
     }
 
@@ -87,6 +95,8 @@ class MediaControllerManager(private val context: Context) {
             sessionManager.getActiveSessions(notificationListener)
         } catch (e: SecurityException) {
             emptyList<MediaController>()
+        } catch (e: Throwable) {
+            emptyList<MediaController>()
         }
         
         // Pick the first active session or the one currently playing
@@ -102,7 +112,8 @@ class MediaControllerManager(private val context: Context) {
     }
 
     private fun updateState() {
-        val controller = activeController
+        try {
+            val controller = activeController
         if (controller != null) {
             val metadata = controller.metadata
             val playbackState = controller.playbackState
@@ -123,7 +134,7 @@ class MediaControllerManager(private val context: Context) {
             }
 
             val notification = XenonNotificationService.getNotificationForSession(controller.sessionToken)
-                ?: XenonNotificationService.getInstance()?.activeNotifications?.find { it.packageName == controller.packageName }
+                ?: XenonNotificationService.getInstance()?.safeActiveNotifications?.find { it.packageName == controller.packageName }
             
             val serviceContext = XenonNotificationService.getInstance()
             val packageContext = try {
@@ -199,6 +210,9 @@ class MediaControllerManager(private val context: Context) {
         } else {
             mediaState = MediaState()
         }
+        } catch (e: Throwable) {
+            android.util.Log.e("MediaControllerManager", "Error in updateState", e)
+        }
     }
 
     fun seekTo(position: Long) {
@@ -227,11 +241,12 @@ class MediaControllerManager(private val context: Context) {
     }
 
     fun dumpMediaState(): String {
-        val controller = activeController ?: return "No active media controller."
-        val metadata = controller.metadata
-        val playbackState = controller.playbackState
-        val notification = XenonNotificationService.getNotificationForSession(controller.sessionToken)
-            ?: XenonNotificationService.getInstance()?.activeNotifications?.find { it.packageName == controller.packageName }
+        return try {
+            val controller = activeController ?: return "No active media controller."
+            val metadata = controller.metadata
+            val playbackState = controller.playbackState
+            val notification = XenonNotificationService.getNotificationForSession(controller.sessionToken)
+                ?: XenonNotificationService.getInstance()?.safeActiveNotifications?.find { it.packageName == controller.packageName }
 
         val sb = StringBuilder()
         sb.append("Package: ${controller.packageName}\n")
@@ -255,7 +270,10 @@ class MediaControllerManager(private val context: Context) {
 
         val log = sb.toString()
         android.util.Log.d("MediaControllerManager", "Media State Dump:\n$log")
-        return log
+        log
+        } catch (e: Throwable) {
+            "Error dumping media state: ${e.message}"
+        }
     }
 
     private fun getResourceEntryName(packageContext: Context?, resId: Int): String? {

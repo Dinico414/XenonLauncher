@@ -316,7 +316,7 @@ object NotificationManager {
 
             _notificationCount.value = _notifications.value.size
 
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Log.e(TAG, "updateFromNotifications failed", e)
         }
     }
