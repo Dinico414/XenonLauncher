@@ -183,6 +183,10 @@ class MainActivity : ComponentActivity() {
                     permissionsState.launchMultiplePermissionRequest()
                 }
 
+                LaunchedEffect(permissionsState.allPermissionsGranted) {
+                    viewModel.loadCalendarEvents()
+                }
+
                 val apps by viewModel.apps.collectAsState()
                 val pinnedApps by viewModel.pinnedApps.collectAsState()
                 val recentlyOpened by viewModel.recentlyOpened.collectAsState()
@@ -249,6 +253,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        viewModel.loadCalendarEvents()
 
         val currentThemePref = sharedPreferenceManager.theme
         val currentCoverThemeEnabledSetting = sharedPreferenceManager.coverThemeEnabled

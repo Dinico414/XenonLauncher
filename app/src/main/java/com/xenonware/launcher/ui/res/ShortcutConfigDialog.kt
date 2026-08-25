@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
+import com.xenon.mylibrary.res.XenonDialog
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.viewmodel.LauncherViewModel
 

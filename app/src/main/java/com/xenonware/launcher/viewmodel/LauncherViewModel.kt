@@ -68,10 +68,10 @@ import java.net.URL
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Calendar
+import java.util.TimeZone
 import java.util.UUID
 import kotlin.coroutines.resume
 import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.minutes
 
 data class WeatherState(
     val temperature: String = "24°C",
@@ -82,7 +82,11 @@ data class CalendarInfo(
     val id: String,
     val name: String,
     val color: Int,
-    val accountName: String
+    val accountName: String,
+    /** False when the provider holds no events for this calendar, no matter what we query. */
+    val syncEvents: Boolean = true,
+    val visible: Boolean = true,
+    val accountType: String = ""
 )
 
 data class CalendarEvent(
@@ -96,6 +100,25 @@ data class CalendarEvent(
 )
 
 class LauncherViewModel(application: Application) : AndroidViewModel(application) {
+
+    private companion object {
+        const val TAG = "LauncherViewModel"
+
+        /**
+         * Logs every relevant row plus, when a calendar filter is active, exactly which
+         * events that filter is hiding. Flip to false once the calendar list looks right.
+         */
+        const val DEBUG_CALENDAR = true
+
+        /**
+         * Timed events that already ended earlier today still count as "today".
+         * Set to false to go back to only showing running/upcoming events.
+         */
+        const val INCLUDE_PAST_EVENTS_TODAY = true
+
+        const val DAY_MILLIS = 24 * 60 * 60 * 1000L
+    }
+
     private val prefManager = SharedPreferenceManager(application)
 
     private val preferenceListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
@@ -361,6 +384,34 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val _visibleCalendars = MutableStateFlow(prefManager.visibleCalendars)
     val visibleCalendars: StateFlow<List<String>> = _visibleCalendars
 
+    /**
+     * Calendars the user has ticked that the provider will never return events for,
+     * because Google isn't syncing them to this device. Surface these in the calendar
+     * picker with a "not synced" hint, otherwise the tick looks like it did something.
+     */
+    private val _unsyncedSelectedCalendars = MutableStateFlow<List<CalendarInfo>>(emptyList())
+    val unsyncedSelectedCalendars: StateFlow<List<CalendarInfo>> = _unsyncedSelectedCalendars
+
+    /** Opens the system calendar sync settings so the user can enable the missing calendars. */
+    fun openCalendarSyncSettings() {
+        val context = getApplication<Application>()
+        val calendarPackages = listOf("com.google.android.calendar", "com.android.calendar")
+        for (pkg in calendarPackages) {
+            val intent = context.packageManager.getLaunchIntentForPackage(pkg)
+            if (intent != null) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+                return
+            }
+        }
+        try {
+            context.startActivity(
+                Intent(android.provider.Settings.ACTION_SYNC_SETTINGS)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+        } catch (_: Exception) {}
+    }
+
     private val _showNotificationManagerDialog = MutableStateFlow(false)
     val showNotificationManagerDialog: StateFlow<Boolean> = _showNotificationManagerDialog
 
@@ -389,7 +440,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     val activeTimers = NotificationManager.notifications.map { list ->
         val timers = list.filter { it.isTimer }
         if (timers.isNotEmpty()) {
-            Log.d("LauncherViewModel", "Exposing ${timers.size} active timers to UI")
+            Log.d(TAG, "Exposing ${timers.size} active timers to UI")
         }
         timers
     }
@@ -397,7 +448,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     val activeStopwatches = NotificationManager.notifications.map { list ->
         val stopwatches = list.filter { it.isStopwatch }
         if (stopwatches.isNotEmpty()) {
-            Log.d("LauncherViewModel", "Exposing ${stopwatches.size} active stopwatches to UI")
+            Log.d(TAG, "Exposing ${stopwatches.size} active stopwatches to UI")
         }
         stopwatches
     }
@@ -728,7 +779,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         val entries = usageStr.split(",").filter { it.isNotEmpty() }.toMutableList()
         entries.add("$packageName|$now")
 
-        val oneDayAgo = now - 24 * 60 * 60 * 1000
+        val oneDayAgo = now - DAY_MILLIS
         val filteredEntries = entries.filter {
             val parts = it.split("|")
             parts.size == 2 && (parts[1].toLongOrNull() ?: 0L) > oneDayAgo
@@ -740,7 +791,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private fun loadRecentlyOpened() {
         val now = System.currentTimeMillis()
-        val oneDayAgo = now - 24 * 60 * 60 * 1000
+        val oneDayAgo = now - DAY_MILLIS
         val usageStr = prefManager.appUsage
         val recentApps = usageStr.split(",")
             .filter { it.isNotEmpty() }
@@ -1159,9 +1210,302 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         setupCalendarObserver()
         viewModelScope.launch {
             while (true) {
-                delay(5.minutes)
+                delay(30_000L)
                 loadCalendarEvents()
             }
+        }
+    }
+
+    // ---------------------------------------------------------------------------------
+    // Calendar loading
+    // ---------------------------------------------------------------------------------
+
+    private data class DayBounds(
+        val now: Long,
+        val startOfToday: Long,
+        val endOfToday: Long,
+        val endOfTomorrow: Long
+    )
+
+    private fun computeDayBounds(): DayBounds {
+        val now = System.currentTimeMillis()
+
+        val startOfToday = Calendar.getInstance().apply {
+            timeInMillis = now
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+
+        val endOfToday = Calendar.getInstance().apply {
+            timeInMillis = now
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 59)
+            set(Calendar.SECOND, 59)
+            set(Calendar.MILLISECOND, 999)
+        }.timeInMillis
+
+        val endOfTomorrow = Calendar.getInstance().apply {
+            timeInMillis = now
+            add(Calendar.DAY_OF_YEAR, 1)
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 59)
+            set(Calendar.SECOND, 59)
+            set(Calendar.MILLISECOND, 999)
+        }.timeInMillis
+
+        return DayBounds(now, startOfToday, endOfToday, endOfTomorrow)
+    }
+
+    /**
+     * All-day events are stored by the provider with UTC midnight boundaries, so an
+     * all-day event "yesterday" ends at 02:00 local in UTC+2 and looks like it belongs
+     * to today. Shift all-day boundaries into local time before comparing anything.
+     */
+    private fun CalendarEvent.localStart(tz: TimeZone): Long =
+        if (isAllDay) startTime - tz.getOffset(startTime) else startTime
+
+    private fun CalendarEvent.localEnd(tz: TimeZone): Long =
+        if (isAllDay) endTime - tz.getOffset(endTime) else endTime
+
+    private fun CalendarEvent.isRelevant(bounds: DayBounds, tz: TimeZone): Boolean {
+        val start = localStart(tz)
+        val end = localEnd(tz)
+        if (start > bounds.endOfTomorrow) return false
+        // Timed events used to be compared against `now`, which silently dropped every
+        // event that had already finished today while all-day events survived.
+        return if (isAllDay || INCLUDE_PAST_EVENTS_TODAY) {
+            end > bounds.startOfToday
+        } else {
+            end > bounds.now
+        }
+    }
+
+    private fun rankOf(event: CalendarEvent, bounds: DayBounds, tz: TimeZone): Int {
+        val start = event.localStart(tz)
+        val end = event.localEnd(tz)
+        return when {
+            !event.isAllDay && start <= bounds.now && bounds.now < end -> 1 // running now
+            !event.isAllDay && start > bounds.now && start <= bounds.endOfToday -> 2 // later today
+            event.isAllDay && start <= bounds.endOfToday && end > bounds.startOfToday -> 3 // all-day today
+            !event.isAllDay && end <= bounds.now && end > bounds.startOfToday -> 4 // finished earlier today
+            !event.isAllDay && start > bounds.endOfToday && start <= bounds.endOfTomorrow -> 5 // tomorrow
+            event.isAllDay -> 6 // all-day tomorrow
+            else -> 7
+        }
+    }
+
+    /**
+     * Reads calendar rows into [CalendarEvent]s. A single unreadable row is skipped and
+     * logged instead of aborting the whole query — previously one bad row threw out of
+     * the loop and, because the sort order puts all-day events first, left you with only
+     * the all-day results.
+     */
+    private fun readEvents(
+        context: Context,
+        uri: Uri,
+        projection: Array<String>,
+        selection: String?,
+        selectionArgs: Array<String>?,
+        sortOrder: String,
+        bounds: DayBounds,
+        tz: TimeZone
+    ): List<CalendarEvent> {
+        val events = mutableListOf<CalendarEvent>()
+        try {
+            context.contentResolver.query(uri, projection, selection, selectionArgs, sortOrder)?.use { cursor ->
+                val idIdx = cursor.getColumnIndex(CalendarContract.Instances.EVENT_ID)
+                val titleIdx = cursor.getColumnIndex(CalendarContract.Instances.TITLE)
+                val startIdx = cursor.getColumnIndex(CalendarContract.Instances.BEGIN)
+                val endIdx = cursor.getColumnIndex(CalendarContract.Instances.END)
+                val locIdx = cursor.getColumnIndex(CalendarContract.Instances.EVENT_LOCATION)
+                val allDayIdx = cursor.getColumnIndex(CalendarContract.Instances.ALL_DAY)
+                val calIdIdx = cursor.getColumnIndex(CalendarContract.Instances.CALENDAR_ID)
+
+                if (listOf(idIdx, titleIdx, startIdx, endIdx, allDayIdx, calIdIdx).any { it < 0 }) {
+                    Log.e(TAG, "Calendar cursor is missing expected columns; aborting read")
+                    return emptyList()
+                }
+
+                while (cursor.moveToNext()) {
+                    try {
+                        val event = CalendarEvent(
+                            id = cursor.getLong(idIdx),
+                            title = cursor.getString(titleIdx) ?: "No Title",
+                            startTime = cursor.getLong(startIdx),
+                            endTime = cursor.getLong(endIdx),
+                            location = if (locIdx >= 0) cursor.getString(locIdx) else null,
+                            isAllDay = cursor.getInt(allDayIdx) != 0,
+                            calendarId = cursor.getString(calIdIdx) ?: ""
+                        )
+
+                        if (DEBUG_CALENDAR) {
+                            Log.d(
+                                TAG,
+                                "raw row: '${event.title}' cal=${event.calendarId} " +
+                                        "allDay=${event.isAllDay} start=${event.startTime} end=${event.endTime}"
+                            )
+                        }
+
+                        if (event.isRelevant(bounds, tz)) events.add(event)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Skipping unreadable calendar row", e)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error querying calendar instances", e)
+        }
+        return events
+    }
+
+    /**
+     * Answers "are the events even on the device?" — independent of any filtering this
+     * class does. Logs the sync/visible flags per calendar, every row in the Events
+     * table from yesterday onward, and the raw Instances count per calendar with no
+     * selection applied. An event present in Events but absent from Instances means the
+     * provider's instance expansion is stale (clear Calendar Storage + resync). An event
+     * absent from both is either unsynced or not a calendar event at all (Google Tasks,
+     * Reminders and Birthdays live in a private provider CalendarContract cannot read).
+     */
+    private fun logCalendarDiagnostics(context: Context, instancesUri: Uri, bounds: DayBounds) {
+        try {
+            context.contentResolver.query(
+                CalendarContract.Calendars.CONTENT_URI,
+                arrayOf(
+                    CalendarContract.Calendars._ID,
+                    CalendarContract.Calendars.CALENDAR_DISPLAY_NAME,
+                    CalendarContract.Calendars.VISIBLE,
+                    CalendarContract.Calendars.SYNC_EVENTS
+                ), null, null, null
+            )?.use { c ->
+                while (c.moveToNext()) {
+                    Log.d(
+                        TAG,
+                        "cal ${c.getString(0)} '${c.getString(1)}' " +
+                                "visible=${c.getInt(2)} syncEvents=${c.getInt(3)}"
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Could not read Calendars sync flags", e)
+        }
+
+        try {
+            context.contentResolver.query(
+                CalendarContract.Events.CONTENT_URI,
+                arrayOf(
+                    CalendarContract.Events.CALENDAR_ID,
+                    CalendarContract.Events.TITLE,
+                    CalendarContract.Events.DTSTART,
+                    CalendarContract.Events.DTEND,
+                    CalendarContract.Events.ALL_DAY,
+                    CalendarContract.Events.RRULE,
+                    CalendarContract.Events.DELETED
+                ),
+                "${CalendarContract.Events.DTSTART} > ?",
+                arrayOf((bounds.startOfToday - DAY_MILLIS).toString()),
+                "${CalendarContract.Events.DTSTART} ASC"
+            )?.use { c ->
+                Log.d(TAG, "Events table rows from yesterday onward: ${c.count}")
+                while (c.moveToNext()) {
+                    Log.d(
+                        TAG,
+                        "  event cal=${c.getString(0)} '${c.getString(1)}' " +
+                                "start=${c.getLong(2)} end=${c.getLong(3)} " +
+                                "allDay=${c.getInt(4)} rrule=${c.getString(5)} deleted=${c.getInt(6)}"
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Could not read Events table", e)
+        }
+
+        try {
+            Log.d(TAG, "running as user=${android.os.Process.myUserHandle()}")
+            val counts = sortedMapOf<String, Int>()
+            context.contentResolver.query(
+                CalendarContract.Events.CONTENT_URI,
+                arrayOf(CalendarContract.Events.CALENDAR_ID),
+                "${CalendarContract.Events.DELETED} = 0", null, null
+            )?.use { c ->
+                while (c.moveToNext()) {
+                    val id = c.getString(0) ?: "?"
+                    counts[id] = (counts[id] ?: 0) + 1
+                }
+            }
+            Log.d(TAG, "TOTAL Events rows by calendarId (no date filter): $counts")
+        } catch (e: Exception) {
+            Log.e(TAG, "Could not count all Events", e)
+        }
+
+        // Everything stored for the calendars that are supposedly missing, ignoring dates.
+        for (calId in listOf("8", "13", "14")) {
+            try {
+                context.contentResolver.query(
+                    CalendarContract.Events.CONTENT_URI,
+                    arrayOf(
+                        CalendarContract.Events.TITLE,
+                        CalendarContract.Events.DTSTART,
+                        CalendarContract.Events.RRULE,
+                        CalendarContract.Events.ALL_DAY,
+                        CalendarContract.Events.DELETED
+                    ),
+                    "${CalendarContract.Events.CALENDAR_ID} = ?",
+                    arrayOf(calId),
+                    "${CalendarContract.Events.DTSTART} DESC LIMIT 25"
+                )?.use { c ->
+                    Log.d(TAG, "cal $calId Events rows (all dates): ${c.count}")
+                    while (c.moveToNext()) {
+                        Log.d(
+                            TAG,
+                            "   cal$calId '${c.getString(0)}' start=${c.getLong(1)} " +
+                                    "rrule=${c.getString(2)} allDay=${c.getInt(3)} deleted=${c.getInt(4)}"
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Could not read Events for calendar $calId", e)
+            }
+        }
+
+        // Instances across a much wider window, in case the day boundaries are the problem.
+        try {
+            val wide = CalendarContract.Instances.CONTENT_URI.buildUpon()
+            ContentUris.appendId(wide, bounds.startOfToday - 7 * DAY_MILLIS)
+            ContentUris.appendId(wide, bounds.startOfToday + 7 * DAY_MILLIS)
+            val counts = sortedMapOf<String, Int>()
+            context.contentResolver.query(
+                wide.build(),
+                arrayOf(CalendarContract.Instances.CALENDAR_ID),
+                null, null, null
+            )?.use { c ->
+                while (c.moveToNext()) {
+                    val id = c.getString(0) ?: "?"
+                    counts[id] = (counts[id] ?: 0) + 1
+                }
+            }
+            Log.d(TAG, "Instances +/-7 days by calendarId: $counts")
+        } catch (e: Exception) {
+            Log.e(TAG, "Could not count wide Instances", e)
+        }
+
+        try {
+            val counts = sortedMapOf<String, Int>()
+            context.contentResolver.query(
+                instancesUri,
+                arrayOf(CalendarContract.Instances.CALENDAR_ID),
+                null, null, null
+            )?.use { c ->
+                while (c.moveToNext()) {
+                    val id = c.getString(0) ?: "?"
+                    counts[id] = (counts[id] ?: 0) + 1
+                }
+            }
+            Log.d(TAG, "Instances in window by calendarId (no selection): $counts")
+        } catch (e: Exception) {
+            Log.e(TAG, "Could not count Instances", e)
         }
     }
 
@@ -1169,42 +1513,67 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch(Dispatchers.IO) {
             val context = getApplication<Application>()
             if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
+                Log.w(TAG, "READ_CALENDAR not granted; skipping calendar load")
                 return@launch
             }
 
             setupCalendarObserver()
 
-            val visibleCalendars = prefManager.visibleCalendars
-            val events = mutableListOf<CalendarEvent>()
+            val tz = TimeZone.getDefault()
+            val bounds = computeDayBounds()
+            val searchStart = bounds.startOfToday - DAY_MILLIS
 
-            val now = System.currentTimeMillis()
+            val availableCalendars = fetchAvailableCalendars(context)
+            val availableIds = availableCalendars.map { it.id }.toSet()
 
-            val startOfTodayCal = Calendar.getInstance().apply {
-                timeInMillis = now
-                set(Calendar.HOUR_OF_DAY, 0)
-                set(Calendar.MINUTE, 0)
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
+            var visibleCalendars = prefManager.visibleCalendars
+
+            if (visibleCalendars.contains("__NONE__")) {
+                _calendarEvents.value = emptyList()
+                return@launch
             }
-            val startOfToday = startOfTodayCal.timeInMillis
 
-            // Calculate end of tomorrow
-            val calendar = Calendar.getInstance()
-            calendar.timeInMillis = now
-            calendar.add(Calendar.DAY_OF_YEAR, 1)
-            calendar.set(Calendar.HOUR_OF_DAY, 23)
-            calendar.set(Calendar.MINUTE, 59)
-            calendar.set(Calendar.SECOND, 59)
-            calendar.set(Calendar.MILLISECOND, 999)
-            val endOfTomorrow = calendar.timeInMillis
+            // Clean up stale IDs if present
+            if (visibleCalendars.isNotEmpty()) {
+                val validVisible = visibleCalendars.filter { availableIds.contains(it) }
+                if (validVisible.size != visibleCalendars.size) {
+                    Log.w(TAG, "Dropping stale calendar ids: ${visibleCalendars - validVisible.toSet()}")
+                    visibleCalendars = validVisible
+                    prefManager.visibleCalendars = validVisible
+                    _visibleCalendars.value = validVisible
+                }
+            }
 
-            // Search from start of yesterday (24h before startOfToday) to safely include all-day events in all timezones
-            val searchStart = startOfToday - (24 * 60 * 60 * 1000L)
+            // If visibleCalendars contains all available calendars, treat it as no filter (empty)
+            if (visibleCalendars.isNotEmpty() && availableIds.isNotEmpty() &&
+                visibleCalendars.toSet().containsAll(availableIds)
+            ) {
+                visibleCalendars = emptyList()
+                prefManager.visibleCalendars = emptyList()
+                _visibleCalendars.value = emptyList()
+            }
 
-            // Use Instances table to correctly expand recurring events and handle all-day events
+            if (DEBUG_CALENDAR) {
+                Log.d(TAG, "calendar filter=$visibleCalendars available=$availableIds tz=${tz.id}")
+            }
+
+            // Keep the picker's copy fresh so it can render the sync state.
+            _availableCalendars.value = availableCalendars
+
+            val effectiveSelection = if (visibleCalendars.isEmpty()) availableIds else visibleCalendars.toSet()
+            val unsynced = availableCalendars.filter { it.id in effectiveSelection && !it.syncEvents }
+            _unsyncedSelectedCalendars.value = unsynced
+            if (unsynced.isNotEmpty()) {
+                Log.w(
+                    TAG,
+                    "Selected but NOT synced to device — these can never return events: " +
+                            unsynced.joinToString { "${it.id}:'${it.name}' (${it.accountName})" }
+                )
+            }
+
             val builder = CalendarContract.Instances.CONTENT_URI.buildUpon()
             ContentUris.appendId(builder, searchStart)
-            ContentUris.appendId(builder, endOfTomorrow)
+            ContentUris.appendId(builder, bounds.endOfTomorrow)
             val uri = builder.build()
 
             val projection = arrayOf(
@@ -1217,66 +1586,100 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 CalendarContract.Instances.CALENDAR_ID
             )
 
-            var selection = ""
-            val selectionArgsList = mutableListOf<String>()
+            var selection: String? = null
+            var selectionArgs: Array<String>? = null
 
-            if (visibleCalendars.isNotEmpty() && !visibleCalendars.contains("__NONE__")) {
+            if (visibleCalendars.isNotEmpty()) {
                 val placeholders = visibleCalendars.joinToString(",") { "?" }
                 selection = "${CalendarContract.Instances.CALENDAR_ID} IN ($placeholders)"
-                selectionArgsList.addAll(visibleCalendars)
-            } else if (visibleCalendars.contains("__NONE__")) {
-                _calendarEvents.value = emptyList()
-                return@launch
+                selectionArgs = visibleCalendars.toTypedArray()
             }
 
             val sortOrder = "${CalendarContract.Instances.BEGIN} ASC"
 
-            context.contentResolver.query(
-                uri, projection, selection.ifEmpty { null },
-                if (selectionArgsList.isEmpty()) null else selectionArgsList.toTypedArray(),
-                sortOrder
-            )?.use { cursor ->
-                val idIdx = cursor.getColumnIndex(CalendarContract.Instances.EVENT_ID)
-                val titleIdx = cursor.getColumnIndex(CalendarContract.Instances.TITLE)
-                val startIdx = cursor.getColumnIndex(CalendarContract.Instances.BEGIN)
-                val endIdx = cursor.getColumnIndex(CalendarContract.Instances.END)
-                val locIdx = cursor.getColumnIndex(CalendarContract.Instances.EVENT_LOCATION)
-                val allDayIdx = cursor.getColumnIndex(CalendarContract.Instances.ALL_DAY)
-                val calIdIdx = cursor.getColumnIndex(CalendarContract.Instances.CALENDAR_ID)
+            if (DEBUG_CALENDAR) {
+                logCalendarDiagnostics(context, uri, bounds)
+            }
 
-                while (cursor.moveToNext() && events.size < 25) {
-                    val id = cursor.getLong(idIdx)
-                    val title = cursor.getString(titleIdx) ?: "No Title"
-                    val startTime = cursor.getLong(startIdx)
-                    val endTime = cursor.getLong(endIdx)
-                    val isAllDay = cursor.getInt(allDayIdx) != 0
+            var events = readEvents(context, uri, projection, selection, selectionArgs, sortOrder, bounds, tz)
 
-                    // 1. Filter out past events
-                    val isPastEvent = if (isAllDay) {
-                        endTime <= startOfToday
-                    } else {
-                        endTime <= now
+            // Diagnostic: show exactly what the calendar filter is hiding. The old code only
+            // ran an unfiltered fallback when the filtered result was completely empty, so a
+            // filter that hid only the timed events (leaving the all-day ones) went unnoticed.
+            if (selection != null && (DEBUG_CALENDAR || events.isEmpty())) {
+                val unfiltered = readEvents(context, uri, projection, null, null, sortOrder, bounds, tz)
+                val hidden = unfiltered.filter { u -> events.none { it.id == u.id && it.startTime == u.startTime } }
+
+                if (hidden.isNotEmpty()) {
+                    Log.w(TAG, "Filter $visibleCalendars is hiding ${hidden.size} otherwise-relevant events:")
+                    hidden.forEach {
+                        Log.w(TAG, "   hidden: '${it.title}' calendarId=${it.calendarId} allDay=${it.isAllDay}")
                     }
+                }
 
-                    if (isPastEvent) {
-                        continue
+                // Keep the original safety net: if the filter matched nothing at all, show everything.
+                if (events.isEmpty() && unfiltered.isNotEmpty()) {
+                    Log.w(TAG, "Filtered query returned 0 events; falling back to unfiltered results")
+                    events = unfiltered
+                }
+            }
+
+            val sortedEvents = events
+                .sortedWith(
+                    compareBy<CalendarEvent> { rankOf(it, bounds, tz) }
+                        .thenBy { it.localStart(tz) }
+                        .thenBy { it.localEnd(tz) }
+                )
+                .take(25)
+
+            Log.d(TAG, "Loaded ${sortedEvents.size} calendar events (relevant raw: ${events.size})")
+            _calendarEvents.value = sortedEvents
+        }
+    }
+
+    private fun fetchAvailableCalendars(context: Context): List<CalendarInfo> {
+        val calendars = mutableListOf<CalendarInfo>()
+        val uri = CalendarContract.Calendars.CONTENT_URI
+        val projection = arrayOf(
+            CalendarContract.Calendars._ID,
+            CalendarContract.Calendars.CALENDAR_DISPLAY_NAME,
+            CalendarContract.Calendars.CALENDAR_COLOR,
+            CalendarContract.Calendars.ACCOUNT_NAME,
+            CalendarContract.Calendars.SYNC_EVENTS,
+            CalendarContract.Calendars.VISIBLE,
+            CalendarContract.Calendars.ACCOUNT_TYPE
+        )
+
+        try {
+            context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
+                val idIdx = cursor.getColumnIndex(CalendarContract.Calendars._ID)
+                val nameIdx = cursor.getColumnIndex(CalendarContract.Calendars.CALENDAR_DISPLAY_NAME)
+                val colorIdx = cursor.getColumnIndex(CalendarContract.Calendars.CALENDAR_COLOR)
+                val accountIdx = cursor.getColumnIndex(CalendarContract.Calendars.ACCOUNT_NAME)
+                val syncIdx = cursor.getColumnIndex(CalendarContract.Calendars.SYNC_EVENTS)
+                val visibleIdx = cursor.getColumnIndex(CalendarContract.Calendars.VISIBLE)
+                val typeIdx = cursor.getColumnIndex(CalendarContract.Calendars.ACCOUNT_TYPE)
+
+                while (cursor.moveToNext()) {
+                    val id = cursor.getString(idIdx)
+                    val name = cursor.getString(nameIdx) ?: "Unknown"
+                    val color = cursor.getInt(colorIdx)
+                    val accountName = cursor.getString(accountIdx) ?: ""
+                    val syncEvents = syncIdx < 0 || cursor.getInt(syncIdx) != 0
+                    val visible = visibleIdx < 0 || cursor.getInt(visibleIdx) != 0
+                    val accountType = if (typeIdx >= 0) cursor.getString(typeIdx) ?: "" else ""
+                    if (DEBUG_CALENDAR) {
+                        Log.d(TAG, "Found calendar: id=$id, name=$name, account=$accountName, sync=$syncEvents")
                     }
-
-                    events.add(
-                        CalendarEvent(
-                            id = id,
-                            title = title,
-                            startTime = startTime,
-                            endTime = endTime,
-                            location = cursor.getString(locIdx),
-                            isAllDay = isAllDay,
-                            calendarId = cursor.getString(calIdIdx)
-                        )
+                    calendars.add(
+                        CalendarInfo(id, name, color, accountName, syncEvents, visible, accountType)
                     )
                 }
             }
-            _calendarEvents.value = events
+        } catch (e: Exception) {
+            Log.e(TAG, "Error fetching available calendars", e)
         }
+        return calendars.sortedBy { it.name.lowercase() }
     }
 
     fun loadAvailableCalendars() {
@@ -1285,34 +1688,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
                 return@launch
             }
-
-            val calendars = mutableListOf<CalendarInfo>()
-            val uri = CalendarContract.Calendars.CONTENT_URI
-            val projection = arrayOf(
-                CalendarContract.Calendars._ID,
-                CalendarContract.Calendars.CALENDAR_DISPLAY_NAME,
-                CalendarContract.Calendars.CALENDAR_COLOR,
-                CalendarContract.Calendars.ACCOUNT_NAME
-            )
-
-            context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
-                val idIdx = cursor.getColumnIndex(CalendarContract.Calendars._ID)
-                val nameIdx = cursor.getColumnIndex(CalendarContract.Calendars.CALENDAR_DISPLAY_NAME)
-                val colorIdx = cursor.getColumnIndex(CalendarContract.Calendars.CALENDAR_COLOR)
-                val accountIdx = cursor.getColumnIndex(CalendarContract.Calendars.ACCOUNT_NAME)
-
-                while (cursor.moveToNext()) {
-                    calendars.add(
-                        CalendarInfo(
-                            id = cursor.getString(idIdx),
-                            name = cursor.getString(nameIdx) ?: "Unknown",
-                            color = cursor.getInt(colorIdx),
-                            accountName = cursor.getString(accountIdx) ?: ""
-                        )
-                    )
-                }
-            }
-            _availableCalendars.value = calendars.sortedBy { it.name.lowercase() }
+            _availableCalendars.value = fetchAvailableCalendars(context)
         }
     }
 
@@ -1328,26 +1704,38 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun toggleCalendarVisibility(calendarId: String) {
-        val current = _visibleCalendars.value.toMutableList()
-        val allAvailable = _availableCalendars.value.map { it.id }
+        viewModelScope.launch(Dispatchers.IO) {
+            val context = getApplication<Application>()
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
+                return@launch
+            }
 
-        val new = if (current.isEmpty()) {
-            // "Select All" is active, so we unselect the one clicked
-            allAvailable.toMutableList().apply { remove(calendarId) }
-        } else if (current.contains("__NONE__")) {
-            // "Clear All" is active, so we select the one clicked
-            mutableListOf(calendarId)
-        } else {
-            // Specific selection active
-            if (current.contains(calendarId)) {
-                current.remove(calendarId)
-                if (current.isEmpty()) mutableListOf("__NONE__") else current
+            var available = _availableCalendars.value
+            if (available.isEmpty()) {
+                available = fetchAvailableCalendars(context)
+                _availableCalendars.value = available
+            }
+
+            val allAvailable = available.map { it.id }
+            val current = _visibleCalendars.value.toMutableList()
+
+            val new = if (current.isEmpty()) {
+                allAvailable.toMutableList().apply { remove(calendarId) }
+            } else if (current.contains("__NONE__")) {
+                mutableListOf(calendarId)
             } else {
-                current.add(calendarId)
-                if (current.size >= allAvailable.size) mutableListOf() else current
+                if (current.contains(calendarId)) {
+                    current.remove(calendarId)
+                    if (current.isEmpty()) mutableListOf("__NONE__") else current
+                } else {
+                    current.add(calendarId)
+                    if (current.size >= allAvailable.size) mutableListOf() else current
+                }
+            }
+            withContext(Dispatchers.Main) {
+                setVisibleCalendars(new)
             }
         }
-        setVisibleCalendars(new)
     }
 
     fun setShowNotificationManagerDialog(show: Boolean) {

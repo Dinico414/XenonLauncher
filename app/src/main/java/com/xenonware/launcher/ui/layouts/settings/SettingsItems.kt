@@ -10,7 +10,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
-import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -62,6 +61,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.xenon.mylibrary.res.SettingsGoogleTile
+import com.xenon.mylibrary.res.SettingsSwitchMenuTile
+import com.xenon.mylibrary.res.SettingsSwitchTile
+import com.xenon.mylibrary.res.SettingsSwitchTileContext
+import com.xenon.mylibrary.res.SettingsTile
+import com.xenon.mylibrary.res.SettingsTileContext
+import com.xenon.mylibrary.res.XenonSingleChoiceButtonGroup
 import com.xenon.mylibrary.theme.LayoutType
 import com.xenon.mylibrary.values.ExtraLargeSpacing
 import com.xenon.mylibrary.values.LargerPadding
@@ -70,12 +75,7 @@ import com.xenonware.launcher.R
 import com.xenonware.launcher.presentation.sign_in.GoogleAuthUiClient
 import com.xenonware.launcher.presentation.sign_in.SignInState
 import com.xenonware.launcher.ui.res.IconShape
-import com.xenonware.launcher.ui.res.SettingsSwitchMenuTile
-import com.xenonware.launcher.ui.res.SettingsSwitchTile
-import com.xenonware.launcher.ui.res.SettingsSwitchTileContext
-import com.xenonware.launcher.ui.res.SettingsTile
-import com.xenonware.launcher.ui.res.SettingsTileContext
-import com.xenonware.launcher.ui.res.XenonSingleChoiceButtonGroup
+import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
 import com.xenonware.launcher.viewmodel.LauncherViewModel
 import com.xenonware.launcher.viewmodel.SettingsViewModel
 import kotlinx.coroutines.delay

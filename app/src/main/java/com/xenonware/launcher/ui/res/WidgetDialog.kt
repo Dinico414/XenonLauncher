@@ -60,6 +60,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.graphics.drawable.toDrawable
+import com.xenon.mylibrary.res.XenonDialog
 import com.xenonware.launcher.viewmodel.LauncherViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay

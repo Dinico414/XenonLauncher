@@ -29,10 +29,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.xenon.mylibrary.res.SettingsSwitchTile
+import com.xenon.mylibrary.res.SettingsTileContext
+import com.xenon.mylibrary.res.XenonDialog
+import com.xenon.mylibrary.res.XenonIcon
 import com.xenon.mylibrary.values.LargestPadding
-import com.xenonware.launcher.ui.res.SettingsTileContext
-import com.xenonware.launcher.ui.res.XenonDialog
-import com.xenonware.launcher.ui.res.XenonIcon
 import com.xenonware.launcher.viewmodel.DevSettingsViewModel
 import com.xenonware.launcher.viewmodel.SettingsViewModel
 import dev.chrisbanes.haze.hazeEffect

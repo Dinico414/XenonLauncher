@@ -1,6 +1,7 @@
 package com.xenonware.launcher.ui.pages
 
 import android.app.ActivityOptions
+import android.content.Intent
 import android.content.res.Configuration
 import android.text.format.DateFormat
 import androidx.activity.compose.BackHandler
@@ -115,6 +116,8 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
+import com.xenon.mylibrary.res.MenuItem
+import com.xenon.mylibrary.res.XenonDropDown
 import com.xenon.mylibrary.theme.QuicksandTitleVariable
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.notification.LauncherNotification
@@ -759,24 +762,24 @@ fun NotificationPage(
 
         // Dropdown menus
         if (showAtAGlanceMenu) {
-            com.xenonware.launcher.ui.res.XenonDropDown(
+            XenonDropDown(
                 expanded = showAtAGlanceMenu,
                 onDismissRequest = { showAtAGlanceMenu = false },
                 items = listOf(
-                    com.xenonware.launcher.ui.res.MenuItem(
+                    MenuItem(
                         text = "Wallpaper",
                         onClick = {
-                            val intent = android.content.Intent(android.content.Intent.ACTION_SET_WALLPAPER)
-                            context.startActivity(android.content.Intent.createChooser(intent, "Select Wallpaper"))
+                            val intent = Intent(Intent.ACTION_SET_WALLPAPER)
+                            context.startActivity(Intent.createChooser(intent, "Select Wallpaper"))
                         },
                         leadingIcon = { Icon(Icons.Rounded.Wallpaper, null) }
                     ),
-                    com.xenonware.launcher.ui.res.MenuItem(
+                    MenuItem(
                         text = "Settings",
                         onClick = { onOpenSettings() },
                         leadingIcon = { Icon(Icons.Rounded.Settings, null) }
                     ),
-                    com.xenonware.launcher.ui.res.MenuItem(
+                    MenuItem(
                         text = "At a Glance Settings",
                         onClick = { viewModel.setShowCalendarSelectionDialog(true) },
                         leadingIcon = { Icon(Icons.Rounded.CalendarToday, null) }
@@ -789,24 +792,24 @@ fun NotificationPage(
         }
 
         if (showPageMenu) {
-            com.xenonware.launcher.ui.res.XenonDropDown(
+            XenonDropDown(
                 expanded = showPageMenu,
                 onDismissRequest = { showPageMenu = false },
                 items = listOf(
-                    com.xenonware.launcher.ui.res.MenuItem(
+                    MenuItem(
                         text = "Wallpaper",
                         onClick = {
-                            val intent = android.content.Intent(android.content.Intent.ACTION_SET_WALLPAPER)
-                            context.startActivity(android.content.Intent.createChooser(intent, "Select Wallpaper"))
+                            val intent = Intent(Intent.ACTION_SET_WALLPAPER)
+                            context.startActivity(Intent.createChooser(intent, "Select Wallpaper"))
                         },
                         leadingIcon = { Icon(Icons.Rounded.Wallpaper, null) }
                     ),
-                    com.xenonware.launcher.ui.res.MenuItem(
+                    MenuItem(
                         text = "Settings",
                         onClick = { onOpenSettings() },
                         leadingIcon = { Icon(Icons.Rounded.Settings, null) }
                     ),
-                    com.xenonware.launcher.ui.res.MenuItem(
+                    MenuItem(
                         text = "Notification Manager",
                         onClick = { viewModel.setShowNotificationManagerDialog(true) },
                         leadingIcon = { Icon(Icons.Rounded.NotificationsActive, null) }
@@ -1004,14 +1007,14 @@ fun AtAGlanceSection(
                                                 android.provider.CalendarContract.Events.CONTENT_URI,
                                                 event.id
                                             )
-                                            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).setData(uri)
+                                            val intent = Intent(Intent.ACTION_VIEW).setData(uri)
                                             context.startActivity(intent)
                                         } catch (e: Exception) {
                                             // Fallback to opening calendar at specific time
                                             val builder = android.provider.CalendarContract.CONTENT_URI.buildUpon()
                                                 .appendPath("time")
                                             android.content.ContentUris.appendId(builder, event.startTime)
-                                            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).setData(builder.build())
+                                            val intent = Intent(Intent.ACTION_VIEW).setData(builder.build())
                                             context.startActivity(intent)
                                         }
                                     }
@@ -1043,17 +1046,25 @@ fun AtAGlanceSection(
                                     .basicMarquee()
                             )
                             val timeText = remember(event, timeFormatter) {
+                                val nowCal = Calendar.getInstance()
                                 val tomorrowCal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
                                 val eventStartCal = Calendar.getInstance().apply { timeInMillis = event.startTime }
+
+                                val isToday = eventStartCal.get(Calendar.YEAR) == nowCal.get(Calendar.YEAR) &&
+                                        eventStartCal.get(Calendar.DAY_OF_YEAR) == nowCal.get(Calendar.DAY_OF_YEAR)
                                 val isTomorrow = eventStartCal.get(Calendar.YEAR) == tomorrowCal.get(Calendar.YEAR) &&
                                         eventStartCal.get(Calendar.DAY_OF_YEAR) == tomorrowCal.get(Calendar.DAY_OF_YEAR)
-                                val prefix = if (isTomorrow) {
-                                    if (Locale.getDefault().language == "de") "Morgen " else "Tomorrow "
-                                } else ""
+
+                                val dayPrefix = when {
+                                    isToday -> ""
+                                    isTomorrow -> if (Locale.getDefault().language == "de") "Morgen " else "Tomorrow "
+                                    else -> SimpleDateFormat("EEE, d MMM ", Locale.getDefault()).format(event.startTime)
+                                }
+
                                 if (event.isAllDay) {
-                                    prefix + if (Locale.getDefault().language == "de") "Ganztägig" else "All Day"
+                                    dayPrefix + if (Locale.getDefault().language == "de") "Ganztägig" else "All Day"
                                 } else {
-                                    prefix + "${timeFormatter.format(event.startTime)} - ${timeFormatter.format(event.endTime)}"
+                                    dayPrefix + "${timeFormatter.format(event.startTime)} - ${timeFormatter.format(event.endTime)}"
                                 }
                             }
                             Text(

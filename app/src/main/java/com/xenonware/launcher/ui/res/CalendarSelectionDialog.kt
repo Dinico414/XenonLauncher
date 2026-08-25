@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
+import com.xenon.mylibrary.res.XenonDialog
 import com.xenonware.launcher.viewmodel.CalendarInfo
 
 @Composable
