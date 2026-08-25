@@ -50,6 +50,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.BlendMode
@@ -339,7 +340,7 @@ private fun MediaSectionContent(
             Box(contentAlignment = Alignment.Center, modifier = Modifier.size(44.dp)) {
                 CircularProgressIndicator(
                     progress = { progress },
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().alpha(if(mediaState.title != null) 1f else 0f),
                     color = colorScheme.onPrimaryContainer,
                     strokeWidth = 2.dp,
                     trackColor = colorScheme.onSurface.copy(alpha = 0.1f),
@@ -349,7 +350,8 @@ private fun MediaSectionContent(
                         model = artModel,
                         contentDescription = "Album Art",
                         modifier = Modifier
-                            .size(40.dp)
+                            .padding(if(mediaState.title != null) 2.dp else 0.dp)
+                            .size(if(mediaState.title != null) 36.dp else 44.dp)
                             .clip(CircleShape),
                         contentScale = ContentScale.Crop
                     )
@@ -362,7 +364,7 @@ private fun MediaSectionContent(
                         Icon(
                             Icons.Rounded.MusicNote,
                             null,
-                            tint = colorScheme.primaryContainer,
+                            tint = colorScheme.onSurfaceVariant,
                             modifier = Modifier
                                 .padding(8.dp)
                                 .musicNote(note)
