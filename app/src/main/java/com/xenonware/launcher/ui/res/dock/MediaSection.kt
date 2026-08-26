@@ -99,9 +99,12 @@ fun MediaSection(
 
     // Only draw a border when the section barely separates from the dock behind it.
     val contrastRatio = remember(backgroundColor, dockColor) {
-        ColorUtils.calculateContrastRatio(backgroundColor, dockColor)
+        val l1 = ColorUtils.calculateLuminance(backgroundColor) + 0.05
+        val l2 = ColorUtils.calculateLuminance(dockColor) + 0.05
+        (l1 / l2).toFloat()
     }
-    val borderAlpha = ((1.05f - contrastRatio) * 10f).coerceIn(0f, 0.3f)
+    // Fade from 0.5 (at ratio 1.0) to 0.0 (at ratio 2.0 or 0.0)
+    val borderAlpha = (0.5f - kotlin.math.abs(1f - contrastRatio) * 0.5f).coerceIn(0f, 0.5f)
 
     Surface(
         onClick = {
