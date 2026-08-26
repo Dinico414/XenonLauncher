@@ -166,7 +166,8 @@ class MainActivity : ComponentActivity() {
                     android.Manifest.permission.ACCESS_COARSE_LOCATION,
                     android.Manifest.permission.ACCESS_FINE_LOCATION,
                     android.Manifest.permission.READ_EXTERNAL_STORAGE,
-                    android.Manifest.permission.READ_CALENDAR
+                    android.Manifest.permission.READ_CALENDAR,
+                    android.Manifest.permission.WRITE_CALENDAR
                 )
 
                 permissions.add(android.Manifest.permission.READ_MEDIA_IMAGES)
@@ -251,8 +252,15 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        viewModel.loadAvailableCalendars()
+        viewModel.loadCalendarEvents()
+    }
+
     override fun onResume() {
         super.onResume()
+        viewModel.loadAvailableCalendars()
         viewModel.loadCalendarEvents()
 
         val currentThemePref = sharedPreferenceManager.theme
@@ -283,6 +291,7 @@ class MainActivity : ComponentActivity() {
         if (isHomeIntent) {
             viewModel.onHomePressed()
         }
+        viewModel.loadCalendarEvents()
     }
 
     private fun updateAppCompatDelegateTheme(themePref: Int) {

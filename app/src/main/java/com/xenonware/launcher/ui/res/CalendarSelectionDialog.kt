@@ -126,6 +126,13 @@ fun CalendarSelectionDialog(
                                 fontSize = 12.sp,
                                 color = colorScheme.onSurfaceVariant
                             )
+                            if (!calendar.syncEvents) {
+                                Text(
+                                    "Sync is disabled for this calendar in system settings",
+                                    fontSize = 11.sp,
+                                    color = colorScheme.error
+                                )
+                            }
                         }
                         Checkbox(
                             checked = isSelected,

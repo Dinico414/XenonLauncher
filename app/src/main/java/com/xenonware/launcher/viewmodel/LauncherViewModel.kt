@@ -1,13 +1,16 @@
 package com.xenonware.launcher.viewmodel
 
 import android.Manifest
+import android.accounts.Account
 import android.annotation.SuppressLint
 import android.app.AlarmManager
 import android.app.Application
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
 import android.content.BroadcastReceiver
+import android.content.ContentResolver
 import android.content.ContentUris
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -20,6 +23,7 @@ import android.graphics.drawable.Drawable
 import android.location.Location
 import android.net.Uri
 import android.os.BatteryManager
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.CalendarContract
@@ -1193,6 +1197,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
             calendarObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
                 override fun onChange(selfChange: Boolean, uri: Uri?) {
+                    Log.d(TAG, "Calendar content changed (uri=$uri); reloading events")
                     loadCalendarEvents()
                 }
             }
@@ -1202,7 +1207,24 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                     true,
                     calendarObserver!!
                 )
-            } catch (_: Exception) {}
+                context.contentResolver.registerContentObserver(
+                    CalendarContract.Events.CONTENT_URI,
+                    true,
+                    calendarObserver!!
+                )
+                context.contentResolver.registerContentObserver(
+                    CalendarContract.Instances.CONTENT_URI,
+                    true,
+                    calendarObserver!!
+                )
+                context.contentResolver.registerContentObserver(
+                    CalendarContract.Calendars.CONTENT_URI,
+                    true,
+                    calendarObserver!!
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "Could not register calendar observers", e)
+            }
         }
     }
 
@@ -1358,6 +1380,122 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             Log.e(TAG, "Error querying calendar instances", e)
         }
         return events
+    }
+
+    private fun readNonRecurringEvents(
+        context: Context,
+        selection: String?,
+        selectionArgs: Array<String>?,
+        bounds: DayBounds,
+        tz: TimeZone
+    ): List<CalendarEvent> {
+        val events = mutableListOf<CalendarEvent>()
+        val baseSelection = "${CalendarContract.Events.DELETED} = 0 AND ${CalendarContract.Events.RRULE} IS NULL"
+        val fullSelection = if (selection != null) {
+            "$baseSelection AND $selection"
+        } else {
+            baseSelection
+        }
+        val projection = arrayOf(
+            CalendarContract.Events._ID,
+            CalendarContract.Events.TITLE,
+            CalendarContract.Events.DTSTART,
+            CalendarContract.Events.DTEND,
+            CalendarContract.Events.EVENT_LOCATION,
+            CalendarContract.Events.ALL_DAY,
+            CalendarContract.Events.CALENDAR_ID
+        )
+        try {
+            context.contentResolver.query(
+                CalendarContract.Events.CONTENT_URI,
+                projection,
+                fullSelection,
+                selectionArgs,
+                "${CalendarContract.Events.DTSTART} ASC"
+            )?.use { cursor ->
+                val idIdx = cursor.getColumnIndex(CalendarContract.Events._ID)
+                val titleIdx = cursor.getColumnIndex(CalendarContract.Events.TITLE)
+                val startIdx = cursor.getColumnIndex(CalendarContract.Events.DTSTART)
+                val endIdx = cursor.getColumnIndex(CalendarContract.Events.DTEND)
+                val locIdx = cursor.getColumnIndex(CalendarContract.Events.EVENT_LOCATION)
+                val allDayIdx = cursor.getColumnIndex(CalendarContract.Events.ALL_DAY)
+                val calIdIdx = cursor.getColumnIndex(CalendarContract.Events.CALENDAR_ID)
+
+                if (listOf(idIdx, titleIdx, startIdx, allDayIdx, calIdIdx).any { it < 0 }) {
+                    return emptyList()
+                }
+
+                while (cursor.moveToNext()) {
+                    try {
+                        val startTime = cursor.getLong(startIdx)
+                        val endTime = if (endIdx >= 0 && !cursor.isNull(endIdx)) cursor.getLong(endIdx) else startTime
+                        val event = CalendarEvent(
+                            id = cursor.getLong(idIdx),
+                            title = cursor.getString(titleIdx) ?: "No Title",
+                            startTime = startTime,
+                            endTime = endTime,
+                            location = if (locIdx >= 0) cursor.getString(locIdx) else null,
+                            isAllDay = cursor.getInt(allDayIdx) != 0,
+                            calendarId = cursor.getString(calIdIdx) ?: ""
+                        )
+                        if (event.isRelevant(bounds, tz)) {
+                            events.add(event)
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Skipping unreadable event row", e)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error querying calendar events table", e)
+        }
+        return events
+    }
+
+    private fun logDatabaseTruth(context: Context, bounds: DayBounds) {
+        val searchStart = bounds.endOfToday
+        val searchEnd = bounds.endOfTomorrow + DAY_MILLIS
+        Log.d(TAG, "--- DATABASE TRUTH: Checking all events between ${searchStart} and ${searchEnd} ---")
+        
+        try {
+            val projection = arrayOf(
+                CalendarContract.Events._ID,
+                CalendarContract.Events.TITLE,
+                CalendarContract.Events.DTSTART,
+                CalendarContract.Events.CALENDAR_ID,
+                CalendarContract.Events.DELETED
+            )
+            // Query Events table directly for tomorrow/day after
+            context.contentResolver.query(
+                CalendarContract.Events.CONTENT_URI,
+                projection,
+                "${CalendarContract.Events.DTSTART} >= ? AND ${CalendarContract.Events.DTSTART} <= ?",
+                arrayOf(searchStart.toString(), searchEnd.toString()),
+                "${CalendarContract.Events.DTSTART} ASC"
+            )?.use { c ->
+                Log.d(TAG, "Events found in raw database for this window: ${c.count}")
+                while (c.moveToNext()) {
+                    Log.d(TAG, "   DB_ROW: '${c.getString(1)}' cal=${c.getString(3)} start=${c.getLong(2)} deleted=${c.getInt(4)}")
+                }
+            }
+
+            // Also check Instances table for same window
+            val builder = CalendarContract.Instances.CONTENT_URI.buildUpon()
+            ContentUris.appendId(builder, searchStart)
+            ContentUris.appendId(builder, searchEnd)
+            context.contentResolver.query(
+                builder.build(),
+                arrayOf(CalendarContract.Instances.TITLE, CalendarContract.Instances.BEGIN, CalendarContract.Instances.CALENDAR_ID),
+                null, null, null
+            )?.use { c ->
+                Log.d(TAG, "Instances expanded by OS for this window: ${c.count}")
+                while (c.moveToNext()) {
+                    Log.d(TAG, "   OS_INSTANCE: '${c.getString(0)}' cal=${c.getString(2)} start=${c.getLong(1)}")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error logging database truth", e)
+        }
     }
 
     /**
@@ -1561,19 +1699,20 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             _availableCalendars.value = availableCalendars
 
             val effectiveSelection = if (visibleCalendars.isEmpty()) availableIds else visibleCalendars.toSet()
-            val unsynced = availableCalendars.filter { it.id in effectiveSelection && !it.syncEvents }
+            val unsynced = availableCalendars.filter { it.id in effectiveSelection && (!it.syncEvents || !it.visible) }
             _unsyncedSelectedCalendars.value = unsynced
             if (unsynced.isNotEmpty()) {
                 Log.w(
                     TAG,
-                    "Selected but NOT synced to device — these can never return events: " +
+                    "Selected but NOT synced to device — attempting automatic sync enable: " +
                             unsynced.joinToString { "${it.id}:'${it.name}' (${it.accountName})" }
                 )
+                enableSyncForCalendars(context, unsynced)
             }
 
             val builder = CalendarContract.Instances.CONTENT_URI.buildUpon()
             ContentUris.appendId(builder, searchStart)
-            ContentUris.appendId(builder, bounds.endOfTomorrow)
+            ContentUris.appendId(builder, bounds.endOfTomorrow + DAY_MILLIS)
             val uri = builder.build()
 
             val projection = arrayOf(
@@ -1599,9 +1738,21 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
             if (DEBUG_CALENDAR) {
                 logCalendarDiagnostics(context, uri, bounds)
+                logDatabaseTruth(context, bounds)
             }
 
             var events = readEvents(context, uri, projection, selection, selectionArgs, sortOrder, bounds, tz)
+
+            // Also check Events table directly for any non-recurring events that Instances might have missed
+            val directEvents = readNonRecurringEvents(context, selection, selectionArgs, bounds, tz)
+            val existingIds = events.map { it.id }.toSet()
+            val supplemental = directEvents.filter { it.id !in existingIds }
+            if (supplemental.isNotEmpty()) {
+                if (DEBUG_CALENDAR) {
+                    Log.d(TAG, "Added ${supplemental.size} supplemental events directly from Events table: ${supplemental.map { it.title }}")
+                }
+                events = events + supplemental
+            }
 
             // Diagnostic: show exactly what the calendar filter is hiding. The old code only
             // ran an unfiltered fallback when the filtered result was completely empty, so a
@@ -1680,6 +1831,63 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             Log.e(TAG, "Error fetching available calendars", e)
         }
         return calendars.sortedBy { it.name.lowercase() }
+    }
+
+    private fun enableSyncForCalendars(context: Context, calendars: List<CalendarInfo>) {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
+            return
+        }
+        val syncedAccounts = mutableSetOf<Pair<String, String>>()
+        for (cal in calendars) {
+            try {
+                val accName = cal.accountName
+                val accType = cal.accountType.ifEmpty { "com.google" }
+
+                val uri = ContentUris.withAppendedId(CalendarContract.Calendars.CONTENT_URI, cal.id.toLong())
+                val syncAdapterUri = uri.buildUpon()
+                    .appendQueryParameter(CalendarContract.CALLER_IS_SYNCADAPTER, "true")
+                    .appendQueryParameter(CalendarContract.Calendars.ACCOUNT_NAME, accName)
+                    .appendQueryParameter(CalendarContract.Calendars.ACCOUNT_TYPE, accType)
+                    .build()
+
+                val values = ContentValues().apply {
+                    put(CalendarContract.Calendars.SYNC_EVENTS, 1)
+                    put(CalendarContract.Calendars.VISIBLE, 1)
+                }
+                context.contentResolver.update(uri, values, null, null)
+                context.contentResolver.update(syncAdapterUri, values, null, null)
+
+                if (accName.isNotEmpty()) {
+                    syncedAccounts.add(accName to accType)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Could not update sync flags for calendar ${cal.id}", e)
+            }
+        }
+        for ((accountName, accountType) in syncedAccounts) {
+            try {
+                val account = Account(accountName, accountType)
+                ContentResolver.setIsSyncable(account, CalendarContract.AUTHORITY, 1)
+                ContentResolver.setSyncAutomatically(account, CalendarContract.AUTHORITY, true)
+                val bundle = Bundle().apply {
+                    putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, true)
+                    putBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, true)
+                    putBoolean(ContentResolver.SYNC_EXTRAS_FORCE, true)
+                }
+                ContentResolver.requestSync(account, CalendarContract.AUTHORITY, bundle)
+                Log.d(TAG, "Force requested calendar sync for account: $accountName")
+            } catch (e: Exception) {
+                Log.e(TAG, "Could not request sync for $accountName", e)
+            }
+        }
+        if (syncedAccounts.isNotEmpty()) {
+            viewModelScope.launch(Dispatchers.IO) {
+                listOf(1500L, 3000L, 6000L, 10000L).forEach { delayMs ->
+                    delay(delayMs)
+                    loadCalendarEvents()
+                }
+            }
+        }
     }
 
     fun loadAvailableCalendars() {

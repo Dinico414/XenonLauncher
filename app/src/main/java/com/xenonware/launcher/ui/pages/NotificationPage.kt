@@ -128,12 +128,14 @@ import com.xenonware.launcher.util.ColorUtils
 import com.xenonware.launcher.util.blockHorizontalPagerSwipe
 import com.xenonware.launcher.util.shouldDisableLandscapeLayout
 import com.xenonware.launcher.viewmodel.LauncherViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.minutes
 
 @Composable
 fun NotificationPage(
@@ -180,6 +182,13 @@ fun NotificationPage(
 
     val groupedNotifications = remember(notifications) {
         notifications.groupBy { it.packageName }
+    }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            viewModel.loadCalendarEvents()
+            delay(5.minutes)
+        }
     }
 
     // Reset selection if the selected app has no notifications left
@@ -1048,7 +1057,12 @@ fun AtAGlanceSection(
                             val timeText = remember(event, timeFormatter) {
                                 val nowCal = Calendar.getInstance()
                                 val tomorrowCal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
-                                val eventStartCal = Calendar.getInstance().apply { timeInMillis = event.startTime }
+                                val eventStartMillis = if (event.isAllDay) {
+                                    event.startTime - java.util.TimeZone.getDefault().getOffset(event.startTime)
+                                } else {
+                                    event.startTime
+                                }
+                                val eventStartCal = Calendar.getInstance().apply { timeInMillis = eventStartMillis }
 
                                 val isToday = eventStartCal.get(Calendar.YEAR) == nowCal.get(Calendar.YEAR) &&
                                         eventStartCal.get(Calendar.DAY_OF_YEAR) == nowCal.get(Calendar.DAY_OF_YEAR)
@@ -1058,7 +1072,7 @@ fun AtAGlanceSection(
                                 val dayPrefix = when {
                                     isToday -> ""
                                     isTomorrow -> if (Locale.getDefault().language == "de") "Morgen " else "Tomorrow "
-                                    else -> SimpleDateFormat("EEE, d MMM ", Locale.getDefault()).format(event.startTime)
+                                    else -> SimpleDateFormat("EEE, d MMM ", Locale.getDefault()).format(eventStartMillis)
                                 }
 
                                 if (event.isAllDay) {
