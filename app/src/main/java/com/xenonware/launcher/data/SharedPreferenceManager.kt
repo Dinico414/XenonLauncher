@@ -19,6 +19,10 @@ class SharedPreferenceManager(context: Context) {
         get() = prefs.getInt("theme", 2) // 2: System
         set(value) = prefs.edit { putInt("theme", value) }
 
+    var isFirstLaunch: Boolean
+        get() = prefs.getBoolean("is_first_launch", true)
+        set(value) = prefs.edit { putBoolean("is_first_launch", value) }
+
     var blurEnabled: Boolean
         get() = prefs.getBoolean("blur_enabled", true)
         set(value) = prefs.edit { putBoolean("blur_enabled", value) }

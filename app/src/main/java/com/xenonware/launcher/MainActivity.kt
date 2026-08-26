@@ -2,10 +2,13 @@ package com.xenonware.launcher
 
 import android.app.WallpaperColors
 import android.app.WallpaperManager
+import android.content.ComponentName
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -53,9 +56,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import com.xenonware.launcher.accessibility.XenonAccessibilityService
 import com.xenonware.launcher.data.SharedPreferenceManager
 import com.xenonware.launcher.ui.layouts.main.AppDrawer
 import com.xenonware.launcher.ui.pages.MediaPage
@@ -82,7 +85,6 @@ class MainActivity : ComponentActivity() {
     private var lastAppliedCoverThemeEnabled: Boolean = false
     private var lastAppliedBlackedOutMode: Boolean = false
 
-    @OptIn(ExperimentalPermissionsApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -91,6 +93,12 @@ class MainActivity : ComponentActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
 
         sharedPreferenceManager = SharedPreferenceManager(applicationContext)
+
+        if (sharedPreferenceManager.isFirstLaunch || !hasRequiredPermissions()) {
+            startActivity(Intent(this, PermissionActivity::class.java))
+            finish()
+            return
+        }
 
         val initialThemePref = sharedPreferenceManager.theme
         val initialCoverThemeEnabledSetting = sharedPreferenceManager.coverThemeEnabled
@@ -162,29 +170,12 @@ class MainActivity : ComponentActivity() {
                 blackedOutModeEnabled = blackedOut,
                 statusBarDarkIconsOverride = statusBarDarkIcons
             ) { _, _ ->
-                val permissions = mutableListOf(
-                    android.Manifest.permission.ACCESS_COARSE_LOCATION,
-                    android.Manifest.permission.ACCESS_FINE_LOCATION,
-                    android.Manifest.permission.READ_EXTERNAL_STORAGE,
-                    android.Manifest.permission.READ_CALENDAR,
-                    android.Manifest.permission.WRITE_CALENDAR
-                )
-
-                permissions.add(android.Manifest.permission.READ_MEDIA_IMAGES)
-                permissions.add(android.Manifest.permission.POST_NOTIFICATIONS)
-
-                val permissionsState = rememberMultiplePermissionsState(permissions = permissions)
-
                 val configuration = androidx.compose.ui.platform.LocalConfiguration.current
                 LaunchedEffect(configuration.orientation) {
                     viewModel.setIsLandscape(configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE)
                 }
 
                 LaunchedEffect(Unit) {
-                    permissionsState.launchMultiplePermissionRequest()
-                }
-
-                LaunchedEffect(permissionsState.allPermissionsGranted) {
                     viewModel.loadCalendarEvents()
                 }
 
@@ -300,6 +291,33 @@ class MainActivity : ComponentActivity() {
         } else {
             AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
         }
+    }
+
+    private fun hasRequiredPermissions(): Boolean {
+        val requiredRuntimePermissions = mutableListOf(
+            android.Manifest.permission.ACCESS_COARSE_LOCATION,
+            android.Manifest.permission.READ_CALENDAR,
+            android.Manifest.permission.READ_MEDIA_IMAGES,
+            android.Manifest.permission.READ_CONTACTS,
+            android.Manifest.permission.POST_NOTIFICATIONS
+        )
+
+        val allGranted = requiredRuntimePermissions.all {
+            ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
+        }
+
+        // Notification Listener
+        val notificationEnabled = Settings.Secure.getString(contentResolver, "enabled_notification_listeners")?.contains(packageName) == true
+
+        // Accessibility Service
+        val expectedComponentName = ComponentName(this, XenonAccessibilityService::class.java)
+        val enabledServices = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+        val accessibilityEnabled = enabledServices?.contains(expectedComponentName.flattenToString()) == true
+
+        // All Files Access
+        val allFilesAccessEnabled = android.os.Environment.isExternalStorageManager()
+
+        return allGranted && notificationEnabled && accessibilityEnabled && allFilesAccessEnabled
     }
 }
 

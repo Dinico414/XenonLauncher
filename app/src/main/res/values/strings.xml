@@ -68,4 +68,27 @@
     <string name="sign_out_description">Are you sure you want to sign out?</string>
     <string name="sign_in_with_google">Sign in with Google</string>
     <string name="profile_picture">Profile Picture</string>
+
+    <!-- Welcome & Permissions -->
+    <string name="welcome_title">Welcome to Xenon Launcher</string>
+    <string name="welcome_description">Xenon Launcher provides a clean, modern experience for your Android device. To get started, we need a few permissions to enable all features.</string>
+    <string name="grant_permission">Grant Permission</string>
+    <string name="finish">Finish</string>
+
+    <string name="notification_access">Notification Access</string>
+    <string name="notification_access_description">Access notifications to show badges and media controls.</string>
+    <string name="accessibility_access">Accessibility Access</string>
+    <string name="accessibility_access_description">Used to enable gestures like double tap to lock.</string>
+    <string name="location_access">Location Access</string>
+    <string name="location_access_description">Used to provide local weather information.</string>
+    <string name="calendar_access">Calendar Access</string>
+    <string name="calendar_access_description">Used to display your upcoming events on the home screen.</string>
+    <string name="storage_access">Storage Access</string>
+    <string name="storage_access_description">Used to access wallpapers and media files.</string>
+    <string name="contacts_access">Contacts Access</string>
+    <string name="contacts_access_description">Used to search and launch contacts directly.</string>
+    <string name="post_notifications">Post Notifications</string>
+    <string name="post_notifications_description">Allow the app to show notifications.</string>
+    <string name="all_files_access">All Files Access</string>
+    <string name="all_files_access_description">Used to search files and use custom icons from storage.</string>
 </resources>
