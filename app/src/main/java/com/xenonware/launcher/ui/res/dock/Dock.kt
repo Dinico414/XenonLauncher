@@ -350,7 +350,7 @@ private fun DockFab(
             .pointerInput(onClick) {
                 detectTapGestures(
                     onTap = { onClick() },
-                    onDoubleTap = { lockScreenOrRequestAccess(context) }
+                    onDoubleTap = { XenonAccessibilityService.lockScreenOrRequestAccess(context) }
                 )
             }
             .then(
@@ -368,17 +368,5 @@ private fun DockFab(
                 )
             }
         }
-    }
-}
-
-private fun lockScreenOrRequestAccess(context: Context) {
-    val service = XenonAccessibilityService.instance
-    if (service != null) {
-        service.lockScreen()
-    } else {
-        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        context.startActivity(intent)
     }
 }

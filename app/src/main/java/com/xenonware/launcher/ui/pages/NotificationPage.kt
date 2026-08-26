@@ -119,6 +119,7 @@ import androidx.core.graphics.drawable.toBitmap
 import com.xenon.mylibrary.res.MenuItem
 import com.xenon.mylibrary.res.XenonDropDown
 import com.xenon.mylibrary.theme.QuicksandTitleVariable
+import com.xenonware.launcher.accessibility.XenonAccessibilityService
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.notification.LauncherNotification
 import com.xenonware.launcher.ui.res.notification.ChronoCluster
@@ -328,13 +329,35 @@ fun NotificationPage(
         .padding(top = topPadding)
         .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
         .onGloballyPositioned { pageContainerPos = it.positionInRoot() }
-        .pointerInput(Unit) {
+        .pointerInput(notificationCount, selectedPackage) {
             detectTapGestures(
                 onLongPress = { offset ->
                     haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
                     dropDownOffset = pageContainerPos + offset
                     showPageMenu = true
+                },
+                onDoubleTap = {
+                    if (notificationCount == 0 || selectedPackage == null) {
+                        XenonAccessibilityService.lockScreenOrRequestAccess(context)
+                    }
                 }
+            )
+        }
+        .pointerInput(notificationCount, selectedPackage) {
+            var totalVerticalDrag = 0f
+            detectVerticalDragGestures(
+                onVerticalDrag = { _, dragAmount ->
+                    if (notificationCount == 0 || selectedPackage == null) {
+                        totalVerticalDrag += dragAmount
+                    }
+                },
+                onDragEnd = {
+                    if (totalVerticalDrag < -50f && (notificationCount == 0 || selectedPackage == null)) {
+                        viewModel.setAppDrawerVisible(true)
+                    }
+                    totalVerticalDrag = 0f
+                },
+                onDragCancel = { totalVerticalDrag = 0f }
             )
         }
     ) {
@@ -772,7 +795,7 @@ fun NotificationPage(
         // Dropdown menus
         if (showAtAGlanceMenu) {
             XenonDropDown(
-                expanded = showAtAGlanceMenu,
+                expanded = true,
                 onDismissRequest = { showAtAGlanceMenu = false },
                 items = listOf(
                     MenuItem(
@@ -802,7 +825,7 @@ fun NotificationPage(
 
         if (showPageMenu) {
             XenonDropDown(
-                expanded = showPageMenu,
+                expanded = true,
                 onDismissRequest = { showPageMenu = false },
                 items = listOf(
                     MenuItem(

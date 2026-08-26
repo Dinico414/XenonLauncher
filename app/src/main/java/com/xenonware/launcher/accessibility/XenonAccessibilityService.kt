@@ -26,5 +26,17 @@ class XenonAccessibilityService : AccessibilityService() {
     companion object {
         var instance: XenonAccessibilityService? = null
             private set
+
+        fun lockScreenOrRequestAccess(context: android.content.Context) {
+            val service = instance
+            if (service != null) {
+                service.lockScreen()
+            } else {
+                val intent = android.content.Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(intent)
+            }
+        }
     }
 }
