@@ -3,9 +3,11 @@ package com.xenonware.launcher.ui.layouts.main
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
@@ -53,6 +55,7 @@ fun AppDrawerGridLayout(
     onLongPress: ((Offset) -> Unit)? = null,
     iconShape: com.xenonware.launcher.ui.res.IconShape = com.xenonware.launcher.ui.res.IconShape.Circle,
     showShadow: Boolean = false,
+    showLabels: Boolean = true
 ) {
     var itemPos by remember { mutableStateOf(Offset.Zero) }
     var pressOffset by remember { mutableStateOf(Offset.Zero) }
@@ -71,7 +74,9 @@ fun AppDrawerGridLayout(
     CompositionLocalProvider(LocalViewConfiguration provides customViewConfiguration) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
             modifier = modifier
+                .then(if (!showLabels) Modifier.aspectRatio(1f) else Modifier)
                 .onGloballyPositioned { itemPos = it.positionInRoot() }
                 .pointerInput(Unit) {
                     detectTapGestures(
@@ -149,15 +154,17 @@ fun AppDrawerGridLayout(
                     modifier = Modifier.offset(x = 2.dp, y = (-2).dp)
                 )
             }
-            Spacer(Modifier.height(4.dp))
-            Text(
-                app.label,
-                color = colorScheme.onSurface,
-                fontSize = 12.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center
-            )
+            if (showLabels) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    app.label,
+                    color = colorScheme.onSurface,
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center
+                )
+            }
         }
     }
 }

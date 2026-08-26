@@ -8,8 +8,13 @@
     <string name="grid_layout">Grid Layout</string>
     <string name="using_grid_view">Using grid view</string>
     <string name="using_list_view">Using list view</string>
+    <string name="app_labels">App Labels</string>
+    <string name="show_app_labels">Show names below icons</string>
+    <string name="hide_app_labels">Hide names below icons</string>
     <string name="open_keyboard">Open Keyboard</string>
     <string name="focus_search_description">Focus search at top of drawer</string>
+    <string name="open_only_in_portrait">Open only in portrait</string>
+    <string name="open_only_in_portrait_description">Don\'t open keyboard in landscape</string>
     <string name="blur_effect">Blur Effect</string>
     <string name="enable_glass_haze">Enable glass haze</string>
     <string name="theme">Theme</string>

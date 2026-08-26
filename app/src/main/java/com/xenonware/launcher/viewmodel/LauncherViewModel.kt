@@ -100,7 +100,8 @@ data class CalendarEvent(
     val endTime: Long,
     val location: String?,
     val isAllDay: Boolean,
-    val calendarId: String
+    val calendarId: String,
+    val color: Int? = null
 )
 
 class LauncherViewModel(application: Application) : AndroidViewModel(application) {
@@ -130,6 +131,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             "is_grid_layout" -> _isGridLayout.value = prefManager.isGridLayout
             "notification_badge_type" -> _notificationBadgeType.value = prefManager.notificationBadgeType
             "open_keyboard" -> _openKeyboard.value = prefManager.openKeyboard
+            "open_keyboard_portrait_only" -> _openKeyboardPortraitOnly.value = prefManager.openKeyboardPortraitOnly
             "widget_columns_portrait", "widget_columns_landscape" -> {
                 _widgetColumns.value = if (_isLandscape.value) prefManager.widgetColumnsLandscape else prefManager.widgetColumnsPortrait
             }
@@ -148,6 +150,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 loadApps() // Reload icons when shape changes
             }
             "drawer_icon_shadow" -> _drawerIconShadow.value = prefManager.drawerIconShadow
+            "app_labels_enabled" -> _appLabelsEnabled.value = prefManager.appLabelsEnabled
             "blur_enabled" -> _blurEnabled.value = prefManager.blurEnabled
             "app_overrides" -> loadApps()
             "visible_calendars" -> {
@@ -181,6 +184,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val _drawerIconShadow = MutableStateFlow(prefManager.drawerIconShadow)
     val drawerIconShadow: StateFlow<Boolean> = _drawerIconShadow
 
+    private val _appLabelsEnabled = MutableStateFlow(prefManager.appLabelsEnabled)
+    val appLabelsEnabled: StateFlow<Boolean> = _appLabelsEnabled
+
     private val _blurEnabled = MutableStateFlow(prefManager.blurEnabled)
     val blurEnabled: StateFlow<Boolean> = _blurEnabled
 
@@ -195,6 +201,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private val _openKeyboard = MutableStateFlow(prefManager.openKeyboard)
     val openKeyboard: StateFlow<Boolean> = _openKeyboard
+
+    private val _openKeyboardPortraitOnly = MutableStateFlow(prefManager.openKeyboardPortraitOnly)
+    val openKeyboardPortraitOnly: StateFlow<Boolean> = _openKeyboardPortraitOnly
 
     private val _recentlyOpened = MutableStateFlow<List<AppInfo>>(emptyList())
     val recentlyOpened: StateFlow<List<AppInfo>> = _recentlyOpened
@@ -1344,6 +1353,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 val locIdx = cursor.getColumnIndex(CalendarContract.Instances.EVENT_LOCATION)
                 val allDayIdx = cursor.getColumnIndex(CalendarContract.Instances.ALL_DAY)
                 val calIdIdx = cursor.getColumnIndex(CalendarContract.Instances.CALENDAR_ID)
+                val colorIdx = cursor.getColumnIndex(CalendarContract.Instances.EVENT_COLOR)
 
                 if (listOf(idIdx, titleIdx, startIdx, endIdx, allDayIdx, calIdIdx).any { it < 0 }) {
                     Log.e(TAG, "Calendar cursor is missing expected columns; aborting read")
@@ -1359,7 +1369,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                             endTime = cursor.getLong(endIdx),
                             location = if (locIdx >= 0) cursor.getString(locIdx) else null,
                             isAllDay = cursor.getInt(allDayIdx) != 0,
-                            calendarId = cursor.getString(calIdIdx) ?: ""
+                            calendarId = cursor.getString(calIdIdx) ?: "",
+                            color = if (colorIdx >= 0 && !cursor.isNull(colorIdx)) cursor.getInt(colorIdx) else null
                         )
 
                         if (DEBUG_CALENDAR) {
@@ -1403,7 +1414,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             CalendarContract.Events.DTEND,
             CalendarContract.Events.EVENT_LOCATION,
             CalendarContract.Events.ALL_DAY,
-            CalendarContract.Events.CALENDAR_ID
+            CalendarContract.Events.CALENDAR_ID,
+            CalendarContract.Events.EVENT_COLOR
         )
         try {
             context.contentResolver.query(
@@ -1420,6 +1432,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 val locIdx = cursor.getColumnIndex(CalendarContract.Events.EVENT_LOCATION)
                 val allDayIdx = cursor.getColumnIndex(CalendarContract.Events.ALL_DAY)
                 val calIdIdx = cursor.getColumnIndex(CalendarContract.Events.CALENDAR_ID)
+                val colorIdx = cursor.getColumnIndex(CalendarContract.Events.EVENT_COLOR)
 
                 if (listOf(idIdx, titleIdx, startIdx, allDayIdx, calIdIdx).any { it < 0 }) {
                     return emptyList()
@@ -1436,7 +1449,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                             endTime = endTime,
                             location = if (locIdx >= 0) cursor.getString(locIdx) else null,
                             isAllDay = cursor.getInt(allDayIdx) != 0,
-                            calendarId = cursor.getString(calIdIdx) ?: ""
+                            calendarId = cursor.getString(calIdIdx) ?: "",
+                            color = if (colorIdx >= 0 && !cursor.isNull(colorIdx)) cursor.getInt(colorIdx) else null
                         )
                         if (event.isRelevant(bounds, tz)) {
                             events.add(event)
@@ -1722,7 +1736,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 CalendarContract.Instances.END,
                 CalendarContract.Instances.EVENT_LOCATION,
                 CalendarContract.Instances.ALL_DAY,
-                CalendarContract.Instances.CALENDAR_ID
+                CalendarContract.Instances.CALENDAR_ID,
+                CalendarContract.Instances.EVENT_COLOR
             )
 
             var selection: String? = null

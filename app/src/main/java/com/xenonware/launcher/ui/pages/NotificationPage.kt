@@ -19,6 +19,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -87,6 +88,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -156,6 +158,7 @@ fun NotificationPage(
 ) {
     val baseColor = if (wallpaperDarkIcons) Color.Black else Color.White
     val nextAlarm by viewModel.nextAlarm.collectAsState()
+    val availableCalendars by viewModel.availableCalendars.collectAsState()
     val timers by viewModel.activeTimers.collectAsState(initial = emptyList())
     val stopwatches by viewModel.activeStopwatches.collectAsState(initial = emptyList())
 
@@ -396,6 +399,7 @@ fun NotificationPage(
                     AtAGlanceSection(
                         currentDate = currentDate,
                         calendarEvents = calendarEvents,
+                        availableCalendars = availableCalendars,
                         isLandscape = true,
                         nextAlarm = nextAlarm,
                         timers = timers,
@@ -607,6 +611,7 @@ fun NotificationPage(
                     AtAGlanceSection(
                         currentDate = currentDate,
                         calendarEvents = calendarEvents,
+                        availableCalendars = availableCalendars,
                         isLandscape = false,
                         nextAlarm = nextAlarm,
                         timers = timers,
@@ -887,6 +892,7 @@ fun Modifier.drawVerticalScrollbar(
 fun AtAGlanceSection(
     currentDate: String,
     calendarEvents: List<com.xenonware.launcher.viewmodel.CalendarEvent>,
+    availableCalendars: List<com.xenonware.launcher.viewmodel.CalendarInfo>,
     isLandscape: Boolean,
     nextAlarm: android.app.AlarmManager.AlarmClockInfo?,
     timers: List<LauncherNotification>,
@@ -1023,8 +1029,9 @@ fun AtAGlanceSection(
                         horizontalAlignment = Alignment.Start
                     ) { index ->
                         val event = calendarEvents[index]
-                        Column(
-                            verticalArrangement = Arrangement.Center,
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
                             modifier = Modifier
                                 .fillMaxSize()
                                 .combinedClickable(
@@ -1052,63 +1059,83 @@ fun AtAGlanceSection(
                                     }
                                 )
                         ) {
-                            Text(
-                                text = event.title,
-                                fontSize = eventTitleFontSize,
-                                fontWeight = FontWeight.Bold,
-                                color = baseColor,
-                                maxLines = 1,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                                    .drawWithContent {
-                                        drawContent()
-                                        val fadeWidth = 32.dp.toPx()
-                                        if (size.width > fadeWidth) {
-                                            drawRect(
-                                                brush = Brush.horizontalGradient(
-                                                    0f to Color.Black,
-                                                    (size.width - fadeWidth) / size.width to Color.Black,
-                                                    1f to Color.Transparent
-                                                ),
-                                                blendMode = BlendMode.DstIn
-                                            )
-                                        }
-                                    }
-                                    .basicMarquee()
-                            )
-                            val timeText = remember(event, timeFormatter) {
-                                val nowCal = Calendar.getInstance()
-                                val tomorrowCal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
-                                val eventStartMillis = if (event.isAllDay) {
-                                    event.startTime - java.util.TimeZone.getDefault().getOffset(event.startTime)
-                                } else {
-                                    event.startTime
-                                }
-                                val eventStartCal = Calendar.getInstance().apply { timeInMillis = eventStartMillis }
-
-                                val isToday = eventStartCal.get(Calendar.YEAR) == nowCal.get(Calendar.YEAR) &&
-                                        eventStartCal.get(Calendar.DAY_OF_YEAR) == nowCal.get(Calendar.DAY_OF_YEAR)
-                                val isTomorrow = eventStartCal.get(Calendar.YEAR) == tomorrowCal.get(Calendar.YEAR) &&
-                                        eventStartCal.get(Calendar.DAY_OF_YEAR) == tomorrowCal.get(Calendar.DAY_OF_YEAR)
-
-                                val dayPrefix = when {
-                                    isToday -> ""
-                                    isTomorrow -> if (Locale.getDefault().language == "de") "Morgen " else "Tomorrow "
-                                    else -> SimpleDateFormat("EEE, d MMM ", Locale.getDefault()).format(eventStartMillis)
-                                }
-
-                                if (event.isAllDay) {
-                                    dayPrefix + if (Locale.getDefault().language == "de") "Ganztägig" else "All Day"
-                                } else {
-                                    dayPrefix + "${timeFormatter.format(event.startTime)} - ${timeFormatter.format(event.endTime)}"
-                                }
+                            val calInfo = availableCalendars.find { it.id == event.calendarId }
+                            val pillColor = if (event.color != null && event.color != 0) {
+                                Color(event.color)
+                            } else {
+                                calInfo?.color?.let { Color(it) } ?: baseColor.copy(alpha = 0.5f)
                             }
-                            Text(
-                                text = timeText,
-                                fontSize = subtitleFontSize,
-                                color = baseColor.copy(alpha = 0.7f)
+
+                            Box(
+                                modifier = Modifier
+                                    .width(8.dp)
+                                    .height(26.dp)
+                                    .shadow(elevation = 2.dp, shape = RoundedCornerShape(100.dp))
+                                    .background(pillColor, RoundedCornerShape(100.dp))
                             )
+
+                            Column(
+                                verticalArrangement = Arrangement.Center,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = event.title,
+                                    fontSize = eventTitleFontSize,
+                                    fontWeight = FontWeight.Bold,
+                                    color = baseColor,
+                                    maxLines = 1,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                                        .drawWithContent {
+                                            drawContent()
+                                            val fadeWidth = 32.dp.toPx()
+                                            if (size.width > fadeWidth) {
+                                                drawRect(
+                                                    brush = Brush.horizontalGradient(
+                                                        0f to Color.Black,
+                                                        (size.width - fadeWidth) / size.width to Color.Black,
+                                                        1f to Color.Transparent
+                                                    ),
+                                                    blendMode = BlendMode.DstIn
+                                                )
+                                            }
+                                        }
+                                        .basicMarquee()
+                                )
+                                val timeText = remember(event, timeFormatter) {
+                                    val nowCal = Calendar.getInstance()
+                                    val tomorrowCal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
+                                    val eventStartMillis = if (event.isAllDay) {
+                                        event.startTime - java.util.TimeZone.getDefault().getOffset(event.startTime)
+                                    } else {
+                                        event.startTime
+                                    }
+                                    val eventStartCal = Calendar.getInstance().apply { timeInMillis = eventStartMillis }
+
+                                    val isToday = eventStartCal.get(Calendar.YEAR) == nowCal.get(Calendar.YEAR) &&
+                                            eventStartCal.get(Calendar.DAY_OF_YEAR) == nowCal.get(Calendar.DAY_OF_YEAR)
+                                    val isTomorrow = eventStartCal.get(Calendar.YEAR) == tomorrowCal.get(Calendar.YEAR) &&
+                                            eventStartCal.get(Calendar.DAY_OF_YEAR) == tomorrowCal.get(Calendar.DAY_OF_YEAR)
+
+                                    val dayPrefix = when {
+                                        isToday -> ""
+                                        isTomorrow -> if (Locale.getDefault().language == "de") "Morgen " else "Tomorrow "
+                                        else -> SimpleDateFormat("EEE, d MMM ", Locale.getDefault()).format(eventStartMillis)
+                                    }
+
+                                    if (event.isAllDay) {
+                                        dayPrefix + if (Locale.getDefault().language == "de") "Ganztägig" else "All Day"
+                                    } else {
+                                        dayPrefix + "${timeFormatter.format(event.startTime)} - ${timeFormatter.format(event.endTime)}"
+                                    }
+                                }
+                                Text(
+                                    text = timeText,
+                                    fontSize = subtitleFontSize,
+                                    color = baseColor.copy(alpha = 0.7f)
+                                )
+                            }
                         }
                     }
 

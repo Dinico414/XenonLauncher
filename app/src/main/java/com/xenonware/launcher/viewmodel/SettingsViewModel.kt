@@ -62,6 +62,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _openKeyboard = MutableStateFlow(sharedPreferenceManager.openKeyboard)
     val openKeyboard: StateFlow<Boolean> = _openKeyboard.asStateFlow()
 
+    private val _openKeyboardPortraitOnly = MutableStateFlow(sharedPreferenceManager.openKeyboardPortraitOnly)
+    val openKeyboardPortraitOnly: StateFlow<Boolean> = _openKeyboardPortraitOnly.asStateFlow()
+
     private val _advancedSearchEnabled = MutableStateFlow(sharedPreferenceManager.advancedSearchEnabled)
     val advancedSearchEnabled: StateFlow<Boolean> = _advancedSearchEnabled.asStateFlow()
 
@@ -138,6 +141,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     private val _developerModeEnabled = MutableStateFlow(sharedPreferenceManager.developerModeEnabled)
     val developerModeEnabled: StateFlow<Boolean> = _developerModeEnabled.asStateFlow()
+
+    private val _appLabelsEnabled = MutableStateFlow(sharedPreferenceManager.appLabelsEnabled)
+    val appLabelsEnabled: StateFlow<Boolean> = _appLabelsEnabled.asStateFlow()
 
     private val _persistedThemeIndexFlow = MutableStateFlow(sharedPreferenceManager.theme)
     val persistedThemeIndex: StateFlow<Int> = _persistedThemeIndexFlow.asStateFlow()
@@ -263,9 +269,24 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         _isGridLayout.value = enabled
     }
 
+    fun setOpenKeyboard(enabled: Boolean) {
+        sharedPreferenceManager.openKeyboard = enabled
+        _openKeyboard.value = enabled
+    }
+
+    fun setOpenKeyboardPortraitOnly(enabled: Boolean) {
+        sharedPreferenceManager.openKeyboardPortraitOnly = enabled
+        _openKeyboardPortraitOnly.value = enabled
+    }
+
     fun setAdvancedSearchEnabled(enabled: Boolean) {
         sharedPreferenceManager.advancedSearchEnabled = enabled
         _advancedSearchEnabled.value = enabled
+    }
+
+    fun setAppLabelsEnabled(enabled: Boolean) {
+        sharedPreferenceManager.appLabelsEnabled = enabled
+        _appLabelsEnabled.value = enabled
     }
 
     fun setShowHiddenAppsInSearch(enabled: Boolean) {

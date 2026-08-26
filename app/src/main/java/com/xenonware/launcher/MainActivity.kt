@@ -192,7 +192,7 @@ class MainActivity : ComponentActivity() {
                 val pinnedApps by viewModel.pinnedApps.collectAsState()
                 val recentlyOpened by viewModel.recentlyOpened.collectAsState()
                 val isGridLayout by viewModel.isGridLayout.collectAsState()
-                val openKeyboard by viewModel.openKeyboard.collectAsState()
+                val appLabelsEnabled by viewModel.appLabelsEnabled.collectAsState()
                 val currentTime by viewModel.currentTime.collectAsState()
                 val weatherState by viewModel.weatherState.collectAsState()
                 val notificationCount by viewModel.notificationCount.collectAsState()
@@ -218,7 +218,6 @@ class MainActivity : ComponentActivity() {
                     pinnedApps = pinnedApps,
                     recentlyOpened = recentlyOpened,
                     isGridLayout = isGridLayout,
-                    openKeyboard = openKeyboard,
                     currentTime = currentTime.format(viewModel.timeFormatter),
                     currentDate = currentTime.format(viewModel.dateFormatter),
                     weatherTemp = weatherState.temperature,
@@ -238,6 +237,7 @@ class MainActivity : ComponentActivity() {
                     dockSafeDrawImePortraitOnly = dockSafeDrawImePortraitOnly,
                     configShortcutType = configShortcutType,
                     blurSetting = blurSetting,
+                    appLabelsEnabled = appLabelsEnabled,
                     isDarkTheme = appIsDarkTheme,
                     wallpaperDarkIcons = wallpaperDarkIcons,
                     isAppDrawerVisible = isAppDrawerVisible,
@@ -335,7 +335,6 @@ fun LauncherScreen(
     pinnedApps: List<com.xenonware.launcher.model.AppInfo>,
     recentlyOpened: List<com.xenonware.launcher.model.AppInfo>,
     isGridLayout: Boolean,
-    openKeyboard: Boolean,
     currentTime: String,
     currentDate: String,
     weatherTemp: String,
@@ -355,6 +354,7 @@ fun LauncherScreen(
     dockSafeDrawImePortraitOnly: Boolean = false,
     configShortcutType: LauncherViewModel.ShortcutType?,
     blurSetting: Boolean,
+    appLabelsEnabled: Boolean,
     isDarkTheme: Boolean,
     wallpaperDarkIcons: Boolean,
     isAppDrawerVisible: Boolean,
@@ -514,12 +514,11 @@ fun LauncherScreen(
                         onPinApp = { pkg, index -> viewModel.pinApp(pkg, index) },
                         isGridLayout = isGridLayout,
                         onToggleLayout = { viewModel.setGridLayout(!isGridLayout) },
-                        openKeyboard = openKeyboard,
-                        onToggleOpenKeyboard = { viewModel.setOpenKeyboard(!openKeyboard) },
                         onProgress = { drawerInteractiveProgress = it },
                         blurEnabled = blurSetting,
                         onSearchActiveChange = { isSearchActiveInDrawer = it },
-                        closeSearchTrigger = closeSearchTrigger
+                        closeSearchTrigger = closeSearchTrigger,
+                        showLabels = appLabelsEnabled
                     )
                 }
             }

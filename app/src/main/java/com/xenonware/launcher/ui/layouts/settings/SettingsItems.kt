@@ -24,15 +24,17 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BlurOn
-import androidx.compose.material.icons.filled.Circle
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Keyboard
-import androidx.compose.material.icons.filled.NotificationsActive
-import androidx.compose.material.icons.filled.NotificationsOff
-import androidx.compose.material.icons.filled.Numbers
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.rounded.BlurOn
+import androidx.compose.material.icons.rounded.Circle
+import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.Keyboard
+import androidx.compose.material.icons.rounded.KeyboardHide
+import androidx.compose.material.icons.rounded.NotificationsActive
+import androidx.compose.material.icons.rounded.NotificationsOff
+import androidx.compose.material.icons.rounded.Numbers
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
@@ -117,7 +119,10 @@ fun SettingsItems(
     val blackedOutEnabled by viewModel.blackedOutModeEnabled.collectAsState()
     val blurEnabled by viewModel.blurEnabled.collectAsState()
     val developerModeEnabled by viewModel.developerModeEnabled.collectAsState()
+    val appLabelsEnabled by viewModel.appLabelsEnabled.collectAsState()
     val isGridLayout by viewModel.isGridLayout.collectAsState()
+    val openKeyboard by viewModel.openKeyboard.collectAsState()
+    val openKeyboardPortraitOnly by viewModel.openKeyboardPortraitOnly.collectAsState()
     val advancedSearchEnabled by viewModel.advancedSearchEnabled.collectAsState()
     val showHiddenAppsInSearch by viewModel.showHiddenAppsInSearch.collectAsState()
     val dockSafeDrawIme by viewModel.dockSafeDrawIme.collectAsState()
@@ -193,7 +198,7 @@ fun SettingsItems(
             title = "Default Launcher",
             subtitle = "Set Xenon as your default launcher",
             onClick = { viewModel.openLauncherSelector(context) },
-            icon = { Icon(Icons.Default.Home, null, tint = tileSubtitleColor) },
+            icon = { Icon(Icons.Rounded.Home, null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: topShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -268,7 +273,7 @@ fun SettingsItems(
             checked = blurEnabled,
             onCheckedChange = { viewModel.setBlurEnabled(it) },
             onClick = { viewModel.setBlurEnabled(!blurEnabled) },
-            icon = { Icon(Icons.Default.BlurOn, null, tint = tileSubtitleColor) },
+            icon = { Icon(Icons.Rounded.BlurOn, null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: middleShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -431,6 +436,22 @@ fun SettingsItems(
         })
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsSwitchTile(
+            title = stringResource(id = R.string.app_labels),
+            subtitle = if (appLabelsEnabled) stringResource(id = R.string.show_app_labels) else stringResource(id = R.string.hide_app_labels),
+            checked = appLabelsEnabled,
+            onCheckedChange = { viewModel.setAppLabelsEnabled(it) },
+            onClick = { viewModel.setAppLabelsEnabled(!appLabelsEnabled) },
+            icon = { Icon(if (appLabelsEnabled) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff, null, tint = tileSubtitleColor) },
+            shape = tileShapeOverride ?: middleShape,
+            backgroundColor = tileBackgroundColor,
+            contentColor = tileContentColor,
+            subtitleColor = tileSubtitleColor,
+            horizontalPadding = tileHorizontalPadding,
+            verticalPadding = tileVerticalPadding,
+            switchColors = switchColorsOverride ?: defaultSwitchColors
+        )
+        Spacer(Modifier.height(actualInnerGroupSpacing))
+        SettingsSwitchTile(
             title = stringResource(id = R.string.icon_shadows),
             subtitle = stringResource(id = R.string.apply_depth_description),
             checked = drawerIconShadow,
@@ -456,7 +477,7 @@ fun SettingsItems(
             checked = advancedSearchEnabled,
             onCheckedChange = { viewModel.setAdvancedSearchEnabled(it) },
             onClick = { viewModel.setAdvancedSearchEnabled(!advancedSearchEnabled) },
-            icon = { Icon(Icons.Default.Search, null, tint = tileSubtitleColor) },
+            icon = { Icon(Icons.Rounded.Search, null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: topShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -472,7 +493,7 @@ fun SettingsItems(
             checked = showHiddenAppsInSearch,
             onCheckedChange = { viewModel.setShowHiddenAppsInSearch(it) },
             onClick = onShowHiddenApps,
-            icon = { Icon(Icons.Default.Visibility, null, tint = tileSubtitleColor) },
+            icon = { Icon(Icons.Rounded.Visibility, null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: middleShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -488,8 +509,8 @@ fun SettingsItems(
             checked = dockSafeDrawIme,
             onCheckedChange = { viewModel.setDockSafeDrawIme(it) },
             onClick = { viewModel.setDockSafeDrawIme(!dockSafeDrawIme) },
-            icon = { Icon(Icons.Default.Keyboard, null, tint = tileSubtitleColor) },
-            shape = tileShapeOverride ?: bottomShape,
+            icon = { Icon(Icons.Rounded.Keyboard, null, tint = tileSubtitleColor) },
+            shape = tileShapeOverride ?: middleShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
@@ -536,6 +557,61 @@ fun SettingsItems(
                 }
             }
         )
+        Spacer(Modifier.height(actualInnerGroupSpacing))
+        SettingsSwitchTileContext(
+            title = stringResource(id = R.string.open_keyboard),
+            subtitle = stringResource(id = R.string.focus_search_description),
+            checked = openKeyboard,
+            onCheckedChange = { viewModel.setOpenKeyboard(it) },
+            onClick = { viewModel.setOpenKeyboard(!openKeyboard) },
+            icon = { Icon(Icons.Rounded.KeyboardHide, null, tint = tileSubtitleColor) },
+            shape = tileShapeOverride ?: bottomShape,
+            backgroundColor = tileBackgroundColor,
+            contentColor = tileContentColor,
+            subtitleColor = tileSubtitleColor,
+            horizontalPadding = tileHorizontalPadding,
+            verticalPadding = tileVerticalPadding,
+            switchColors = switchColorsOverride ?: defaultSwitchColors,
+            showContext = openKeyboard && (layoutType == LayoutType.SMALL || layoutType == LayoutType.COMPACT),
+            contextContent = {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = if (LocalIsDarkTheme.current) 0.5f else 1f))
+                        .clickable { viewModel.setOpenKeyboardPortraitOnly(!openKeyboardPortraitOnly) }
+                        .padding(12.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                stringResource(id = R.string.open_only_in_portrait),
+                                color = tileContentColor,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                stringResource(id = R.string.open_only_in_portrait_description),
+                                color = tileSubtitleColor,
+                                fontSize = 14.sp
+                            )
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Checkbox(
+                            checked = openKeyboardPortraitOnly,
+                            onCheckedChange = { viewModel.setOpenKeyboardPortraitOnly(it) },
+                            colors = CheckboxDefaults.colors(
+                                checkedColor = MaterialTheme.colorScheme.primary,
+                                uncheckedColor = tileSubtitleColor
+                            )
+                        )
+                    }
+                }
+            }
+        )
     }
     Spacer(Modifier.height(actualOuterGroupSpacing))
 
@@ -558,7 +634,7 @@ fun SettingsItems(
             title = "Notification Manager",
             subtitle = "Choose which apps show notifications",
             onClick = { viewModel.setShowNotificationManagerDialog(true) },
-            icon = { Icon(Icons.Default.NotificationsActive, null, tint = tileSubtitleColor) },
+            icon = { Icon(Icons.Rounded.NotificationsActive, null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: middleShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -593,9 +669,9 @@ fun SettingsItems(
                     unselectedIcon = { type ->
                         Icon(
                             imageVector = when (type) {
-                                0 -> Icons.Default.NotificationsOff
-                                1 -> Icons.Default.Circle
-                                else -> Icons.Default.Numbers
+                                0 -> Icons.Rounded.NotificationsOff
+                                1 -> Icons.Rounded.Circle
+                                else -> Icons.Rounded.Numbers
                             },
                             contentDescription = null,
                             modifier = Modifier.size(18.dp),

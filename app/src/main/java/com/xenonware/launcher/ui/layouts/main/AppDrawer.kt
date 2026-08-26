@@ -169,12 +169,11 @@ fun AppDrawer(
     onPinApp: (String, Int) -> Unit = { _, _ -> },
     isGridLayout: Boolean = true,
     onToggleLayout: () -> Unit = {},
-    openKeyboard: Boolean = false,
-    onToggleOpenKeyboard: () -> Unit = {},
     onProgress: (Float) -> Unit = {},
     blurEnabled: Boolean = true,
     onSearchActiveChange: (Boolean) -> Unit = {},
-    closeSearchTrigger: Int = 0
+    closeSearchTrigger: Int = 0,
+    showLabels: Boolean = true
 ) {
     val dragDropState = LocalDragDropState.current
     val context = LocalContext.current
@@ -191,7 +190,7 @@ fun AppDrawer(
     val isSearchPressed by searchInteractionSource.collectIsPressedAsState()
 
     val gridState = rememberLazyGridState()
-    val listState = rememberLazyListState()
+    val listState = rememberLazyGridState()
 
     var searchQuery by remember { mutableStateOf("") }
     val searchResults by viewModel.searchResults.collectAsState()
@@ -199,6 +198,8 @@ fun AppDrawer(
 
     val notifications by viewModel.notifications.collectAsState()
     val badgeType by viewModel.notificationBadgeType.collectAsState()
+    val openKeyboard by viewModel.openKeyboard.collectAsState()
+    val openKeyboardPortraitOnly by viewModel.openKeyboardPortraitOnly.collectAsState()
 
     val groupedNotifications = remember(notifications) {
         notifications.groupBy { it.packageName }
@@ -289,8 +290,16 @@ fun AppDrawer(
     }
 
     // Autofocus search when scrolled to top
-    LaunchedEffect(isAtTop, openKeyboard) {
-        if (openKeyboard && isAtTop) {
+    val shouldOpenKeyboard = remember(openKeyboard, openKeyboardPortraitOnly, configuration.orientation) {
+        if (openKeyboardPortraitOnly) {
+            openKeyboard && configuration.orientation != android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        } else {
+            openKeyboard
+        }
+    }
+
+    LaunchedEffect(isAtTop, shouldOpenKeyboard) {
+        if (shouldOpenKeyboard && isAtTop) {
             focusRequester.requestFocus()
             delay(100.milliseconds)
             keyboardController?.show()
@@ -588,7 +597,7 @@ fun AppDrawer(
                             contentPadding = PaddingValues(
                                 top = contentTopPadding, bottom = 120.dp
                             ),
-                            verticalArrangement = Arrangement.spacedBy(24.dp),
+                            verticalArrangement = Arrangement.spacedBy(if (showLabels) 24.dp else 16.dp),
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             item(span = { GridItemSpan(maxLineSpan) }) {
@@ -622,7 +631,8 @@ fun AppDrawer(
                                                                     dragDropState = dragDropState,
                                                                     onLongPress = { appMenuInfo = app to it },
                                                                     iconShape = iconShape,
-                                                                    showShadow = showShadow
+                                                                    showShadow = showShadow,
+                                                                    showLabels = showLabels
                                                                 )
                                                         }
                                                     }
@@ -649,12 +659,14 @@ fun AppDrawer(
                                     dragDropState = dragDropState,
                                     onLongPress = { appMenuInfo = app to it },
                                     iconShape = iconShape,
-                                    showShadow = showShadow
+                                    showShadow = showShadow,
+                                    showLabels = showLabels
                                 )
                             }
                         }
                     } else {
-                        LazyColumn(
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(if (isWideScreen) 2 else 1),
                             state = listState,
                             modifier = Modifier
                                 .fillMaxSize()
@@ -664,10 +676,11 @@ fun AppDrawer(
                             contentPadding = PaddingValues(
                                 top = contentTopPadding, bottom = 120.dp
                             ),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             if (selectedSearchType == SearchType.Apps) {
-                                item {
+                                item(span = { GridItemSpan(maxLineSpan) }) {
                                     Box {
                                         this@Column.AnimatedVisibility(
                                             visible = searchQuery.isEmpty(),
@@ -698,7 +711,8 @@ fun AppDrawer(
                                                                     dragDropState = dragDropState,
                                                                     onLongPress = { appMenuInfo = app to it },
                                                                     iconShape = iconShape,
-                                                                    showShadow = showShadow
+                                                                    showShadow = showShadow,
+                                                                    showLabels = showLabels
                                                                 )
                                                             }
                                                         }
@@ -734,6 +748,7 @@ fun AppDrawer(
                                     CompositionLocalProvider(LocalViewConfiguration provides customViewConfiguration) {
                                         Row(
                                             verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = if (showLabels) Arrangement.Start else Arrangement.Center,
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .clip(RoundedCornerShape(16.dp))
@@ -830,19 +845,21 @@ fun AppDrawer(
                                                     modifier = Modifier.offset(x = 2.dp, y = (-2).dp)
                                                 )
                                             }
-                                            Spacer(Modifier.width(16.dp))
-                                            Text(
-                                                app.label,
-                                                color = colorScheme.onSurface,
-                                                fontSize = 16.sp,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
+                                            if (showLabels) {
+                                                Spacer(Modifier.width(16.dp))
+                                                Text(
+                                                    app.label,
+                                                    color = colorScheme.onSurface,
+                                                    fontSize = 16.sp,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                            }
                                         }
                                     }
                                 }
                             } else {
-                                item {
+                                item(span = { GridItemSpan(maxLineSpan) }) {
                                     Text(
                                         text = selectedSearchType.name,
                                         style = typography.titleMedium,
@@ -863,7 +880,7 @@ fun AppDrawer(
                                         }
                                     }
                                     if (searchHistory.isNotEmpty()) {
-                                        item {
+                                        item(span = { GridItemSpan(maxLineSpan) }) {
                                             Column {
                                                 Text(
                                                     "Search History",
@@ -1105,7 +1122,7 @@ fun AppDrawer(
                                             }),
                                         MenuItem(
                                             text = "Show Keyboard",
-                                            onClick = onToggleOpenKeyboard,
+                                            onClick = { viewModel.setOpenKeyboard(!openKeyboard) },
                                             dismissOnClick = false,
                                             leadingIcon = {
                                                 Icon(

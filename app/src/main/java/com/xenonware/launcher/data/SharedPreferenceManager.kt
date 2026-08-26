@@ -35,6 +35,10 @@ class SharedPreferenceManager(context: Context) {
         get() = prefs.getBoolean("open_keyboard", false)
         set(value) = prefs.edit { putBoolean("open_keyboard", value) }
 
+    var openKeyboardPortraitOnly: Boolean
+        get() = prefs.getBoolean("open_keyboard_portrait_only", false)
+        set(value) = prefs.edit { putBoolean("open_keyboard_portrait_only", value) }
+
     var appUsage: String
         get() = prefs.getString("app_usage", "") ?: ""
         set(value) = prefs.edit { putString("app_usage", value) }
@@ -118,6 +122,10 @@ class SharedPreferenceManager(context: Context) {
     var developerModeEnabled: Boolean
         get() = prefs.getBoolean("developer_mode_enabled", false)
         set(value) = prefs.edit { putBoolean("developer_mode_enabled", value) }
+
+    var appLabelsEnabled: Boolean
+        get() = prefs.getBoolean("app_labels_enabled", true)
+        set(value) = prefs.edit { putBoolean("app_labels_enabled", value) }
 
     var isUserLoggedIn: Boolean
         get() = prefs.getBoolean("is_user_logged_in", false)
@@ -220,6 +228,7 @@ class SharedPreferenceManager(context: Context) {
             remove("show_hidden_apps_in_search")
             remove("cover_theme_enabled")
             remove("developer_mode_enabled")
+            remove("app_labels_enabled")
             remove("cover_display_dimension_1")
             remove("cover_display_dimension_2")
         }
