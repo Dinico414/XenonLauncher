@@ -1246,10 +1246,17 @@ fun NotificationTabs(
         LaunchedEffect(sortedAppPackages) {
             val currentSet = sortedAppPackages.toSet()
 
-            // 1. Mark items no longer in sortedAppPackages as leaving
+            // 1. Mark items no longer in sortedAppPackages as leaving,
+            // and UNMARK items that have returned.
             displayedPackages.forEach { pkg ->
-                if (pkg !in currentSet && leavingPackages[pkg] != true) {
-                    leavingPackages[pkg] = true
+                if (pkg !in currentSet) {
+                    if (leavingPackages[pkg] != true) {
+                        leavingPackages[pkg] = true
+                    }
+                } else {
+                    if (leavingPackages[pkg] == true) {
+                        leavingPackages[pkg] = false
+                    }
                 }
             }
 
@@ -1420,6 +1427,7 @@ fun NotificationTabs(
                                 onClick = { onPackageSelected(if (isSelected) null else pkg) },
                                 onDismiss = { viewModel.dismissNotificationsByPackage(pkg) },
                                 isOverDelete = { tabRect ->
+                                    if (deleteButtonBounds.isEmpty) return@NotificationTabButton false
                                     val intersection = deleteButtonBounds.intersect(tabRect)
                                     val overlapRatio = if (intersection.isEmpty) 0f else {
                                         (intersection.width * intersection.height) / (deleteButtonBounds.width * deleteButtonBounds.height)

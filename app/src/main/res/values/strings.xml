@@ -91,4 +91,15 @@
     <string name="post_notifications_description">Allow the app to show notifications.</string>
     <string name="all_files_access">All Files Access</string>
     <string name="all_files_access_description">Used to search files and use custom icons from storage.</string>
+
+    <!-- FAB Actions -->
+    <string name="fab_settings">Dock FAB Actions</string>
+    <string name="fab_double_tap">Double Tap</string>
+    <string name="fab_long_press">Long Press</string>
+    <string name="action_lock_device">Lock Device</string>
+    <string name="action_trigger_assistant">Trigger Assistant</string>
+    <string name="action_open_app">Open App</string>
+    <string name="action_open_link">Open Link</string>
+    <string name="action_toggle_flashlight">Toggle Flashlight</string>
+    <string name="action_none">None</string>
 </resources>

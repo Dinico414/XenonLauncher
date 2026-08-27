@@ -203,6 +203,11 @@ class MainActivity : ComponentActivity() {
                 val showNotificationManagerDialog by viewModel.showNotificationManagerDialog.collectAsState()
                 val visibleNotificationApps by viewModel.visibleNotificationApps.collectAsState()
 
+                val fabDoubleTapAction by viewModel.fabDoubleTapAction.collectAsState()
+                val fabLongPressAction by viewModel.fabLongPressAction.collectAsState()
+                val fabDoubleTapValue by viewModel.fabDoubleTapValue.collectAsState()
+                val fabLongPressValue by viewModel.fabLongPressValue.collectAsState()
+
                 LauncherScreen(
                     viewModel = viewModel,
                     apps = apps,
@@ -237,6 +242,25 @@ class MainActivity : ComponentActivity() {
                     onAppClick = { viewModel.launchApp(it) },
                     onOpenSettings = {
                         startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
+                    },
+                    onFabDoubleTap = {
+                        if (fabDoubleTapAction == com.xenonware.launcher.model.FabAction.TRIGGER_ASSISTANT) {
+                            showAssist(Bundle())
+                        } else {
+                            viewModel.executeFabAction(fabDoubleTapAction, fabDoubleTapValue)
+                        }
+                    },
+                    onFabLongPress = {
+                        if (fabLongPressAction != com.xenonware.launcher.model.FabAction.NONE) {
+                            val vibratorManager = getSystemService(android.content.Context.VIBRATOR_MANAGER_SERVICE) as android.os.VibratorManager
+                            val vibrator = vibratorManager.defaultVibrator
+                            vibrator.vibrate(android.os.VibrationEffect.createOneShot(50, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
+                        }
+                        if (fabLongPressAction == com.xenonware.launcher.model.FabAction.TRIGGER_ASSISTANT) {
+                            showAssist(Bundle())
+                        } else {
+                            viewModel.executeFabAction(fabLongPressAction, fabLongPressValue)
+                        }
                     }
                 )
             }
@@ -379,7 +403,9 @@ fun LauncherScreen(
     onAppDrawerVisibilityChange: (Boolean) -> Unit,
     pagerState: PagerState,
     onAppClick: (String) -> Unit,
-    onOpenSettings: () -> Unit
+    onOpenSettings: () -> Unit,
+    onFabDoubleTap: () -> Unit = {},
+    onFabLongPress: () -> Unit = {}
 ) {
     val hazeState = rememberHazeState()
     val scope = rememberCoroutineScope()
@@ -575,6 +601,8 @@ fun LauncherScreen(
                 onTimeClick = { viewModel.handleShortcutClick(LauncherViewModel.ShortcutType.TIME) },
                 onDateClick = { viewModel.handleShortcutClick(LauncherViewModel.ShortcutType.DATE) },
                 onWeatherClick = { viewModel.handleShortcutClick(LauncherViewModel.ShortcutType.WEATHER) },
+                onFabDoubleTap = onFabDoubleTap,
+                onFabLongPress = onFabLongPress,
                 isAppDrawerVisible = isAppDrawerVisible,
                 hazeState = if (blurSetting) hazeState else null,
                 progress = batteryLevel,

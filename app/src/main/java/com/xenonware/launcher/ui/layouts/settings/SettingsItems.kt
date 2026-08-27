@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AdsClick
 import androidx.compose.material.icons.rounded.BlurOn
 import androidx.compose.material.icons.rounded.Circle
 import androidx.compose.material.icons.rounded.Home
@@ -33,6 +34,7 @@ import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.NotificationsOff
 import androidx.compose.material.icons.rounded.Numbers
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.Checkbox
@@ -76,6 +78,9 @@ import com.xenon.mylibrary.values.NoCornerRadius
 import com.xenonware.launcher.R
 import com.xenonware.launcher.presentation.sign_in.GoogleAuthUiClient
 import com.xenonware.launcher.presentation.sign_in.SignInState
+import com.xenonware.launcher.model.AppInfo
+import com.xenonware.launcher.model.FabAction
+import com.xenonware.launcher.ui.res.AppIcon
 import com.xenonware.launcher.ui.res.IconShape
 import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
 import com.xenonware.launcher.viewmodel.LauncherViewModel
@@ -133,6 +138,12 @@ fun SettingsItems(
     val timeShortcut by viewModel.timeShortcut.collectAsState()
     val dateShortcut by viewModel.dateShortcut.collectAsState()
     val weatherShortcut by viewModel.weatherShortcut.collectAsState()
+
+    val fabDoubleTapAction by viewModel.fabDoubleTapAction.collectAsState()
+    val fabLongPressAction by viewModel.fabLongPressAction.collectAsState()
+    val fabDoubleTapValue by viewModel.fabDoubleTapValue.collectAsState()
+    val fabLongPressValue by viewModel.fabLongPressValue.collectAsState()
+    val apps by viewModel.apps.collectAsState()
     
     val userData = state.userData
 
@@ -615,6 +626,36 @@ fun SettingsItems(
     }
     Spacer(Modifier.height(actualOuterGroupSpacing))
 
+    // --- DOCK FAB ---
+    Column {
+        SettingsTile(
+            title = stringResource(id = R.string.fab_double_tap),
+            subtitle = getFabActionTitle(fabDoubleTapAction, fabDoubleTapValue, apps),
+            onClick = { viewModel.setShowFabConfig(true) },
+            icon = { Icon(Icons.Rounded.TouchApp, null, tint = tileSubtitleColor) },
+            shape = tileShapeOverride ?: topShape,
+            backgroundColor = tileBackgroundColor,
+            contentColor = tileContentColor,
+            subtitleColor = tileSubtitleColor,
+            horizontalPadding = tileHorizontalPadding,
+            verticalPadding = tileVerticalPadding
+        )
+        Spacer(Modifier.height(actualInnerGroupSpacing))
+        SettingsTile(
+            title = stringResource(id = R.string.fab_long_press),
+            subtitle = getFabActionTitle(fabLongPressAction, fabLongPressValue, apps),
+            onClick = { viewModel.setShowFabConfig(false) },
+            icon = { Icon(Icons.Rounded.AdsClick, null, tint = tileSubtitleColor) },
+            shape = tileShapeOverride ?: bottomShape,
+            backgroundColor = tileBackgroundColor,
+            contentColor = tileContentColor,
+            subtitleColor = tileSubtitleColor,
+            horizontalPadding = tileHorizontalPadding,
+            verticalPadding = tileVerticalPadding
+        )
+    }
+    Spacer(Modifier.height(actualOuterGroupSpacing))
+
     // --- Notification & At a Glance ---
     Column {
         SettingsTile(
@@ -786,6 +827,25 @@ fun SettingsItems(
             horizontalPadding = tileHorizontalPadding,
             verticalPadding = tileVerticalPadding
         )
+    }
+}
+
+@Composable
+fun getFabActionTitle(action: FabAction, value: String, apps: List<AppInfo>): String {
+    return when (action) {
+        FabAction.LOCK_DEVICE -> stringResource(R.string.action_lock_device)
+        FabAction.TRIGGER_ASSISTANT -> stringResource(R.string.action_trigger_assistant)
+        FabAction.OPEN_APP -> {
+            val app = apps.find { it.packageName == value }
+            if (app != null) "${stringResource(R.string.action_open_app)}: ${app.label}"
+            else stringResource(R.string.action_open_app)
+        }
+        FabAction.OPEN_LINK -> {
+            if (value.isNotEmpty()) "${stringResource(R.string.action_open_link)}: $value"
+            else stringResource(R.string.action_open_link)
+        }
+        FabAction.TOGGLE_FLASHLIGHT -> stringResource(R.string.action_toggle_flashlight)
+        FabAction.NONE -> stringResource(R.string.action_none)
     }
 }
 

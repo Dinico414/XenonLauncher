@@ -163,6 +163,8 @@ fun DockPill(
     onAppClick: (String) -> Unit,
     onSettingsClick: () -> Unit,
     onFabClick: () -> Unit,
+    onFabDoubleTap: () -> Unit = {},
+    onFabLongPress: () -> Unit = {},
     onMediaPlayPause: () -> Unit,
     onMediaSkipNext: () -> Unit,
     onOpenMediaPermission: () -> Unit,
@@ -316,7 +318,9 @@ fun DockPill(
             isAppDrawerVisible = isAppDrawerVisible,
             alpha = fabAlpha,
             hazeState = hazeState,
-            onClick = onFabClick
+            onClick = onFabClick,
+            onDoubleTap = onFabDoubleTap,
+            onLongPress = onFabLongPress
         )
     }
 }
@@ -332,9 +336,10 @@ private fun DockFab(
     alpha: Float,
     hazeState: HazeState?,
     onClick: () -> Unit,
+    onDoubleTap: () -> Unit,
+    onLongPress: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
     val fabShape = RoundedCornerShape(16.dp)
 
     Surface(
@@ -350,7 +355,8 @@ private fun DockFab(
             .pointerInput(onClick) {
                 detectTapGestures(
                     onTap = { onClick() },
-                    onDoubleTap = { XenonAccessibilityService.lockScreenOrRequestAccess(context) }
+                    onDoubleTap = { onDoubleTap() },
+                    onLongPress = { onLongPress() }
                 )
             }
             .then(

@@ -44,6 +44,7 @@ import com.xenonware.launcher.R
 import com.xenonware.launcher.presentation.sign_in.GoogleAuthUiClient
 import com.xenonware.launcher.presentation.sign_in.SignInState
 import com.xenonware.launcher.ui.res.CalendarSelectionDialog
+import com.xenonware.launcher.ui.res.FabActionConfigDialog
 import com.xenonware.launcher.ui.res.NotificationManagerDialog
 import com.xenonware.launcher.ui.res.ShortcutConfigDialog
 import com.xenonware.launcher.viewmodel.LauncherViewModel
@@ -92,6 +93,13 @@ fun DefaultSettings(
         val showHiddenAppsDialog by viewModel.showHiddenAppsDialog.collectAsState()
         val hiddenApps by viewModel.hiddenApps.collectAsState()
         val configShortcutType by viewModel.configShortcutType.collectAsState()
+
+        val showFabConfigIsDoubleTap by viewModel.showFabConfigIsDoubleTap.collectAsState()
+        val fabDoubleTapAction by viewModel.fabDoubleTapAction.collectAsState()
+        val fabLongPressAction by viewModel.fabLongPressAction.collectAsState()
+        val fabDoubleTapValue by viewModel.fabDoubleTapValue.collectAsState()
+        val fabLongPressValue by viewModel.fabLongPressValue.collectAsState()
+
         val apps by viewModel.apps.collectAsState()
         val iconShape by viewModel.drawerIconShape.collectAsState()
         val showShadow by viewModel.drawerIconShadow.collectAsState()
@@ -356,6 +364,24 @@ fun DefaultSettings(
                 showShadow = showShadow,
                 onDismiss = { viewModel.setConfigShortcut(null) },
                 onSave = { viewModel.saveShortcut(type, it) }
+            )
+        }
+
+        showFabConfigIsDoubleTap?.let { isDoubleTap ->
+            val initialAction = if (isDoubleTap) fabDoubleTapAction else fabLongPressAction
+            val initialValue = if (isDoubleTap) fabDoubleTapValue else fabLongPressValue
+            FabActionConfigDialog(
+                isDoubleTap = isDoubleTap,
+                apps = apps,
+                initialAction = initialAction,
+                initialValue = initialValue,
+                iconShape = iconShape,
+                showShadow = showShadow,
+                onDismiss = { viewModel.setShowFabConfig(null) },
+                onSave = { action, value ->
+                    viewModel.setFabAction(isDoubleTap, action, value)
+                    viewModel.setShowFabConfig(null)
+                }
             )
         }
     }

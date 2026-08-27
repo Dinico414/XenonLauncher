@@ -127,6 +127,22 @@ class SharedPreferenceManager(context: Context) {
         get() = prefs.getBoolean("developer_mode_enabled", false)
         set(value) = prefs.edit { putBoolean("developer_mode_enabled", value) }
 
+    var fabDoubleTapAction: String
+        get() = prefs.getString("fab_double_tap_action", "LOCK_DEVICE") ?: "LOCK_DEVICE"
+        set(value) = prefs.edit { putString("fab_double_tap_action", value) }
+
+    var fabLongPressAction: String
+        get() = prefs.getString("fab_long_press_action", "NONE") ?: "NONE"
+        set(value) = prefs.edit { putString("fab_long_press_action", value) }
+
+    var fabDoubleTapValue: String
+        get() = prefs.getString("fab_double_tap_value", "") ?: ""
+        set(value) = prefs.edit { putString("fab_double_tap_value", value) }
+
+    var fabLongPressValue: String
+        get() = prefs.getString("fab_long_press_value", "") ?: ""
+        set(value) = prefs.edit { putString("fab_long_press_value", value) }
+
     var appLabelsEnabled: Boolean
         get() = prefs.getBoolean("app_labels_enabled", true)
         set(value) = prefs.edit { putBoolean("app_labels_enabled", value) }

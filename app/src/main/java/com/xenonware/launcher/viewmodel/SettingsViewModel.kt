@@ -21,6 +21,7 @@ import androidx.lifecycle.viewModelScope
 import com.xenon.mylibrary.res.ThemeSetting
 import com.xenonware.launcher.data.SharedPreferenceManager
 import com.xenonware.launcher.model.AppInfo
+import com.xenonware.launcher.model.FabAction
 import com.xenonware.launcher.ui.res.IconShape
 import com.xenonware.launcher.util.generateCustomIcon
 import com.xenonware.launcher.util.loadIconFromPack
@@ -139,6 +140,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _showHiddenAppsDialog = MutableStateFlow(false)
     val showHiddenAppsDialog: StateFlow<Boolean> = _showHiddenAppsDialog.asStateFlow()
 
+    private val _showFabConfigIsDoubleTap = MutableStateFlow<Boolean?>(null)
+    val showFabConfigIsDoubleTap: StateFlow<Boolean?> = _showFabConfigIsDoubleTap.asStateFlow()
+
     private val _developerModeEnabled = MutableStateFlow(sharedPreferenceManager.developerModeEnabled)
     val developerModeEnabled: StateFlow<Boolean> = _developerModeEnabled.asStateFlow()
 
@@ -147,6 +151,18 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     private val _persistedThemeIndexFlow = MutableStateFlow(sharedPreferenceManager.theme)
     val persistedThemeIndex: StateFlow<Int> = _persistedThemeIndexFlow.asStateFlow()
+
+    private val _fabDoubleTapAction = MutableStateFlow(FabAction.fromString(sharedPreferenceManager.fabDoubleTapAction))
+    val fabDoubleTapAction: StateFlow<FabAction> = _fabDoubleTapAction.asStateFlow()
+
+    private val _fabLongPressAction = MutableStateFlow(FabAction.fromString(sharedPreferenceManager.fabLongPressAction))
+    val fabLongPressAction: StateFlow<FabAction> = _fabLongPressAction.asStateFlow()
+
+    private val _fabDoubleTapValue = MutableStateFlow(sharedPreferenceManager.fabDoubleTapValue)
+    val fabDoubleTapValue: StateFlow<String> = _fabDoubleTapValue.asStateFlow()
+
+    private val _fabLongPressValue = MutableStateFlow(sharedPreferenceManager.fabLongPressValue)
+    val fabLongPressValue: StateFlow<String> = _fabLongPressValue.asStateFlow()
 
     private val _dialogPreviewThemeIndex = MutableStateFlow(sharedPreferenceManager.theme)
     val dialogPreviewThemeIndex: StateFlow<Int> = _dialogPreviewThemeIndex.asStateFlow()
@@ -609,6 +625,20 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         _enableCoverTheme.value = enabled
     }
 
+    fun setFabAction(isDoubleTap: Boolean, action: FabAction, value: String = "") {
+        if (isDoubleTap) {
+            sharedPreferenceManager.fabDoubleTapAction = action.name
+            sharedPreferenceManager.fabDoubleTapValue = value
+            _fabDoubleTapAction.value = action
+            _fabDoubleTapValue.value = value
+        } else {
+            sharedPreferenceManager.fabLongPressAction = action.name
+            sharedPreferenceManager.fabLongPressValue = value
+            _fabLongPressAction.value = action
+            _fabLongPressValue.value = value
+        }
+    }
+
     fun setConfigShortcut(type: LauncherViewModel.ShortcutType?) {
         _configShortcutType.value = type
     }
@@ -626,6 +656,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun setShowHiddenApps(show: Boolean) {
         _showHiddenAppsDialog.value = show
+    }
+
+    fun setShowFabConfig(isDoubleTap: Boolean?) {
+        _showFabConfigIsDoubleTap.value = isDoubleTap
     }
 
     fun isDefaultLauncher(context: Context): Boolean {

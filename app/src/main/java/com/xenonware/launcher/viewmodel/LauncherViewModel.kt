@@ -20,6 +20,7 @@ import android.content.pm.ResolveInfo
 import android.database.ContentObserver
 import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
+import android.hardware.camera2.CameraManager
 import android.location.Location
 import android.net.Uri
 import android.os.BatteryManager
@@ -40,11 +41,13 @@ import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
+import com.xenonware.launcher.accessibility.XenonAccessibilityService
 import com.xenonware.launcher.data.SharedPreferenceManager
 import com.xenonware.launcher.media.MediaControllerManager
 import com.xenonware.launcher.media.MediaState
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.model.AppOverride
+import com.xenonware.launcher.model.FabAction
 import com.xenonware.launcher.model.SearchResult
 import com.xenonware.launcher.model.WidgetItem
 import com.xenonware.launcher.notification.NotificationManager
@@ -158,6 +161,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             "theme" -> _theme.value = prefManager.theme
             "blacked_out_mode_enabled" -> _blackedOutModeEnabled.value = prefManager.blackedOutModeEnabled
             "cover_theme_enabled" -> _coverThemeEnabled.value = prefManager.coverThemeEnabled
+            "fab_double_tap_action" -> _fabDoubleTapAction.value = FabAction.fromString(prefManager.fabDoubleTapAction)
+            "fab_long_press_action" -> _fabLongPressAction.value = FabAction.fromString(prefManager.fabLongPressAction)
+            "fab_double_tap_value" -> _fabDoubleTapValue.value = prefManager.fabDoubleTapValue
+            "fab_long_press_value" -> _fabLongPressValue.value = prefManager.fabLongPressValue
         }
     }
 
@@ -240,6 +247,18 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private val _theme = MutableStateFlow(prefManager.theme)
     val theme: StateFlow<Int> = _theme
+
+    private val _fabDoubleTapAction = MutableStateFlow(FabAction.fromString(prefManager.fabDoubleTapAction))
+    val fabDoubleTapAction: StateFlow<FabAction> = _fabDoubleTapAction
+
+    private val _fabLongPressAction = MutableStateFlow(FabAction.fromString(prefManager.fabLongPressAction))
+    val fabLongPressAction: StateFlow<FabAction> = _fabLongPressAction
+
+    private val _fabDoubleTapValue = MutableStateFlow(prefManager.fabDoubleTapValue)
+    val fabDoubleTapValue: StateFlow<String> = _fabDoubleTapValue
+
+    private val _fabLongPressValue = MutableStateFlow(prefManager.fabLongPressValue)
+    val fabLongPressValue: StateFlow<String> = _fabLongPressValue
 
     private val _isAppDrawerVisible = MutableStateFlow(false)
     val isAppDrawerVisible: StateFlow<Boolean> = _isAppDrawerVisible
@@ -380,6 +399,12 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val _isCharging = MutableStateFlow(false)
     val isCharging: StateFlow<Boolean> = _isCharging
 
+    private val _isFlashlightOn = MutableStateFlow(false)
+    val isFlashlightOn: StateFlow<Boolean> = _isFlashlightOn
+
+    private val cameraManager by lazy { application.getSystemService(Context.CAMERA_SERVICE) as CameraManager }
+    private var cameraId: String? = null
+
     private val _calendarEvents = MutableStateFlow<List<CalendarEvent>>(emptyList())
     val calendarEvents: StateFlow<List<CalendarEvent>> = _calendarEvents
 
@@ -489,6 +514,15 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         loadAvailableCalendars()
         loadCalendarEvents()
         startCalendarUpdates()
+
+        try {
+            cameraId = cameraManager.cameraIdList.firstOrNull()
+            cameraManager.registerTorchCallback(object : CameraManager.TorchCallback() {
+                override fun onTorchModeChanged(id: String, enabled: Boolean) {
+                    if (id == cameraId) _isFlashlightOn.value = enabled
+                }
+            }, Handler(Looper.getMainLooper()))
+        } catch (_: Exception) {}
 
         val packageFilter = IntentFilter().apply {
             addAction(Intent.ACTION_PACKAGE_ADDED)
@@ -666,6 +700,45 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     }
 
     val isMediaPermissionGranted: Boolean get() = mediaControllerManager.isPermissionGranted
+
+    fun toggleFlashlight() {
+        try {
+            cameraId?.let {
+                cameraManager.setTorchMode(it, !_isFlashlightOn.value)
+            }
+        } catch (_: Exception) {}
+    }
+
+    fun executeFabAction(action: FabAction, value: String) {
+        val context = getApplication<Application>()
+        when (action) {
+            FabAction.LOCK_DEVICE -> XenonAccessibilityService.lockScreenOrRequestAccess(context)
+            FabAction.TRIGGER_ASSISTANT -> {
+                try {
+                    context.startActivity(Intent(Intent.ACTION_ASSIST).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                } catch (_: Exception) {
+                    try {
+                        context.startActivity(Intent(Intent.ACTION_VOICE_COMMAND).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    } catch (_: Exception) {}
+                }
+            }
+            FabAction.OPEN_APP -> launchApp(value)
+            FabAction.OPEN_LINK -> {
+                if (value.isNotEmpty()) {
+                    try {
+                        val uri = if (value.startsWith("http://") || value.startsWith("https://")) {
+                            value.toUri()
+                        } else {
+                            "https://$value".toUri()
+                        }
+                        context.startActivity(Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    } catch (_: Exception) {}
+                }
+            }
+            FabAction.TOGGLE_FLASHLIGHT -> toggleFlashlight()
+            FabAction.NONE -> {}
+        }
+    }
 
     fun openNotificationAccessSettings() {
         val intent = Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")
