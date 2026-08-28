@@ -56,12 +56,14 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.platform.ViewConfiguration
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.toSize
 import androidx.core.graphics.drawable.toBitmap
+import com.xenonware.launcher.R
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.notification.LauncherNotification
 import com.xenonware.launcher.ui.res.notification.NotificationBadge
@@ -424,7 +426,7 @@ fun FixedAppSection(
             if (isEmpty) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
-                        "Drag App to pin",
+                        stringResource(R.string.drag_app_to_pin),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                         color = LocalContentColor.current.copy(alpha = 0.5f)
@@ -612,7 +614,7 @@ fun FixedAppSection(
                     // its specs on and off around a commit can make the whole row
                     // re-run its appearance animation at once.
                     itemsIndexed(apps, key = { _, app -> app.packageName }) { index, app ->
-                        // Memoised: Drawable.toBitmap() allocates and rasterises for
+                        // Memorised: Drawable.toBitmap() allocates and rasterises for
                         // adaptive icons, and this composable recomposes on every gap
                         // change and again on release. Doing it inline was rebuilding
                         // every icon in the row on the same frame as the drop.

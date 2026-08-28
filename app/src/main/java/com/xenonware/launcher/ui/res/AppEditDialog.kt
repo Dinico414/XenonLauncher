@@ -43,11 +43,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.graphics.drawable.toBitmap
 import com.xenon.mylibrary.res.XenonColorPicker
 import com.xenon.mylibrary.res.XenonDialog
+import com.xenonware.launcher.R
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.model.AppOverride
 import com.xenonware.launcher.util.generateCustomIcon
@@ -84,7 +86,7 @@ fun AppEditDialog(
     val originalIcon = remember(app.packageName) {
         try {
             pm.getActivityIcon(pm.getLaunchIntentForPackage(app.packageName)!!.component!!)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             app.icon
         }
     }
@@ -113,8 +115,8 @@ fun AppEditDialog(
     XenonDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = true),
-        title = "Edit App",
-        confirmButtonText = "Save",
+        title = stringResource(R.string.edit_app),
+        confirmButtonText = stringResource(R.string.save),
         onConfirmButtonClick = {
             viewModel.updateAppOverride(
                 app.packageName, AppOverride(
@@ -129,7 +131,7 @@ fun AppEditDialog(
             )
             onDismiss()
         },
-        actionButton1Text = "Reset",
+        actionButton1Text = stringResource(R.string.reset),
         onActionButton1Click = {
             viewModel.resetAppOverride(app.packageName)
             name = app.name
@@ -171,13 +173,13 @@ fun AppEditDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("App Name") },
+                    label = { Text(stringResource(R.string.app_name_label)) },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
                     shape = RoundedCornerShape(12.dp)
                 )
                 IconButton(onClick = { showIconPackPicker = true }) {
-                    Icon(Icons.Rounded.Collections, "Icon Pack", modifier = Modifier.size(20.dp))
+                    Icon(Icons.Rounded.Collections, stringResource(R.string.icon_pack), modifier = Modifier.size(20.dp))
                 }
             }
 
@@ -189,12 +191,12 @@ fun AppEditDialog(
                 selectedTabIndex = selectedTab, containerColor = Color.Transparent, divider = {}) {
                 Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }) {
                     Text(
-                        "Style", Modifier.padding(8.dp), style = MaterialTheme.typography.bodyMedium
+                        stringResource(R.string.style), Modifier.padding(8.dp), style = MaterialTheme.typography.bodyMedium
                     )
                 }
                 Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }) {
                     Text(
-                        "Colors",
+                        stringResource(R.string.colors),
                         Modifier.padding(8.dp),
                         style = MaterialTheme.typography.bodyMedium
                     )
@@ -206,7 +208,7 @@ fun AppEditDialog(
             if (selectedTab == 0) {
                 Column {
                     Text(
-                        "Zoom: ${(zoom * 100).toInt()}%",
+                        "${stringResource(R.string.zoom)}: ${(zoom * 100).toInt()}%",
                         style = MaterialTheme.typography.labelMedium
                     )
                     Slider(
@@ -214,7 +216,7 @@ fun AppEditDialog(
                     )
 
                     Text(
-                        "Border Width: ${borderWidth.toInt()}",
+                        "${stringResource(R.string.border_width)}: ${borderWidth.toInt()}",
                         style = MaterialTheme.typography.labelMedium
                     )
                     Slider(
@@ -272,7 +274,7 @@ fun ColorSelectionSection(
                     .padding(vertical = 8.dp),
                 contentAlignment = Alignment.Center) {
                 Text(
-                    "Background",
+                    stringResource(R.string.background),
                     color = if (bgColorActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.labelLarge
                 )
@@ -293,7 +295,7 @@ fun ColorSelectionSection(
                     .padding(vertical = 8.dp),
                 contentAlignment = Alignment.Center) {
                 Text(
-                    "Border",
+                    stringResource(R.string.border),
                     color = if (borderColorActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.labelLarge
                 )

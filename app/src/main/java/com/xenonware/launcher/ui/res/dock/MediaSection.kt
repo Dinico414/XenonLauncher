@@ -61,6 +61,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -70,6 +71,7 @@ import coil.compose.AsyncImage
 import coil.imageLoader
 import coil.request.ImageRequest
 import coil.request.SuccessResult
+import com.xenonware.launcher.R
 import com.xenonware.launcher.media.MediaState
 import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
 import com.xenonware.launcher.util.ColorUtils
@@ -85,7 +87,7 @@ fun MediaSection(
     onPlayPause: () -> Unit,
     onSkipNext: () -> Unit,
     onRequestPermission: () -> Unit,
-    /** Colour the section sits on, used to decide whether it needs a border. */
+    /** Color the section sits on, used to decide whether it needs a border. */
     dockColor: Color,
     modifier: Modifier = Modifier,
 ) {
@@ -160,8 +162,8 @@ private data class MediaTheme(
 )
 
 /**
- * Pulls a dominant colour out of the current album art and blends it into the
- * app's scheme. Falls back to the default surface colours, debounced so that
+ * Pulls a dominant color out of the current album art and blends it into the
+ * app's scheme. Falls back to the default surface colors, debounced so that
  * track changes don't make the pill flicker.
  */
 @Composable
@@ -316,7 +318,7 @@ private fun MediaSectionContent(
     ) {
         if (!isPermissionGranted) {
             Text(
-                "Media Access Required",
+                stringResource(R.string.media_access_required),
                 modifier = Modifier
                     .weight(1f)
                     .padding(start = 8.dp),
@@ -330,7 +332,7 @@ private fun MediaSectionContent(
                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                 modifier = Modifier.height(32.dp)
             ) {
-                Text("Grant", fontSize = 10.sp, maxLines = 1, softWrap = false)
+                Text(stringResource(R.string.grant), fontSize = 10.sp, maxLines = 1, softWrap = false)
             }
         } else {
             val artModel = remember(mediaState.title, mediaState.artist) {
@@ -351,7 +353,7 @@ private fun MediaSectionContent(
                 if (artModel != null) {
                     AsyncImage(
                         model = artModel,
-                        contentDescription = "Album Art",
+                        contentDescription = stringResource(R.string.album_art),
                         modifier = Modifier
                             .padding(if(mediaState.title != null) 2.dp else 0.dp)
                             .size(if(mediaState.title != null) 36.dp else 44.dp)
@@ -391,7 +393,7 @@ private fun MediaSectionContent(
                     }
             ) {
                 Text(
-                    mediaState.title ?: "No Media",
+                    mediaState.title ?: stringResource(R.string.no_media),
                     color = contentColor,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
@@ -399,7 +401,7 @@ private fun MediaSectionContent(
                     modifier = Modifier.basicMarquee()
                 )
                 Text(
-                    mediaState.artist ?: "Unknown Artist",
+                    mediaState.artist ?: stringResource(R.string.unknown_artist),
                     color = contentColor.copy(0.7f),
                     fontSize = 10.sp,
                     maxLines = 1,
@@ -468,7 +470,7 @@ fun openMediaApp(context: Context, mediaState: MediaState) {
             setDataAndType("content://media/external/audio/media".toUri(), "audio/*")
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-        val chooserIntent = Intent.createChooser(audioIntent, "SELECT AUDIO SOURCE")
+        val chooserIntent = Intent.createChooser(audioIntent, context.getString(R.string.select_audio_source))
         context.startActivity(chooserIntent)
     } catch (_: Exception) {
     }

@@ -1,8 +1,5 @@
 package com.xenonware.launcher.ui.res.dock
 
-import android.content.Context
-import android.content.Intent
-import android.provider.Settings
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
@@ -16,7 +13,6 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -55,13 +51,14 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.xenonware.launcher.accessibility.XenonAccessibilityService
+import com.xenonware.launcher.R
 import com.xenonware.launcher.media.MediaState
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.notification.LauncherNotification
+import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
@@ -89,7 +86,7 @@ internal val DockSectionShape = RoundedCornerShape(100.dp)
 internal fun dockButtonAlpha(): Float = if (LocalIsDarkTheme.current) 0.35f else 1f
 
 /**
- * The size behaviour every section shares: full dock height minus the collapse
+ * The size behavior every section shares: full dock height minus the collapse
  * padding, stretching when expanded, a fixed 32.dp pill when not.
  */
 @Composable
@@ -369,7 +366,7 @@ private fun DockFab(
             Crossfade(targetState = isAppDrawerVisible, label = "fabIconFade") { visible ->
                 Icon(
                     if (visible) Icons.Rounded.Close else Icons.Rounded.Apps,
-                    "Toggle Apps",
+                    stringResource(R.string.toggle_apps),
                     modifier = Modifier.size(32.dp)
                 )
             }

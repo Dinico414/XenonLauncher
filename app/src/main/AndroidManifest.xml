@@ -68,7 +68,7 @@
         <activity
             android:name=".DevSettingsActivity"
             android:exported="true"
-            android:label="Developer Options"
+            android:label="@string/developer_options_title"
             android:theme="@style/Theme.Xenon" />
 
         <service

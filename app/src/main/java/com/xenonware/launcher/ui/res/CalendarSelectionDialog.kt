@@ -27,11 +27,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.xenon.mylibrary.res.XenonDialog
+import com.xenonware.launcher.R
 import com.xenonware.launcher.viewmodel.CalendarInfo
 
 @Composable
@@ -54,12 +56,12 @@ fun CalendarSelectionDialog(
     XenonDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = true),
-        title = "Select Calendars",
-        confirmButtonText = "Done",
+        title = stringResource(R.string.select_calendars),
+        confirmButtonText = stringResource(R.string.done),
         onConfirmButtonClick = onDismiss,
-        actionButton1Text = "Select All",
+        actionButton1Text = stringResource(R.string.select_all),
         onActionButton1Click = onSelectAll,
-        actionButton2Text = "Clear All",
+        actionButton2Text = stringResource(R.string.clear_all),
         onActionButton2Click = onClearAll,
         contentManagesScrolling = true,
         externalShowTopDivider = showTopDivider,
@@ -73,7 +75,7 @@ fun CalendarSelectionDialog(
         ) {
             item {
                 Text(
-                    "Choose which calendars to show events from in At a Glance.",
+                    stringResource(R.string.calendar_selection_description),
                     fontSize = 14.sp,
                     color = colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 16.dp)
@@ -88,7 +90,7 @@ fun CalendarSelectionDialog(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            "No calendars found.\nCheck permissions.",
+                            stringResource(R.string.no_calendars_found),
                             color = colorScheme.onSurfaceVariant,
                             fontSize = 14.sp,
                             lineHeight = 20.sp
@@ -128,7 +130,7 @@ fun CalendarSelectionDialog(
                             )
                             if (!calendar.syncEvents) {
                                 Text(
-                                    "Sync is disabled for this calendar in system settings",
+                                    stringResource(R.string.sync_disabled),
                                     fontSize = 11.sp,
                                     color = colorScheme.error
                                 )

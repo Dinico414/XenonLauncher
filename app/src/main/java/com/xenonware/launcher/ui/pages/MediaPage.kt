@@ -78,13 +78,16 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.graphics.createBitmap
 import coil.compose.AsyncImage
+import com.xenonware.launcher.R
 import com.xenonware.launcher.media.MediaAction
 import com.xenonware.launcher.media.MediaState
 import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
@@ -149,14 +152,15 @@ fun MediaPage(
     // 72dp (dock) + 8dp (dock padding) + 8dp (gap) + 4dp (to match widget vertical padding)
     val dockAreaHeight = 72.dp + navBarHeight + 8.dp + 8.dp + 4.dp
 
-    val appName = remember(mediaState.packageName) {
+    val appNameLabel = stringResource(R.string.media)
+    val appName = remember(mediaState.packageName, appNameLabel) {
         mediaState.packageName?.let {
             try {
                 pm.getApplicationLabel(pm.getApplicationInfo(it, 0)).toString()
             } catch (_: Exception) {
                 null
             }
-        } ?: "Media"
+        } ?: appNameLabel
     }
 
     val appIcon = remember(mediaState.packageName) {
@@ -287,14 +291,14 @@ fun MediaPage(
                 ) {
                     if (!isPermissionGranted) {
                         Text(
-                            "Notification Access Required",
+                            stringResource(R.string.media_access_required),
                             color = contentColor,
                             style = MaterialTheme.typography.headlineSmall,
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(24.dp))
                         Button(onClick = onOpenSettings) {
-                            Text("Grant Access")
+                            Text(stringResource(R.string.grant))
                         }
                     } else {
                         // App Name
@@ -349,7 +353,7 @@ fun MediaPage(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = mediaState.title ?: "Nothing Playing",
+                                    text = mediaState.title ?: stringResource(R.string.no_media),
                                     style = MaterialTheme.typography.headlineMedium.copy(shadow = textShadow),
                                     fontWeight = FontWeight.Bold,
                                     color = contentColor,
@@ -441,7 +445,7 @@ fun MediaPage(
                             ) {
                                 ShadowedIcon(
                                     imageVector = Icons.Rounded.SkipPrevious,
-                                    contentDescription = "Previous",
+                                    contentDescription = stringResource(R.string.previous),
                                     modifier = Modifier.size(32.dp),
                                     tint = contentColor
                                 )
@@ -459,7 +463,7 @@ fun MediaPage(
                             ) {
                                 ShadowedIcon(
                                     imageVector = if (mediaState.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                                    contentDescription = "Play/Pause",
+                                    contentDescription = stringResource(R.string.play_pause),
                                     modifier = Modifier.size(40.dp),
                                     tint = iconButtonContentColor
                                 )
@@ -470,7 +474,7 @@ fun MediaPage(
                             ) {
                                 ShadowedIcon(
                                     imageVector = Icons.Rounded.SkipNext,
-                                    contentDescription = "Next",
+                                    contentDescription = stringResource(R.string.next),
                                     modifier = Modifier.size(32.dp),
                                     tint = contentColor
                                 )
@@ -500,21 +504,21 @@ fun MediaPage(
             ) {
                 if (!isPermissionGranted) {
                     Text(
-                        "Notification Access Required",
+                        stringResource(R.string.media_access_required),
                         color = contentColor,
                         style = MaterialTheme.typography.headlineSmall,
                         textAlign = TextAlign.Center
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        "To show and control media playback, Xenon needs notification access.",
+                        stringResource(R.string.media_access_description),
                         color = subContentColor,
                         style = MaterialTheme.typography.bodyMedium,
                         textAlign = TextAlign.Center
                     )
                     Spacer(modifier = Modifier.height(24.dp))
                     Button(onClick = onOpenSettings) {
-                        Text("Grant Access")
+                        Text(stringResource(R.string.grant))
                     }
                 } else {
                     if (!isSmallDevice) {
@@ -636,7 +640,7 @@ fun MediaPage(
                                             contentAlignment = Alignment.Center
                                         ) {
                                             Text(
-                                                text = mediaState.title ?: "Nothing Playing",
+                                                text = mediaState.title ?: stringResource(R.string.no_media),
                                                 style = MaterialTheme.typography.headlineSmall.copy(shadow = textShadow),
                                                 fontWeight = FontWeight.Bold,
                                                 color = contentColor,
@@ -752,7 +756,7 @@ fun MediaPage(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = mediaState.title ?: "Nothing Playing",
+                                    text = mediaState.title ?: stringResource(R.string.no_media),
                                     style = MaterialTheme.typography.headlineMedium.copy(shadow = textShadow),
                                     fontWeight = FontWeight.Bold,
                                     color = contentColor,
@@ -969,7 +973,7 @@ private fun ShadowedIcon(
     modifier: Modifier = Modifier,
     tint: Color,
     shadowColor: Color = Color.Black.copy(alpha = 0.3f),
-    offset: Dp = 2.dp
+    offset: Dp = 2.dp,
 ) {
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         Icon(
@@ -1007,7 +1011,7 @@ private fun formatTime(millis: Long): String {
 private fun MediaActionButton(
     action: MediaAction,
     tint: Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val viewModel: com.xenonware.launcher.viewmodel.LauncherViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
     IconButton(
@@ -1030,12 +1034,12 @@ private fun MediaActionButton(
                     val drawable = action.icon
                     val width = drawable.intrinsicWidth.coerceAtLeast(1)
                     val height = drawable.intrinsicHeight.coerceAtLeast(1)
-                    val bmp = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.ARGB_8888)
+                    val bmp = createBitmap(width, height)
                     val canvas = android.graphics.Canvas(bmp)
                     drawable.setBounds(0, 0, width, height)
                     drawable.draw(canvas)
                     bmp.asImageBitmap()
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     null
                 }
             }

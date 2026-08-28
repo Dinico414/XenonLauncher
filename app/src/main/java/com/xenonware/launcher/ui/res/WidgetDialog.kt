@@ -53,6 +53,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
@@ -61,6 +62,7 @@ import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.graphics.drawable.toDrawable
 import com.xenon.mylibrary.res.XenonDialog
+import com.xenonware.launcher.R
 import com.xenonware.launcher.viewmodel.LauncherViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -118,7 +120,7 @@ fun WidgetSelectorDialog(
     XenonDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = true),
-        title = "Widgets",
+        title = stringResource(R.string.widgets),
         contentManagesScrolling = true,
         externalShowTopDivider = showTopDivider,
         externalShowBottomDivider = showBottomDivider
@@ -560,7 +562,7 @@ fun WidgetPickerItem(
             )
         } else {
             Text(
-                "Shortcut",
+                stringResource(R.string.shortcut),
                 style = MaterialTheme.typography.labelSmall,
                 color = colorScheme.onSurface.copy(alpha = 0.6f)
             )

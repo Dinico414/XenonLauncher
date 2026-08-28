@@ -9,14 +9,12 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
 import android.net.Uri
-import android.os.Build
 import android.os.Process
 import android.provider.CalendarContract
 import android.provider.Settings
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.ui.unit.IntSize
-import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -506,17 +504,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun onLanguageSettingClicked(context: Context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            try {
-                context.startActivity(Intent(Settings.ACTION_APP_LOCALE_SETTINGS).apply {
-                    data = Uri.fromParts("package", context.packageName, null)
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                })
-            } catch (_: Exception) {
-                _selectedLanguageTagInDialog.value = sharedPreferenceManager.languageTag.ifEmpty { getAppLocaleTag() }
-                _showLanguageDialog.value = true
-            }
-        } else {
+        try {
+            context.startActivity(Intent(Settings.ACTION_APP_LOCALE_SETTINGS).apply {
+                data = Uri.fromParts("package", context.packageName, null)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            })
+        } catch (_: Exception) {
             _selectedLanguageTagInDialog.value = sharedPreferenceManager.languageTag.ifEmpty { getAppLocaleTag() }
             _showLanguageDialog.value = true
         }
@@ -527,16 +520,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun applySelectedLanguage() {
-        val selectedTag = _selectedLanguageTagInDialog.value
-
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-            setAppLocale(selectedTag)
-            sharedPreferenceManager.languageTag = selectedTag
-            viewModelScope.launch {
-                delay(500.milliseconds)
-                restartApplication(getApplication())
-            }
-        }
 
         _showLanguageDialog.value = false
         updateCurrentLanguage()
@@ -563,13 +546,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
 
         // Source 2: System Per-App Locale (Android 13+)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val localeManager = application.getSystemService(LocaleManager::class.java)
-            val appLocales = localeManager.applicationLocales
-            if (!appLocales.isEmpty && appLocales[0] != null) {
-                val l = appLocales[0]!!
-                return l.getDisplayName(l).replaceFirstChar { it.uppercase() }
-            }
+        val localeManager = application.getSystemService(LocaleManager::class.java)
+        val appLocales = localeManager.applicationLocales
+        if (!appLocales.isEmpty && appLocales[0] != null) {
+            val l = appLocales[0]!!
+            return l.getDisplayName(l).replaceFirstChar { it.uppercase() }
         }
 
         // Source 3: Legacy Manual Override
@@ -590,11 +571,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             return locales.toLanguageTags()
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val localeManager = application.getSystemService(LocaleManager::class.java)
-            val appLocales = localeManager.applicationLocales
-            if (!appLocales.isEmpty) return appLocales.toLanguageTags()
-        }
+        val localeManager = application.getSystemService(LocaleManager::class.java)
+        val appLocales = localeManager.applicationLocales
+        if (!appLocales.isEmpty) return appLocales.toLanguageTags()
 
         val saved = sharedPreferenceManager.languageTag
         if (saved.isNotEmpty()) return saved
@@ -611,15 +590,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         val de = Locale.forLanguageTag("de")
         languages.add(LanguageOption(de.getDisplayName(de).replaceFirstChar { it.uppercase() }, de.toLanguageTag()))
         _availableLanguages.value = languages
-    }
-
-    private fun setAppLocale(localeTag: String) {
-        val appLocale = if (localeTag.isEmpty()) {
-            LocaleListCompat.getEmptyLocaleList()
-        } else {
-            LocaleListCompat.forLanguageTags(localeTag)
-        }
-        AppCompatDelegate.setApplicationLocales(appLocale)
     }
 
     fun onClearDataClicked() {
@@ -686,7 +656,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
         if (currentTime - lastMultiTapTime < multiTapCooldownMillis) {
             if (_developerModeEnabled.value) {
-                Toast.makeText(context, "Already in developer mode", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.already_in_developer_mode), Toast.LENGTH_SHORT).show()
             }
             return
         }
@@ -708,11 +678,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             if (infoTileTapCount >= requiredTaps) {
                 sharedPreferenceManager.developerModeEnabled = true
                 _developerModeEnabled.value = true
-                Toast.makeText(context, "Developer mode enabled", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, context.getString(R.string.developer_mode_enabled), Toast.LENGTH_LONG).show()
                 infoTileTapCount = 0
             } else {
                 val remaining = requiredTaps - infoTileTapCount
-                Toast.makeText(context, "$remaining taps to developer", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.taps_remaining_to_developer, remaining), Toast.LENGTH_SHORT).show()
                 resetTapsJob = viewModelScope.launch {
                     delay(multiTapCooldownMillis.milliseconds)
                     infoTileTapCount = 0

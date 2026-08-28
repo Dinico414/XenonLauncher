@@ -1,25 +1,22 @@
 package com.xenonware.launcher.util
 
 import android.content.Context
-import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.PaintFlagsDrawFilter
-import android.graphics.Path
 import android.graphics.Rect
-import android.graphics.RectF
 import android.graphics.drawable.AdaptiveIconDrawable
-import com.xenonware.launcher.model.AppOverride
-import com.xenonware.launcher.ui.res.IconShape
-import androidx.graphics.shapes.toPath
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.drawable.toDrawable
+import com.xenonware.launcher.model.AppOverride
+import com.xenonware.launcher.ui.res.IconShape
 
 /**
- * Normalizes an app icon by ensuring it's square and has a background if needed.
+ * Normalizes an app icon by ensuring its square and has a background if needed.
  * For Adaptive Icons, it zooms into the "safe zone" (the central 72dp of the 108dp asset)
- * to make the icon appear normal sized while remaining square.
+ * to make the icon appear normal-sized while remaining square.
  * 
  * High quality flags are used to prevent pixelation.
  */
@@ -30,7 +27,7 @@ fun normalizeIcon(context: Context, drawable: Drawable?): Drawable? {
     val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
     val size = activityManager.launcherLargeIconSize
     
-    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val bitmap = createBitmap(size, size)
     val canvas = Canvas(bitmap)
     
     // Draw filter for high quality scaling
@@ -58,20 +55,20 @@ fun normalizeIcon(context: Context, drawable: Drawable?): Drawable? {
         drawable.draw(canvas)
     }
     
-    return BitmapDrawable(context.resources, bitmap)
+    return bitmap.toDrawable(context.resources)
 }
 
 fun generateCustomIcon(
     context: Context,
     baseDrawable: Drawable?,
     override: AppOverride,
-    shape: IconShape
+    shape: IconShape,
 ): Drawable? {
     if (baseDrawable == null) return null
 
     val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
     val size = activityManager.launcherLargeIconSize
-    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val bitmap = createBitmap(size, size)
     val canvas = Canvas(bitmap)
     canvas.drawFilter = PaintFlagsDrawFilter(0, Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
 
@@ -120,7 +117,7 @@ fun generateCustomIcon(
     }
 
     // 3. Apply Shape Clipping and Border
-    val resultBitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val resultBitmap = createBitmap(size, size)
     val resultCanvas = Canvas(resultBitmap)
     resultCanvas.drawFilter = PaintFlagsDrawFilter(0, Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
 
@@ -137,7 +134,7 @@ fun generateCustomIcon(
         resultCanvas.drawPath(path, borderPaint)
     }
 
-    return BitmapDrawable(context.resources, resultBitmap)
+    return resultBitmap.toDrawable(context.resources)
 }
 
 fun loadIconFromPack(context: Context, packageName: String, resourceName: String): Drawable? {
@@ -145,7 +142,7 @@ fun loadIconFromPack(context: Context, packageName: String, resourceName: String
         val res = context.packageManager.getResourcesForApplication(packageName)
         val id = res.getIdentifier(resourceName, "drawable", packageName)
         if (id != 0) res.getDrawable(id, null) else null
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         null
     }
 }

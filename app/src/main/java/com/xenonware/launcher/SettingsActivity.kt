@@ -1,10 +1,6 @@
 package com.xenonware.launcher
 
-import android.content.Context
-import android.content.ContextWrapper
 import android.content.Intent
-import android.content.res.Configuration
-import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -31,7 +27,6 @@ import com.xenonware.launcher.ui.layouts.settings.SettingsLayout
 import com.xenonware.launcher.ui.theme.ScreenEnvironment
 import com.xenonware.launcher.viewmodel.SettingsViewModel
 import kotlinx.coroutines.launch
-import java.util.Locale
 
 class SettingsActivity : ComponentActivity() {
 
@@ -216,17 +211,6 @@ class SettingsActivity : ComponentActivity() {
     }
 
     override fun attachBaseContext(newBase: android.content.Context) {
-        var context = newBase
-        val prefs = SharedPreferenceManager(newBase)
-        val savedTag = prefs.languageTag
-        if (savedTag.isNotEmpty() && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-            val locale = Locale.forLanguageTag(savedTag)
-            Locale.setDefault(locale)
-            val config = Configuration(newBase.resources.configuration)
-            config.setLocale(locale)
-            config.setLayoutDirection(locale)
-            context = newBase.createConfigurationContext(config)
-        }
-        super.attachBaseContext(android.content.ContextWrapper(context))
+        super.attachBaseContext(android.content.ContextWrapper(newBase))
     }
 }

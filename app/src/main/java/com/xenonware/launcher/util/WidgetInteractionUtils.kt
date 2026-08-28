@@ -1,4 +1,4 @@
-package com.xenonware.launcher.ui.res
+package com.xenonware.launcher.util
 
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetHostView
@@ -14,7 +14,7 @@ import kotlin.math.hypot
  *
  * A plain `setOnLongClickListener` only fires when no child view consumed the touch, which is why
  * it never triggers on widgets whose whole surface is clickable (Maps, Chrome) or scrollable
- * (Calendar). Instead this watches the gesture from the parent via [onInterceptTouchEvent]:
+ * (Calendar). Instead, this watches the gesture from the parent via [onInterceptTouchEvent]:
  * children keep receiving every event as normal, and the view only takes the gesture over once the
  * long-press timeout has elapsed — at which point Android automatically delivers ACTION_CANCEL to
  * the child, so the widget's own click never fires.

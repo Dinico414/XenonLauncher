@@ -62,11 +62,13 @@ fun FabActionConfigDialog(
         derivedStateOf { listState.canScrollForward }
     }
 
+    val actionType = stringResource(if (isDoubleTap) R.string.fab_double_tap else R.string.fab_long_press)
+
     XenonDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = true),
-        title = "Configure ${if (isDoubleTap) "Double Tap" else "Long Press"} Action",
-        confirmButtonText = "Save",
+        title = stringResource(R.string.configure_action_format, actionType),
+        confirmButtonText = stringResource(R.string.save),
         onConfirmButtonClick = {
             val finalValue = when (selectedAction) {
                 FabAction.OPEN_APP -> selectedPackage
@@ -88,7 +90,7 @@ fun FabActionConfigDialog(
         ) {
             item {
                 Text(
-                    text = "Select Action",
+                    text = stringResource(R.string.select_action),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.primary,
@@ -123,7 +125,7 @@ fun FabActionConfigDialog(
                         OutlinedTextField(
                             value = linkValue,
                             onValueChange = { linkValue = it },
-                            label = { Text("Link") },
+                            label = { Text(stringResource(R.string.link)) },
                             placeholder = { Text("https://...") },
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -139,7 +141,7 @@ fun FabActionConfigDialog(
                 item {
                     Spacer(Modifier.height(16.dp))
                     Text(
-                        text = "Select App",
+                        text = stringResource(R.string.select_app),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.primary,

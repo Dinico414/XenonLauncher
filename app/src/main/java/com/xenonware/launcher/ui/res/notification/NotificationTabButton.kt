@@ -164,7 +164,7 @@ fun NotificationTabButton(
                     onDragEnd = {
                         isDragging = false
                         onDragStateChanged(false)
-                        val currentRect = androidx.compose.ui.geometry.Rect(
+                        val currentRect = Rect(
                             itemPos + dragOffset.value,
                             androidx.compose.ui.geometry.Size(itemSize.width.toFloat(), itemSize.height.toFloat())
                         )

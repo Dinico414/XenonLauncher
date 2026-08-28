@@ -93,9 +93,9 @@ class MediaControllerManager(private val context: Context) {
         val notificationListener = ComponentName(context, XenonNotificationService::class.java)
         val controllers = try {
             sessionManager.getActiveSessions(notificationListener)
-        } catch (e: SecurityException) {
+        } catch (_: SecurityException) {
             emptyList<MediaController>()
-        } catch (e: Throwable) {
+        } catch (_: Throwable) {
             emptyList<MediaController>()
         }
         
@@ -139,7 +139,7 @@ class MediaControllerManager(private val context: Context) {
             val serviceContext = XenonNotificationService.getInstance()
             val packageContext = try {
                 context.createPackageContext(controller.packageName, 0)
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 null
             }
 
@@ -152,7 +152,7 @@ class MediaControllerManager(private val context: Context) {
                 if (isStandardAction(title, actionId, resourceName)) return@mapNotNull null
 
                 val icon = if (packageContext != null && ca.icon != 0) {
-                    try { packageContext.getDrawable(ca.icon) } catch (e: Exception) { null }
+                    try { packageContext.getDrawable(ca.icon) } catch (_: Exception) { null }
                 } else null
 
                 MediaAction(
@@ -183,7 +183,7 @@ class MediaControllerManager(private val context: Context) {
                     } else if (action.icon != 0) {
                         packageContext?.getDrawable(action.icon)
                     } else null
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     action.getIcon()?.loadDrawable(serviceContext ?: context)
                 }
 
@@ -256,7 +256,7 @@ class MediaControllerManager(private val context: Context) {
 
         sb.append("\n[PlaybackState Custom Actions]\n")
         playbackState?.customActions?.forEach { ca ->
-            val resourceName = getResourceEntryName(try { context.createPackageContext(controller.packageName, 0) } catch (e: Exception) { null }, ca.icon)
+            val resourceName = getResourceEntryName(try { context.createPackageContext(controller.packageName, 0) } catch (_: Exception) { null }, ca.icon)
             sb.append("- Action: ${ca.action}, Name: ${ca.name}, IconRes: ${ca.icon} ($resourceName)\n")
         }
 
@@ -264,7 +264,7 @@ class MediaControllerManager(private val context: Context) {
         val compactActionIndices = notification?.notification?.extras?.getIntArray(android.app.Notification.EXTRA_COMPACT_ACTIONS) ?: intArrayOf()
         sb.append("Compact Action Indices: ${compactActionIndices.joinToString()}\n")
         notification?.notification?.actions?.forEachIndexed { index, action ->
-            val resourceName = getResourceEntryName(try { context.createPackageContext(controller.packageName, 0) } catch (e: Exception) { null }, action.icon)
+            val resourceName = getResourceEntryName(try { context.createPackageContext(controller.packageName, 0) } catch (_: Exception) { null }, action.icon)
             sb.append("- Index $index: Title: ${action.title}, IconRes: ${action.icon} ($resourceName), Intent: ${action.actionIntent != null}\n")
         }
 
@@ -280,7 +280,7 @@ class MediaControllerManager(private val context: Context) {
         if (packageContext == null || resId == 0) return null
         return try {
             packageContext.resources.getResourceEntryName(resId)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }

@@ -25,10 +25,6 @@ fun shouldDisableLandscapeLayout(context: Context): Boolean {
     return isSmallScreen || (isAlmostSquare && screenDiagonalInches < 6.0)
 }
 
-fun isLandscapeAllowed(context: Context): Boolean {
-    return !shouldDisableLandscapeLayout(context)
-}
-
 fun isSmallScreenDevice(context: Context): Boolean {
     return shouldDisableLandscapeLayout(context)
 }

@@ -1,5 +1,6 @@
 package com.xenonware.launcher.ui.res
 
+import android.graphics.Path
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialShapes
@@ -12,7 +13,6 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.graphics.shapes.RoundedPolygon
 import androidx.graphics.shapes.toPath
-import android.graphics.Path
 import android.graphics.Matrix as AndroidMatrix
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -66,7 +66,6 @@ enum class IconShape {
                     Cookie4 -> MaterialShapes.Cookie4Sided
                     Cookie6 -> MaterialShapes.Cookie6Sided
                     Cookie7 -> MaterialShapes.Cookie7Sided
-                    else -> MaterialShapes.Circle
                 }
                 val path = poly.toPath()
                 val matrix = AndroidMatrix()

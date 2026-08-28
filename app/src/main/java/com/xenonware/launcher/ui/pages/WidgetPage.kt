@@ -97,6 +97,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
@@ -107,9 +108,10 @@ import androidx.core.graphics.drawable.toBitmap
 import androidx.core.view.drawToBitmap
 import com.xenon.mylibrary.res.MenuItem
 import com.xenon.mylibrary.res.XenonDropDown
+import com.xenonware.launcher.R
 import com.xenonware.launcher.model.WidgetItem
-import com.xenonware.launcher.ui.res.InteractiveAppWidgetHost
-import com.xenonware.launcher.ui.res.InteractiveAppWidgetHostView
+import com.xenonware.launcher.util.InteractiveAppWidgetHost
+import com.xenonware.launcher.util.InteractiveAppWidgetHostView
 import com.xenonware.launcher.ui.res.WidgetEditBorder
 import com.xenonware.launcher.ui.res.WidgetSelectorDialog
 import com.xenonware.launcher.viewmodel.LauncherViewModel
@@ -393,7 +395,7 @@ fun WidgetPage(
                 pendingWidgetId = -1
             }
         } else {
-            // Bind was cancelled or denied — release the id instead of leaking it
+            // Bind was canceled or denied — release the id instead of leaking it
             if (pendingWidgetId != -1) {
                 runCatching { appWidgetHost.deleteAppWidgetId(pendingWidgetId) }
                 pendingWidgetId = -1
@@ -614,7 +616,7 @@ fun WidgetPage(
                 VerticalPager(
                     state = pagerState,
                     modifier = Modifier.fillMaxSize(),
-                    // Keep neighbours composed so host views aren't torn down and rebuilt on
+                    // Keep neighbors composed so host views aren't torn down and rebuilt on
                     // every page turn during a drag
                     beyondViewportPageCount = if (isEditing) 1 else 0,
                     userScrollEnabled = !isEditing
@@ -649,7 +651,7 @@ fun WidgetPage(
                                 }
                                 Spacer(Modifier.height(16.dp))
                                 Text(
-                                    "Add your first Widget",
+                                    stringResource(R.string.add_first_widget),
                                     style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.SemiBold,
                                     color = Color.White.copy(alpha = 0.8f)
@@ -828,40 +830,52 @@ fun WidgetPage(
                 if (showDropDown) {
                     val gridOptions = if (isLandscape) listOf(6, 8, 10) else listOf(4, 5)
                     val primaryColor = colorScheme.primary
+                    val wallpaperLabel = stringResource(R.string.wallpaper)
+                    val selectWallpaperLabel = stringResource(R.string.select_wallpaper)
+                    val settingsLabel = stringResource(R.string.settings)
+                    val addWidgetLabel = stringResource(R.string.add_widget)
+                    val editLayoutLabel = stringResource(R.string.edit_layout)
+                    val gridSizeFormat = stringResource(R.string.grid_size_format)
 
                     val menuItems = remember(
                         isLandscape,
                         widgetColumns,
                         primaryColor,
                         isEditing,
-                        getRowCountForColumns
+                        getRowCountForColumns,
+                        wallpaperLabel,
+                        selectWallpaperLabel,
+                        settingsLabel,
+                        addWidgetLabel,
+                        editLayoutLabel,
+                        gridSizeFormat
                     ) {
                         listOfNotNull(
                             MenuItem(
-                                text = "Wallpaper",
+                                text = wallpaperLabel,
                                 onClick = {
                                     val intent = Intent(Intent.ACTION_SET_WALLPAPER)
                                     context.startActivity(
                                         Intent.createChooser(
                                             intent,
-                                            "Select Wallpaper"
+                                            selectWallpaperLabel
                                         )
                                     )
                                 },
                                 leadingIcon = { Icon(Icons.Rounded.Wallpaper, null) }
                             ),
                             MenuItem(
-                                text = "Settings",
+                                text = settingsLabel,
                                 onClick = { onOpenSettings() },
                                 leadingIcon = { Icon(Icons.Rounded.Settings, null) }
                             ),
                             MenuItem(
-                                text = "Add Widget",
+                                text = addWidgetLabel,
                                 onClick = { showWidgetSelector = true },
                                 leadingIcon = { Icon(Icons.Rounded.Add, null) }
                             ),
                             if (!isEditing) MenuItem(
-                                text = "Edit Layout",
+                                text = editLayoutLabel,
                                 onClick = { selectedWidgetId = -2 },
                                 leadingIcon = { Icon(Icons.Rounded.Edit, null) }
                             ) else null
@@ -869,7 +883,7 @@ fun WidgetPage(
                             val isSelected = widgetColumns == cols
                             val targetRowCount = getRowCountForColumns(cols)
                             MenuItem(
-                                text = "Grid Size ${cols}x$targetRowCount",
+                                text = String.format(gridSizeFormat, cols, targetRowCount),
                                 onClick = { viewModel.setWidgetColumns(cols) },
                                 leadingIcon = { Icon(Icons.Rounded.AspectRatio, null) },
                                 textColor = if (isSelected) primaryColor else null,
@@ -958,7 +972,7 @@ fun WidgetPage(
                                         val active = drag ?: return@detectDragGestures
                                         change.consume()
 
-                                        // 1:1 with the finger — no cell quantisation, no springs
+                                        // 1:1 with the finger — no cell quantization, no springs
                                         val moved = active.topLeft + dragAmount
 
                                         // Snap target on whichever page is currently showing
@@ -1297,7 +1311,7 @@ fun WidgetPage(
                         shape = RoundedCornerShape(20.dp),
                         modifier = Modifier.padding(bottom = 8.dp)
                     ) {
-                        Text("Done", fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.done), fontWeight = FontWeight.SemiBold)
                     }
 
                     if (selectedWidgetId >= 0) {
@@ -1323,7 +1337,7 @@ fun WidgetPage(
                         ) {
                             Icon(Icons.Rounded.Delete, null, modifier = Modifier.size(20.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("Remove", fontWeight = FontWeight.SemiBold)
+                            Text(stringResource(R.string.remove), fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }

@@ -41,6 +41,7 @@ import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
+import com.xenonware.launcher.R
 import com.xenonware.launcher.accessibility.XenonAccessibilityService
 import com.xenonware.launcher.data.SharedPreferenceManager
 import com.xenonware.launcher.media.MediaControllerManager
@@ -75,14 +76,15 @@ import java.net.URL
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Calendar
+import java.util.Locale
 import java.util.TimeZone
 import java.util.UUID
 import kotlin.coroutines.resume
 import kotlin.time.Duration.Companion.milliseconds
 
 data class WeatherState(
-    val temperature: String = "24°C",
-    val condition: String = "Sunny"
+    val temperature: String,
+    val condition: String
 )
 
 data class CalendarInfo(
@@ -115,7 +117,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
         /**
          * Timed events that already ended earlier today still count as "today".
-         * Set to false to go back to only showing running/upcoming events.
+         * Set too false to go back to only showing running/upcoming events.
          */
         const val INCLUDE_PAST_EVENTS_TODAY = true
 
@@ -390,7 +392,12 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val _currentTime = MutableStateFlow(LocalDateTime.now())
     val currentTime: StateFlow<LocalDateTime> = _currentTime
 
-    private val _weatherState = MutableStateFlow(WeatherState())
+    private val _weatherState = MutableStateFlow(
+        WeatherState(
+            temperature = application.getString(R.string.default_temperature),
+            condition = application.getString(R.string.default_condition)
+        )
+    )
     val weatherState: StateFlow<WeatherState> = _weatherState
 
     private val _batteryLevel = MutableStateFlow(1f)
@@ -591,7 +598,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 // With coordinates wttr.in reports your exact location, like Google Weather.
                 // Without them, it falls back to IP-based geolocation (less accurate).
                 val locationPath = location?.let { "/${it.latitude},${it.longitude}" } ?: ""
-                val url = URL("https://wttr.in$locationPath?format=%t;%C")
+                val lang = Locale.getDefault().language
+                val url = URL("https://wttr.in$locationPath?format=%t;%C&lang=$lang")
                 val connection = url.openConnection() as HttpURLConnection
                 connection.connectTimeout = 5000
                 connection.readTimeout = 5000
@@ -691,7 +699,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 setDataAndType("content://media/external/audio/media".toUri(), "audio/*")
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
-            val chooserIntent = Intent.createChooser(audioIntent, "SELECT AUDIO SOURCE").apply {
+            val chooserIntent = Intent.createChooser(audioIntent, context.getString(R.string.select_audio_source)).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             context.startActivity(chooserIntent)
@@ -1309,7 +1317,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         setupCalendarObserver()
         viewModelScope.launch {
             while (true) {
-                delay(30_000L)
+                delay(30_000L.milliseconds)
                 loadCalendarEvents()
             }
         }
@@ -1374,11 +1382,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         if (start > bounds.endOfTomorrow) return false
         // Timed events used to be compared against `now`, which silently dropped every
         // event that had already finished today while all-day events survived.
-        return if (isAllDay || INCLUDE_PAST_EVENTS_TODAY) {
-            end > bounds.startOfToday
-        } else {
-            end > bounds.now
-        }
+        return end > bounds.startOfToday
     }
 
     private fun rankOf(event: CalendarEvent, bounds: DayBounds, tz: TimeZone): Int {
@@ -1432,7 +1436,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                     try {
                         val event = CalendarEvent(
                             id = cursor.getLong(idIdx),
-                            title = cursor.getString(titleIdx) ?: "No Title",
+                            title = cursor.getString(titleIdx) ?: context.getString(R.string.no_title),
                             startTime = cursor.getLong(startIdx),
                             endTime = cursor.getLong(endIdx),
                             location = if (locIdx >= 0) cursor.getString(locIdx) else null,
@@ -1504,7 +1508,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                         val endTime = if (endIdx >= 0 && !cursor.isNull(endIdx)) cursor.getLong(endIdx) else startTime
                         val event = CalendarEvent(
                             id = cursor.getLong(idIdx),
-                            title = cursor.getString(titleIdx) ?: "No Title",
+                            title = cursor.getString(titleIdx) ?: context.getString(R.string.no_title),
                             startTime = startTime,
                             endTime = endTime,
                             location = if (locIdx >= 0) cursor.getString(locIdx) else null,
@@ -1670,7 +1674,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
                 while (cursor.moveToNext()) {
                     val id = cursor.getString(idIdx)
-                    val name = cursor.getString(nameIdx) ?: "Unknown"
+                    val name = cursor.getString(nameIdx) ?: context.getString(R.string.unknown)
                     val color = cursor.getInt(colorIdx)
                     val accountName = cursor.getString(accountIdx) ?: ""
                     val syncEvents = syncIdx < 0 || cursor.getInt(syncIdx) != 0
@@ -1738,7 +1742,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         if (syncedAccounts.isNotEmpty()) {
             viewModelScope.launch(Dispatchers.IO) {
                 listOf(1500L, 3000L, 6000L, 10000L).forEach { delayMs ->
-                    delay(delayMs)
+                    delay(delayMs.milliseconds)
                     loadCalendarEvents()
                 }
             }

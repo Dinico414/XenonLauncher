@@ -26,13 +26,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.xenon.mylibrary.res.SettingsSwitchTile
 import com.xenon.mylibrary.res.SettingsTileContext
 import com.xenon.mylibrary.res.XenonDialog
 import com.xenon.mylibrary.res.XenonIcon
 import com.xenon.mylibrary.values.LargestPadding
+import com.xenonware.launcher.R
 import com.xenonware.launcher.viewmodel.DevSettingsViewModel
 import com.xenonware.launcher.viewmodel.SettingsViewModel
 import dev.chrisbanes.haze.hazeEffect
@@ -56,15 +59,15 @@ fun DevSettingsItems(
 
     Column(modifier = Modifier.padding(LargestPadding)) {
         SettingsSwitchTile(
-            title = "Enable Developer Mode",
+            title = stringResource(R.string.enable_dev_mode),
             checked = devModeEnabled,
             onCheckedChange = { viewModel.setDeveloperModeEnabled(it) }
         )
 
-        val crashLogSubtitle = if (crashLogExists) "Recent crashes recorded." else "No crashes recorded."
+        val crashLogSubtitle = if (crashLogExists) stringResource(R.string.recent_crashes) else stringResource(R.string.no_crashes)
         
         SettingsTileContext(
-            title = "Crash Logs",
+            title = stringResource(R.string.crash_logs),
             subtitle = crashLogSubtitle,
             icon = { XenonIcon(Icons.Rounded.BugReport).Render(Modifier) },
             showContext = true,
@@ -83,9 +86,9 @@ fun DevSettingsItems(
                         },
                         enabled = crashLogExists
                     ) {
-                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             XenonIcon(Icons.Rounded.Description).Render(Modifier)
-                            Text("View")
+                            Text(stringResource(R.string.view))
                         }
                     }
                     
@@ -93,9 +96,9 @@ fun DevSettingsItems(
                         onClick = { viewModel.shareCrashLog() },
                         enabled = crashLogExists
                     ) {
-                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             XenonIcon(Icons.Rounded.Share).Render(Modifier)
-                            Text("Share")
+                            Text(stringResource(R.string.share))
                         }
                     }
                     
@@ -104,9 +107,9 @@ fun DevSettingsItems(
                         enabled = crashLogExists,
                         colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                     ) {
-                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             XenonIcon(Icons.Rounded.Delete).Render(Modifier)
-                            Text("Clear")
+                            Text(stringResource(R.string.clear))
                         }
                     }
                 }
@@ -114,8 +117,8 @@ fun DevSettingsItems(
         )
 
         SettingsTileContext(
-            title = "Media Debug",
-            subtitle = "Dump current media session info to Logcat and view details.",
+            title = stringResource(R.string.media_debug),
+            subtitle = stringResource(R.string.media_debug_description),
             icon = { XenonIcon(Icons.Rounded.MusicNote).Render(Modifier) },
             showContext = true,
             modifier = Modifier.padding(top = LargestPadding),
@@ -132,9 +135,9 @@ fun DevSettingsItems(
                             showMediaDumpDialog = true
                         }
                     ) {
-                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             XenonIcon(Icons.Rounded.Description).Render(Modifier)
-                            Text("Dump Media State")
+                            Text(stringResource(R.string.dump_media_state))
                         }
                     }
                 }
@@ -148,8 +151,8 @@ fun DevSettingsItems(
             ) {
             XenonDialog(
                 onDismissRequest = { showCrashLogDialog = false },
-                title = "Crash Log",
-                confirmButtonText = "Close",
+                title = stringResource(R.string.crash_log),
+                confirmButtonText = stringResource(R.string.close),
                 onConfirmButtonClick = { showCrashLogDialog = false }
             ) {
                 Text(
@@ -167,8 +170,8 @@ fun DevSettingsItems(
             ) {
             XenonDialog(
                 onDismissRequest = { showMediaDumpDialog = false },
-                title = "Media State Dump",
-                confirmButtonText = "Close",
+                title = stringResource(R.string.media_state_dump),
+                confirmButtonText = stringResource(R.string.close),
                 onConfirmButtonClick = { showMediaDumpDialog = false }
             ) {
                 val scrollState = rememberScrollState()

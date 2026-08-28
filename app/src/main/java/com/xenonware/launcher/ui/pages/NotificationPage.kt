@@ -113,6 +113,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -121,6 +122,7 @@ import androidx.core.graphics.drawable.toBitmap
 import com.xenon.mylibrary.res.MenuItem
 import com.xenon.mylibrary.res.XenonDropDown
 import com.xenon.mylibrary.theme.QuicksandTitleVariable
+import com.xenonware.launcher.R
 import com.xenonware.launcher.accessibility.XenonAccessibilityService
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.notification.LauncherNotification
@@ -260,7 +262,7 @@ fun NotificationPage(
     val targetShiftPx = if (!isReplying || replyBottomPx <= 0f || obstructionPx <= 0f) 0f else {
         val targetBottom = windowHeightPx - obstructionPx - gapPx
         val needed = (replyBottomPx - targetBottom).coerceAtLeast(0f)
-        // Never push the top of the item off screen; if the item is taller than the
+        // Never push the top of the item off-screen; if the item is taller than the
         // available space this pins its top instead and the list stays scrollable.
         val maxShift = (replyTopPx - minTopPx).coerceAtLeast(0f)
         needed.coerceAtMost(maxShift)
@@ -450,7 +452,7 @@ fun NotificationPage(
                                             modifier = Modifier.size(64.dp)
                                         )
                                         Text(
-                                            text = "You're up to date",
+                                            text = stringResource(R.string.up_to_date),
                                             color = baseColor.copy(alpha = 0.8f),
                                             fontSize = 18.sp,
                                             fontFamily = QuicksandTitleVariable,
@@ -472,7 +474,7 @@ fun NotificationPage(
                                             modifier = Modifier.size(64.dp)
                                         )
                                         Text(
-                                            text = "You have $notificationCount notifications",
+                                            text = stringResource(R.string.notification_count, notificationCount),
                                             color = baseColor.copy(alpha = 0.8f),
                                             fontSize = 18.sp,
                                             fontFamily = QuicksandTitleVariable,
@@ -664,7 +666,7 @@ fun NotificationPage(
                                             modifier = Modifier.size(64.dp)
                                         )
                                         Text(
-                                            text = "You're up to date",
+                                            text = stringResource(R.string.up_to_date),
                                             color = baseColor.copy(alpha = 0.8f),
                                             fontSize = 18.sp,
                                             fontFamily = QuicksandTitleVariable,
@@ -689,7 +691,7 @@ fun NotificationPage(
                                             modifier = Modifier.size(64.dp)
                                         )
                                         Text(
-                                            text = "You have $notificationCount notifications",
+                                            text = stringResource(R.string.notification_count, notificationCount),
                                             color = baseColor.copy(alpha = 0.8f),
                                             fontSize = 18.sp,
                                             fontFamily = QuicksandTitleVariable,
@@ -799,25 +801,26 @@ fun NotificationPage(
 
         // Dropdown menus
         if (showAtAGlanceMenu) {
+            val selectWallpaperLabel = stringResource(R.string.select_wallpaper)
             XenonDropDown(
                 expanded = true,
                 onDismissRequest = { showAtAGlanceMenu = false },
                 items = listOf(
                     MenuItem(
-                        text = "Wallpaper",
+                        text = stringResource(R.string.wallpaper),
                         onClick = {
                             val intent = Intent(Intent.ACTION_SET_WALLPAPER)
-                            context.startActivity(Intent.createChooser(intent, "Select Wallpaper"))
+                            context.startActivity(Intent.createChooser(intent, selectWallpaperLabel))
                         },
                         leadingIcon = { Icon(Icons.Rounded.Wallpaper, null) }
                     ),
                     MenuItem(
-                        text = "Settings",
+                        text = stringResource(R.string.settings),
                         onClick = { onOpenSettings() },
                         leadingIcon = { Icon(Icons.Rounded.Settings, null) }
                     ),
                     MenuItem(
-                        text = "At a Glance Settings",
+                        text = stringResource(R.string.at_a_glance_settings),
                         onClick = { viewModel.setShowCalendarSelectionDialog(true) },
                         leadingIcon = { Icon(Icons.Rounded.CalendarToday, null) }
                     )
@@ -829,25 +832,26 @@ fun NotificationPage(
         }
 
         if (showPageMenu) {
+            val selectWallpaperLabel = stringResource(R.string.select_wallpaper)
             XenonDropDown(
                 expanded = true,
                 onDismissRequest = { showPageMenu = false },
                 items = listOf(
                     MenuItem(
-                        text = "Wallpaper",
+                        text = stringResource(R.string.wallpaper),
                         onClick = {
                             val intent = Intent(Intent.ACTION_SET_WALLPAPER)
-                            context.startActivity(Intent.createChooser(intent, "Select Wallpaper"))
+                            context.startActivity(Intent.createChooser(intent, selectWallpaperLabel))
                         },
                         leadingIcon = { Icon(Icons.Rounded.Wallpaper, null) }
                     ),
                     MenuItem(
-                        text = "Settings",
+                        text = stringResource(R.string.settings),
                         onClick = { onOpenSettings() },
                         leadingIcon = { Icon(Icons.Rounded.Settings, null) }
                     ),
                     MenuItem(
-                        text = "Notification Manager",
+                        text = stringResource(R.string.notification_manager),
                         onClick = { viewModel.setShowNotificationManagerDialog(true) },
                         leadingIcon = { Icon(Icons.Rounded.NotificationsActive, null) }
                     )
@@ -925,7 +929,7 @@ fun AtAGlanceSection(
                         totalDrag = 0f
                         dragTriggered = false
                     },
-                    onVerticalDrag = { change, dragAmount ->
+                    onVerticalDrag = { _, dragAmount ->
                         if (dragTriggered) return@detectVerticalDragGestures
                         totalDrag += dragAmount
                         if (abs(totalDrag) > swipeThreshold) {
@@ -971,7 +975,7 @@ fun AtAGlanceSection(
 
             if (calendarEvents.isEmpty()) {
                 Text(
-                    text = "No upcoming events",
+                    text = stringResource(R.string.no_upcoming_events),
                     fontSize = eventTitleFontSize,
                     fontWeight = FontWeight.Bold,
                     color = baseColor,
@@ -1048,7 +1052,7 @@ fun AtAGlanceSection(
                                             )
                                             val intent = Intent(Intent.ACTION_VIEW).setData(uri)
                                             context.startActivity(intent)
-                                        } catch (e: Exception) {
+                                        } catch (_: Exception) {
                                             // Fallback to opening calendar at specific time
                                             val builder = android.provider.CalendarContract.CONTENT_URI.buildUpon()
                                                 .appendPath("time")
@@ -1103,7 +1107,9 @@ fun AtAGlanceSection(
                                         }
                                         .basicMarquee()
                                 )
-                                val timeText = remember(event, timeFormatter) {
+                                val tomorrowLabel = stringResource(R.string.tomorrow)
+                                val allDayLabel = stringResource(R.string.all_day)
+                                val timeText = remember(event, timeFormatter, tomorrowLabel, allDayLabel) {
                                     val nowCal = Calendar.getInstance()
                                     val tomorrowCal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
                                     val eventStartMillis = if (event.isAllDay) {
@@ -1120,12 +1126,12 @@ fun AtAGlanceSection(
 
                                     val dayPrefix = when {
                                         isToday -> ""
-                                        isTomorrow -> if (Locale.getDefault().language == "de") "Morgen " else "Tomorrow "
+                                        isTomorrow -> "$tomorrowLabel "
                                         else -> SimpleDateFormat("EEE, d MMM ", Locale.getDefault()).format(eventStartMillis)
                                     }
 
                                     if (event.isAllDay) {
-                                        dayPrefix + if (Locale.getDefault().language == "de") "Ganztägig" else "All Day"
+                                        dayPrefix + allDayLabel
                                     } else {
                                         dayPrefix + "${timeFormatter.format(event.startTime)} - ${timeFormatter.format(event.endTime)}"
                                     }
@@ -1146,7 +1152,7 @@ fun AtAGlanceSection(
                         ) {
                             Icon(
                                 imageVector = Icons.Rounded.KeyboardArrowUp,
-                                contentDescription = "Scroll Up",
+                                contentDescription = stringResource(R.string.scroll_up),
                                 tint = if (pagerState.currentPage > 0) baseColor.copy(alpha = 0.5f) else baseColor.copy(alpha = 0.15f),
                                 modifier = Modifier
                                     .size(20.dp)
@@ -1166,7 +1172,7 @@ fun AtAGlanceSection(
                             )
                             Icon(
                                 imageVector = Icons.Rounded.KeyboardArrowDown,
-                                contentDescription = "Scroll Down",
+                                contentDescription = stringResource(R.string.scroll_down),
                                 tint = if (pagerState.currentPage < calendarEvents.size - 1) baseColor.copy(alpha = 0.5f) else baseColor.copy(alpha = 0.15f),
                                 modifier = Modifier
                                     .size(20.dp)
@@ -1466,7 +1472,7 @@ fun NotificationTabs(
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = Icons.Rounded.Delete,
-                    contentDescription = "Clear All",
+                    contentDescription = stringResource(R.string.clear_all),
                     tint = colorScheme.onError,
                     modifier = Modifier.size(20.dp)
                 )

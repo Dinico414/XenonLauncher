@@ -5,8 +5,6 @@ import android.content.Intent
 import android.os.Environment
 import android.provider.Settings
 import androidx.activity.compose.PredictiveBackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
@@ -43,14 +41,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -115,6 +110,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.platform.ViewConfiguration
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -128,6 +124,7 @@ import com.xenon.mylibrary.res.MenuItem
 import com.xenon.mylibrary.res.XenonDropDown
 import com.xenon.mylibrary.res.XenonSingleChoiceButtonGroup
 import com.xenon.mylibrary.theme.QuicksandTitleVariable
+import com.xenonware.launcher.R
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.model.SearchResult
 import com.xenonware.launcher.ui.res.AllAppsDivider
@@ -213,18 +210,12 @@ fun AppDrawer(
     val iconShape by viewModel.drawerIconShape.collectAsState()
     val showShadow by viewModel.drawerIconShadow.collectAsState()
 
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { }
-
     LaunchedEffect(advancedSearchEnabled) {
         if (advancedSearchEnabled) {
             val permissions = mutableListOf<String>()
             permissions.add(Manifest.permission.READ_MEDIA_AUDIO)
             permissions.add(Manifest.permission.READ_CONTACTS)
-
-            permissionLauncher.launch(permissions.toTypedArray())
-
+            
             if (!Environment.isExternalStorageManager()) {
                 try {
                     val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
@@ -338,6 +329,7 @@ fun AppDrawer(
         }
     }
 
+    val openFileLabel = stringResource(R.string.open_file)
     fun handleSearchResultClick(result: SearchResult) {
         when (result) {
             is SearchResult.App -> {
@@ -354,7 +346,7 @@ fun AppDrawer(
                     setDataAndType(result.uri, result.mimeType)
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
-                context.startActivity(Intent.createChooser(intent, "Open File"))
+                context.startActivity(Intent.createChooser(intent, openFileLabel))
                 onDismiss()
             }
             is SearchResult.Web -> {
@@ -861,7 +853,12 @@ fun AppDrawer(
                             } else {
                                 item(span = { GridItemSpan(maxLineSpan) }) {
                                     Text(
-                                        text = selectedSearchType.name,
+                                        text = when(selectedSearchType) {
+                                            SearchType.Apps -> stringResource(R.string.search_type_apps)
+                                            SearchType.Contacts -> stringResource(R.string.search_type_contacts)
+                                            SearchType.Files -> stringResource(R.string.search_type_files)
+                                            SearchType.Web -> stringResource(R.string.search_type_web)
+                                        },
                                         style = typography.titleMedium,
                                         color = colorScheme.onSurface,
                                         modifier = Modifier.padding(start = 12.dp, top = 8.dp, bottom = 16.dp)
@@ -883,7 +880,7 @@ fun AppDrawer(
                                         item(span = { GridItemSpan(maxLineSpan) }) {
                                             Column {
                                                 Text(
-                                                    "Search History",
+                                                    stringResource(R.string.search_history),
                                                     style = typography.labelMedium,
                                                     color = colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                                                     modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
@@ -933,7 +930,7 @@ fun AppDrawer(
 
                     if (filteredApps.isEmpty() && searchQuery.isNotBlank() && selectedSearchType == SearchType.Apps) {
                         Text(
-                            "No apps found",
+                            stringResource(R.string.no_apps_found),
                             color = colorScheme.onSurfaceVariant,
                             modifier = Modifier.align(Alignment.Center)
                         )
@@ -947,24 +944,24 @@ fun AppDrawer(
                             onDismissRequest = { searchResultMenuApp = null },
                             items = listOf(
                                 MenuItem(
-                                    text = "Uninstall",
+                                    text = stringResource(R.string.uninstall),
                                     onClick = { onUninstallApp(app.packageName) },
                                     leadingIcon = { Icon(Icons.Rounded.Delete, null) },
                                     textColor = colorScheme.error,
                                     containerColor = colorScheme.error.copy(alpha = 0.15f)
                                 ),
                                 MenuItem(
-                                    text = "App Info",
+                                    text = stringResource(R.string.app_info),
                                     onClick = { onAppInfo(app.packageName) },
                                     leadingIcon = { Icon(Icons.Rounded.Info, null) }
                                 ),
                                 MenuItem(
-                                    text = "Edit",
+                                    text = stringResource(R.string.edit),
                                     onClick = { appToEdit = app },
                                     leadingIcon = { Icon(Icons.Rounded.Edit, null) }
                                 ),
                                 MenuItem(
-                                    text = if (isHidden) "Unhide" else "Hide",
+                                    text = if (isHidden) stringResource(R.string.unhide) else stringResource(R.string.hide),
                                     onClick = {
                                         if (isHidden) onUnhideApp(app.packageName)
                                         else onHideApp(app.packageName)
@@ -1015,7 +1012,14 @@ fun AppDrawer(
                                     options = SearchType.entries,
                                     selectedOption = selectedSearchType,
                                     onOptionSelect = { selectedSearchType = it },
-                                    label = { it.name },
+                                    label = {
+                                        when(it) {
+                                            SearchType.Apps -> stringResource(R.string.search_type_apps)
+                                            SearchType.Contacts -> stringResource(R.string.search_type_contacts)
+                                            SearchType.Files -> stringResource(R.string.search_type_files)
+                                            SearchType.Web -> stringResource(R.string.search_type_web)
+                                        }
+                                    },
                                     icon = { _, _ -> },
                                     buttonHeight = 36.dp,
                                     modifier = Modifier
@@ -1084,7 +1088,7 @@ fun AppDrawer(
                                     ) {
                                         if (searchQuery.isEmpty() && !isSearchFocused) {
                                             Text(
-                                                text = "Search",
+                                                text = stringResource(R.string.search),
                                                 style = textStyle,
                                                 color = colorScheme.onSurface.copy(alpha = 0.6f),
                                                 modifier = Modifier.fillMaxWidth()
@@ -1102,7 +1106,7 @@ fun AppDrawer(
                                     Icon(
                                         Icons.Rounded.MoreVert,
                                         tint = colorScheme.onSurface,
-                                        contentDescription = "More options"
+                                        contentDescription = stringResource(R.string.more_options)
                                     )
                                 }
                                 XenonDropDown(
@@ -1110,18 +1114,18 @@ fun AppDrawer(
                                     onDismissRequest = { showMenu = false },
                                     items = listOf(
                                         MenuItem(
-                                            text = if (isGridLayout) "List view" else "Grid view",
+                                            text = if (isGridLayout) stringResource(R.string.list_view) else stringResource(R.string.grid_view),
                                             onClick = onToggleLayout,
                                             dismissOnClick = true,
                                             leadingIcon = {
                                                 Icon(
                                                     if (isGridLayout) Icons.AutoMirrored.Rounded.ViewList
                                                     else Icons.Rounded.GridView,
-                                                    contentDescription = "Toggle layout"
+                                                    contentDescription = stringResource(R.string.toggle_layout)
                                                 )
                                             }),
                                         MenuItem(
-                                            text = "Show Keyboard",
+                                            text = stringResource(R.string.show_keyboard),
                                             onClick = { viewModel.setOpenKeyboard(!openKeyboard) },
                                             dismissOnClick = false,
                                             leadingIcon = {
@@ -1132,19 +1136,19 @@ fun AppDrawer(
                                                 )
                                             }),
                                         MenuItem(
-                                            text = "Advanced Search",
+                                            text = stringResource(R.string.advanced_search),
                                             onClick = { viewModel.setAdvancedSearchEnabled(!advancedSearchEnabled) },
                                             dismissOnClick = false,
                                             leadingIcon = { Icon(if (advancedSearchEnabled) Icons.Rounded.Search else Icons.Rounded.SearchOff, null) }
                                         ),
                                         MenuItem(
-                                            text = "Settings",
+                                            text = stringResource(R.string.settings),
                                             onClick = { onSettingsClick() },
                                             dismissOnClick = true,
                                             leadingIcon = {
                                                 Icon(
                                                     Icons.Rounded.Settings,
-                                                    contentDescription = "Settings"
+                                                    contentDescription = stringResource(R.string.settings)
                                                 )
                                             })
                                     ),
@@ -1166,24 +1170,24 @@ fun AppDrawer(
                 onDismissRequest = { appMenuInfo = null },
                 items = listOf(
                     MenuItem(
-                        text = "Uninstall",
+                        text = stringResource(R.string.uninstall),
                         onClick = { onUninstallApp(app.packageName) },
                         leadingIcon = { Icon(Icons.Rounded.Delete, null) },
                         textColor = colorScheme.error,
                         containerColor = colorScheme.error.copy(alpha = 0.25f)
                     ),
                     MenuItem(
-                        text = "App Info",
+                        text = stringResource(R.string.app_info),
                         onClick = { onAppInfo(app.packageName) },
                         leadingIcon = { Icon(Icons.Rounded.Info, null) }
                     ),
                     MenuItem(
-                        text = "Edit",
+                        text = stringResource(R.string.edit),
                         onClick = { appToEdit = app },
                         leadingIcon = { Icon(Icons.Rounded.Edit, null) }
                     ),
                     MenuItem(
-                        text = if (app.packageName in hiddenApps) "Unhide" else "Hide",
+                        text = if (app.packageName in hiddenApps) stringResource(R.string.unhide) else stringResource(R.string.hide),
                         onClick = {
                             if (app.packageName in hiddenApps) onUnhideApp(app.packageName)
                             else onHideApp(app.packageName)

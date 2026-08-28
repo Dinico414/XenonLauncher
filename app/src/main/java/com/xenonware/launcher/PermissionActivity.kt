@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
 import android.provider.Settings
@@ -17,6 +16,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import com.xenon.mylibrary.activity.BasePermissionActivity
 import com.xenon.mylibrary.res.AnimatedGradientBackground
 import com.xenon.mylibrary.res.PermissionScreen
@@ -49,7 +49,7 @@ class PermissionActivity : BasePermissionActivity() {
                         PermissionScreen(
                             permissions = getPermissions(),
                             isFirstLaunch = isFirstLaunch(),
-                            grantButtonText = if (currentPermissionName.value == getString(R.string.default_home)) "Set as Home" else "Grant Permission",
+                            grantButtonText = if (currentPermissionName.value == getString(R.string.default_home)) getString(R.string.set_as_home) else getString(R.string.grant_permission),
                             onFinish = { onPermissionsFinished() }
                         )
                     }
@@ -173,7 +173,7 @@ class PermissionActivity : BasePermissionActivity() {
             },
             request = {
                 val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
-                    data = Uri.parse("package:${it.packageName}")
+                    data = "package:${it.packageName}".toUri()
                 }
                 startActivity(intent)
             }

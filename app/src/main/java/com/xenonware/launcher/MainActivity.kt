@@ -1,6 +1,5 @@
 package com.xenonware.launcher
 
-import android.app.ActivityOptions
 import android.app.WallpaperColors
 import android.app.WallpaperManager
 import android.content.ComponentName
@@ -8,7 +7,6 @@ import android.content.ContextWrapper
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
-import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -257,7 +255,7 @@ class MainActivity : ComponentActivity() {
                     },
                     onFabLongPress = {
                         if (fabLongPressAction != com.xenonware.launcher.model.FabAction.NONE) {
-                            val vibratorManager = getSystemService(android.content.Context.VIBRATOR_MANAGER_SERVICE) as android.os.VibratorManager
+                            val vibratorManager = getSystemService(VIBRATOR_MANAGER_SERVICE) as android.os.VibratorManager
                             val vibrator = vibratorManager.defaultVibrator
                             vibrator.vibrate(android.os.VibrationEffect.createOneShot(50, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
                         }
@@ -635,7 +633,7 @@ fun LauncherScreen(
             )
 
             configShortcutType?.let { type ->
-                val context = androidx.compose.ui.platform.LocalContext.current
+                val context = LocalContext.current
                 val prefs = remember { SharedPreferenceManager(context) }
                 val initialValue = when (type) {
                     LauncherViewModel.ShortcutType.TIME -> prefs.timeShortcut

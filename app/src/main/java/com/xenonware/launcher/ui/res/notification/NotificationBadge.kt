@@ -15,13 +15,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.graphics.drawable.toBitmap
-import com.xenonware.launcher.util.ColorUtils
 import com.xenon.mylibrary.theme.QuicksandTitleVariable
+import com.xenonware.launcher.R
+import com.xenonware.launcher.util.ColorUtils
 
 @Composable
 fun NotificationBadge(
@@ -56,8 +57,9 @@ fun NotificationBadge(
         contentAlignment = Alignment.Center
     ) {
         if (badgeType == 2) {
+            val plusLabel = stringResource(R.string.notification_count_plus)
             Text(
-                text = if (count > 99) "99+" else count.toString(),
+                text = if (count > 99) plusLabel else count.toString(),
                 color = ColorUtils.getContrastColor(badgeColor),
                 fontSize = 12.sp,
                 fontFamily = QuicksandTitleVariable,

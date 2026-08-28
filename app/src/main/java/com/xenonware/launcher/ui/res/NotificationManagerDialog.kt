@@ -21,10 +21,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.xenon.mylibrary.res.XenonDialog
+import com.xenonware.launcher.R
 import com.xenonware.launcher.model.AppInfo
 
 @Composable
@@ -48,13 +50,13 @@ fun NotificationManagerDialog(
 
     XenonDialog(
         onDismissRequest = onDismiss,
-        title = "Notification Manager",
+        title = stringResource(R.string.notification_manager),
         properties = DialogProperties(usePlatformDefaultWidth = true),
-        confirmButtonText = "Done",
+        confirmButtonText = stringResource(R.string.done),
         onConfirmButtonClick = onDismiss,
-        actionButton1Text = "Select All",
+        actionButton1Text = stringResource(R.string.select_all),
         onActionButton1Click = onSelectAll,
-        actionButton2Text = "Clear All",
+        actionButton2Text = stringResource(R.string.clear_all),
         onActionButton2Click = onClearAll,
         contentManagesScrolling = true,
         externalShowTopDivider = showTopDivider,
@@ -68,7 +70,7 @@ fun NotificationManagerDialog(
         ) {
             item {
                 Text(
-                    "Choose which apps are allowed to show notifications in the launcher.",
+                    stringResource(R.string.notification_manager_description),
                     fontSize = 14.sp,
                     color = colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 16.dp)

@@ -102,7 +102,7 @@ object NotificationManager {
 
                 if (ChronoDetector.looksLikeClockApp(sbn.packageName)) {
                     // Full field dump for anything clock-ish, whether detected or not.
-                    ChronoDetector.dump(context, sbn)
+                    ChronoDetector.dump(sbn)
                 }
             }
 

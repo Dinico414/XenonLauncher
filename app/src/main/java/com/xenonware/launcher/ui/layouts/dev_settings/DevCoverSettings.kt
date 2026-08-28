@@ -64,7 +64,7 @@ fun DevCoverSettings(
             }) {
                 Icon(
                     imageVector = Icons.Rounded.RestartAlt,
-                    contentDescription = "Restart App"
+                    contentDescription = stringResource(R.string.restart_app)
                 )
             }
         },

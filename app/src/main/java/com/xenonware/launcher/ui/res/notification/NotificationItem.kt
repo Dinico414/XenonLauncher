@@ -98,6 +98,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -106,6 +107,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
+import com.xenonware.launcher.R
 import com.xenonware.launcher.notification.LauncherNotification
 import com.xenonware.launcher.notification.LauncherNotificationAction
 import com.xenonware.launcher.util.ColorUtils
@@ -538,14 +540,14 @@ fun NotificationItem(
                                     modifier = Modifier.padding(horizontal = 8.dp)
                                 ) {
                                     Text(
-                                        text = formatNotificationTime(notification.postTime),
+                                        text = formatNotificationTime(notification.postTime, context),
                                         color = colorScheme.onSurface.copy(alpha = 0.6f),
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold
                                     )
                                     Icon(
                                         imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
-                                        contentDescription = if (expanded) "Collapse" else "Expand",
+                                        contentDescription = if (expanded) stringResource(R.string.collapse) else stringResource(R.string.expand),
                                         tint = colorScheme.onSurface.copy(alpha = 0.6f),
                                         modifier = Modifier.size(16.dp)
                                     )
@@ -553,7 +555,7 @@ fun NotificationItem(
                             }
                         } else {
                             Text(
-                                text = formatNotificationTime(notification.postTime),
+                                text = formatNotificationTime(notification.postTime, context),
                                 color = colorScheme.onSurface.copy(alpha = 0.5f),
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium
@@ -677,7 +679,7 @@ fun NotificationItem(
                                         lineLimits = lineLimits,
                                         outputTransformation = null,
                                         interactionSource = replyInteractionSource,
-                                        placeholder = { Text("Type a message...", fontSize = 13.sp) },
+                                        placeholder = { Text(stringResource(R.string.type_message), fontSize = 13.sp) },
                                         colors = TextFieldDefaults.colors(
                                             focusedContainerColor = colorScheme.surfaceContainerLowest.copy(alpha = 0.2f),
                                             unfocusedContainerColor = colorScheme.surfaceContainerLowest.copy(alpha = 0.2f),
@@ -712,7 +714,7 @@ fun NotificationItem(
                                     Box(contentAlignment = Alignment.Center) {
                                         Icon(
                                             imageVector = Icons.AutoMirrored.Rounded.Send,
-                                            contentDescription = "Send",
+                                            contentDescription = stringResource(R.string.send),
                                             tint = finalContrastColor,
                                             modifier = Modifier.size(24.dp).padding(start = 3.dp)
                                         )
@@ -823,12 +825,12 @@ fun Modifier.drawTextFieldScrollbar(
     }
 }
 
-private fun formatNotificationTime(postTime: Long): String {
+private fun formatNotificationTime(postTime: Long, context: android.content.Context): String {
     val diffMinutes = (System.currentTimeMillis() - postTime) / 60000
     return when {
-        diffMinutes < 1 -> "now"
-        diffMinutes < 60 -> "${diffMinutes}m"
-        else -> "${diffMinutes / 60}h"
+        diffMinutes < 1 -> context.getString(R.string.now)
+        diffMinutes < 60 -> context.getString(R.string.minutes_short, diffMinutes)
+        else -> context.getString(R.string.hours_short, diffMinutes / 60)
     }
 }
 

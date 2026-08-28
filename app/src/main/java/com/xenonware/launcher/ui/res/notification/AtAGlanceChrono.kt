@@ -34,6 +34,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import kotlin.math.abs
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Ticks once per second, phase-locked to [phase].
@@ -52,7 +53,7 @@ fun rememberChronoTick(enabled: Boolean, phase: Long): State<Long> {
             state.longValue = now
             // Land just past the next rollover, so jitter can't read the stale value.
             val rem = ((now - phase) % 1000L + 1000L) % 1000L
-            delay(1000L - rem + 10L)
+            delay((1000L - rem + 10L).milliseconds)
         }
     }
     return state
@@ -73,12 +74,14 @@ fun ChronoCluster(
 ) {
     val items = remember(timers, stopwatches) {
         (timers + stopwatches)
+            .asSequence()
             .map { it.chrono }
             .filter { it.isDisplayable }
             // Clock can post the same chrono under several keys during updates.
             .distinctBy { Triple(it.kind, it.baseWallTime, it.frozenMs) }
             .sortedBy { it.kind.ordinal }
             .take(3)
+            .toList()
     }
 
     Row(
@@ -103,7 +106,7 @@ fun ChronoCluster(
 
 @Composable
 private fun ChronoPreviewItem(chrono: ChronoState, fontSize: TextUnit, isWallpaperDark: Boolean) {
-    // Both kinds roll over on the same phase: TIMER shows ceil(base - now),
+    // Both kinds roll over on the same phase: TIMER shows cell(base - now),
     // STOPWATCH shows floor(now - base), and both change when (now - base) % 1000 == 0.
     val now by rememberChronoTick(enabled = chrono.isRunning, phase = chrono.baseWallTime)
 

@@ -2,7 +2,6 @@ package com.xenonware.launcher.ui.res.notification
 
 import android.app.Notification
 import android.content.Context
-import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
 import android.service.notification.StatusBarNotification
@@ -21,7 +20,7 @@ enum class ChronoKind { NONE, TIMER, STOPWATCH }
  * Everything the UI needs to render a live timer/stopwatch, in one place.
  *
  * All times are WALL CLOCK (System.currentTimeMillis). elapsedRealtime bases are
- * normalised on the way in, so the UI never has to care about time domains.
+ * normalized on the way in, so the UI never has to care about time domains.
  */
 data class ChronoState(
     val kind: ChronoKind = ChronoKind.NONE,
@@ -101,7 +100,7 @@ object ChronoDetector {
 
         // -----------------------------------------------------------------
         // Path 0 — android.metrics (Android 16 promoted ongoing / MetricStyle).
-        // Structured, unlocalised, and exactly what the shelf renders from.
+        // Structured, unlocalized, and exactly what the shelf renders from.
         // -----------------------------------------------------------------
         fromMetrics(extras, now, kindFromId, kindFromText)?.let {
             if (DEBUG) Log.d(TAG, "PATH0 (metrics): $it")
@@ -290,9 +289,7 @@ object ChronoDetector {
         }
 
         val chrono = chronometers.firstOrNull { it.base != 0L }
-        val countDown = if (chrono != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            chrono.isCountDown
-        } else null
+        val countDown = chrono?.isCountDown
 
         return Probe(chrono?.base, countDown, texts)
     }
@@ -368,7 +365,7 @@ object ChronoDetector {
     // ------------------------------------------------------------------
 
     /** One Log.d per line — Android Studio collapses multi-line entries. */
-    fun dump(context: Context, sbn: StatusBarNotification) {
+    fun dump(sbn: StatusBarNotification) {
         val n = sbn.notification ?: return
         val e = n.extras
         val now = System.currentTimeMillis()

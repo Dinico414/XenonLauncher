@@ -69,59 +69,22 @@ fun AtAGlance(
     }
 
     val weatherRes = remember(condition, isDay) {
+        val c = condition.lowercase()
         val (day, night) = when {
-            condition.contains("Thunder Shower", true) || condition.contains(
-                "T-Shower",
-                true
-            ) -> R.drawable.tshower1 to R.drawable.tshower0
-
-            condition.contains("Thunder", true) || condition.contains(
-                "Storm",
-                true
-            ) -> R.drawable.tstorm1 to R.drawable.tstorm0
-
-            condition.contains("Tornado", true) -> R.drawable.tornado1 to R.drawable.tornado0
-
-            condition.contains("Hail", true) -> R.drawable.hail1 to R.drawable.hail0
-
-            condition.contains("Sleet", true) -> R.drawable.sleet1 to R.drawable.sleet0
-
-            condition.contains("Light Snow", true) || condition.contains(
-                "Flurr",
-                true
-            ) -> R.drawable.lsnow1 to R.drawable.lsnow0
-
-            condition.contains("Snow", true) || condition.contains(
-                "Ice",
-                true
-            ) -> R.drawable.snow1 to R.drawable.snow0
-
-            condition.contains("Shower", true) || condition.contains(
-                "Drizzle",
-                true
-            ) -> R.drawable.shower1 to R.drawable.shower0
-
-            condition.contains("Rain", true) -> R.drawable.rain1 to R.drawable.rain0
-
-            condition.contains("Fog", true) || condition.contains(
-                "Mist",
-                true
-            ) || condition.contains("Haze", true) -> R.drawable.fog1 to R.drawable.fog0
-
-            condition.contains("Wind", true) -> R.drawable.windy1 to R.drawable.windy0
-
-            condition.contains("Partly", true) -> R.drawable.pcloudy1 to R.drawable.pcloudy0
-
-            condition.contains("Overcast", true) || condition.contains(
-                "Cloud",
-                true
-            ) -> R.drawable.mcloudy1 to R.drawable.mcloudy0
-
-            condition.contains("Clear", true) || condition.contains(
-                "Sunny",
-                true
-            ) -> R.drawable.clear1 to R.drawable.clear0
-
+            c.contains("thunder shower") || c.contains("t-shower") || c.contains("gewitterregen") -> R.drawable.tshower1 to R.drawable.tshower0
+            c.contains("thunder") || c.contains("storm") || c.contains("gewitter") || c.contains("sturm") -> R.drawable.tstorm1 to R.drawable.tstorm0
+            c.contains("tornado") -> R.drawable.tornado1 to R.drawable.tornado0
+            c.contains("hail") || c.contains("hagel") -> R.drawable.hail1 to R.drawable.hail0
+            c.contains("sleet") || c.contains("schneeregen") -> R.drawable.sleet1 to R.drawable.sleet0
+            c.contains("light snow") || c.contains("flurr") || c.contains("leichter schnee") -> R.drawable.lsnow1 to R.drawable.lsnow0
+            c.contains("snow") || c.contains("ice") || c.contains("schnee") || c.contains("eis") -> R.drawable.snow1 to R.drawable.snow0
+            c.contains("shower") || c.contains("drizzle") || c.contains("schauer") || c.contains("niesel") -> R.drawable.shower1 to R.drawable.shower0
+            c.contains("rain") || c.contains("regen") -> R.drawable.rain1 to R.drawable.rain0
+            c.contains("fog") || c.contains("mist") || c.contains("haze") || c.contains("nebel") || c.contains("dunst") -> R.drawable.fog1 to R.drawable.fog0
+            c.contains("wind") -> R.drawable.windy1 to R.drawable.windy0
+            c.contains("partly") || c.contains("teilweise") -> R.drawable.pcloudy1 to R.drawable.pcloudy0
+            c.contains("overcast") || c.contains("cloud") || c.contains("bedeckt") || c.contains("wolken") -> R.drawable.mcloudy1 to R.drawable.mcloudy0
+            c.contains("clear") || c.contains("sunny") || c.contains("klar") || c.contains("sonnig") -> R.drawable.clear1 to R.drawable.clear0
             else -> R.drawable.unknown1 to R.drawable.unknown0
         }
         if (isDay) day else night

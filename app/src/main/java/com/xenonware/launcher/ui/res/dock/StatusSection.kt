@@ -67,6 +67,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -76,6 +77,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.xenonware.launcher.R
 import com.xenonware.launcher.ui.res.AtAGlance
 import kotlinx.coroutines.delay
 import kotlin.math.PI
@@ -515,7 +517,8 @@ fun NotificationCounterBadge(
     color: Color = colorScheme.primary,
     contentColor: Color = colorScheme.onPrimary
 ) {
-    val text = if (count > 99) "99+" else count.toString()
+    val plusLabel = stringResource(R.string.notification_count_plus)
+    val text = if (count > 99) plusLabel else count.toString()
     Surface(
         color = color,
         shape = CircleShape,
@@ -543,7 +546,8 @@ fun CalendarCounterIcon(
     modifier: Modifier = Modifier,
     color: Color = colorScheme.tertiary,
 ) {
-    val text = if (count > 99) "99+" else count.toString()
+    val plusLabel = stringResource(R.string.notification_count_plus)
+    val text = if (count > 99) plusLabel else count.toString()
     val textMeasurer = rememberTextMeasurer()
     val textStyle = TextStyle(
         fontSize = if (text.length >= 3) 7.5.sp else if (text.length == 2) 9.sp else 10.5.sp,

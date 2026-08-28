@@ -29,10 +29,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.xenon.mylibrary.res.XenonDialog
+import com.xenonware.launcher.R
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.viewmodel.LauncherViewModel
 
@@ -71,11 +73,13 @@ fun ShortcutConfigDialog(
         derivedStateOf { listState.canScrollForward }
     }
 
+    val typeName = type.name.lowercase().replaceFirstChar { it.uppercase() }
+
     XenonDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = true),
-        title = "Configure ${type.name.lowercase().replaceFirstChar { it.uppercase() }} Shortcut",
-        confirmButtonText = "Save",
+        title = stringResource(R.string.configure_shortcut_format, typeName),
+        confirmButtonText = stringResource(R.string.save),
         onConfirmButtonClick = {
             when (selectionMode) {
                 "link" if linkValue.isNotEmpty() -> {
@@ -118,7 +122,7 @@ fun ShortcutConfigDialog(
                             linkValue = it
                             selectionMode = "link"
                         },
-                        label = { Text("Link") },
+                        label = { Text(stringResource(R.string.link)) },
                         placeholder = { Text("https://...") },
                         modifier = Modifier.weight(1f),
                         singleLine = true,
@@ -130,7 +134,7 @@ fun ShortcutConfigDialog(
 
             item {
                 Text(
-                    text = "Select App",
+                    text = stringResource(R.string.select_app),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.primary,
