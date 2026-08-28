@@ -87,8 +87,6 @@ fun MediaSection(
     onPlayPause: () -> Unit,
     onSkipNext: () -> Unit,
     onRequestPermission: () -> Unit,
-    /** Color the section sits on, used to decide whether it needs a border. */
-    dockColor: Color,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -99,20 +97,14 @@ fun MediaSection(
     val backgroundColor = theme.background.copy(alpha = buttonAlpha)
     val contentColor = theme.content
 
-    // Only draw a border when the section barely separates from the dock behind it.
-    val contrastRatio = remember(backgroundColor, dockColor) {
-        val l1 = ColorUtils.calculateLuminance(backgroundColor) + 0.05
-        val l2 = ColorUtils.calculateLuminance(dockColor) + 0.05
-        (l1 / l2).toFloat()
-    }
-    // Fade from 0.5 (at ratio 1.0) to 0.0 (at ratio 2.0 or 0.0)
-    val borderAlpha = (0.5f - kotlin.math.abs(1f - contrastRatio) * 0.5f).coerceIn(0f, 0.5f)
+    // Always have the border at 0.5 alpha when media is present, hide it if not.
+    val borderAlpha = if (mediaState.packageName != null) 0.5f else 0f
 
     Surface(
         onClick = {
             if (isExpanded) openMediaApp(context, mediaState) else onExpand()
         },
-        modifier = modifier.dockSectionSize(isExpanded),
+        modifier = modifier.dockSectionSize(isExpanded, collapsedWidth = 31.dp),
         shape = DockSectionShape,
         color = backgroundColor,
         contentColor = contentColor,
@@ -120,9 +112,7 @@ fun MediaSection(
         // Surface inflates its outer node to the 48.dp minimum touch target, so
         // anything drawn out there traces a 48x48 square (a circle, once the
         // corners are clamped) instead of the visible 32x48 pill.
-        border = if (borderAlpha > 0f) {
-            BorderStroke(1.dp, theme.accent.copy(alpha = borderAlpha))
-        } else null
+        border = BorderStroke(1.dp, theme.accent.copy(alpha = borderAlpha))
     ) {
         MaterialTheme(colorScheme = theme.scheme) {
             if (isExpanded) {

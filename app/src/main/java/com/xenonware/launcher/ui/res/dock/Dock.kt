@@ -90,7 +90,10 @@ internal fun dockButtonAlpha(): Float = if (LocalIsDarkTheme.current) 0.35f else
  * padding, stretching when expanded, a fixed 32.dp pill when not.
  */
 @Composable
-internal fun Modifier.dockSectionSize(isExpanded: Boolean): Modifier {
+internal fun Modifier.dockSectionSize(
+    isExpanded: Boolean,
+    collapsedWidth: Dp = DockCollapsedSectionWidth
+): Modifier {
     val verticalPadding by animateDpAsState(
         targetValue = if (isExpanded) 4.dp else 12.dp,
         label = "dockSectionPadding"
@@ -100,7 +103,7 @@ internal fun Modifier.dockSectionSize(isExpanded: Boolean): Modifier {
         .padding(vertical = verticalPadding)
         .then(
             if (isExpanded) Modifier.fillMaxWidth()
-            else Modifier.requiredWidth(DockCollapsedSectionWidth)
+            else Modifier.requiredWidth(collapsedWidth)
         )
 }
 
@@ -300,7 +303,6 @@ fun DockPill(
                     onPlayPause = onMediaPlayPause,
                     onSkipNext = onMediaSkipNext,
                     onRequestPermission = onOpenMediaPermission,
-                    dockColor = baseDockColor.copy(alpha = dockAlpha),
                     modifier = Modifier
                         .padding(end = mediaEndPadding)
                         .then(if (currentPage == DockPage.Media) Modifier.weight(1f) else Modifier)
