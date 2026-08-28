@@ -295,7 +295,7 @@ fun SettingsItems(
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsSwitchMenuTile(
             title = stringResource(id = R.string.cover_screen_mode),
-            subtitle = "${stringResource(id = R.string.cover_screen_mode_description)} (${if (applyCoverTheme) stringResource(id = R.string.yes) else stringResource(id = R.string.no)})",
+            subtitle = "${stringResource(R.string.selected_cover_screen)}\n(${if (applyCoverTheme) stringResource(R.string.active) else stringResource(R.string.inactive)})",
             checked = coverThemeEnabled,
             onCheckedChange = { viewModel.setCoverThemeEnabled(it) },
             onClick = { viewModel.onCoverThemeClicked() },

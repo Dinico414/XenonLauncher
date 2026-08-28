@@ -73,7 +73,11 @@ fun ShortcutConfigDialog(
         derivedStateOf { listState.canScrollForward }
     }
 
-    val typeName = type.name.lowercase().replaceFirstChar { it.uppercase() }
+    val typeName = when (type) {
+        LauncherViewModel.ShortcutType.TIME -> stringResource(R.string.time)
+        LauncherViewModel.ShortcutType.DATE -> stringResource(R.string.date)
+        LauncherViewModel.ShortcutType.WEATHER -> stringResource(R.string.weather)
+    }
 
     XenonDialog(
         onDismissRequest = onDismiss,

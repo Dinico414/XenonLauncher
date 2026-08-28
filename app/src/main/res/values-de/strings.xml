@@ -1,56 +1,57 @@
 <resources>
     <string name="app_name">Xenon Launcher</string>
-    <string name="accessibility_service_description">Wird verwendet, um den Bildschirm über eine Doppeltipp-Geste zu sperren.</string>
+    <string name="accessibility_service_description">Benötigt, um den Bildschirm über eine Geste zu sperren.</string>
     <string name="settings">Einstellungen</string>
     <string name="navigate_back_description">Zurück</string>
-    <string name="personalization">PERSONALISIERUNG</string>
     <string name="grid_layout">Gitter-Layout</string>
     <string name="using_grid_view">Gitter-Ansicht verwenden</string>
     <string name="using_list_view">Listen-Ansicht verwenden</string>
-    <string name="app_labels">App-Beschriftungen</string>
-    <string name="show_app_labels">Namen unter Symbolen anzeigen</string>
-    <string name="hide_app_labels">Namen unter Symbolen ausblenden</string>
+    <string name="app_labels">App-Namen</string>
+    <string name="show_app_labels">Namen unter Icons anzeigen</string>
+    <string name="hide_app_labels">Namen unter Icons ausblenden</string>
     <string name="open_keyboard">Tastatur öffnen</string>
-    <string name="focus_search_description">Suche oben im Drawer fokussieren</string>
+    <string name="focus_search_description">Suche oben im Drawer fokussieren.</string>
     <string name="open_only_in_portrait">Nur im Porträt-Modus öffnen</string>
-    <string name="open_only_in_portrait_description">Tastatur nicht im Querformat öffnen</string>
+    <string name="open_only_in_portrait_description">Tastatur nicht im Querformat öffnen.</string>
     <string name="blur_effect">Weichzeichner-Effekt</string>
-    <string name="enable_glass_haze">Glas-Haze aktivieren</string>
-    <string name="theme">Design</string>
-    <string name="blacked_out">Tiefschwarz</string>
-    <string name="blacked_out_description">Reiner schwarzer AMOLED-Modus</string>
+    <string name="enable_glass_haze">Aktiviere Milchglass Effekt.</string>
+    <string name="theme">Theme</string>
+    <string name="blacked_out">Ausgeschwärzt</string>
+    <string name="blacked_out_description">Dunkelt Nachtmodus noch mehr ab.</string>
     <string name="current">Aktuell:</string>
-    <string name="icon_shape">Symbolform</string>
-    <string name="icon_shadows">Symbolschatten</string>
-    <string name="apply_depth_description">Tiefe auf App-Symbole anwenden</string>
-    <string name="dock">DOCK</string>
-    <string name="move_with_keyboard">Mit Tastatur bewegen</string>
-    <string name="move_only_in_portrait">Nur im Porträt-Modus bewegen</string>
-    <string name="move_only_in_portrait_description">Dock im Querformat unten lassen</string>
-    <string name="dock_move_up_description">Dock bewegt sich nach oben, um sichtbar zu bleiben</string>
-    <string name="dock_stay_bottom_description">Dock bleibt unten</string>
-    <string name="notifications">BENACHRICHTIGUNGEN</string>
+    <string name="icon_shape">Iconform</string>
+    <string name="icon_shadows">Iconschatten</string>
+    <string name="apply_depth_description">Tiefe auf App-Icon anwenden.</string>
+    <string name="move_with_keyboard">Mit Tastatur bewegen.</string>
+    <string name="move_only_in_portrait">Nur im Porträt-Modus bewegen.</string>
+    <string name="move_only_in_portrait_description">Dock im Querformat unten lassen.</string>
+    <string name="dock_move_up_description">Dock bewegt sich nach oben, um sichtbar zu bleiben.</string>
+    <string name="dock_stay_bottom_description">Dock bleibt unten.</string>
     <string name="notification_badges">Benachrichtigungs-Badges</string>
     <string name="none">Keine</string>
     <string name="dot">Punkt</string>
     <string name="number">Zahl</string>
-    <string name="search">SUCHE</string>
+    <string name="search">Suche</string>
     <string name="advanced_search">Erweiterte Suche</string>
-    <string name="advanced_search_description">Kontakte, Dateien und Web-Ergebnisse einschließen</string>
+    <string name="advanced_search_description">Kontakte, Dateien und Web-Ergebnisse einschließen.</string>
     <string name="show_hidden_apps">Versteckte Apps anzeigen</string>
-    <string name="show_hidden_apps_description">Versteckte Apps in Suchergebnissen anzeigen</string>
-    <string name="shortcuts">SHORTCUTS</string>
+    <string name="show_hidden_apps_description">Versteckte Apps in Suchergebnissen anzeigen.</string>
     <string name="media">Medien</string>
+    <string name="time">Zeit</string>
+    <string name="date">Datum</string>
+    <string name="weather">Wetter</string>
     <string name="time_shortcut">Zeit-Shortcut</string>
-    <string name="date_shortcut">Datums-Shortcut</string>
+    <string name="date_shortcut">Datum-Shortcut</string>
     <string name="weather_shortcut">Wetter-Shortcut</string>
     <string name="not_set">Nicht gesetzt</string>
-    <string name="system">SYSTEM</string>
     <string name="default_home">Standard-Home</string>
     <string name="set_as_default_launcher">Als Standard-Launcher festlegen</string>
     <string name="language">Sprache</string>
     <string name="cover_screen_mode">Frontdisplay-Modus</string>
-    <string name="cover_screen_mode_description">Spezielles Layout für Frontdisplays aktivieren</string>
+    <string name="selected_cover_screen">Ausgewählter Frontdisplay</string>
+    <string name="active">Aktiv</string>
+    <string name="inactive">Inaktiv</string>
+    <string name="cover_screen_mode_description">Aktivieren, um ein kompakteres, randloses Layout anzuwenden, wenn das Frontdisplay verwended wird.</string>
     <string name="clear_data">Daten löschen</string>
     <string name="clear_data_description">Alle Anwendungsdaten entfernen</string>
     <string name="reset_settings">Einstellungen zurücksetzen</string>
@@ -61,7 +62,7 @@
     <string name="xenon_commons_version">Xenon Commons-Version</string>
     <string name="more_infos">Mehr Infos</string>
     <string name="developer_options_title">Entwickleroptionen</string>
-    <string name="dev_settings_description">Erweiterte Launcher-Einstellungen</string>
+    <string name="dev_settings_description">Aktiviere Beta und Test Funktionen</string>
     <string name="developer">Entwickler</string>
     <string name="enable_dev_mode">Entwicklermodus aktivieren</string>
     <string name="recent_crashes">Kürzliche Abstürze aufgezeichnet.</string>
@@ -79,7 +80,7 @@
     <string name="already_in_developer_mode">Du bist bereits im Entwicklermodus</string>
     <string name="developer_mode_enabled">Entwicklermodus aktiviert!</string>
     <string name="taps_remaining_to_developer">Du bist jetzt noch %d Schritte davon entfernt, ein Entwickler zu sein.</string>
-    <string name="ok">OK</string>
+    <string name="ok">Okay</string>
     <string name="confirm">Bestätigen</string>
     <string name="yes">Ja</string>
     <string name="no">Nein</string>
@@ -91,7 +92,6 @@
     <string name="system_default">Systemstandard</string>
     <string name="unknown">Unbekannt</string>
     <string name="no_title">Kein Titel</string>
-    <string name="select_audio_source">AUDIOQUELLE WÄHLEN</string>
     <string name="save">Speichern</string>
     <string name="reset">Zurücksetzen</string>
     <string name="done">Fertig</string>
@@ -116,7 +116,7 @@
 
     <!-- Welcome & Permissions -->
     <string name="welcome_title">Willkommen beim Xenon Launcher</string>
-    <string name="welcome_description">Xenon Launcher bietet eine saubere, moderne Erfahrung für dein Android-Gerät. Um zu beginnen, benötigen wir einige Berechtigungen, um alle Funktionen zu aktivieren.</string>
+    <string name="welcome_description">Xenon Launcher bietet eine saubere, moderne Erfahrung für dein Android-Gerät.</string>
     <string name="grant_permission">Berechtigung erteilen</string>
     <string name="set_as_home">Als Startseite festlegen</string>
     <string name="finish">Fertigstellen</string>
@@ -125,7 +125,7 @@
     <string name="notification_access">Benachrichtigungszugriff</string>
     <string name="notification_access_description">Greife auf Benachrichtigungen zu, um Badges und Mediensteuerungen anzuzeigen.</string>
     <string name="accessibility_access">Barrierefreiheitszugriff</string>
-    <string name="accessibility_access_description">Wird verwendet, um Gesten wie Doppeltippen zum Sperren zu ermöglichen.</string>
+    <string name="accessibility_access_description">Wird verwendet, um mit Gesten das Sperren zu ermöglichen.</string>
     <string name="location_access">Standortzugriff</string>
     <string name="location_access_description">Wird verwendet, um lokale Wetterinformationen bereitzustellen.</string>
     <string name="calendar_access">Kalenderzugriff</string>
@@ -140,7 +140,6 @@
     <string name="all_files_access_description">Wird verwendet, um Dateien zu suchen und benutzerdefinierte Symbole aus dem Speicher zu verwenden.</string>
 
     <!-- FAB Actions -->
-    <string name="fab_settings">Dock FAB Aktionen</string>
     <string name="fab_double_tap">Doppeltippen</string>
     <string name="fab_long_press">Gedrückt halten</string>
     <string name="configure_action_format">%s-Aktion konfigurieren</string>
@@ -156,18 +155,22 @@
     <string name="action_none">Keine</string>
 
     <!-- Notifications & Paging -->
-    <string name="up_to_date">Du bist auf dem Laufenden</string>
+    <string name="up_to_date">Du bist auf dem aktuellen Stand</string>
     <string name="notification_count_plus">99+</string>
-    <string name="notification_count">Du hast %d Benachrichtigungen</string>
+    <plurals name="notification_count">
+        <item quantity="one">Du hast %d Benachrichtigung</item>
+        <item quantity="other">Du hast %d Benachrichtigungen</item>
+    </plurals>
     <string name="clear_all">Alle löschen</string>
     <string name="select_all">Alle auswählen</string>
     <string name="select_calendars">Kalender auswählen</string>
-    <string name="calendar_selection_description">Wähle aus, welche Kalender Ereignisse in At a Glance anzeigen sollen.</string>
+    <string name="calendar_selection_description">Wähle aus, welche Kalender Ereignisse in \"Auf einen Blick\" anzeigen sollen.</string>
     <string name="no_calendars_found">Keine Kalender gefunden.\nBerechtigungen prüfen.</string>
     <string name="sync_disabled">Synchronisierung ist für diesen Kalender in den Systemeinstellungen deaktiviert</string>
     <string name="media_access_required">Medienzugriff erforderlich</string>
     <string name="media_access_description">Um die Medienwiedergabe anzuzeigen und zu steuern, benötigt Xenon den Benachrichtigungszugriff.</string>
     <string name="album_art">Album-Cover</string>
+    <string name="select_audio_source">Audioquelle auswählen</string>
     <string name="grant">Zulassen</string>
     <string name="no_media">Keine Medien</string>
     <string name="unknown_artist">Unbekannter Künstler</string>
@@ -175,7 +178,7 @@
     <string name="play_pause">Abspielen/Pause</string>
     <string name="notification_manager">Benachrichtigungs-Manager</string>
     <string name="notification_manager_description">Wähle aus, welche Apps Benachrichtigungen im Launcher anzeigen dürfen.</string>
-    <string name="at_a_glance_settings">At a Glance Einstellungen</string>
+    <string name="at_a_glance_settings">\"Auf einen Blick\" Einstellungen</string>
     <string name="at_a_glance_description">Ereignisse und Informationen verwalten</string>
     <string name="at_a_glance">Auf einen Blick</string>
     <string name="wallpaper">Hintergrundbild</string>

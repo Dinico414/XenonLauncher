@@ -113,6 +113,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
@@ -474,7 +475,7 @@ fun NotificationPage(
                                             modifier = Modifier.size(64.dp)
                                         )
                                         Text(
-                                            text = stringResource(R.string.notification_count, notificationCount),
+                                            text = pluralStringResource(R.plurals.notification_count, notificationCount, notificationCount),
                                             color = baseColor.copy(alpha = 0.8f),
                                             fontSize = 18.sp,
                                             fontFamily = QuicksandTitleVariable,
@@ -691,7 +692,7 @@ fun NotificationPage(
                                             modifier = Modifier.size(64.dp)
                                         )
                                         Text(
-                                            text = stringResource(R.string.notification_count, notificationCount),
+                                            text = pluralStringResource(R.plurals.notification_count, notificationCount, notificationCount),
                                             color = baseColor.copy(alpha = 0.8f),
                                             fontSize = 18.sp,
                                             fontFamily = QuicksandTitleVariable,
