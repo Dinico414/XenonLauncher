@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import com.xenon.mylibrary.ActivityScreen
 import com.xenon.mylibrary.res.DialogClearDataConfirmation
 import com.xenon.mylibrary.res.DialogCoverDisplaySelection
+import com.xenon.mylibrary.res.DialogLanguageSelection
 import com.xenon.mylibrary.res.DialogResetSettingsConfirmation
 import com.xenon.mylibrary.res.DialogSignOut
 import com.xenon.mylibrary.res.DialogThemeSelection
@@ -77,6 +78,9 @@ fun CoverSettings(
     val showVersionDialog by viewModel.showVersionDialog.collectAsState()
     val showSignOutDialog by viewModel.showSignOutDialog.collectAsState()
     val currentLanguage by viewModel.currentLanguage.collectAsState()
+    val showLanguageDialog by viewModel.showLanguageDialog.collectAsState()
+    val availableLanguages by viewModel.availableLanguages.collectAsState()
+    val selectedLanguageTagInDialog by viewModel.selectedLanguageTagInDialog.collectAsState()
 
     val showCalendarSelectionDialog by viewModel.showCalendarSelectionDialog.collectAsState()
     val availableCalendars by viewModel.availableCalendars.collectAsState()
@@ -282,6 +286,24 @@ fun CoverSettings(
                 dialogTitle = stringResource(id = R.string.sign_out),
                 confirmText = stringResource(id = R.string.confirm),
                 descriptionText = stringResource(id = R.string.sign_out_description)
+            )
+        }
+    }
+
+    if (showLanguageDialog) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .hazeEffect(hazeState)
+        ) {
+            DialogLanguageSelection(
+                availableLanguages = availableLanguages,
+                currentLanguageTag = selectedLanguageTagInDialog,
+                onLanguageSelected = { viewModel.onLanguageSelectedInDialog(it) },
+                onDismiss = { viewModel.dismissLanguageDialog() },
+                onConfirm = { viewModel.applySelectedLanguage() },
+                dialogTitle = stringResource(id = R.string.language),
+                confirmText = stringResource(id = R.string.ok)
             )
         }
     }

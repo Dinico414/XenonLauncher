@@ -19,6 +19,10 @@ class SharedPreferenceManager(context: Context) {
         get() = prefs.getInt("theme", 2) // 2: System
         set(value) = prefs.edit { putInt("theme", value) }
 
+    var languageTag: String
+        get() = prefs.getString("language_tag", "") ?: ""
+        set(value) = prefs.edit { putString("language_tag", value) }
+
     var isFirstLaunch: Boolean
         get() = prefs.getBoolean("is_first_launch", true)
         set(value) = prefs.edit { putBoolean("is_first_launch", value) }

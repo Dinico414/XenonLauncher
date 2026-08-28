@@ -3,22 +3,27 @@ package com.xenonware.launcher.viewmodel
 import android.Manifest
 import android.app.ActivityManager
 import android.app.Application
+import android.app.LocaleManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
 import android.net.Uri
+import android.os.Build
 import android.os.Process
 import android.provider.CalendarContract
 import android.provider.Settings
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.ui.unit.IntSize
+import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.xenon.mylibrary.res.LanguageOption
 import com.xenon.mylibrary.res.ThemeSetting
+import com.xenonware.launcher.R
 import com.xenonware.launcher.data.SharedPreferenceManager
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.model.FabAction
@@ -36,6 +41,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.util.Locale
 import kotlin.time.Duration.Companion.milliseconds
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
@@ -114,8 +120,14 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _visibleNotificationApps = MutableStateFlow(sharedPreferenceManager.visibleNotificationApps)
     val visibleNotificationApps: StateFlow<List<String>> = _visibleNotificationApps.asStateFlow()
 
-    private val _currentLanguage = MutableStateFlow("English")
+    private val _currentLanguage = MutableStateFlow(getCurrentLocaleDisplayName())
     val currentLanguage: StateFlow<String> = _currentLanguage.asStateFlow()
+
+    private val _availableLanguages = MutableStateFlow<List<LanguageOption>>(emptyList())
+    val availableLanguages: StateFlow<List<LanguageOption>> = _availableLanguages.asStateFlow()
+
+    private val _selectedLanguageTagInDialog = MutableStateFlow(getAppLocaleTag())
+    val selectedLanguageTagInDialog: StateFlow<String> = _selectedLanguageTagInDialog.asStateFlow()
 
     private val _showThemeDialog = MutableStateFlow(false)
     val showThemeDialog: StateFlow<Boolean> = _showThemeDialog.asStateFlow()
@@ -130,6 +142,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     val showCoverSelectionDialog: StateFlow<Boolean> = _showCoverSelectionDialog.asStateFlow()
 
     private val _showLanguageDialog = MutableStateFlow(false)
+    val showLanguageDialog: StateFlow<Boolean> = _showLanguageDialog.asStateFlow()
 
     private val _showVersionDialog = MutableStateFlow(false)
     val showVersionDialog: StateFlow<Boolean> = _showVersionDialog.asStateFlow()
@@ -206,6 +219,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 _currentThemeTitle.value = themeOptions.getOrElse(index) { themeOptions.first { it.nightModeFlag == AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM } }.title
             }
         }
+        updateCurrentLanguage()
+        prepareLanguageOptions()
         loadApps()
     }
 
@@ -491,14 +506,120 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun onLanguageSettingClicked(context: Context) {
-        try {
-            context.startActivity(Intent(Settings.ACTION_APP_LOCALE_SETTINGS).apply {
-                data = Uri.fromParts("package", context.packageName, null)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            })
-        } catch (_: Exception) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            try {
+                context.startActivity(Intent(Settings.ACTION_APP_LOCALE_SETTINGS).apply {
+                    data = Uri.fromParts("package", context.packageName, null)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                })
+            } catch (_: Exception) {
+                _selectedLanguageTagInDialog.value = sharedPreferenceManager.languageTag.ifEmpty { getAppLocaleTag() }
+                _showLanguageDialog.value = true
+            }
+        } else {
+            _selectedLanguageTagInDialog.value = sharedPreferenceManager.languageTag.ifEmpty { getAppLocaleTag() }
             _showLanguageDialog.value = true
         }
+    }
+
+    fun onLanguageSelectedInDialog(localeTag: String) {
+        _selectedLanguageTagInDialog.value = localeTag
+    }
+
+    fun applySelectedLanguage() {
+        val selectedTag = _selectedLanguageTagInDialog.value
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            setAppLocale(selectedTag)
+            sharedPreferenceManager.languageTag = selectedTag
+            viewModelScope.launch {
+                delay(500.milliseconds)
+                restartApplication(getApplication())
+            }
+        }
+
+        _showLanguageDialog.value = false
+        updateCurrentLanguage()
+    }
+
+    fun dismissLanguageDialog() {
+        _showLanguageDialog.value = false
+        _selectedLanguageTagInDialog.value = getAppLocaleTag()
+    }
+
+    fun updateCurrentLanguage() {
+        _currentLanguage.value = getCurrentLocaleDisplayName()
+        _selectedLanguageTagInDialog.value = getAppLocaleTag()
+    }
+
+    private fun getCurrentLocaleDisplayName(): String {
+        val application = getApplication<Application>()
+        
+        // Source 1: AppCompatDelegate override
+        val locales = AppCompatDelegate.getApplicationLocales()
+        if (!locales.isEmpty && locales[0] != null) {
+            val l = locales[0]!!
+            return l.getDisplayName(l).replaceFirstChar { it.uppercase() }
+        }
+
+        // Source 2: System Per-App Locale (Android 13+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val localeManager = application.getSystemService(LocaleManager::class.java)
+            val appLocales = localeManager.applicationLocales
+            if (!appLocales.isEmpty && appLocales[0] != null) {
+                val l = appLocales[0]!!
+                return l.getDisplayName(l).replaceFirstChar { it.uppercase() }
+            }
+        }
+
+        // Source 3: Legacy Manual Override
+        val savedTag = sharedPreferenceManager.languageTag
+        if (savedTag.isNotEmpty()) {
+            val l = Locale.forLanguageTag(savedTag)
+            return l.getDisplayName(l).replaceFirstChar { it.uppercase() }
+        }
+
+        // Final Fallback: System Default
+        return application.getString(R.string.system_default)
+    }
+
+    private fun getAppLocaleTag(): String {
+        val application = getApplication<Application>()
+        val locales = AppCompatDelegate.getApplicationLocales()
+        if (!locales.isEmpty) {
+            return locales.toLanguageTags()
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val localeManager = application.getSystemService(LocaleManager::class.java)
+            val appLocales = localeManager.applicationLocales
+            if (!appLocales.isEmpty) return appLocales.toLanguageTags()
+        }
+
+        val saved = sharedPreferenceManager.languageTag
+        if (saved.isNotEmpty()) return saved
+
+        return ""
+    }
+
+    private fun prepareLanguageOptions() {
+        val languages = mutableListOf(
+            LanguageOption(getApplication<Application>().getString(R.string.system_default), "")
+        )
+        val en = Locale.forLanguageTag("en")
+        languages.add(LanguageOption(en.getDisplayName(en).replaceFirstChar { it.uppercase() }, en.toLanguageTag()))
+        val de = Locale.forLanguageTag("de")
+        languages.add(LanguageOption(de.getDisplayName(de).replaceFirstChar { it.uppercase() }, de.toLanguageTag()))
+        _availableLanguages.value = languages
+    }
+
+    private fun setAppLocale(localeTag: String) {
+        val appLocale = if (localeTag.isEmpty()) {
+            LocaleListCompat.getEmptyLocaleList()
+        } else {
+            LocaleListCompat.forLanguageTags(localeTag)
+        }
+        AppCompatDelegate.setApplicationLocales(appLocale)
     }
 
     fun onClearDataClicked() {

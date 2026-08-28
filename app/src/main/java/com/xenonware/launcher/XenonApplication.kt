@@ -1,6 +1,9 @@
 package com.xenonware.launcher
 
 import android.app.Application
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
+import com.xenonware.launcher.data.SharedPreferenceManager
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -10,7 +13,17 @@ class XenonApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        applySavedLocale()
         setupCrashHandler()
+    }
+
+    private fun applySavedLocale() {
+        val prefs = SharedPreferenceManager(this)
+        val tag = prefs.languageTag
+        if (tag.isNotEmpty()) {
+            val appLocale = LocaleListCompat.forLanguageTags(tag)
+            AppCompatDelegate.setApplicationLocales(appLocale)
+        }
     }
 
     private fun setupCrashHandler() {

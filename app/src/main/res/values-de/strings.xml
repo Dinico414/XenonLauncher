@@ -1,0 +1,46 @@
+<resources>
+    <string name="app_name">Xenon Launcher</string>
+    <string name="settings">Einstellungen</string>
+    <string name="language">Sprache</string>
+    <string name="system_default">Systemstandard</string>
+    <string name="theme">Design</string>
+    <string name="ok">OK</string>
+    <string name="confirm">Bestätigen</string>
+    <string name="yes">Ja</string>
+    <string name="no">Nein</string>
+    <string name="cancel">Abbrechen</string>
+
+    <!-- Welcome & Permissions -->
+    <string name="welcome_title">Willkommen beim Xenon Launcher</string>
+    <string name="welcome_description">Xenon Launcher bietet eine saubere, moderne Erfahrung für dein Android-Gerät. Um zu beginnen, benötigen wir einige Berechtigungen, um alle Funktionen zu aktivieren.</string>
+    <string name="grant_permission">Berechtigung erteilen</string>
+    <string name="finish">Fertigstellen</string>
+
+    <string name="notification_access">Benachrichtigungszugriff</string>
+    <string name="notification_access_description">Greife auf Benachrichtigungen zu, um Badges und Mediensteuerungen anzuzeigen.</string>
+    <string name="accessibility_access">Barrierefreiheitszugriff</string>
+    <string name="accessibility_access_description">Wird verwendet, um Gesten wie Doppeltippen zum Sperren zu ermöglichen.</string>
+    <string name="location_access">Standortzugriff</string>
+    <string name="location_access_description">Wird verwendet, um lokale Wetterinformationen bereitzustellen.</string>
+    <string name="calendar_access">Kalenderzugriff</string>
+    <string name="calendar_access_description">Wird verwendet, um deine anstehenden Ereignisse auf dem Startbildschirm anzuzeigen.</string>
+    <string name="storage_access">Speicherzugriff</string>
+    <string name="storage_access_description">Wird verwendet, um auf Hintergrundbilder und Mediendateien zuzugreifen.</string>
+    <string name="contacts_access">Kontaktezugriff</string>
+    <string name="contacts_access_description">Wird verwendet, um Kontakte direkt zu suchen und zu starten.</string>
+    <string name="post_notifications">Benachrichtigungen senden</string>
+    <string name="post_notifications_description">Erlaube der App, Benachrichtigungen anzuzeigen.</string>
+    <string name="all_files_access">Zugriff auf alle Dateien</string>
+    <string name="all_files_access_description">Wird verwendet, um Dateien zu suchen und benutzerdefinierte Symbole aus dem Speicher zu verwenden.</string>
+
+    <!-- FAB Actions -->
+    <string name="fab_settings">Dock FAB Aktionen</string>
+    <string name="fab_double_tap">Doppeltippen</string>
+    <string name="fab_long_press">Gedrückt halten</string>
+    <string name="action_lock_device">Gerät sperren</string>
+    <string name="action_trigger_assistant">Assistenten auslösen</string>
+    <string name="action_open_app">App öffnen</string>
+    <string name="action_open_link">Link öffnen</string>
+    <string name="action_toggle_flashlight">Taschenlampe umschalten</string>
+    <string name="action_none">Keine</string>
+</resources>

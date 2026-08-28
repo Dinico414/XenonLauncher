@@ -61,6 +61,8 @@
     <string name="developer_options_title">Developer Options</string>
     <string name="dev_settings_description">Advanced launcher settings</string>
     <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
+    <string name="system_default">System Default</string>
     <string name="confirm">Confirm</string>
     <string name="yes">Yes</string>
     <string name="no">No</string>

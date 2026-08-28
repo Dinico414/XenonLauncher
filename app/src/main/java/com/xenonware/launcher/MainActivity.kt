@@ -1,10 +1,14 @@
 package com.xenonware.launcher
 
+import android.app.ActivityOptions
 import android.app.WallpaperColors
 import android.app.WallpaperManager
 import android.content.ComponentName
+import android.content.ContextWrapper
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.Configuration
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -75,6 +79,7 @@ import com.xenonware.launcher.viewmodel.LauncherViewModel
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.launch
+import java.util.Locale
 import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
@@ -172,7 +177,7 @@ class MainActivity : ComponentActivity() {
             ) { _, _ ->
                 val configuration = androidx.compose.ui.platform.LocalConfiguration.current
                 LaunchedEffect(configuration.orientation) {
-                    viewModel.setIsLandscape(configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE)
+                    viewModel.setIsLandscape(configuration.orientation == Configuration.ORIENTATION_LANDSCAPE)
                 }
 
                 LaunchedEffect(Unit) {
@@ -315,6 +320,21 @@ class MainActivity : ComponentActivity() {
         } else {
             AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
         }
+    }
+
+    override fun attachBaseContext(newBase: android.content.Context) {
+        var context = newBase
+        val prefs = SharedPreferenceManager(newBase)
+        val savedTag = prefs.languageTag
+        if (savedTag.isNotEmpty()) {
+            val locale = Locale.forLanguageTag(savedTag)
+            Locale.setDefault(locale)
+            val config = Configuration(newBase.resources.configuration)
+            config.setLocale(locale)
+            config.setLayoutDirection(locale)
+            context = newBase.createConfigurationContext(config)
+        }
+        super.attachBaseContext(ContextWrapper(context))
     }
 
     private fun hasRequiredPermissions(): Boolean {
