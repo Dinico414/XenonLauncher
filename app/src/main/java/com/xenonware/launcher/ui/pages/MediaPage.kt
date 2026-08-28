@@ -94,6 +94,7 @@ import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
 import com.xenonware.launcher.util.blockHorizontalPagerSwipe
 import com.xenonware.launcher.util.isSmallScreenDevice
 import com.xenonware.launcher.util.shouldDisableLandscapeLayout
+import com.xenonware.launcher.viewmodel.LauncherViewModel
 import java.util.Locale
 import kotlin.math.pow
 
@@ -328,7 +329,7 @@ fun MediaPage(
                                     style = MaterialTheme.typography.labelLarge,
                                     fontWeight = FontWeight.Medium,
                                     modifier = Modifier.padding(
-                                        start = if (appName == "Media") 4.dp else 0.dp, end = 4.dp
+                                        start = if (appName == appNameLabel) 4.dp else 0.dp, end = 4.dp
                                     )
                                 )
                             }
@@ -555,7 +556,7 @@ fun MediaPage(
                                         style = MaterialTheme.typography.labelLarge,
                                         fontWeight = FontWeight.Medium,
                                         modifier = Modifier.padding(
-                                            start = if (appName == "Media") 4.dp else 0.dp, end = 4.dp
+                                            start = if (appName == appNameLabel) 4.dp else 0.dp, end = 4.dp
                                         )
                                     )
                                 }
@@ -611,7 +612,7 @@ fun MediaPage(
                                             style = MaterialTheme.typography.labelMedium,
                                             fontWeight = FontWeight.Medium,
                                             modifier = Modifier.padding(
-                                                start = if (appName == "Media") 4.dp else 0.dp, end = 4.dp
+                                                start = if (appName == appNameLabel) 4.dp else 0.dp, end = 4.dp
                                             )
                                         )
                                     }
@@ -1013,7 +1014,7 @@ private fun MediaActionButton(
     tint: Color,
     modifier: Modifier = Modifier,
 ) {
-    val viewModel: com.xenonware.launcher.viewmodel.LauncherViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    val viewModel: LauncherViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
     IconButton(
         onClick = {
             try {
