@@ -1434,11 +1434,18 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
                 while (cursor.moveToNext()) {
                     try {
+                        val rawTitle = cursor.getString(titleIdx)
+                        val start = cursor.getLong(startIdx)
+                        val end = cursor.getLong(endIdx)
+
+                        // Skip events with no title and duration 0
+                        if (rawTitle.isNullOrBlank() && start == end) continue
+
                         val event = CalendarEvent(
                             id = cursor.getLong(idIdx),
-                            title = cursor.getString(titleIdx) ?: context.getString(R.string.no_title),
-                            startTime = cursor.getLong(startIdx),
-                            endTime = cursor.getLong(endIdx),
+                            title = rawTitle ?: context.getString(R.string.no_title),
+                            startTime = start,
+                            endTime = end,
                             location = if (locIdx >= 0) cursor.getString(locIdx) else null,
                             isAllDay = cursor.getInt(allDayIdx) != 0,
                             calendarId = cursor.getString(calIdIdx) ?: "",
@@ -1504,11 +1511,16 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
                 while (cursor.moveToNext()) {
                     try {
+                        val rawTitle = cursor.getString(titleIdx)
                         val startTime = cursor.getLong(startIdx)
                         val endTime = if (endIdx >= 0 && !cursor.isNull(endIdx)) cursor.getLong(endIdx) else startTime
+
+                        // Skip events with no title and duration 0
+                        if (rawTitle.isNullOrBlank() && startTime == endTime) continue
+
                         val event = CalendarEvent(
                             id = cursor.getLong(idIdx),
-                            title = cursor.getString(titleIdx) ?: context.getString(R.string.no_title),
+                            title = rawTitle ?: context.getString(R.string.no_title),
                             startTime = startTime,
                             endTime = endTime,
                             location = if (locIdx >= 0) cursor.getString(locIdx) else null,
