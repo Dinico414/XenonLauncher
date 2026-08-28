@@ -380,23 +380,26 @@ private fun MediaSectionContent(
                             ),
                             blendMode = BlendMode.DstIn
                         )
-                    }
+                    },
+                verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    mediaState.title ?: stringResource(R.string.no_media),
+                    mediaState.title ?: stringResource(R.string.media),
                     color = contentColor,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     modifier = Modifier.basicMarquee()
                 )
-                Text(
-                    mediaState.artist ?: stringResource(R.string.unknown_artist),
-                    color = contentColor.copy(0.7f),
-                    fontSize = 10.sp,
-                    maxLines = 1,
-                    modifier = Modifier.basicMarquee()
-                )
+                if (mediaState.title != null) {
+                    Text(
+                        mediaState.artist ?: stringResource(R.string.unknown_artist),
+                        color = contentColor.copy(0.7f),
+                        fontSize = 10.sp,
+                        maxLines = 1,
+                        modifier = Modifier.basicMarquee()
+                    )
+                }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val playInteractionSource = remember { MutableInteractionSource() }
