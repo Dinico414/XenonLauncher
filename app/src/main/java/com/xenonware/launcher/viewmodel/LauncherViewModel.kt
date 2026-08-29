@@ -276,6 +276,23 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val _blackedOutModeEnabled = MutableStateFlow(prefManager.blackedOutModeEnabled)
     val blackedOutModeEnabled: StateFlow<Boolean> = _blackedOutModeEnabled
 
+    private val _isBooting = MutableStateFlow(false)
+    val isBooting: StateFlow<Boolean> = _isBooting
+
+    fun setBooting(booting: Boolean) {
+        _isBooting.value = booting
+        if (!booting) {
+            // Start heavy loading now that boot animation is done
+            loadApps()
+            loadWidgets()
+            loadInstalledWidgets()
+            loadAvailableCalendars()
+            loadCalendarEvents()
+            startCalendarUpdates()
+            startWeatherUpdates()
+        }
+    }
+
     private val _coverThemeEnabled = MutableStateFlow(prefManager.coverThemeEnabled)
     val coverThemeEnabled: StateFlow<Boolean> = _coverThemeEnabled
 
@@ -516,15 +533,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     init {
         prefManager.registerListener(preferenceListener)
-        loadApps()
-        loadWidgets()
-        loadInstalledWidgets()
-        startMediaUpdates()
+        // Only load non-heavy stuff immediately
         startTimeUpdates()
-        startWeatherUpdates()
-        loadAvailableCalendars()
-        loadCalendarEvents()
-        startCalendarUpdates()
+        startMediaUpdates()
+        updateNextAlarm()
 
         try {
             cameraId = cameraManager.cameraIdList.firstOrNull()

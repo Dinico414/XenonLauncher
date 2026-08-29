@@ -10,6 +10,7 @@ import android.content.res.Configuration
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.provider.Settings
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -19,13 +20,18 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -37,6 +43,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -51,15 +58,23 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
+import com.xenon.mylibrary.res.AnimatedGradientBackground
+import com.xenon.mylibrary.theme.QuicksandTitleVariable
 import com.xenonware.launcher.accessibility.XenonAccessibilityService
 import com.xenonware.launcher.data.SharedPreferenceManager
 import com.xenonware.launcher.ui.layouts.main.AppDrawer
@@ -76,9 +91,11 @@ import com.xenonware.launcher.util.rememberBlurAvailable
 import com.xenonware.launcher.viewmodel.LauncherViewModel
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Locale
 import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.milliseconds
 
 class MainActivity : ComponentActivity() {
     private val viewModel: LauncherViewModel by viewModels()
@@ -88,7 +105,17 @@ class MainActivity : ComponentActivity() {
     private var lastAppliedCoverThemeEnabled: Boolean = false
     private var lastAppliedBlackedOutMode: Boolean = false
 
+    companion object {
+        private var bootWelcomeAlreadyShown = false
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        val isFreshBoot = SystemClock.elapsedRealtime() < 60_000 && !bootWelcomeAlreadyShown
+        if (isFreshBoot) {
+            bootWelcomeAlreadyShown = true
+            viewModel.setBooting(true)
+        }
+
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         enableEdgeToEdge()
@@ -97,7 +124,7 @@ class MainActivity : ComponentActivity() {
 
         sharedPreferenceManager = SharedPreferenceManager(applicationContext)
 
-        if (sharedPreferenceManager.isFirstLaunch || !hasRequiredPermissions()) {
+        if (!isFreshBoot && (sharedPreferenceManager.isFirstLaunch || !hasRequiredPermissions())) {
             startActivity(Intent(this, PermissionActivity::class.java))
             finish()
             return
@@ -123,6 +150,7 @@ class MainActivity : ComponentActivity() {
             }
 
             val isAppDrawerVisible by viewModel.isAppDrawerVisible.collectAsState()
+            val isBooting by viewModel.isBooting.collectAsState()
             val pagerState = rememberPagerState(initialPage = 1) { 3 }
 
             LaunchedEffect(viewModel) {
@@ -173,6 +201,10 @@ class MainActivity : ComponentActivity() {
                 blackedOutModeEnabled = blackedOut,
                 statusBarDarkIconsOverride = statusBarDarkIcons
             ) { _, _ ->
+                if (isBooting) {
+                    BackHandler(enabled = true) {}
+                }
+
                 val configuration = androidx.compose.ui.platform.LocalConfiguration.current
                 LaunchedEffect(configuration.orientation) {
                     viewModel.setIsLandscape(configuration.orientation == Configuration.ORIENTATION_LANDSCAPE)
@@ -263,6 +295,14 @@ class MainActivity : ComponentActivity() {
                             showAssist(Bundle())
                         } else {
                             viewModel.executeFabAction(fabLongPressAction, fabLongPressValue)
+                        }
+                    },
+                    showBootWelcome = isBooting,
+                    onBootWelcomeFinished = {
+                        viewModel.setBooting(false)
+                        if (sharedPreferenceManager.isFirstLaunch || !hasRequiredPermissions()) {
+                            startActivity(Intent(this@MainActivity, PermissionActivity::class.java))
+                            finish()
                         }
                     }
                 )
@@ -423,7 +463,9 @@ fun LauncherScreen(
     onAppClick: (String) -> Unit,
     onOpenSettings: () -> Unit,
     onFabDoubleTap: () -> Unit = {},
-    onFabLongPress: () -> Unit = {}
+    onFabLongPress: () -> Unit = {},
+    showBootWelcome: Boolean = false,
+    onBootWelcomeFinished: () -> Unit = {}
 ) {
     val hazeState = rememberHazeState()
     val scope = rememberCoroutineScope()
@@ -459,7 +501,7 @@ fun LauncherScreen(
     }
 
     val appDrawerBlurProgress by animateFloatAsState(
-        targetValue = if (isAppDrawerVisible) drawerInteractiveProgress else 0f,
+        targetValue = if (isAppDrawerVisible && !showBootWelcome) drawerInteractiveProgress else 0f,
         animationSpec = if (drawerInteractiveProgress < 0.99f && isAppDrawerVisible) {
             snap()
         } else {
@@ -468,10 +510,10 @@ fun LauncherScreen(
         label = "blurProgress"
     )
 
-    val mediaBlurProgress = 1f - (pagerState.currentPage + pagerState.currentPageOffsetFraction).coerceIn(0f, 1f)
+    val mediaBlurProgress = if (showBootWelcome) 0f else 1f - (pagerState.currentPage + pagerState.currentPageOffsetFraction).coerceIn(0f, 1f)
     val blurProgress = appDrawerBlurProgress.coerceAtLeast(mediaBlurProgress)
 
-    val blurAvailable = rememberBlurAvailable() && blurSetting
+    val blurAvailable = rememberBlurAvailable() && blurSetting && !showBootWelcome
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
     val isImeVisible = WindowInsets.ime.asPaddingValues().calculateBottomPadding() > 0.dp
@@ -489,14 +531,14 @@ fun LauncherScreen(
         }
     }
 
-    WindowBlurBehind(radiusPx = if (blurSetting) (30 * blurProgress).toInt() else 0)
+    WindowBlurBehind(radiusPx = if (blurSetting && !showBootWelcome) (30 * blurProgress).toInt() else 0)
 
     DragHandler {
         Box(modifier = Modifier.fillMaxSize()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .then(if (blurSetting) Modifier.hazeSource(state = hazeState) else Modifier)
+                    .then(if (blurSetting && !showBootWelcome) Modifier.hazeSource(state = hazeState) else Modifier)
             ) {
                 Box(
                     modifier = Modifier
@@ -674,6 +716,48 @@ fun LauncherScreen(
                     iconShape = iconShape,
                     showShadow = showShadow
                 )
+            }
+
+            // BOOT WELCOME OVERLAY
+            if (showBootWelcome) {
+                val alpha = remember { Animatable(0f) }
+                val backgroundAlpha = remember { Animatable(0f) }
+
+                LaunchedEffect(Unit) {
+                    backgroundAlpha.animateTo(1f, tween(1000))
+                    alpha.animateTo(1f, tween(1000))
+                    delay(2000.milliseconds)
+                    backgroundAlpha.animateTo(0f, tween(1000))
+                    alpha.animateTo(0f, tween(1000))
+                    onBootWelcomeFinished()
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .zIndex(999f)
+                        .pointerInput(Unit) {} // Consume all touches
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {} // Secondary touch blocking
+                ) {
+                    Box(modifier = Modifier.fillMaxSize().alpha(backgroundAlpha.value)) {
+                        AnimatedGradientBackground(modifier = Modifier.fillMaxSize()) {}
+                    }
+                    Text(
+                        text = stringResource(R.string.welcome),
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .alpha(alpha.value),
+                        style = MaterialTheme.typography.displayLarge.copy(
+                            fontFamily = QuicksandTitleVariable,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 48.sp,
+                            color = Color.White
+                        )
+                    )
+                }
             }
         }
     }

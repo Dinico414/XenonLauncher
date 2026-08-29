@@ -117,6 +117,7 @@
 
     <!-- Welcome & Permissions -->
     <string name="welcome_title">Welcome to Xenon Launcher</string>
+    <string name="welcome">Welcome</string>
     <string name="welcome_description">Xenon Launcher provides a clean, modern experience for your Android device.</string>
     <string name="grant_permission">Grant Permission</string>
     <string name="set_as_home">Set as Home</string>
