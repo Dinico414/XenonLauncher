@@ -114,6 +114,8 @@ class MainActivity : ComponentActivity() {
         if (isFreshBoot) {
             bootWelcomeAlreadyShown = true
             viewModel.setBooting(true)
+            window.setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE, WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
+            window.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
         }
 
         super.onCreate(savedInstanceState)
@@ -298,8 +300,9 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                     showBootWelcome = isBooting,
-                    onBootWelcomeFinished = {
+                    onBootWelcomeFinished = { 
                         viewModel.setBooting(false)
+                        window.clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
                         if (sharedPreferenceManager.isFirstLaunch || !hasRequiredPermissions()) {
                             startActivity(Intent(this@MainActivity, PermissionActivity::class.java))
                             finish()

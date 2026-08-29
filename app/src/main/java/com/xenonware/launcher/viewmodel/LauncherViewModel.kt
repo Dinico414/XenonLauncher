@@ -282,14 +282,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun setBooting(booting: Boolean) {
         _isBooting.value = booting
         if (!booting) {
-            // Start heavy loading now that boot animation is done
-            loadApps()
-            loadWidgets()
-            loadInstalledWidgets()
-            loadAvailableCalendars()
-            loadCalendarEvents()
-            startCalendarUpdates()
-            startWeatherUpdates()
+            finishInitialization()
         }
     }
 
@@ -533,11 +526,26 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     init {
         prefManager.registerListener(preferenceListener)
-        // Only load non-heavy stuff immediately
+        // Delay everything except basic time updates if booting
         startTimeUpdates()
+        
+        if (!_isBooting.value) {
+            finishInitialization()
+        }
+    }
+
+    private fun finishInitialization() {
+        loadApps()
+        loadWidgets()
+        loadInstalledWidgets()
         startMediaUpdates()
+        startWeatherUpdates()
+        loadAvailableCalendars()
+        loadCalendarEvents()
+        startCalendarUpdates()
         updateNextAlarm()
 
+        val application = getApplication<Application>()
         try {
             cameraId = cameraManager.cameraIdList.firstOrNull()
             cameraManager.registerTorchCallback(object : CameraManager.TorchCallback() {
@@ -565,7 +573,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         application.registerReceiver(timeTickReceiver, timeFilter)
 
         application.registerReceiver(alarmReceiver, IntentFilter(AlarmManager.ACTION_NEXT_ALARM_CLOCK_CHANGED))
-        updateNextAlarm()
 
         val providerFilter = IntentFilter(Intent.ACTION_PROVIDER_CHANGED).apply {
             addDataScheme("content")

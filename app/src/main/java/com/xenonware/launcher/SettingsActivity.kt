@@ -176,9 +176,8 @@ class SettingsActivity : ComponentActivity() {
         settingsViewModel.refreshDeveloperModeState()
         lifecycleScope.launch {
             val user = googleAuthUiClient.getSignedInUser()
-            val isSignedIn = user != null
-            sharedPreferenceManager.isUserLoggedIn = isSignedIn
-            signInViewModel.updateSignInState(isSignedIn)
+            sharedPreferenceManager.isUserLoggedIn = user != null
+            signInViewModel.updateSignInState(user)
         }
 
         // Theme handling - still keep this for synchronization when returning from other activities

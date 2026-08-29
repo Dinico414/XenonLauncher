@@ -35,7 +35,20 @@ class SignInViewModel(
     init {
         sharedPreferenceManager.registerListener(preferenceListener)
         val isLoggedIn = sharedPreferenceManager.isUserLoggedIn
-        _state.update { it.copy(isSignInSuccessful = isLoggedIn) }
+        val currentUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+        _state.update { 
+            it.copy(
+                isSignInSuccessful = isLoggedIn && currentUser != null,
+                userData = currentUser?.let { user ->
+                    UserData(
+                        userId = user.uid,
+                        username = user.displayName,
+                        profilePictureUrl = user.photoUrl?.toString(),
+                        email = user.email ?: ""
+                    )
+                }
+            ) 
+        }
     }
 
     override fun onCleared() {
@@ -43,8 +56,13 @@ class SignInViewModel(
         super.onCleared()
     }
 
-    fun updateSignInState(isSignedIn: Boolean) {
-        _state.update { it.copy(isSignInSuccessful = isSignedIn) }
+    fun updateSignInState(userData: UserData?) {
+        _state.update { 
+            it.copy(
+                isSignInSuccessful = userData != null,
+                userData = userData
+            ) 
+        }
     }
 
     fun onSignInResult(result: SignInResult) {
