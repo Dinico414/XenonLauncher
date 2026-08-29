@@ -49,6 +49,8 @@ import com.xenonware.launcher.media.MediaState
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.model.AppOverride
 import com.xenonware.launcher.model.FabAction
+import com.xenonware.launcher.model.SearchHistoryEntry
+import com.xenonware.launcher.model.SearchHistoryType
 import com.xenonware.launcher.model.SearchResult
 import com.xenonware.launcher.model.WidgetItem
 import com.xenonware.launcher.notification.NotificationManager
@@ -79,6 +81,8 @@ import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
 import java.util.UUID
+import org.json.JSONArray
+import org.json.JSONObject
 import kotlin.coroutines.resume
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -242,7 +246,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     val dockSafeDrawImePortraitOnly: StateFlow<Boolean> = _dockSafeDrawImePortraitOnly
 
     private val _searchHistory = MutableStateFlow(loadSearchHistory())
-    val searchHistory: StateFlow<List<String>> = _searchHistory
+    val searchHistory: StateFlow<List<SearchHistoryEntry>> = _searchHistory
 
     private val _configShortcutType = MutableStateFlow<ShortcutType?>(null)
     val configShortcutType: StateFlow<ShortcutType?> = _configShortcutType
@@ -979,17 +983,55 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         prefManager.advancedSearchEnabled = enabled
     }
 
-    private fun loadSearchHistory(): List<String> {
-        return prefManager.searchHistory.split(",").filter { it.isNotEmpty() }
+    private fun loadSearchHistory(): List<SearchHistoryEntry> {
+        val jsonStr = prefManager.searchHistory
+        if (jsonStr.isEmpty()) return emptyList()
+        return try {
+            val arr = JSONArray(jsonStr)
+            val list = mutableListOf<SearchHistoryEntry>()
+            for (i in 0 until arr.length()) {
+                val obj = arr.getJSONObject(i)
+                list.add(
+                    SearchHistoryEntry(
+                        type = SearchHistoryType.valueOf(obj.getString("type")),
+                        value = obj.getString("value"),
+                        label = obj.getString("label"),
+                        subLabel = if (obj.has("subLabel")) obj.getString("subLabel") else null,
+                        iconUri = if (obj.has("iconUri")) obj.getString("iconUri") else null
+                    )
+                )
+            }
+            list
+        } catch (_: Exception) {
+            emptyList()
+        }
     }
 
-    fun addToSearchHistory(query: String) {
-        val current = loadSearchHistory().toMutableList()
-        current.remove(query)
-        current.add(0, query)
-        val limited = current.take(10)
+    fun addToSearchHistory(result: SearchResult) {
+        val entry = when (result) {
+            is SearchResult.App -> SearchHistoryEntry(SearchHistoryType.APP, result.appInfo.packageName, result.appInfo.label, result.appInfo.packageName)
+            is SearchResult.Contact -> SearchHistoryEntry(SearchHistoryType.CONTACT, result.id, result.name, result.phoneNumber, result.photoUri?.toString())
+            is SearchResult.File -> SearchHistoryEntry(SearchHistoryType.FILE, result.uri.toString(), result.name, result.path, result.mimeType)
+            is SearchResult.Web -> SearchHistoryEntry(SearchHistoryType.WEB, result.query, result.query)
+        }
+
+        val current = _searchHistory.value.toMutableList()
+        current.removeAll { it.value == entry.value && it.type == entry.type }
+        current.add(0, entry)
+        val limited = current.take(20)
         _searchHistory.value = limited
-        prefManager.searchHistory = limited.joinToString(",")
+
+        val arr = JSONArray()
+        limited.forEach {
+            val obj = JSONObject()
+            obj.put("type", it.type.name)
+            obj.put("value", it.value)
+            obj.put("label", it.label)
+            it.subLabel?.let { s -> obj.put("subLabel", s) }
+            it.iconUri?.let { i -> obj.put("iconUri", i) }
+            arr.put(obj)
+        }
+        prefManager.searchHistory = arr.toString()
     }
 
     fun performSearch(query: String) {

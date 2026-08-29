@@ -126,6 +126,7 @@ import com.xenon.mylibrary.res.XenonSingleChoiceButtonGroup
 import com.xenon.mylibrary.theme.QuicksandTitleVariable
 import com.xenonware.launcher.R
 import com.xenonware.launcher.model.AppInfo
+import com.xenonware.launcher.model.SearchHistoryType
 import com.xenonware.launcher.model.SearchResult
 import com.xenonware.launcher.ui.res.AllAppsDivider
 import com.xenonware.launcher.ui.res.AppEditDialog
@@ -331,6 +332,7 @@ fun AppDrawer(
 
     val openFileLabel = stringResource(R.string.open_file)
     fun handleSearchResultClick(result: SearchResult) {
+        viewModel.addToSearchHistory(result)
         when (result) {
             is SearchResult.App -> {
                 onAppClick(result.appInfo.packageName)
@@ -355,7 +357,6 @@ fun AppDrawer(
                 } else {
                     "https://www.google.com/search?q=${result.query}"
                 }
-                viewModel.addToSearchHistory(result.query)
                 context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
                 onDismiss()
             }
@@ -851,63 +852,7 @@ fun AppDrawer(
                                     }
                                 }
                             } else {
-                                item(span = { GridItemSpan(maxLineSpan) }) {
-                                    Text(
-                                        text = when(selectedSearchType) {
-                                            SearchType.Apps -> stringResource(R.string.search_type_apps)
-                                            SearchType.Contacts -> stringResource(R.string.search_type_contacts)
-                                            SearchType.Files -> stringResource(R.string.search_type_files)
-                                            SearchType.Web -> stringResource(R.string.search_type_web)
-                                        },
-                                        style = typography.titleMedium,
-                                        color = colorScheme.onSurface,
-                                        modifier = Modifier.padding(start = 12.dp, top = 8.dp, bottom = 16.dp)
-                                    )
-                                }
-
-                                if (selectedSearchType == SearchType.Web) {
-                                    if (searchQuery.isNotEmpty()) {
-                                        items(filteredResults) { result ->
-                                            SearchResultItem(
-                                                result = result,
-                                                onClick = { handleSearchResultClick(it) },
-                                                iconShape = iconShape,
-                                                showShadow = showShadow
-                                            )
-                                        }
-                                    }
-                                    if (searchHistory.isNotEmpty()) {
-                                        item(span = { GridItemSpan(maxLineSpan) }) {
-                                            Column {
-                                                Text(
-                                                    stringResource(R.string.search_history),
-                                                    style = typography.labelMedium,
-                                                    color = colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                                    modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
-                                                )
-                                                Column(
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .clip(RoundedCornerShape(20.dp))
-                                                        .background(colorScheme.surfaceContainer.copy(alpha = 0.8f))
-                                                ) {
-                                                    searchHistory.forEachIndexed { index, history ->
-                                                        SearchHistoryItem(history) {
-                                                            searchQuery = it
-                                                            viewModel.performSearch(it)
-                                                        }
-                                                        if (index < searchHistory.size - 1) {
-                                                            HorizontalDivider(
-                                                                modifier = Modifier.padding(horizontal = 16.dp),
-                                                                color = colorScheme.onSurface.copy(alpha = 0.05f)
-                                                            )
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                } else {
+                                if (searchQuery.isNotEmpty()) {
                                     items(filteredResults) { result ->
                                         SearchResultItem(
                                             result = result,
@@ -922,6 +867,68 @@ fun AppDrawer(
                                             iconShape = iconShape,
                                             showShadow = showShadow
                                         )
+                                    }
+                                }
+
+                                val filteredHistory = searchHistory.filter { entry ->
+                                    when (selectedSearchType) {
+                                        SearchType.Apps -> entry.type == SearchHistoryType.APP
+                                        SearchType.Contacts -> entry.type == SearchHistoryType.CONTACT
+                                        SearchType.Files -> entry.type == SearchHistoryType.FILE
+                                        SearchType.Web -> entry.type == SearchHistoryType.WEB
+                                    }
+                                }
+
+                                if (filteredHistory.isNotEmpty()) {
+                                    item(span = { GridItemSpan(maxLineSpan) }) {
+                                        Column {
+                                            Text(
+                                                stringResource(R.string.search_history),
+                                                style = typography.labelMedium,
+                                                color = colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                                modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+                                            )
+                                            Column(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .clip(RoundedCornerShape(20.dp))
+                                                    .background(colorScheme.surfaceContainer.copy(alpha = 0.8f))
+                                            ) {
+                                                filteredHistory.forEachIndexed { index, entry ->
+                                                    SearchHistoryItem(entry) { historyEntry ->
+                                                        when (historyEntry.type) {
+                                                            SearchHistoryType.WEB -> {
+                                                                searchQuery = historyEntry.value
+                                                                viewModel.performSearch(historyEntry.value)
+                                                            }
+                                                            SearchHistoryType.CONTACT -> {
+                                                                val intent = Intent(Intent.ACTION_DIAL, "tel:${historyEntry.subLabel}".toUri())
+                                                                context.startActivity(intent)
+                                                                onDismiss()
+                                                            }
+                                                            SearchHistoryType.FILE -> {
+                                                                val intent = Intent(Intent.ACTION_VIEW).apply {
+                                                                    setDataAndType(historyEntry.value.toUri(), historyEntry.iconUri)
+                                                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                                                }
+                                                                context.startActivity(Intent.createChooser(intent, openFileLabel))
+                                                                onDismiss()
+                                                            }
+                                                            SearchHistoryType.APP -> {
+                                                                onAppClick(historyEntry.value)
+                                                                onDismiss()
+                                                            }
+                                                        }
+                                                    }
+                                                    if (index < filteredHistory.size - 1) {
+                                                        HorizontalDivider(
+                                                            modifier = Modifier.padding(horizontal = 16.dp),
+                                                            color = colorScheme.onSurface.copy(alpha = 0.05f)
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
