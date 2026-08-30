@@ -1353,7 +1353,6 @@ fun NotificationTabs(
                     )
                     clip = true
                 },
-            horizontalArrangement = Arrangement.spacedBy(tabSpacing),
             verticalAlignment = Alignment.CenterVertically
         ) {
             for (pkg in displayedPackages) {
@@ -1362,7 +1361,7 @@ fun NotificationTabs(
                     val isVisible = !isLeaving
 
                     val tabWidth by animateDpAsState(
-                        targetValue = if (isVisible) animatedItemWidth else 0.dp,
+                        targetValue = if (isVisible) animatedItemWidth + tabSpacing else 0.dp,
                         animationSpec = spring(
                             dampingRatio = Spring.DampingRatioNoBouncy,
                             stiffness = Spring.StiffnessMediumLow
@@ -1382,7 +1381,7 @@ fun NotificationTabs(
                             modifier = Modifier
                                 .width(tabWidth)
                                 .graphicsLayer {
-                                    alpha = (tabWidth / animatedItemWidth.coerceAtLeast(1.dp)).coerceIn(0f, 1f)
+                                    alpha = (tabWidth / (animatedItemWidth + tabSpacing).coerceAtLeast(1.dp)).coerceIn(0f, 1f)
                                 },
                             contentAlignment = Alignment.Center
                         ) {
@@ -1443,7 +1442,9 @@ fun NotificationTabs(
                                 },
                                 deleteButtonBounds = deleteButtonBounds,
                                 iconKey = iconKeyToUse,
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(end = tabSpacing)
                             )
                         }
                     }
