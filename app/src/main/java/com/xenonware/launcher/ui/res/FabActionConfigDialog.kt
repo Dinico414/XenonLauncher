@@ -7,19 +7,29 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -54,6 +64,9 @@ fun FabActionConfigDialog(
     var linkValue by remember { mutableStateOf(if (initialAction == FabAction.OPEN_LINK) initialValue else "") }
     var selectedPackage by remember { mutableStateOf(if (initialAction == FabAction.OPEN_APP) initialValue else "") }
 
+    var showAppPicker by remember { mutableStateOf(false) }
+    var showLinkInput by remember { mutableStateOf(false) }
+
     val listState = rememberLazyListState()
     val showTopDivider by remember {
         derivedStateOf { listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0 }
@@ -86,7 +99,7 @@ fun FabActionConfigDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(max = 500.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             item {
                 Text(
@@ -101,95 +114,102 @@ fun FabActionConfigDialog(
             val actions = FabAction.entries
             items(actions) { action ->
                 val isSelected = selectedAction == action
-                Column {
+                val isSubmenuAction = action == FabAction.OPEN_APP || action == FabAction.OPEN_LINK
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceBright)
+                ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(100.dp))
-                            .background(if (isSelected && action != FabAction.OPEN_APP && action != FabAction.OPEN_LINK) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
+                            .weight(1f)
                             .clickable { selectedAction = action }
-                            .padding(horizontal = 12.dp, vertical = 12.dp)
+                            .padding(12.dp)
                     ) {
-                        RadioButton(selected = isSelected, onClick = { selectedAction = action })
+                        RadioButton(
+                            selected = isSelected,
+                            onClick = { selectedAction = action }
+                        )
                         Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = getActionName(action),
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-
-                    if (isSelected && action == FabAction.OPEN_LINK) {
-                        OutlinedTextField(
-                            value = linkValue,
-                            onValueChange = { linkValue = it },
-                            label = { Text(stringResource(R.string.link)) },
-                            placeholder = { Text("https://...") },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            singleLine = true,
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                    }
-                }
-            }
-
-            if (selectedAction == FabAction.OPEN_APP) {
-                item {
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        text = stringResource(R.string.select_app),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(start = 12.dp, bottom = 8.dp)
-                    )
-                }
-
-                items(apps) { app ->
-                    val isAppSelected = selectedPackage == app.packageName
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(100.dp))
-                            .background(
-                                if (isAppSelected) MaterialTheme.colorScheme.primaryContainer
-                                else Color.Transparent
-                            )
-                            .clickable { selectedPackage = app.packageName }
-                            .padding(horizontal = 12.dp, vertical = 8.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            RadioButton(
-                                selected = isAppSelected,
-                                onClick = { selectedPackage = app.packageName }
-                            )
-
-                            AppIcon(
-                                app = app,
-                                iconShape = iconShape,
-                                showShadow = showShadow,
-                                size = 32.dp
-                            )
-
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = app.label,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = if (isAppSelected) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isAppSelected) MaterialTheme.colorScheme.onPrimaryContainer
-                                else MaterialTheme.colorScheme.onSurface
+                                text = getActionName(action),
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                            )
+                            if (isSubmenuAction) {
+                                val subtitle = when (action) {
+                                    FabAction.OPEN_APP -> apps.find { it.packageName == selectedPackage }?.label ?: stringResource(R.string.not_set)
+                                    FabAction.OPEN_LINK -> linkValue.ifEmpty { stringResource(R.string.not_set) }
+                                    else -> ""
+                                }
+                                Text(
+                                    text = subtitle,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+
+                    if (isSubmenuAction) {
+                        VerticalDivider(
+                            modifier = Modifier
+                                .height(36.dp),
+                            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .clickable {
+                                    if (action == FabAction.OPEN_APP) showAppPicker = true
+                                    else if (action == FabAction.OPEN_LINK) showLinkInput = true
+                                }
+                                .padding(12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp),
+                                tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                             )
                         }
                     }
                 }
             }
         }
+    }
+
+    if (showAppPicker) {
+        AppPickerDialog(
+            apps = apps,
+            selectedPackage = selectedPackage,
+            iconShape = iconShape,
+            showShadow = showShadow,
+            onDismiss = { showAppPicker = false },
+            onAppSelected = {
+                selectedPackage = it
+                selectedAction = FabAction.OPEN_APP
+                showAppPicker = false
+            }
+        )
+    }
+
+    if (showLinkInput) {
+        LinkInputDialog(
+            initialValue = linkValue,
+            onDismiss = { showLinkInput = false },
+            onSave = {
+                linkValue = it
+                selectedAction = FabAction.OPEN_LINK
+                showLinkInput = false
+            }
+        )
     }
 }
 
