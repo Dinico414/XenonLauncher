@@ -144,7 +144,7 @@
     <!-- FAB Actions -->
     <string name="fab_double_tap">Double Tap</string>
     <string name="fab_long_press">Long Press</string>
-    <string name="configure_action_format">Configure %s Action</string>
+    <string name="configure_action_format">Configure %s</string>
     <string name="select_action">Select Action</string>
     <string name="select_app">Select App</string>
     <string name="link">Link</string>
@@ -158,7 +158,7 @@
 
     <!-- Notifications & Paging -->
     <string name="up_to_date">You\'re up to date</string>
-    <string name="notification_count_plus">99+</string>
+    <string name="notification_count_plus" translatable="false">99+</string>
     <plurals name="notification_count">
         <item quantity="one">You have %d notification</item>
         <item quantity="other">You have %d notifications</item>
@@ -218,6 +218,8 @@
     <string name="border">Border</string>
     <string name="app_name_label">App Name</string>
     <string name="icon_pack">Icon Pack</string>
+    <string name="global_icon_pack">Global Icon Pack</string>
+    <string name="global_icon_pack_description">Apply icons from a pack to all apps.</string>
     <string name="select_icon_pack">Select Icon Pack</string>
     <string name="back">Back</string>
     <string name="resource_name_label">Resource Name (e.g. chrome)</string>
@@ -227,6 +229,14 @@
     <string name="no_icons_found">No icons found in this pack.</string>
     <string name="no_results">No results for your search.</string>
     <string name="no_crash_log_found">No crash log found.</string>
+    <string name="backup_and_restore">Backup &amp; Restore</string>
+    <string name="backup_and_restore_description">Save or restore your settings and icon modifications</string>
+    <string name="sign_in_to_backup">Please sign in to use cloud backups</string>
+    <string name="start_backup">Start Backup</string>
+    <string name="syncing_with_cloud">Syncing with Cloud…</string>
+    <string name="no_backups_found">No backups found</string>
+    <string name="restore">Restore</string>
+    <string name="delete">Delete</string>
     <string name="crash_log_cleared">Crash log cleared.</string>
     <string name="crash_log_subject">Xenon Launcher Crash Log</string>
     <string name="share_crash_log">Share Crash Log</string>

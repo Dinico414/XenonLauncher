@@ -143,7 +143,7 @@
     <!-- FAB Actions -->
     <string name="fab_double_tap">Doppeltippen</string>
     <string name="fab_long_press">Gedrückt halten</string>
-    <string name="configure_action_format">%s-Aktion konfigurieren</string>
+    <string name="configure_action_format">%s konfigurieren</string>
     <string name="select_action">Aktion wählen</string>
     <string name="select_app">App wählen</string>
     <string name="link">Link</string>
@@ -157,7 +157,7 @@
 
     <!-- Notifications & Paging -->
     <string name="up_to_date">Du bist auf dem aktuellen Stand</string>
-    <string name="notification_count_plus">99+</string>
+
     <plurals name="notification_count">
         <item quantity="one">Du hast %d Benachrichtigung</item>
         <item quantity="other">Du hast %d Benachrichtigungen</item>
@@ -217,6 +217,8 @@
     <string name="border">Rahmen</string>
     <string name="app_name_label">App-Name</string>
     <string name="icon_pack">Symbol-Paket</string>
+    <string name="global_icon_pack">Globales Symbol-Paket</string>
+    <string name="global_icon_pack_description">Wende Symbole eines Pakets auf alle Apps an.</string>
     <string name="select_icon_pack">Symbol-Paket auswählen</string>
     <string name="back">Zurück</string>
     <string name="resource_name_label">Ressourcenname (z. B. chrome)</string>
@@ -226,6 +228,14 @@
     <string name="no_icons_found">Keine Icons in diesem Paket gefunden.</string>
     <string name="no_results">Keine Ergebnisse für deine Suche.</string>
     <string name="no_crash_log_found">Kein Crash-Log gefunden.</string>
+    <string name="backup_and_restore">Sichern &amp; Wiederherstellen</string>
+    <string name="backup_and_restore_description">Einstellungen und Icon-Änderungen speichern oder wiederherstellen</string>
+    <string name="sign_in_to_backup">Bitte anmelden, um Cloud-Backups zu nutzen</string>
+    <string name="start_backup">Backup starten</string>
+    <string name="syncing_with_cloud">Synchronisierung mit Cloud…</string>
+    <string name="no_backups_found">Keine Backups gefunden</string>
+    <string name="restore">Wiederherstellen</string>
+    <string name="delete">Löschen</string>
     <string name="crash_log_cleared">Crash-Log gelöscht.</string>
     <string name="crash_log_subject">Xenon Launcher Crash-Log</string>
     <string name="share_crash_log">Crash-Log teilen</string>

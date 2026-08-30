@@ -45,7 +45,7 @@ fun BackupRestoreDialog(
 
     XenonDialog(
         onDismissRequest = onDismiss,
-        title = "Backup & Restore",
+        title = stringResource(R.string.backup_and_restore),
         properties = DialogProperties(usePlatformDefaultWidth = true),
         confirmButtonText = null,
         contentManagesScrolling = true
@@ -63,7 +63,7 @@ fun BackupRestoreDialog(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "Please sign in to use cloud backups",
+                        text = stringResource(R.string.sign_in_to_backup),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
@@ -76,7 +76,7 @@ fun BackupRestoreDialog(
                     enabled = !isSyncing,
                     contentPadding = PaddingValues(12.dp)
                 ) {
-                    Text("Start Backup")
+                    Text(stringResource(R.string.start_backup))
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -106,7 +106,7 @@ fun BackupRestoreDialog(
                                     )
                                     Spacer(Modifier.width(12.dp))
                                     Text(
-                                        text = "Syncing with Cloud...",
+                                        text = stringResource(R.string.syncing_with_cloud),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.primary,
                                         fontWeight = FontWeight.Bold
@@ -125,7 +125,7 @@ fun BackupRestoreDialog(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = "No backups found",
+                                    text = stringResource(R.string.no_backups_found),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
@@ -177,7 +177,7 @@ fun BackupItem(
             IconButton(onClick = onRestore) {
                 Icon(
                     imageVector = Icons.Rounded.Restore,
-                    contentDescription = "Restore",
+                    contentDescription = stringResource(R.string.restore),
                     tint = MaterialTheme.colorScheme.primary
                 )
             }
@@ -185,7 +185,7 @@ fun BackupItem(
             IconButton(onClick = onDelete) {
                 Icon(
                     imageVector = Icons.Rounded.Delete,
-                    contentDescription = "Delete",
+                    contentDescription = stringResource(R.string.delete),
                     tint = MaterialTheme.colorScheme.error
                 )
             }

@@ -81,6 +81,7 @@ import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.model.FabAction
 import com.xenonware.launcher.presentation.sign_in.GoogleAuthUiClient
 import com.xenonware.launcher.presentation.sign_in.SignInState
+import com.xenonware.launcher.ui.res.GlobalIconPackPicker
 import com.xenonware.launcher.ui.res.IconShape
 import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
 import com.xenonware.launcher.viewmodel.LauncherViewModel
@@ -134,6 +135,8 @@ fun SettingsItems(
     val dockSafeDrawImePortraitOnly by viewModel.dockSafeDrawImePortraitOnly.collectAsState()
     val drawerIconShape by viewModel.drawerIconShape.collectAsState()
     val drawerIconShadow by viewModel.drawerIconShadow.collectAsState()
+    val globalIconPack by viewModel.globalIconPack.collectAsState()
+    val showGlobalIconPackDialog by viewModel.showGlobalIconPackDialog.collectAsState()
     val badgeType by viewModel.notificationBadgeType.collectAsState()
     val timeShortcut by viewModel.timeShortcut.collectAsState()
     val dateShortcut by viewModel.dateShortcut.collectAsState()
@@ -345,7 +348,22 @@ fun SettingsItems(
             switchColors = switchColorsOverride ?: defaultSwitchColors
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
-        
+        SettingsTile(
+            title = stringResource(id = R.string.global_icon_pack),
+            subtitle = if (globalIconPack != null) {
+                val pack = remember(globalIconPack) { viewModel.getInstalledIconPacks().find { it.activityInfo.packageName == globalIconPack } }
+                pack?.loadLabel(context.packageManager)?.toString() ?: globalIconPack!!
+            } else stringResource(R.string.system_default),
+            onClick = { viewModel.setShowGlobalIconPackDialog(true) },
+            icon = { Icon(painterResource(R.drawable.themes), null, tint = tileSubtitleColor) },
+            shape = tileShapeOverride ?: middleShape,
+            backgroundColor = tileBackgroundColor,
+            contentColor = tileContentColor,
+            subtitleColor = tileSubtitleColor,
+            horizontalPadding = tileHorizontalPadding,
+            verticalPadding = tileVerticalPadding
+        )
+        Spacer(Modifier.height(actualInnerGroupSpacing))
         // Icon Shape Selector
         SettingsTileContext(
             title = stringResource(id = R.string.icon_shape),
@@ -772,8 +790,8 @@ fun SettingsItems(
     // --- system ---
     Column {
         SettingsTile(
-            title = "Backup & Restore",
-            subtitle = "Save or restore your settings and icon modifications",
+            title = stringResource(R.string.backup_and_restore),
+            subtitle = stringResource(R.string.backup_and_restore_description),
             onClick = { viewModel.setShowBackupDialog(true) },
             icon = { Icon(Icons.Rounded.CloudDownload, null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: topShape,
@@ -839,6 +857,15 @@ fun SettingsItems(
             subtitleColor = tileSubtitleColor,
             horizontalPadding = tileHorizontalPadding,
             verticalPadding = tileVerticalPadding
+        )
+    }
+
+    if (showGlobalIconPackDialog) {
+        GlobalIconPackPicker(
+            iconPacks = remember { viewModel.getInstalledIconPacks() },
+            selectedPackage = globalIconPack,
+            onPackSelect = { viewModel.setGlobalIconPack(it) },
+            onDismiss = { viewModel.setShowGlobalIconPackDialog(false) }
         )
     }
 }

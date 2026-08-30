@@ -19,11 +19,18 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Block
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
@@ -67,6 +74,9 @@ fun IconPackPicker(
     val context = LocalContext.current
     val pm = context.packageManager
 
+    val listState = rememberLazyListState()
+    val gridState = rememberLazyGridState()
+
     XenonDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = true),
@@ -86,11 +96,17 @@ fun IconPackPicker(
             selectedPack = null
             selectedIconResName = null
         },
-        contentManagesScrolling = selectedPack == null // Grid handles its own scrolling
+        contentManagesScrolling = true,
+        externalShowTopDivider = if (selectedPack == null) listState.canScrollBackward else gridState.canScrollBackward,
+        externalShowBottomDivider = if (selectedPack == null) listState.canScrollForward else gridState.canScrollForward,
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             if (selectedPack == null) {
-                LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.heightIn(max = 400.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     items(iconPacks) { pack ->
                         ListItem(
                             modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable { selectedPack = pack },
@@ -115,7 +131,73 @@ fun IconPackPicker(
                     packageName = selectedPack!!.activityInfo.packageName,
                     selectedIconResName = selectedIconResName,
                     onIconResNameSelect = { selectedIconResName = it },
+                    state = gridState,
                     modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun GlobalIconPackPicker(
+    iconPacks: List<ResolveInfo>,
+    selectedPackage: String?,
+    onPackSelect: (String?) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val pm = LocalContext.current.packageManager
+    val listState = rememberLazyListState()
+
+    XenonDialog(
+        properties = DialogProperties(usePlatformDefaultWidth = true),
+        onDismissRequest = onDismiss,
+        title = stringResource(R.string.select_icon_pack),
+        contentManagesScrolling = true,
+        externalShowTopDivider = listState.canScrollBackward,
+        externalShowBottomDivider = listState.canScrollForward,
+        contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 12.dp)
+    ) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.heightIn(max = 400.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            item {
+                ListItem(
+                    modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable { onPackSelect(null) },
+                    leadingContent = {
+                        Icon(Icons.Rounded.Block, null, modifier = Modifier.size(40.dp))
+                    },
+                    content = { Text(stringResource(R.string.system_default)) },
+                    overlineContent = null,
+                    supportingContent = null,
+                    trailingContent = null,
+                    colors = ListItemDefaults.colors(),
+                    elevation = ListItemDefaults.elevation(ListItemDefaults.Elevation),
+                )
+            }
+            items(iconPacks) { pack ->
+                val pkgName = pack.activityInfo.packageName
+                ListItem(
+                    modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable { onPackSelect(pkgName) },
+                    leadingContent = {
+                        Image(
+                            bitmap = pack.loadIcon(pm).toBitmap().asImageBitmap(),
+                            contentDescription = null,
+                            modifier = Modifier.size(40.dp)
+                        )
+                    },
+                    trailingContent = {
+                        if (pkgName == selectedPackage) {
+                            Icon(Icons.Rounded.Check, null, tint = MaterialTheme.colorScheme.primary)
+                        }
+                    },
+                    content = { Text(pack.loadLabel(pm).toString()) },
+                    overlineContent = null,
+                    supportingContent = null,
+                    colors = ListItemDefaults.colors(),
+                    elevation = ListItemDefaults.elevation(ListItemDefaults.Elevation),
                 )
             }
         }
@@ -127,6 +209,7 @@ fun IconGrid(
     packageName: String,
     selectedIconResName: String?,
     onIconResNameSelect: (String) -> Unit,
+    state: LazyGridState,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -154,6 +237,7 @@ fun IconGrid(
 
     LazyVerticalGrid(
         columns = GridCells.Adaptive(64.dp),
+        state = state,
         modifier = modifier.heightIn(max = 500.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),

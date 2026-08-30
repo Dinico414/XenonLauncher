@@ -123,6 +123,10 @@ class SharedPreferenceManager(context: Context) {
         get() = prefs.getBoolean("drawer_icon_shadow", false)
         set(value) = prefs.edit { putBoolean("drawer_icon_shadow", value) }
 
+    var globalIconPack: String?
+        get() = prefs.getString("global_icon_pack", null)
+        set(value) = prefs.edit { putString("global_icon_pack", value) }
+
     var blackedOutModeEnabled: Boolean
         get() = prefs.getBoolean("blacked_out_mode_enabled", false)
         set(value) = prefs.edit { putBoolean("blacked_out_mode_enabled", value) }

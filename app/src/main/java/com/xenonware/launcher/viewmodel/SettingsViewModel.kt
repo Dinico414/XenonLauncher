@@ -7,6 +7,7 @@ import android.app.LocaleManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.pm.ResolveInfo
 import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Process
@@ -113,6 +114,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _drawerIconShadow = MutableStateFlow(sharedPreferenceManager.drawerIconShadow)
     val drawerIconShadow: StateFlow<Boolean> = _drawerIconShadow.asStateFlow()
 
+    private val _globalIconPack = MutableStateFlow(sharedPreferenceManager.globalIconPack)
+    val globalIconPack: StateFlow<String?> = _globalIconPack.asStateFlow()
+
     private val _timeShortcut = MutableStateFlow(sharedPreferenceManager.timeShortcut)
     val timeShortcut: StateFlow<String> = _timeShortcut.asStateFlow()
 
@@ -160,6 +164,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     private val _showLanguageDialog = MutableStateFlow(false)
     val showLanguageDialog: StateFlow<Boolean> = _showLanguageDialog.asStateFlow()
+
+    private val _showGlobalIconPackDialog = MutableStateFlow(false)
+    val showGlobalIconPackDialog: StateFlow<Boolean> = _showGlobalIconPackDialog.asStateFlow()
 
     private val _showVersionDialog = MutableStateFlow(false)
     val showVersionDialog: StateFlow<Boolean> = _showVersionDialog.asStateFlow()
@@ -264,6 +271,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             
             val overrides = sharedPreferenceManager.getAppOverrides()
             val currentShape = _drawerIconShape.value
+            val globalPack = _globalIconPack.value
+            val globalPackMap = globalPack?.let { com.xenonware.launcher.util.getIconPackMap(context, it) } ?: emptyMap()
             
             val resolvedInfos = pm.queryIntentActivities(intent, 0)
             val appList = resolvedInfos.mapNotNull { it ->
@@ -291,7 +300,17 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                         
                         finalIcon = generateCustomIcon(context, baseIcon, override, currentShape)
                     } else {
-                        finalIcon = normalizeIcon(context, originalIcon)
+                        // Apply global icon pack if available
+                        val componentName = "ComponentInfo{${it.activityInfo.packageName}/${it.activityInfo.name}}"
+                        val globalIconRes = globalPackMap[componentName]
+
+                        val baseIcon = if (globalPack != null && globalIconRes != null) {
+                            loadIconFromPack(context, globalPack, globalIconRes) ?: originalIcon
+                        } else {
+                            originalIcon
+                        }
+
+                        finalIcon = normalizeIcon(context, baseIcon)
                     }
 
                     AppInfo(
@@ -394,6 +413,31 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setDrawerIconShadow(enabled: Boolean) {
         sharedPreferenceManager.drawerIconShadow = enabled
         _drawerIconShadow.value = enabled
+    }
+
+    fun setGlobalIconPack(packageName: String?) {
+        sharedPreferenceManager.globalIconPack = packageName
+        _globalIconPack.value = packageName
+        _showGlobalIconPackDialog.value = false
+        loadApps()
+    }
+
+    fun setShowGlobalIconPackDialog(show: Boolean) {
+        _showGlobalIconPackDialog.value = show
+    }
+
+    fun getInstalledIconPacks(): List<ResolveInfo> {
+        val pm = getApplication<Application>().packageManager
+        val intent = Intent("com.novalauncher.THEME")
+        val adwIntent = Intent("org.adw.launcher.THEMES")
+        val goIntent = Intent("com.gau.go.launcherex.theme")
+
+        val list = mutableListOf<ResolveInfo>()
+        list.addAll(pm.queryIntentActivities(intent, PackageManager.GET_META_DATA))
+        list.addAll(pm.queryIntentActivities(adwIntent, PackageManager.GET_META_DATA))
+        list.addAll(pm.queryIntentActivities(goIntent, PackageManager.GET_META_DATA))
+
+        return list.distinctBy { it.activityInfo.packageName }
     }
 
     fun setVisibleCalendars(calendars: List<String>) {

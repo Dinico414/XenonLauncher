@@ -57,6 +57,7 @@ import com.xenonware.launcher.notification.NotificationManager
 import com.xenonware.launcher.notification.XenonNotificationService
 import com.xenonware.launcher.ui.res.IconShape
 import com.xenonware.launcher.util.generateCustomIcon
+import com.xenonware.launcher.util.getIconPackMap
 import com.xenonware.launcher.util.loadIconFromPack
 import com.xenonware.launcher.util.matches
 import com.xenonware.launcher.util.matchesSearch
@@ -171,6 +172,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             "fab_long_press_action" -> _fabLongPressAction.value = FabAction.fromString(prefManager.fabLongPressAction)
             "fab_double_tap_value" -> _fabDoubleTapValue.value = prefManager.fabDoubleTapValue
             "fab_long_press_value" -> _fabLongPressValue.value = prefManager.fabLongPressValue
+            "global_icon_pack" -> {
+                _globalIconPack.value = prefManager.globalIconPack
+                loadApps()
+            }
         }
     }
 
@@ -197,6 +202,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private val _blurEnabled = MutableStateFlow(prefManager.blurEnabled)
     val blurEnabled: StateFlow<Boolean> = _blurEnabled
+
+    private val _globalIconPack = MutableStateFlow(prefManager.globalIconPack)
+    val globalIconPack: StateFlow<String?> = _globalIconPack
 
     private val _pinnedApps = MutableStateFlow<List<AppInfo>>(emptyList())
     val pinnedApps: StateFlow<List<AppInfo>> = _pinnedApps
@@ -788,6 +796,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
             val overrides = prefManager.getAppOverrides()
             val currentShape = _drawerIconShape.value
+            val globalPack = _globalIconPack.value
+            val globalPackMap = globalPack?.let { getIconPackMap(context, it) } ?: emptyMap()
 
             val resolvedInfos = pm.queryIntentActivities(intent, 0)
             val appList = resolvedInfos.mapNotNull { it ->
@@ -815,7 +825,17 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
                         finalIcon = generateCustomIcon(context, baseIcon, override, currentShape)
                     } else {
-                        finalIcon = normalizeIcon(context, originalIcon)
+                        // Apply global icon pack if available
+                        val componentName = "ComponentInfo{${it.activityInfo.packageName}/${it.activityInfo.name}}"
+                        val globalIconRes = globalPackMap[componentName]
+
+                        val baseIcon = if (globalPack != null && globalIconRes != null) {
+                            loadIconFromPack(context, globalPack, globalIconRes) ?: originalIcon
+                        } else {
+                            originalIcon
+                        }
+
+                        finalIcon = normalizeIcon(context, baseIcon)
                     }
 
                     AppInfo(

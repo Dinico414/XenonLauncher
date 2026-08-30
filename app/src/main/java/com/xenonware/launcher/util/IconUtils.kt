@@ -180,3 +180,26 @@ fun getAllIconPackIcons(context: Context, packageName: String): List<String> {
     }
     return icons.distinct()
 }
+
+fun getIconPackMap(context: Context, packageName: String): Map<String, String> {
+    val map = mutableMapOf<String, String>()
+    try {
+        val res = context.packageManager.getResourcesForApplication(packageName)
+        val resourceId = res.getIdentifier("appfilter", "xml", packageName)
+        if (resourceId != 0) {
+            val parser = res.getXml(resourceId)
+            var eventType = parser.eventType
+            while (eventType != org.xmlpull.v1.XmlPullParser.END_DOCUMENT) {
+                if (eventType == org.xmlpull.v1.XmlPullParser.START_TAG && parser.name == "item") {
+                    val component = parser.getAttributeValue(null, "component")
+                    val drawable = parser.getAttributeValue(null, "drawable")
+                    if (component != null && drawable != null) {
+                        map[component] = drawable
+                    }
+                }
+                eventType = parser.next()
+            }
+        }
+    } catch (_: Exception) {}
+    return map
+}
