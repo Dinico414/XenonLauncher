@@ -27,6 +27,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AdsClick
 import androidx.compose.material.icons.rounded.BlurOn
 import androidx.compose.material.icons.rounded.Circle
+import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Keyboard
 import androidx.compose.material.icons.rounded.KeyboardHide
@@ -771,11 +772,24 @@ fun SettingsItems(
     // --- system ---
     Column {
         SettingsTile(
+            title = "Backup & Restore",
+            subtitle = "Save or restore your settings and icon modifications",
+            onClick = { viewModel.setShowBackupDialog(true) },
+            icon = { Icon(Icons.Rounded.CloudDownload, null, tint = tileSubtitleColor) },
+            shape = tileShapeOverride ?: topShape,
+            backgroundColor = tileBackgroundColor,
+            contentColor = tileContentColor,
+            subtitleColor = tileSubtitleColor,
+            horizontalPadding = tileHorizontalPadding,
+            verticalPadding = tileVerticalPadding
+        )
+        Spacer(Modifier.height(actualInnerGroupSpacing))
+        SettingsTile(
             title = stringResource(R.string.clear_data),
             subtitle = stringResource(R.string.clear_data_description),
             onClick = { viewModel.onClearDataClicked(); haptic.performHapticFeedback(HapticFeedbackType.LongPress) },
             icon = { Icon(painterResource(R.drawable.reset), null, tint = tileSubtitleColor) },
-            shape = tileShapeOverride ?: topShape,
+            shape = tileShapeOverride ?: middleShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,

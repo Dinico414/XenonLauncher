@@ -513,7 +513,8 @@ fun LauncherScreen(
         label = "blurProgress"
     )
 
-    val mediaBlurProgress = if (showBootWelcome) 0f else 1f - (pagerState.currentPage + pagerState.currentPageOffsetFraction).coerceIn(0f, 1f)
+    val mediaProgress = if (showBootWelcome) 0f else 1f - (pagerState.currentPage + pagerState.currentPageOffsetFraction).coerceIn(0f, 1f)
+    val mediaBlurProgress = if (showBootWelcome) 0f else (2f * mediaProgress).coerceIn(0f, 1f)
     val blurProgress = appDrawerBlurProgress.coerceAtLeast(mediaBlurProgress)
 
     val blurAvailable = rememberBlurAvailable() && blurSetting && !showBootWelcome
@@ -564,7 +565,7 @@ fun LauncherScreen(
                         when (page) {
                             0 -> MediaPage(
                                 mediaState = viewModel.mediaState,
-                                progress = mediaBlurProgress,
+                                progress = mediaProgress,
                                 isPermissionGranted = viewModel.isMediaPermissionGranted,
                                 isDarkTheme = isDarkTheme,
                                 onOpenSettings = { viewModel.openNotificationAccessSettings() },

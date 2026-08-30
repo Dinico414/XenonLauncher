@@ -1,12 +1,6 @@
 package com.xenonware.launcher.ui.pages
 
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.EaseInOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Arrangement
@@ -96,7 +90,6 @@ import com.xenonware.launcher.util.isSmallScreenDevice
 import com.xenonware.launcher.util.shouldDisableLandscapeLayout
 import com.xenonware.launcher.viewmodel.LauncherViewModel
 import java.util.Locale
-import kotlin.math.pow
 
 @Composable
 fun MediaPage(
@@ -184,12 +177,15 @@ fun MediaPage(
     val maxSmallCoverSize = minOf(configuration.screenWidthDp.dp / 3, verticalSafeDrawHeight/3)
     val portraitAlbumArtSize = if (isSmallDevice) maxSmallCoverSize else 280.dp
 
-    // Normalize progress for the background effects: 0.5f to 1.0f -> 0.0f to 1.0f
-    val bgProgress = ((progress - 0.5f) * 2f).coerceIn(0.25f, 1f)
-    val cornerProgress = ((progress - 0.85f) * 2f).coerceIn(0f, 1f)
-    // Exponential corner radius: 24.dp to 0.dp
-    // Using power of 3 for a more pronounced exponential curve
-    val cornerRadius = (24 * (1f - cornerProgress).pow(3)).dp
+    // Constant background effects (no animation)
+    val bgProgress = 1f
+    
+    // Progressive corner radius: 40.dp to 0.dp after 75% swipe
+    // progress is 1.0 when on MediaPage, decreases as we swipe away (0.0 when on NotificationPage)
+    // We want 40.dp at progress 0.75 and 0.dp at progress 1.0
+    val normalizedProgress = ((progress - 0.75f) * 4f).coerceIn(0f, 1f)
+    val easedProgress = EaseInOut.transform(normalizedProgress)
+    val cornerRadius = (40 * (1f - easedProgress)).dp
     val baseBgAlpha = if (isDarkTheme) 0.6f else 0.4f
     val backgroundTint = colorScheme.inversePrimary.copy(alpha = baseBgAlpha)
 
@@ -914,32 +910,7 @@ private data class MusicNoteAnimation(
 
 @Composable
 private fun rememberMusicNoteAnimation(isPlaying: Boolean): MusicNoteAnimation {
-    val infiniteTransition = rememberInfiniteTransition(label = "musicNoteAnim")
-
-    val rotation by infiniteTransition.animateFloat(
-        initialValue = -5f,
-        targetValue = 5f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "musicNoteRotation"
-    )
-    val scale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.15f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "musicNoteScale"
-    )
-    val playingFactor by animateFloatAsState(
-        targetValue = if (isPlaying) 1f else 0f,
-        label = "musicNotePlayingFactor"
-    )
-
-    return MusicNoteAnimation(rotation, scale, playingFactor)
+    return MusicNoteAnimation(0f, 1f, if (isPlaying) 1f else 0f)
 }
 
 private fun Modifier.musicNote(note: MusicNoteAnimation) = graphicsLayer {

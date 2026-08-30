@@ -61,6 +61,7 @@ play-services-location = { module = "com.google.android.gms:play-services-locati
 play-services-auth = { module = "com.google.android.gms:play-services-auth", version.ref = "playServicesAuth" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
 firebase-auth = { module = "com.google.firebase:firebase-auth" }
+firebase-firestore = { module = "com.google.firebase:firebase-firestore" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
 material3 = { module = "androidx.compose.material3:material3", version.ref = "material3comp" }
 androidx-compose-remote-creation-compose = { group = "androidx.compose.remote", name = "remote-creation-compose", version.ref = "remoteCreationCompose" }

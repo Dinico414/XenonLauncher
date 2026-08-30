@@ -265,4 +265,20 @@ class SharedPreferenceManager(context: Context) {
     fun unregisterListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
         prefs.unregisterOnSharedPreferenceChangeListener(listener)
     }
+
+    fun getAllPreferences(): Map<String, *> = prefs.all
+
+    fun importPreferences(data: Map<String, *>) {
+        prefs.edit {
+            data.forEach { (key, value) ->
+                when (value) {
+                    is Boolean -> putBoolean(key, value)
+                    is Int -> putInt(key, value)
+                    is Long -> putLong(key, value)
+                    is Float -> putFloat(key, value)
+                    is String -> putString(key, value)
+                }
+            }
+        }
+    }
 }

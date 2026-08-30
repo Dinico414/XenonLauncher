@@ -885,7 +885,7 @@ fun AppDrawer(
                                             Text(
                                                 stringResource(R.string.search_history),
                                                 style = typography.labelMedium,
-                                                color = colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                                color = colorScheme.onSurface.copy(alpha = 0.8f),
                                                 modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
                                             )
                                             Column(
@@ -1216,11 +1216,17 @@ fun AppDrawer(
         }
 
         appToEdit?.let { app ->
-            AppEditDialog(
-                app = app,
-                viewModel = viewModel,
-                onDismiss = { appToEdit = null }
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .hazeEffect(hazeState)
+            ) {
+                AppEditDialog(
+                    app = app,
+                    viewModel = viewModel,
+                    onDismiss = { appToEdit = null }
+                )
+            }
         }
     }
 }

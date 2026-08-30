@@ -42,6 +42,7 @@ import com.xenonware.launcher.BuildConfig
 import com.xenonware.launcher.R
 import com.xenonware.launcher.presentation.sign_in.GoogleAuthUiClient
 import com.xenonware.launcher.presentation.sign_in.SignInState
+import com.xenonware.launcher.ui.res.BackupRestoreDialog
 import com.xenonware.launcher.ui.res.CalendarSelectionDialog
 import com.xenonware.launcher.ui.res.FabActionConfigDialog
 import com.xenonware.launcher.ui.res.NotificationManagerDialog
@@ -76,6 +77,7 @@ fun CoverSettings(
     val coverThemeEnabled by viewModel.enableCoverTheme.collectAsState()
 
     val showVersionDialog by viewModel.showVersionDialog.collectAsState()
+    val showBackupDialog by viewModel.showBackupDialog.collectAsState()
     val showSignOutDialog by viewModel.showSignOutDialog.collectAsState()
     val currentLanguage by viewModel.currentLanguage.collectAsState()
     val showLanguageDialog by viewModel.showLanguageDialog.collectAsState()
@@ -290,6 +292,19 @@ fun CoverSettings(
         }
     }
 
+    if (showBackupDialog) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .hazeEffect(hazeState)
+        ) {
+            BackupRestoreDialog(
+                viewModel = viewModel,
+                onDismiss = { viewModel.setShowBackupDialog(false) }
+            )
+        }
+    }
+
     if (showLanguageDialog) {
         Box(
             modifier = Modifier
@@ -309,43 +324,61 @@ fun CoverSettings(
     }
 
     if (showCalendarSelectionDialog) {
-        CalendarSelectionDialog(
-            availableCalendars = availableCalendars,
-            selectedCalendars = visibleCalendars,
-            onDismiss = { viewModel.setShowCalendarSelectionDialog(false) },
-            onToggleCalendar = { viewModel.toggleCalendarVisibility(it) },
-            onSelectAll = { viewModel.setVisibleCalendars(emptyList()) },
-            onClearAll = { viewModel.setVisibleCalendars(listOf("__NONE__")) }
-        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .hazeEffect(hazeState)
+        ) {
+            CalendarSelectionDialog(
+                availableCalendars = availableCalendars,
+                selectedCalendars = visibleCalendars,
+                onDismiss = { viewModel.setShowCalendarSelectionDialog(false) },
+                onToggleCalendar = { viewModel.toggleCalendarVisibility(it) },
+                onSelectAll = { viewModel.setVisibleCalendars(emptyList()) },
+                onClearAll = { viewModel.setVisibleCalendars(listOf("__NONE__")) }
+            )
+        }
     }
 
     if (showNotificationManagerDialog) {
-        NotificationManagerDialog(
-            allApps = apps,
-            visibleApps = visibleNotificationApps,
-            onDismiss = { viewModel.setShowNotificationManagerDialog(false) },
-            onToggleApp = { viewModel.toggleNotificationAppVisibility(it) },
-            onSelectAll = { viewModel.setVisibleNotificationApps(emptyList()) },
-            onClearAll = { viewModel.setVisibleNotificationApps(listOf("__NONE__")) },
-            iconShape = iconShape,
-            showShadow = showShadow
-        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .hazeEffect(hazeState)
+        ) {
+            NotificationManagerDialog(
+                allApps = apps,
+                visibleApps = visibleNotificationApps,
+                onDismiss = { viewModel.setShowNotificationManagerDialog(false) },
+                onToggleApp = { viewModel.toggleNotificationAppVisibility(it) },
+                onSelectAll = { viewModel.setVisibleNotificationApps(emptyList()) },
+                onClearAll = { viewModel.setVisibleNotificationApps(listOf("__NONE__")) },
+                iconShape = iconShape,
+                showShadow = showShadow
+            )
+        }
     }
 
     if (showHiddenAppsDialog) {
-        NotificationManagerDialog(
-            allApps = apps,
-            visibleApps = hiddenApps,
-            onDismiss = { viewModel.setShowHiddenApps(false) },
-            onToggleApp = { 
-                if (it in hiddenApps) viewModel.unhideApp(it)
-                else viewModel.hideApp(it)
-            },
-            onSelectAll = { },
-            onClearAll = { viewModel.setVisibleCalendars(emptyList()) },
-            iconShape = iconShape,
-            showShadow = showShadow
-        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .hazeEffect(hazeState)
+        ) {
+            NotificationManagerDialog(
+                allApps = apps,
+                visibleApps = hiddenApps,
+                onDismiss = { viewModel.setShowHiddenApps(false) },
+                onToggleApp = { 
+                    if (it in hiddenApps) viewModel.unhideApp(it)
+                    else viewModel.hideApp(it)
+                },
+                onSelectAll = { },
+                onClearAll = { viewModel.setVisibleCalendars(emptyList()) },
+                iconShape = iconShape,
+                showShadow = showShadow
+            )
+        }
     }
 
     configShortcutType?.let { type ->
@@ -354,32 +387,44 @@ fun CoverSettings(
             LauncherViewModel.ShortcutType.DATE -> dateShortcut
             LauncherViewModel.ShortcutType.WEATHER -> weatherShortcut
         }
-        ShortcutConfigDialog(
-            type = type,
-            apps = apps,
-            initialValue = initialValue,
-            iconShape = iconShape,
-            showShadow = showShadow,
-            onDismiss = { viewModel.setConfigShortcut(null) },
-            onSave = { viewModel.saveShortcut(type, it) }
-        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .hazeEffect(hazeState)
+        ) {
+            ShortcutConfigDialog(
+                type = type,
+                apps = apps,
+                initialValue = initialValue,
+                iconShape = iconShape,
+                showShadow = showShadow,
+                onDismiss = { viewModel.setConfigShortcut(null) },
+                onSave = { viewModel.saveShortcut(type, it) }
+            )
+        }
     }
 
     showFabConfigIsDoubleTap?.let { isDoubleTap ->
         val initialAction = if (isDoubleTap) fabDoubleTapAction else fabLongPressAction
         val initialValue = if (isDoubleTap) fabDoubleTapValue else fabLongPressValue
-        FabActionConfigDialog(
-            isDoubleTap = isDoubleTap,
-            apps = apps,
-            initialAction = initialAction,
-            initialValue = initialValue,
-            iconShape = iconShape,
-            showShadow = showShadow,
-            onDismiss = { viewModel.setShowFabConfig(null) },
-            onSave = { action, value ->
-                viewModel.setFabAction(isDoubleTap, action, value)
-                viewModel.setShowFabConfig(null)
-            }
-        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .hazeEffect(hazeState)
+        ) {
+            FabActionConfigDialog(
+                isDoubleTap = isDoubleTap,
+                apps = apps,
+                initialAction = initialAction,
+                initialValue = initialValue,
+                iconShape = iconShape,
+                showShadow = showShadow,
+                onDismiss = { viewModel.setShowFabConfig(null) },
+                onSave = { action, value ->
+                    viewModel.setFabAction(isDoubleTap, action, value)
+                    viewModel.setShowFabConfig(null)
+                }
+            )
+        }
     }
 }

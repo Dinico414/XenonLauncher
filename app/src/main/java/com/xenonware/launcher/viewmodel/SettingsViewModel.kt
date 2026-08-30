@@ -12,6 +12,7 @@ import android.net.Uri
 import android.os.Process
 import android.provider.CalendarContract
 import android.provider.Settings
+import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.ui.unit.IntSize
@@ -19,6 +20,9 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
 import com.xenon.mylibrary.res.LanguageOption
 import com.xenon.mylibrary.res.ThemeSetting
 import com.xenonware.launcher.R
@@ -39,8 +43,23 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 import kotlin.time.Duration.Companion.milliseconds
+
+data class BackupInfo(
+    val id: String, // Firestore document ID or local filename
+    val timestamp: Long,
+    val date: String,
+    val time: String,
+    val device: String,
+    val data: String? = null // The actual backup JSON data (if local or already fetched)
+)
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
     private val sharedPreferenceManager = SharedPreferenceManager(application)
@@ -150,6 +169,18 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     private val _showHiddenAppsDialog = MutableStateFlow(false)
     val showHiddenAppsDialog: StateFlow<Boolean> = _showHiddenAppsDialog.asStateFlow()
+
+    private val _showBackupDialog = MutableStateFlow(false)
+    val showBackupDialog: StateFlow<Boolean> = _showBackupDialog.asStateFlow()
+
+    private val _backups = MutableStateFlow<List<BackupInfo>>(emptyList())
+    val backups: StateFlow<List<BackupInfo>> = _backups.asStateFlow()
+
+    private val _isSyncingBackups = MutableStateFlow(false)
+    val isSyncingBackups: StateFlow<Boolean> = _isSyncingBackups.asStateFlow()
+
+    private val auth = FirebaseAuth.getInstance()
+    private val firestore = FirebaseFirestore.getInstance()
 
     private val _showFabConfigIsDoubleTap = MutableStateFlow<Boolean?>(null)
     val showFabConfigIsDoubleTap: StateFlow<Boolean?> = _showFabConfigIsDoubleTap.asStateFlow()
@@ -747,6 +778,152 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun setShowHiddenApps(show: Boolean) {
         _showHiddenAppsDialog.value = show
+    }
+
+    fun setShowBackupDialog(show: Boolean) {
+        if (show) loadBackups()
+        _showBackupDialog.value = show
+    }
+
+    fun loadBackups() {
+        val user = auth.currentUser
+        if (user == null) {
+            _backups.value = emptyList()
+            return
+        }
+
+        _isSyncingBackups.value = true
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                // Changed to 'notes' collection as per the user's reference to the Notes app structure
+                val querySnapshot = firestore.collection("notes")
+                    .document(user.uid)
+                    .collection("backups")
+                    .orderBy("timestamp", Query.Direction.DESCENDING)
+                    .get()
+                    .await()
+
+                val list = querySnapshot.documents.mapNotNull { doc ->
+                    try {
+                        val timestamp = doc.getLong("timestamp") ?: 0L
+                        val device = doc.getString("device") ?: "Unknown Device"
+                        val data = doc.getString("data")
+                        
+                        val date = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date(timestamp))
+                        val time = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(timestamp))
+                        
+                        BackupInfo(doc.id, timestamp, date, time, device, data)
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
+                _backups.value = list
+            } catch (e: Exception) {
+                Log.e("SettingsViewModel", "Failed to load backups from Firestore", e)
+                withContext(Dispatchers.Main) {
+                    if (e.message?.contains("permission", ignoreCase = true) == true) {
+                        Toast.makeText(getApplication(), "No cloud permission. Please check account.", Toast.LENGTH_LONG).show()
+                    }
+                }
+            } finally {
+                _isSyncingBackups.value = false
+            }
+        }
+    }
+
+    fun startBackup() {
+        val user = auth.currentUser
+        if (user == null) {
+            Toast.makeText(getApplication(), "Please sign in first", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        _isSyncingBackups.value = true
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val prefs = sharedPreferenceManager.getAllPreferences()
+                val timestamp = System.currentTimeMillis()
+                val device = android.os.Build.MODEL
+                
+                val dataJson = JSONObject()
+                prefs.forEach { (k, v) -> dataJson.put(k, v) }
+                val dataString = dataJson.toString()
+
+                val backupDoc = hashMapOf(
+                    "timestamp" to timestamp,
+                    "device" to device,
+                    "data" to dataString
+                )
+
+                firestore.collection("notes")
+                    .document(user.uid)
+                    .collection("backups")
+                    .add(backupDoc)
+                    .await()
+                
+                loadBackups()
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(getApplication(), "Backup saved to cloud", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Log.e("SettingsViewModel", "Failed to upload backup", e)
+                withContext(Dispatchers.Main) {
+                    val msg = if (e.message?.contains("permission", ignoreCase = true) == true) "No cloud permission" else "Upload failed: ${e.message}"
+                    Toast.makeText(getApplication(), msg, Toast.LENGTH_LONG).show()
+                }
+            } finally {
+                _isSyncingBackups.value = false
+            }
+        }
+    }
+
+    fun restoreBackup(backup: BackupInfo) {
+        if (backup.data == null) return
+        
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val dataJson = JSONObject(backup.data)
+                
+                val map = mutableMapOf<String, Any>()
+                dataJson.keys().forEach { k ->
+                    map[k] = dataJson.get(k)
+                }
+                
+                sharedPreferenceManager.importPreferences(map)
+                
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(getApplication(), "Restored successfully", Toast.LENGTH_LONG).show()
+                    delay(1000.milliseconds)
+                    restartApplication(getApplication())
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(getApplication(), "Restore failed", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    fun deleteBackup(backup: BackupInfo) {
+        val user = auth.currentUser ?: return
+        
+        _isSyncingBackups.value = true
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                firestore.collection("notes")
+                    .document(user.uid)
+                    .collection("backups")
+                    .document(backup.id)
+                    .delete()
+                    .await()
+                
+                loadBackups()
+            } catch (e: Exception) {
+                Log.e("SettingsViewModel", "Failed to delete backup", e)
+            } finally {
+                _isSyncingBackups.value = false
+            }
+        }
     }
 
     fun setShowFabConfig(isDoubleTap: Boolean?) {
