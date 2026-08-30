@@ -1,6 +1,7 @@
 package com.xenonware.launcher.ui.res
 
 //import com.xenon.mylibrary.res.XenonDialog
+import android.content.Intent
 import android.content.pm.ResolveInfo
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -54,6 +55,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.graphics.drawable.toBitmap
+import androidx.core.net.toUri
 import com.xenon.mylibrary.res.XenonDialog
 import com.xenonware.launcher.R
 import com.xenonware.launcher.util.getAllIconPackIcons
@@ -144,19 +146,36 @@ fun GlobalIconPackPicker(
     iconPacks: List<ResolveInfo>,
     selectedPackage: String?,
     onPackSelect: (String?) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
 ) {
-    val pm = LocalContext.current.packageManager
+    val context = LocalContext.current
+    val pm = context.packageManager
     val listState = rememberLazyListState()
 
     XenonDialog(
         properties = DialogProperties(usePlatformDefaultWidth = true),
         onDismissRequest = onDismiss,
         title = stringResource(R.string.select_icon_pack),
+        confirmButtonText = stringResource(R.string.get_more),
+        onConfirmButtonClick = {
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                data = "market://search?q=icon+pack&c=apps".toUri()
+                setPackage("com.android.vending")
+            }
+            try {
+                context.startActivity(intent)
+            } catch (_: Exception) {
+                context.startActivity(
+                    Intent(
+                        Intent.ACTION_VIEW,
+                        "https://play.google.com/store/search?q=icon%20pack&c=apps".toUri()
+                    )
+                )
+            }
+        },
         contentManagesScrolling = true,
         externalShowTopDivider = listState.canScrollBackward,
         externalShowBottomDivider = listState.canScrollForward,
-        contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 12.dp)
     ) {
         LazyColumn(
             state = listState,

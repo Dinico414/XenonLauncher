@@ -82,6 +82,7 @@
     <string name="developer_mode_enabled">Developer mode enabled!</string>
     <string name="taps_remaining_to_developer">You are now %d steps away from being a developer.</string>
     <string name="ok">Okay</string>
+    <string name="get_more">Get more</string>
     <string name="confirm">Confirm</string>
     <string name="yes">Yes</string>
     <string name="no">No</string>

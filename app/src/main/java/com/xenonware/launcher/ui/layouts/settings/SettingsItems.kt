@@ -81,7 +81,6 @@ import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.model.FabAction
 import com.xenonware.launcher.presentation.sign_in.GoogleAuthUiClient
 import com.xenonware.launcher.presentation.sign_in.SignInState
-import com.xenonware.launcher.ui.res.GlobalIconPackPicker
 import com.xenonware.launcher.ui.res.IconShape
 import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
 import com.xenonware.launcher.viewmodel.LauncherViewModel
@@ -136,7 +135,6 @@ fun SettingsItems(
     val drawerIconShape by viewModel.drawerIconShape.collectAsState()
     val drawerIconShadow by viewModel.drawerIconShadow.collectAsState()
     val globalIconPack by viewModel.globalIconPack.collectAsState()
-    val showGlobalIconPackDialog by viewModel.showGlobalIconPackDialog.collectAsState()
     val badgeType by viewModel.notificationBadgeType.collectAsState()
     val timeShortcut by viewModel.timeShortcut.collectAsState()
     val dateShortcut by viewModel.dateShortcut.collectAsState()
@@ -857,15 +855,6 @@ fun SettingsItems(
             subtitleColor = tileSubtitleColor,
             horizontalPadding = tileHorizontalPadding,
             verticalPadding = tileVerticalPadding
-        )
-    }
-
-    if (showGlobalIconPackDialog) {
-        GlobalIconPackPicker(
-            iconPacks = remember { viewModel.getInstalledIconPacks() },
-            selectedPackage = globalIconPack,
-            onPackSelect = { viewModel.setGlobalIconPack(it) },
-            onDismiss = { viewModel.setShowGlobalIconPackDialog(false) }
         )
     }
 }

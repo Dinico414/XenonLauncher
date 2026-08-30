@@ -45,6 +45,7 @@ import com.xenonware.launcher.presentation.sign_in.SignInState
 import com.xenonware.launcher.ui.res.BackupRestoreDialog
 import com.xenonware.launcher.ui.res.CalendarSelectionDialog
 import com.xenonware.launcher.ui.res.FabActionConfigDialog
+import com.xenonware.launcher.ui.res.GlobalIconPackPicker
 import com.xenonware.launcher.ui.res.NotificationManagerDialog
 import com.xenonware.launcher.ui.res.ShortcutConfigDialog
 import com.xenonware.launcher.viewmodel.LauncherViewModel
@@ -92,6 +93,9 @@ fun CoverSettings(
     val showHiddenAppsDialog by viewModel.showHiddenAppsDialog.collectAsState()
     val hiddenApps by viewModel.hiddenApps.collectAsState()
     val configShortcutType by viewModel.configShortcutType.collectAsState()
+
+    val globalIconPack by viewModel.globalIconPack.collectAsState()
+    val showGlobalIconPackDialog by viewModel.showGlobalIconPackDialog.collectAsState()
 
     val showFabConfigIsDoubleTap by viewModel.showFabConfigIsDoubleTap.collectAsState()
     val fabDoubleTapAction by viewModel.fabDoubleTapAction.collectAsState()
@@ -189,6 +193,20 @@ fun CoverSettings(
                 )
             }
         })
+    if (showGlobalIconPackDialog) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .hazeEffect(hazeState)
+        ) {
+            GlobalIconPackPicker(
+                iconPacks = remember { viewModel.getInstalledIconPacks() },
+                selectedPackage = globalIconPack,
+                onPackSelect = { viewModel.setGlobalIconPack(it) },
+                onDismiss = { viewModel.setShowGlobalIconPackDialog(false) }
+            )
+        }
+    }
     if (showThemeDialog) {
         Box(
             modifier = Modifier
