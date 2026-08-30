@@ -222,7 +222,10 @@
     <string name="back">Back</string>
     <string name="resource_name_label">Resource Name (e.g. chrome)</string>
     <string name="use_this_name">Use this name</string>
-    <string name="icon_pack_note">Note: Manually enter the resource name from the icon pack (e.g., \'chrome\', \'settings\') until full browser is implemented.</string>
+    <string name="icon_pack_note">Note: Browse all available icons from the pack or search by name.</string>
+    <string name="search_icons">Search icons</string>
+    <string name="no_icons_found">No icons found in this pack.</string>
+    <string name="no_results">No results for your search.</string>
     <string name="no_crash_log_found">No crash log found.</string>
     <string name="crash_log_cleared">Crash log cleared.</string>
     <string name="crash_log_subject">Xenon Launcher Crash Log</string>

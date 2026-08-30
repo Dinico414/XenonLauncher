@@ -221,7 +221,10 @@
     <string name="back">Zurück</string>
     <string name="resource_name_label">Ressourcenname (z. B. chrome)</string>
     <string name="use_this_name">Diesen Namen verwenden</string>
-    <string name="icon_pack_note">Hinweis: Geben Sie den Ressourcennamen aus dem Symbol-Paket manuell ein (z. B. \'chrome\', \'settings\'), bis der vollständige Browser implementiert ist.</string>
+    <string name="icon_pack_note">Hinweis: Durchsuche alle verfügbaren Symbole aus dem Paket oder suche nach Namen.</string>
+    <string name="search_icons">Icons suchen</string>
+    <string name="no_icons_found">Keine Icons in diesem Paket gefunden.</string>
+    <string name="no_results">Keine Ergebnisse für deine Suche.</string>
     <string name="no_crash_log_found">Kein Crash-Log gefunden.</string>
     <string name="crash_log_cleared">Crash-Log gelöscht.</string>
     <string name="crash_log_subject">Xenon Launcher Crash-Log</string>

@@ -146,3 +146,37 @@ fun loadIconFromPack(context: Context, packageName: String, resourceName: String
         null
     }
 }
+
+fun getAllIconPackIcons(context: Context, packageName: String): List<String> {
+    val icons = mutableListOf<String>()
+    try {
+        val res = context.packageManager.getResourcesForApplication(packageName)
+        
+        // Try drawable.xml first (standard for pickers)
+        var resourceId = res.getIdentifier("drawable", "xml", packageName)
+        if (resourceId == 0) {
+            // Try appfilter.xml as fallback
+            resourceId = res.getIdentifier("appfilter", "xml", packageName)
+        }
+        
+        if (resourceId != 0) {
+            val parser = res.getXml(resourceId)
+            var eventType = parser.eventType
+            while (eventType != org.xmlpull.v1.XmlPullParser.END_DOCUMENT) {
+                if (eventType == org.xmlpull.v1.XmlPullParser.START_TAG) {
+                    val name = parser.name
+                    if (name == "item") {
+                        val drawableName = parser.getAttributeValue(null, "drawable")
+                        if (!drawableName.isNullOrEmpty()) {
+                            icons.add(drawableName)
+                        }
+                    }
+                }
+                eventType = parser.next()
+            }
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+    return icons.distinct()
+}
