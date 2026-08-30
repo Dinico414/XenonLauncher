@@ -167,10 +167,8 @@ fun MediaPage(
         }
     }
 
-    val isPhone = configuration.screenWidthDp < 600
     val leftAction = mediaState.actions.getOrNull(0)
     val rightAction = mediaState.actions.getOrNull(1)
-    val extraActions = if (isPhone) emptyList() else mediaState.actions.drop(2)
 
     val isSmallDevice = isSmallScreenDevice(context)
     val verticalSafeDrawHeight = (configuration.screenHeightDp.dp - topPadding - navBarHeight).coerceAtLeast(40.dp)
@@ -478,10 +476,6 @@ fun MediaPage(
                             }
 
                             rightAction?.let { action ->
-                                MediaActionButton(action, contentColor)
-                            }
-
-                            extraActions.forEach { action ->
                                 MediaActionButton(action, contentColor)
                             }
                         }
@@ -885,10 +879,6 @@ fun MediaPage(
                         }
 
                         rightAction?.let { action ->
-                            MediaActionButton(action, contentColor)
-                        }
-
-                        extraActions.forEach { action ->
                             MediaActionButton(action, contentColor)
                         }
                     }
