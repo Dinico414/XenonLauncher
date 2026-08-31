@@ -14,10 +14,11 @@
 ---
 
 ## 📸 Screenshots
-| App Drawer | Media Page | At a Glance |
-| :---: | :---: | :---: |
-| <img src="Screenshots/drawer.png" width="200"><br><sub>Adaptive Grid Layout</sub> | <img src="Screenshots/media.png" width="200"><br><sub>Immersive Media Control</sub> | <img src="Screenshots/glance.png" width="200"><br><sub>Smart Calendar Integration</sub> |
-| <img src="Screenshots/theming.png" width="200"><br><sub>Global Icon Packs</sub> | <img src="Screenshots/picker.png" width="200"><br><sub>Visual Icon Browser</sub> | <img src="Screenshots/settings.png" width="200"><br><sub>Material 3 Settings</sub> |
+| App Drawer | Media Player |             At a Glance / Notifications             |
+| :---: | :---: |:---------------------------------------------------:|
+| <img src="Screenshot/app_drawer_grid.png" width="200"> <img src="Screenshot/app_drawer_list.png" width="200"> | <img src="Screenshot/media_player.png" width="200"> | <img src="Screenshot/notification.png" width="200"> |
+| **Global Icon Pack** | **Docks** |                    **Settings**                     |
+| <img src="Screenshot/global_iconpack.png" width="200"> | <img src="Screenshot/docks.png" width="200"> |   <img src="Screenshot/settings.png" width="200">   |
 
 ---
 
