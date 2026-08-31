@@ -14,13 +14,13 @@
 ---
 
 ## 📸 Screenshots
-| App Drawer | Media Player |             At a Glance / Notifications             |
-| :---: | :---: |:---------------------------------------------------:|
-| <img src="Screenshot/app_drawer_grid.png" width="200"> <img src="Screenshot/app_drawer_list.png" width="200"> | <img src="Screenshot/media_player.png" width="200"> | <img src="Screenshot/notification.png" width="200"> |
-| **Global Icon Pack** | **Docks** | **Settings** |
-| <img src="Screenshot/global_iconpack.png" width="200"> | <img src="Screenshot/dock_status.png" width="130"> <img src="Screenshot/dock_pinned_apps.png" width="130"> <img src="Screenshot/dock_media.png" width="130"> | <img src="Screenshot/settings.png" width="200"> |
-| **Widgets** | **Edit Dialog** | **Icon Selection** |
-| <img src="Screenshot/widgets.png" width="200"> | <img src="Screenshot/edit_dialog.png" width="200"> | <img src="Screenshot/icon_seelctor.png" width="200"> |
+|                                                  App Drawer                                                   | Media Player |             At a Glance / Notifications             |
+|:-------------------------------------------------------------------------------------------------------------:| :---: |:---------------------------------------------------:|
+| <img src="Screenshot/app_drawer_grid.png" width="160"> <img src="Screenshot/app_drawer_list.png" width="160"> | <img src="Screenshot/media_player.png" width="200"> | <img src="Screenshot/notification.png" width="200"> |
+|                                             **Global Icon Pack**                                              | **Docks** | **Settings** |
+|                            <img src="Screenshot/global_iconpack.png" width="200">                             | <img src="Screenshot/dock_status.png" width="250"><br><img src="Screenshot/dock_pinned_apps.png" width="250"><br><img src="Screenshot/dock_media.png" width="250"> | <img src="Screenshot/settings.png" width="200"> |
+|                                                  **Widgets**                                                  | **Edit Dialog** | **Icon Selection** |
+|                                <img src="Screenshot/widgets.png" width="200">                                 | <img src="Screenshot/edit_dialog.png" width="200"> | <img src="Screenshot/icon_seelctor.png" width="200"> |
 
 ---
 
