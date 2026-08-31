@@ -248,5 +248,7 @@
     <!-- Search -->
     <string name="open_website">Open Website</string>
     <string name="web_search">Web Search</string>
+    <string name="buy_me_a_coffee">Buy me a coffee</string>
+    <string name="buy_me_a_coffee_description">Support the developer of Xenon Launcher</string>
     <string name="all_apps">All apps</string>
 </resources>

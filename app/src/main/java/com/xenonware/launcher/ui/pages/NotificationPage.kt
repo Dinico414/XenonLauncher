@@ -87,6 +87,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
@@ -1461,6 +1462,7 @@ fun NotificationTabs(
                 .height(40.dp)
                 .width(animatedItemWidth)
                 .onGloballyPositioned { onDeleteButtonBoundsChanged(it.boundsInRoot()) }
+                .clip(RoundedCornerShape(deleteCornerRadius))
                 .combinedClickable(
                     interactionSource = deleteInteractionSource,
                     indication = androidx.compose.foundation.LocalIndication.current,

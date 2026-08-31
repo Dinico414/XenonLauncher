@@ -1,5 +1,6 @@
 package com.xenonware.launcher.ui.layouts.settings
 
+import android.content.Intent
 import android.widget.Toast
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
@@ -65,6 +66,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import com.xenon.mylibrary.res.SettingsGoogleTile
 import com.xenon.mylibrary.res.SettingsSwitchMenuTile
 import com.xenon.mylibrary.res.SettingsSwitchTile
@@ -151,7 +153,7 @@ fun SettingsItems(
     val actualInnerGroupRadius = if (useGroupStyling) innerGroupRadius else 0.dp
     val actualOuterGroupRadius = if (useGroupStyling) outerGroupRadius else 0.dp
     val actualInnerGroupSpacing = if (useGroupStyling) innerGroupSpacing else 0.dp
-    val actualOuterGroupSpacing = outerGroupSpacing
+    val actualOuterGroupSpacing = if (useGroupStyling) outerGroupSpacing else 0.dp
 
     val defaultSwitchColors = SwitchDefaults.colors()
 
@@ -833,6 +835,22 @@ fun SettingsItems(
             onLongClick = { viewModel.openImpressum(context) },
             icon = { Icon(painterResource(R.drawable.info), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: bottomShape,
+            backgroundColor = tileBackgroundColor,
+            contentColor = tileContentColor,
+            subtitleColor = tileSubtitleColor,
+            horizontalPadding = tileHorizontalPadding,
+            verticalPadding = tileVerticalPadding
+        )
+        Spacer(Modifier.height(actualOuterGroupSpacing))
+        SettingsTile(
+            title = stringResource(R.string.buy_me_a_coffee),
+            subtitle = stringResource(R.string.buy_me_a_coffee_description),
+            onClick = {
+                val intent = Intent(Intent.ACTION_VIEW, "https://www.buymeacoffee.com/xenonware".toUri())
+                context.startActivity(intent)
+            },
+            icon = { Icon(painterResource(R.drawable.buy_me_a_coffee), null, tint = tileSubtitleColor) },
+            shape = tileShapeOverride ?: standaloneShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
