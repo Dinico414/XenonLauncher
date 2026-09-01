@@ -128,6 +128,8 @@
     <string name="notification_access_description">Greife auf Benachrichtigungen zu, um Badges und Mediensteuerungen anzuzeigen.</string>
     <string name="accessibility_access">Barrierefreiheitszugriff</string>
     <string name="accessibility_access_description">Wird verwendet, um mit Gesten das Sperren zu ermöglichen.</string>
+    <string name="accessibility_restricted_description">Die Einstellungen sind eingeschränkt. Bitte gehen Sie zur App-Info und wählen Sie im Menü oben rechts \"Eingeschränkte Einstellungen zulassen\".</string>
+    <string name="accessibility_guide">Falls \"gesteuert durch eingeschränkte Einstellungen\" erscheint: Info-Button erneut drücken für App-Info -> 3-Punkt-Menü -> \"Eingeschränkte Einstellungen zulassen\" -> Zurückkehren.</string>
     <string name="location_access">Standortzugriff</string>
     <string name="location_access_description">Wird verwendet, um lokale Wetterinformationen bereitzustellen.</string>
     <string name="calendar_access">Kalenderzugriff</string>

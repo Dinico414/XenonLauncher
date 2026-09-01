@@ -2,6 +2,7 @@ package com.xenonware.launcher.accessibility
 
 import android.accessibilityservice.AccessibilityService
 import android.view.accessibility.AccessibilityEvent
+import com.xenonware.launcher.util.AccessibilityUtils
 
 class XenonAccessibilityService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
@@ -32,10 +33,7 @@ class XenonAccessibilityService : AccessibilityService() {
             if (service != null) {
                 service.lockScreen()
             } else {
-                val intent = android.content.Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
-                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                context.startActivity(intent)
+                AccessibilityUtils.requestAccessibility(context)
             }
         }
     }

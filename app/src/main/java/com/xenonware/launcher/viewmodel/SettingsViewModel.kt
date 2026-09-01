@@ -31,6 +31,7 @@ import com.xenonware.launcher.data.SharedPreferenceManager
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.model.FabAction
 import com.xenonware.launcher.ui.res.IconShape
+import com.xenonware.launcher.util.AccessibilityUtils
 import com.xenonware.launcher.util.generateCustomIcon
 import com.xenonware.launcher.util.loadIconFromPack
 import com.xenonware.launcher.util.normalizeIcon
@@ -218,6 +219,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     private val _enableCoverTheme = MutableStateFlow(sharedPreferenceManager.coverThemeEnabled)
     val enableCoverTheme: StateFlow<Boolean> = _enableCoverTheme.asStateFlow()
+
+    private val _isAccessibilityRestricted = MutableStateFlow(AccessibilityUtils.isAccessibilityRestricted(getApplication()))
+    val isAccessibilityRestricted: StateFlow<Boolean> = _isAccessibilityRestricted.asStateFlow()
 
     private val _configShortcutType = MutableStateFlow<LauncherViewModel.ShortcutType?>(null)
     val configShortcutType: StateFlow<LauncherViewModel.ShortcutType?> = _configShortcutType.asStateFlow()
@@ -995,9 +999,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun openAccessibilitySettings(context: Context) {
-        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        context.startActivity(intent)
+        AccessibilityUtils.requestAccessibility(context)
+    }
+
+    fun updateAccessibilityRestriction() {
+        _isAccessibilityRestricted.value = AccessibilityUtils.isAccessibilityRestricted(getApplication())
     }
 
     private fun restartApplication(context: Context) {

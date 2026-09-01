@@ -9,12 +9,38 @@ import android.os.Environment
 import android.provider.Settings
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import com.xenon.mylibrary.activity.BasePermissionActivity
@@ -24,11 +50,18 @@ import com.xenon.mylibrary.theme.XenonTheme
 import com.xenon.mylibrary.utils.PermissionItem
 import com.xenonware.launcher.accessibility.XenonAccessibilityService
 import com.xenonware.launcher.data.SharedPreferenceManager
+import com.xenonware.launcher.util.AccessibilityUtils
 
 class PermissionActivity : BasePermissionActivity() {
 
     private val sharedPreferenceManager by lazy { SharedPreferenceManager(this) }
     private val currentPermissionName = mutableStateOf("")
+    private val refreshTrigger = mutableStateOf(0)
+
+    override fun onResume() {
+        super.onResume()
+        refreshTrigger.value++
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,16 +75,79 @@ class PermissionActivity : BasePermissionActivity() {
                 dynamicColor = true
             ) {
                 AnimatedGradientBackground(modifier = Modifier.fillMaxSize()) {
-                    Surface(
-                        modifier = Modifier.fillMaxSize(),
-                        color = Color.Transparent
-                    ) {
-                        PermissionScreen(
-                            permissions = getPermissions(),
-                            isFirstLaunch = isFirstLaunch(),
-                            grantButtonText = if (currentPermissionName.value == getString(R.string.default_home)) getString(R.string.set_as_home) else getString(R.string.grant_permission),
-                            onFinish = { onPermissionsFinished() }
-                        )
+                    val context = LocalContext.current
+                    var showGuide by remember { mutableStateOf(false) }
+
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        Surface(
+                            modifier = Modifier.fillMaxSize(),
+                            color = Color.Transparent
+                        ) {
+                            val trigger by refreshTrigger
+                            val permissions = remember(trigger) { getPermissions() }
+                            PermissionScreen(
+                                permissions = permissions,
+                                isFirstLaunch = isFirstLaunch(),
+                                grantButtonText = if (currentPermissionName.value == getString(R.string.default_home)) getString(R.string.set_as_home) else getString(R.string.grant_permission),
+                                onFinish = { onPermissionsFinished() }
+                            )
+                        }
+
+                        if (currentPermissionName.value == getString(R.string.accessibility_access)) {
+                            if (showGuide) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clickable(
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication = null
+                                        ) { showGuide = false }
+                                )
+                            }
+
+                            IconButton(
+                                onClick = {
+                                    if (showGuide) {
+                                        AccessibilityUtils.openAppInfo(context)
+                                    } else {
+                                        showGuide = true
+                                    }
+                                },
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(top = 48.dp, end = 16.dp)
+                            ) {
+                                Icon(
+                                    Icons.Rounded.Info,
+                                    contentDescription = "Accessibility Guide",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+
+                            AnimatedVisibility(
+                                visible = showGuide,
+                                enter = fadeIn(),
+                                exit = fadeOut(),
+                                modifier = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .padding(top = 100.dp)
+                                    .padding(horizontal = 32.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.9f))
+                                        .padding(16.dp)
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.accessibility_guide),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        textAlign = TextAlign.Center,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -79,7 +175,10 @@ class PermissionActivity : BasePermissionActivity() {
         // Accessibility Access
         add(PermissionItem(
             name = getString(R.string.accessibility_access),
-            description = getString(R.string.accessibility_access_description),
+            description = if (AccessibilityUtils.isAccessibilityRestricted(this@PermissionActivity))
+                getString(R.string.accessibility_restricted_description)
+            else
+                getString(R.string.accessibility_access_description),
             isGranted = {
                 val expectedComponentName = ComponentName(it, XenonAccessibilityService::class.java)
                 val enabledServices = Settings.Secure.getString(it.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
@@ -88,7 +187,7 @@ class PermissionActivity : BasePermissionActivity() {
                 granted
             },
             request = {
-                startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                AccessibilityUtils.requestAccessibility(it)
             }
         ))
 

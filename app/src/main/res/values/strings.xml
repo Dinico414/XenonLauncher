@@ -129,6 +129,8 @@
     <string name="notification_access_description">Access notifications to show badges and media controls.</string>
     <string name="accessibility_access">Accessibility Access</string>
     <string name="accessibility_access_description">Used to enable locking via gestures.</string>
+    <string name="accessibility_restricted_description">Settings are restricted. Please go to App Info and \"Allow restricted settings\" in the top right menu first.</string>
+    <string name="accessibility_guide">If \"Restricted settings\" appears: Click info button again to open App Info -> 3-dot menu -> \"Allow restricted settings\" -> Come back.</string>
     <string name="location_access">Location Access</string>
     <string name="location_access_description">Used to provide local weather information.</string>
     <string name="calendar_access">Calendar Access</string>

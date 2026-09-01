@@ -47,6 +47,7 @@ import androidx.compose.material3.SwitchColors
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -60,6 +61,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -67,6 +69,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.xenon.mylibrary.res.SettingsGoogleTile
 import com.xenon.mylibrary.res.SettingsSwitchMenuTile
 import com.xenon.mylibrary.res.SettingsSwitchTile
@@ -122,10 +126,24 @@ fun SettingsItems(
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.updateAccessibilityRestriction()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
     
     val blackedOutEnabled by viewModel.blackedOutModeEnabled.collectAsState()
     val blurEnabled by viewModel.blurEnabled.collectAsState()
     val developerModeEnabled by viewModel.developerModeEnabled.collectAsState()
+    val isAccessibilityRestricted by viewModel.isAccessibilityRestricted.collectAsState()
     val appLabelsEnabled by viewModel.appLabelsEnabled.collectAsState()
     val isGridLayout by viewModel.isGridLayout.collectAsState()
     val openKeyboard by viewModel.openKeyboard.collectAsState()
@@ -223,7 +241,10 @@ fun SettingsItems(
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsTile(
             title = stringResource(R.string.accessibility_access),
-            subtitle = stringResource(R.string.accessibility_access_description),
+            subtitle = if (isAccessibilityRestricted)
+                stringResource(R.string.accessibility_restricted_description)
+            else
+                stringResource(R.string.accessibility_access_description),
             onClick = { viewModel.openAccessibilitySettings(context) },
             icon = {  Icon(painterResource(R.drawable.accessibility), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: bottomShape,
@@ -237,7 +258,10 @@ fun SettingsItems(
     } else {
         SettingsTile(
             title = stringResource(R.string.accessibility_access),
-            subtitle = stringResource(R.string.accessibility_access_description),
+            subtitle = if (isAccessibilityRestricted)
+                stringResource(R.string.accessibility_restricted_description)
+            else
+                stringResource(R.string.accessibility_access_description),
             onClick = { viewModel.openAccessibilitySettings(context) },
             icon = {  Icon(painterResource(R.drawable.accessibility), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: standaloneShape,
