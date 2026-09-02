@@ -104,28 +104,49 @@ fun IconPackPicker(
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             if (selectedPack == null) {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.heightIn(max = 400.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    items(iconPacks) { pack ->
-                        ListItem(
-                            modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable { selectedPack = pack },
-                            leadingContent = {
-                                Image(
-                                    bitmap = pack.loadIcon(pm).toBitmap().asImageBitmap(),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(40.dp)
-                                )
-                            },
-                            trailingContent = null,
-                            overlineContent = null,
-                            supportingContent = null,
-                            colors = ListItemDefaults.colors(),
-                            elevation = ListItemDefaults.elevation(ListItemDefaults.Elevation),
-                            content = { Text(pack.loadLabel(pm).toString()) },
+                if (iconPacks.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            stringResource(R.string.no_icon_packs_installed),
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                    }
+                } else {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.heightIn(max = 400.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        items(iconPacks) { pack ->
+                            ListItem(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable { selectedPack = pack },
+                                leadingContent = {
+                                    Image(
+                                        bitmap = pack
+                                            .loadIcon(pm)
+                                            .toBitmap()
+                                            .asImageBitmap(),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(40.dp)
+                                    )
+                                },
+                                trailingContent = null,
+                                overlineContent = null,
+                                supportingContent = null,
+                                colors = ListItemDefaults.colors(),
+                                elevation = ListItemDefaults.elevation(ListItemDefaults.Elevation),
+                                content = { Text(pack.loadLabel(pm).toString()) },
+                            )
+                        }
                     }
                 }
             } else {
@@ -184,7 +205,9 @@ fun GlobalIconPackPicker(
         ) {
             item {
                 ListItem(
-                    modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable { onPackSelect(null) },
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { onPackSelect(null) },
                     leadingContent = {
                         Icon(Icons.Rounded.Block, null, modifier = Modifier.size(40.dp))
                     },
@@ -196,32 +219,56 @@ fun GlobalIconPackPicker(
                     elevation = ListItemDefaults.elevation(ListItemDefaults.Elevation),
                 )
             }
-            items(iconPacks) { pack ->
-                val pkgName = pack.activityInfo.packageName
-                ListItem(
-                    modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable { onPackSelect(pkgName) },
-                    leadingContent = {
-                        Image(
-                            bitmap = pack.loadIcon(pm).toBitmap().asImageBitmap(),
-                            contentDescription = null,
-                            modifier = Modifier.size(40.dp)
-                        )
-                    },
-                    trailingContent = {
-                        if (pkgName == selectedPackage) {
-                            Icon(Icons.Rounded.Check, null, tint = MaterialTheme.colorScheme.primary)
-                        }
-                    },
-                    content = { Text(pack.loadLabel(pm).toString()) },
-                    overlineContent = null,
-                    supportingContent = null,
-                    colors = ListItemDefaults.colors(),
-                    elevation = ListItemDefaults.elevation(ListItemDefaults.Elevation),
-                )
+            if (iconPacks.isEmpty()) {
+                item {
+                    Text(
+                        stringResource(R.string.no_icon_packs_installed),
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .fillMaxWidth(),
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                items(iconPacks) { pack ->
+                    val pkgName = pack.activityInfo.packageName
+                    ListItem(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { onPackSelect(pkgName) },
+                        leadingContent = {
+                            Image(
+                                bitmap = pack
+                                    .loadIcon(pm)
+                                    .toBitmap()
+                                    .asImageBitmap(),
+                                contentDescription = null,
+                                modifier = Modifier.size(40.dp)
+                            )
+                        },
+                        trailingContent = {
+                            if (pkgName == selectedPackage) {
+                                Icon(
+                                    Icons.Rounded.Check,
+                                    null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        },
+                        content = { Text(pack.loadLabel(pm).toString()) },
+                        overlineContent = null,
+                        supportingContent = null,
+                        colors = ListItemDefaults.colors(),
+                        elevation = ListItemDefaults.elevation(ListItemDefaults.Elevation),
+                    )
+                }
             }
         }
     }
 }
+
 
 @Composable
 fun IconGrid(

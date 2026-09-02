@@ -182,6 +182,8 @@
     <string name="play_pause">Abspielen/Pause</string>
     <string name="notification_manager">Benachrichtigungs-Manager</string>
     <string name="notification_manager_description">Wähle aus, welche Apps Benachrichtigungen im Launcher anzeigen dürfen.</string>
+    <string name="hidden_apps">Versteckte Apps</string>
+    <string name="hidden_apps_description">Wähle aus, welche Apps im Launcher ausgeblendet werden.</string>
     <string name="at_a_glance_settings">\"Auf einen Blick\" Einstellungen</string>
     <string name="at_a_glance_description">Ereignisse und Informationen verwalten</string>
     <string name="at_a_glance">Auf einen Blick</string>
@@ -223,6 +225,7 @@
     <string name="global_icon_pack">Globales Symbol-Paket</string>
     <string name="global_icon_pack_description">Wende Symbole eines Pakets auf alle Apps an.</string>
     <string name="select_icon_pack">Symbol-Paket auswählen</string>
+    <string name="no_icon_packs_installed">Keine Icon-Pakete installiert</string>
     <string name="back">Zurück</string>
     <string name="resource_name_label">Ressourcenname (z. B. chrome)</string>
     <string name="use_this_name">Diesen Namen verwenden</string>

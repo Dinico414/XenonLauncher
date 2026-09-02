@@ -183,6 +183,8 @@
     <string name="play_pause">Play/Pause</string>
     <string name="notification_manager">Notification Manager</string>
     <string name="notification_manager_description">Choose which apps are allowed to show notifications in the launcher.</string>
+    <string name="hidden_apps">Hidden Apps</string>
+    <string name="hidden_apps_description">Choose which apps are hidden from the launcher.</string>
     <string name="at_a_glance_settings">At a Glance Settings</string>
     <string name="at_a_glance_description">Manage events and information shown</string>
     <string name="at_a_glance">At a Glance</string>
@@ -224,6 +226,7 @@
     <string name="global_icon_pack">Global Icon Pack</string>
     <string name="global_icon_pack_description">Apply icons from a pack to all apps.</string>
     <string name="select_icon_pack">Select Icon Pack</string>
+    <string name="no_icon_packs_installed">No icon packs installed</string>
     <string name="back">Back</string>
     <string name="resource_name_label">Resource Name (e.g. chrome)</string>
     <string name="use_this_name">Use this name</string>

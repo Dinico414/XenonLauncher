@@ -33,6 +33,8 @@ import com.xenonware.launcher.model.AppInfo
 fun NotificationManagerDialog(
     allApps: List<AppInfo>,
     visibleApps: List<String>,
+    title: String = stringResource(R.string.notification_manager),
+    description: String = stringResource(R.string.notification_manager_description),
     onDismiss: () -> Unit,
     onToggleApp: (String) -> Unit,
     onSelectAll: () -> Unit,
@@ -50,7 +52,7 @@ fun NotificationManagerDialog(
 
     XenonDialog(
         onDismissRequest = onDismiss,
-        title = stringResource(R.string.notification_manager),
+        title = title,
         properties = DialogProperties(usePlatformDefaultWidth = true),
         confirmButtonText = stringResource(R.string.done),
         onConfirmButtonClick = onDismiss,
@@ -70,7 +72,7 @@ fun NotificationManagerDialog(
         ) {
             item {
                 Text(
-                    stringResource(R.string.notification_manager_description),
+                    description,
                     fontSize = 14.sp,
                     color = colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 16.dp)

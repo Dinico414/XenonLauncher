@@ -386,6 +386,8 @@ fun CoverSettings(
             NotificationManagerDialog(
                 allApps = apps,
                 visibleApps = hiddenApps,
+                title = stringResource(R.string.hidden_apps),
+                description = stringResource(R.string.hidden_apps_description),
                 onDismiss = { viewModel.setShowHiddenApps(false) },
                 onToggleApp = { 
                     if (it in hiddenApps) viewModel.unhideApp(it)

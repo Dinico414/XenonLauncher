@@ -390,20 +390,23 @@ fun DefaultSettings(
                     .fillMaxSize()
                     .hazeEffect(hazeState)
             ) {
-            NotificationManagerDialog(
-                allApps = apps,
-                visibleApps = hiddenApps,
-                onDismiss = { viewModel.setShowHiddenApps(false) },
-                onToggleApp = { 
-                    if (it in hiddenApps) viewModel.unhideApp(it)
-                    else viewModel.hideApp(it)
-                },
-                onSelectAll = { /* Not applicable for hidden apps */ },
-                onClearAll = { viewModel.setVisibleCalendars(emptyList()) }, // Just clear all if needed
-                iconShape = iconShape,
-                showShadow = showShadow
-            )
-        }}
+                NotificationManagerDialog(
+                    allApps = apps,
+                    visibleApps = hiddenApps,
+                    title = stringResource(R.string.hidden_apps),
+                    description = stringResource(R.string.hidden_apps_description),
+                    onDismiss = { viewModel.setShowHiddenApps(false) },
+                    onToggleApp = {
+                        if (it in hiddenApps) viewModel.unhideApp(it)
+                        else viewModel.hideApp(it)
+                    },
+                    onSelectAll = { /* Not applicable for hidden apps */ },
+                    onClearAll = { viewModel.setVisibleCalendars(emptyList()) }, // Just clear all if needed
+                    iconShape = iconShape,
+                    showShadow = showShadow
+                )
+            }
+        }
 
         configShortcutType?.let { type ->
             val initialValue = when (type) {
