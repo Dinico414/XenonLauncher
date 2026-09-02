@@ -361,6 +361,8 @@ fun NotificationPage(
                 onDragEnd = {
                     if (totalVerticalDrag < -50f && (notificationCount == 0 || selectedPackage == null)) {
                         viewModel.setAppDrawerVisible(true)
+                    } else if (totalVerticalDrag > 50f && (notificationCount == 0 || selectedPackage == null)) {
+                        XenonAccessibilityService.openNotificationsOrRequestAccess(context)
                     }
                     totalVerticalDrag = 0f
                 },

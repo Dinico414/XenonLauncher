@@ -639,3 +639,14 @@ fun openNotifications(context: Context) {
         }
     }
 }
+
+fun openQuickSettings(context: Context) {
+    try {
+        val statusBarService = context.getSystemService("statusbar")
+        val statusBarManager = Class.forName("android.app.StatusBarManager")
+        val expandMethod = statusBarManager.getMethod("expandSettingsPanel")
+        expandMethod.isAccessible = true
+        expandMethod.invoke(statusBarService)
+    } catch (_: Exception) {
+    }
+}
