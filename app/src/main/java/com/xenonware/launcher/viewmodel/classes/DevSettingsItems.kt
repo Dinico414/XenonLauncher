@@ -8,15 +8,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material.icons.rounded.Email
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -73,43 +77,75 @@ fun DevSettingsItems(
             showContext = true,
             modifier = Modifier.padding(top = LargestPadding),
             contextContent = {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+                        .padding(bottom = 8.dp)
+                        .padding(horizontal = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    TextButton(
-                        onClick = { 
-                            currentCrashLog = viewModel.readCrashLog()
-                            showCrashLogDialog = true 
-                        },
-                        enabled = crashLogExists
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            XenonIcon(Icons.Rounded.Description).Render(Modifier)
-                            Text(stringResource(R.string.view))
+                        TextButton(
+                            onClick = {
+                                currentCrashLog = viewModel.readCrashLog()
+                                showCrashLogDialog = true
+                            },
+                            enabled = crashLogExists,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                XenonIcon(Icons.Rounded.Description).Render(Modifier)
+                                Text(stringResource(R.string.view))
+                            }
+                        }
+
+                        TextButton(
+                            onClick = { viewModel.shareCrashLog() },
+                            enabled = crashLogExists,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                XenonIcon(Icons.Rounded.Share).Render(Modifier)
+                                Text(stringResource(R.string.share))
+                            }
+                        }
+
+                        TextButton(
+                            onClick = { viewModel.clearCrashLog() },
+                            enabled = crashLogExists,
+                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                XenonIcon(Icons.Rounded.Delete).Render(Modifier)
+                                Text(stringResource(R.string.clear))
+                            }
                         }
                     }
-                    
-                    TextButton(
-                        onClick = { viewModel.shareCrashLog() },
-                        enabled = crashLogExists
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            XenonIcon(Icons.Rounded.Share).Render(Modifier)
-                            Text(stringResource(R.string.share))
-                        }
-                    }
-                    
-                    TextButton(
-                        onClick = { viewModel.clearCrashLog() },
+
+                    Button(
+                        onClick = { viewModel.contactDeveloper() },
                         enabled = crashLogExists,
-                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            XenonIcon(Icons.Rounded.Delete).Render(Modifier)
-                            Text(stringResource(R.string.clear))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(Icons.Rounded.Email, null, modifier = Modifier.size(18.dp))
+                            Text(stringResource(R.string.contact_developer))
                         }
                     }
                 }
@@ -143,6 +179,7 @@ fun DevSettingsItems(
                 }
             }
         )
+
         if (showCrashLogDialog) {
             Box(
                 modifier = Modifier

@@ -2,7 +2,9 @@ package com.xenonware.launcher.viewmodel
 
 import android.app.Application
 import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
+import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.xenonware.launcher.R
@@ -13,6 +15,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class DevSettingsViewModel(application: Application) : AndroidViewModel(application) {
     private val sharedPreferenceManager = SharedPreferenceManager(application)
@@ -72,6 +77,53 @@ class DevSettingsViewModel(application: Application) : AndroidViewModel(applicat
         context.startActivity(Intent.createChooser(intent, context.getString(R.string.share_crash_log)).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         })
+    }
+
+    fun contactDeveloper() {
+        val context = getApplication<Application>()
+        updateCrashLogStatus()
+        val log = readCrashLog()
+        val hasLog = _crashLogExists.value
+        val logFile = getCrashLogFile()
+        
+        val dateTime = if (hasLog && logFile.exists()) {
+            SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(logFile.lastModified()))
+        } else {
+            SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+        }
+        
+        val subject = "Crashlog XenonLauncher - $dateTime"
+        val body = if (hasLog && log != context.getString(R.string.no_crash_log_found)) log else "No crash log found."
+
+        // Encode parameters into the URI - this is the most reliable way to fill subject and body in Gmail/Outlook
+        val mailtoUri = "mailto:dinico.kustom@gmail.com" +
+                "?subject=${Uri.encode(subject)}" +
+                "&body=${Uri.encode(body)}"
+
+        val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
+            data = mailtoUri.toUri()
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+
+        try {
+            context.startActivity(emailIntent)
+        } catch (_: Exception) {
+            // Fallback: If the URI is too long or fails, use ACTION_SEND with a chooser
+            try {
+                val fallbackIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "message/rfc822"
+                    putExtra(Intent.EXTRA_EMAIL, arrayOf("dinico.kustom@gmail.com"))
+                    putExtra(Intent.EXTRA_SUBJECT, subject)
+                    putExtra(Intent.EXTRA_TEXT, body)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(Intent.createChooser(fallbackIntent, "Send Email...").apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                })
+            } catch (_: Exception) {
+                Toast.makeText(context, "No email app found", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     fun dumpMediaControls(): String {

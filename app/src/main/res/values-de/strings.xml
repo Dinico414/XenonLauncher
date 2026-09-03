@@ -254,5 +254,7 @@
     <string name="web_search">Web-Suche</string>
     <string name="buy_me_a_coffee">Kauf mir einen Kaffee</string>
     <string name="buy_me_a_coffee_description">Unterstütze den Entwickler von Xenon Launcher</string>
+    <string name="contact_developer">Kontaktiere Dev</string>
+    <string name="contact_developer_description">Sende Crash-Logs und Feedback per E-Mail an den Entwickler.</string>
     <string name="all_apps">Alle Apps</string>
 </resources>
