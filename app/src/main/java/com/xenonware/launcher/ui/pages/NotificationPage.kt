@@ -148,6 +148,7 @@ import kotlin.time.Duration.Companion.minutes
 fun NotificationPage(
     viewModel: LauncherViewModel,
     notificationCount: Int,
+    currentTime: String,
     currentDate: String,
     notifications: List<LauncherNotification>,
     apps: List<AppInfo>,
@@ -403,6 +404,7 @@ fun NotificationPage(
                     verticalArrangement = Arrangement.Center
                 ) {
                     AtAGlanceSection(
+                        currentTime = currentTime,
                         currentDate = currentDate,
                         calendarEvents = calendarEvents,
                         availableCalendars = availableCalendars,
@@ -615,6 +617,7 @@ fun NotificationPage(
                     verticalArrangement = Arrangement.Top
                 ) {
                     AtAGlanceSection(
+                        currentTime = currentTime,
                         currentDate = currentDate,
                         calendarEvents = calendarEvents,
                         availableCalendars = availableCalendars,
@@ -898,6 +901,7 @@ fun Modifier.drawVerticalScrollbar(
 
 @Composable
 fun AtAGlanceSection(
+    currentTime: String,
     currentDate: String,
     calendarEvents: List<com.xenonware.launcher.viewmodel.CalendarEvent>,
     availableCalendars: List<com.xenonware.launcher.viewmodel.CalendarInfo>,
@@ -960,13 +964,23 @@ fun AtAGlanceSection(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = currentDate,
-                    fontSize = dateFontSize,
-                    fontWeight = FontWeight.Medium,
-                    color = baseColor.copy(alpha = 0.7f),
-                    modifier = Modifier.weight(1f)
-                )
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "$currentTime · ",
+                        fontSize = dateFontSize,
+                        fontWeight = FontWeight.Bold,
+                        color = baseColor.copy(alpha = 0.95f)
+                    )
+                    Text(
+                        text = currentDate,
+                        fontSize = dateFontSize,
+                        fontWeight = FontWeight.Medium,
+                        color = baseColor.copy(alpha = 0.7f)
+                    )
+                }
 
                 ChronoCluster(
                     timers = timers,
@@ -1111,11 +1125,17 @@ fun AtAGlanceSection(
                                         }
                                         .basicMarquee()
                                 )
+                                val todayLabel = stringResource(R.string.today)
                                 val tomorrowLabel = stringResource(R.string.tomorrow)
                                 val allDayLabel = stringResource(R.string.all_day)
-                                val timeText = remember(event, timeFormatter, tomorrowLabel, allDayLabel) {
+                                val timeText = remember(event, timeFormatter, todayLabel, tomorrowLabel, allDayLabel) {
+                                    val now = System.currentTimeMillis()
                                     val nowCal = Calendar.getInstance()
                                     val tomorrowCal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
+                                    
+                                    // Check if the event is currently active (ongoing)
+                                    val isOngoing = now in event.startTime..event.endTime
+
                                     val eventStartMillis = if (event.isAllDay) {
                                         event.startTime - java.util.TimeZone.getDefault().getOffset(event.startTime)
                                     } else {
@@ -1129,7 +1149,7 @@ fun AtAGlanceSection(
                                             eventStartCal.get(Calendar.DAY_OF_YEAR) == tomorrowCal.get(Calendar.DAY_OF_YEAR)
 
                                     val dayPrefix = when {
-                                        isToday -> ""
+                                        isToday || isOngoing -> "$todayLabel "
                                         isTomorrow -> "$tomorrowLabel "
                                         else -> SimpleDateFormat("EEE, d MMM ", Locale.getDefault()).format(eventStartMillis)
                                     }

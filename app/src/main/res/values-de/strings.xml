@@ -202,6 +202,7 @@
     <string name="default_condition">Sonnig</string>
     <string name="no_upcoming_events">Keine anstehenden Termine</string>
     <string name="all_day">Ganztägig</string>
+    <string name="today">Heute</string>
     <string name="tomorrow">Morgen</string>
     <string name="scroll_up">Nach oben scrollen</string>
     <string name="scroll_down">Nach unten scrollen</string>

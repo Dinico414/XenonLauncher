@@ -578,6 +578,7 @@ fun LauncherScreen(
                             1 -> NotificationPage(
                                 viewModel = viewModel,
                                 notificationCount = notificationCount,
+                                currentTime = currentTime,
                                 currentDate = currentDate,
                                 notifications = notifications,
                                 apps = apps,

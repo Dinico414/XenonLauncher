@@ -203,6 +203,7 @@
     <string name="default_condition">Sunny</string>
     <string name="no_upcoming_events">No upcoming events</string>
     <string name="all_day">All Day</string>
+    <string name="today">Today</string>
     <string name="tomorrow">Tomorrow</string>
     <string name="scroll_up">Scroll Up</string>
     <string name="scroll_down">Scroll Down</string>
