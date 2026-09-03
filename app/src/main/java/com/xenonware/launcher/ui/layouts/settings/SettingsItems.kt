@@ -37,6 +37,7 @@ import androidx.compose.material.icons.rounded.NotificationsOff
 import androidx.compose.material.icons.rounded.Numbers
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.TouchApp
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.Checkbox
@@ -83,6 +84,7 @@ import com.xenon.mylibrary.values.ExtraLargeSpacing
 import com.xenon.mylibrary.values.LargerPadding
 import com.xenon.mylibrary.values.NoCornerRadius
 import com.xenonware.launcher.R
+import com.xenonware.launcher.TweaksActivity
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.model.FabAction
 import com.xenonware.launcher.presentation.sign_in.GoogleAuthUiClient
@@ -766,6 +768,24 @@ fun SettingsItems(
             }
         )
     }
+    Spacer(Modifier.height(actualOuterGroupSpacing))
+
+    // --- advanced ---
+    SettingsTile(
+        title = stringResource(id = R.string.tweaks),
+        subtitle = stringResource(id = R.string.tweaks_description),
+        onClick = {
+            val intent = Intent(context, TweaksActivity::class.java)
+            context.startActivity(intent)
+        },
+        icon = { Icon(Icons.Rounded.Tune, null, tint = tileSubtitleColor) },
+        shape = tileShapeOverride ?: standaloneShape,
+        backgroundColor = tileBackgroundColor,
+        contentColor = tileContentColor,
+        subtitleColor = tileSubtitleColor,
+        horizontalPadding = tileHorizontalPadding,
+        verticalPadding = tileVerticalPadding
+    )
     Spacer(Modifier.height(actualOuterGroupSpacing))
 
     // --- shortcuts ---

@@ -66,6 +66,12 @@
             android:theme="@style/Theme.Xenon" />
 
         <activity
+            android:name=".TweaksActivity"
+            android:exported="true"
+            android:label="@string/tweaks"
+            android:theme="@style/Theme.Xenon" />
+
+        <activity
             android:name=".DevSettingsActivity"
             android:exported="true"
             android:label="@string/developer_options_title"

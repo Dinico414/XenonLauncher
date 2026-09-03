@@ -159,7 +159,10 @@
     <string name="action_none">Keine</string>
 
     <!-- Notifications & Paging -->
-    <string name="up_to_date">Du bist auf dem aktuellen Stand</string>
+    <string name="notification_indicator">Benachrichtigungs-Indikator</string>
+    <string name="notification_indicator_none">Keine</string>
+    <string name="notification_indicator_checkmark">Keine Benachrichtigung</string>
+    <string name="notification_indicator_trophy">Du bist auf dem aktuellen Stand</string>
 
     <plurals name="notification_count">
         <item quantity="one">Du hast %d Benachrichtigung</item>
@@ -257,5 +260,25 @@
     <string name="buy_me_a_coffee_description">Unterstütze den Entwickler von Xenon Launcher</string>
     <string name="contact_developer">Kontaktiere Dev</string>
     <string name="contact_developer_description">Sende Crash-Logs und Feedback per E-Mail an den Entwickler.</string>
+    <string name="tweaks">Tweaks</string>
+    <string name="tweaks_description">Erweiterte Anpassungsoptionen</string>
+    <string name="show_clock_at_a_glance">Uhr in „Auf einen Blick“ anzeigen</string>
+    <string name="show_clock_at_a_glance_description">Zeigt die aktuelle Uhrzeit im Abschnitt „Auf einen Blick“ an</string>
+    <string name="hide_at_a_glance">„Auf einen Blick“ ausblenden</string>
+    <string name="hide_at_a_glance_description">Entfernt den Abschnitt „Auf einen Blick“ vollständig von der Benachrichtigungsseite</string>
+    <string name="experimental_move_web_search">Websuche verschieben\n(Experimentell)</string>
+    <string name="experimental_move_web_search_description">Platziert Websuchergebnisse am Ende der Liste</string>
+    <string name="hide_dock_scrolling">Dock beim Scrollen ausblenden</string>
+    <string name="hide_dock_scrolling_description">Blendet das Dock aus, wenn der App-Drawer nach unten gescrollt wird</string>
+    <string name="hide_dock_widgets">Dock auf der Widget-Seite ausblenden</string>
+    <string name="hide_dock_widgets_description">Blendet das Dock aus, wenn die Widget-Seite angezeigt wird</string>
+    <string name="hide_action_button">Aktions-Button ausblenden</string>
+    <string name="hide_action_button_description">Deaktiviert den FAB und seine Aktionen</string>
+    <string name="show_mute_notifications">Stummgeschaltete Benachrichtigungen anzeigen</string>
+    <string name="show_mute_notifications_description">Stumme Benachrichtigungen in die Liste aufnehmen</string>
+    <string name="show_permanent_notifications">Permanente Benachrichtigungen anzeigen</string>
+    <string name="show_permanent_notifications_description">Laufende/permanente Systembenachrichtigungen anzeigen</string>
+    <string name="experimental_disable_grouping">Gruppierung deaktivieren\n(Experimentell)</string>
+    <string name="experimental_disable_grouping_description">Verhindert, dass Benachrichtigungen nach App gruppiert werden</string>
     <string name="all_apps">Alle Apps</string>
 </resources>

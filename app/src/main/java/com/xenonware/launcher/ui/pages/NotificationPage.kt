@@ -458,7 +458,7 @@ fun NotificationPage(
                                             modifier = Modifier.size(64.dp)
                                         )
                                         Text(
-                                            text = stringResource(R.string.up_to_date),
+                                            text = stringResource(R.string.notification_indicator_trophy),
                                             color = baseColor.copy(alpha = 0.8f),
                                             fontSize = 18.sp,
                                             fontFamily = QuicksandTitleVariable,
@@ -673,7 +673,7 @@ fun NotificationPage(
                                             modifier = Modifier.size(64.dp)
                                         )
                                         Text(
-                                            text = stringResource(R.string.up_to_date),
+                                            text = stringResource(R.string.notification_indicator_trophy),
                                             color = baseColor.copy(alpha = 0.8f),
                                             fontSize = 18.sp,
                                             fontFamily = QuicksandTitleVariable,
