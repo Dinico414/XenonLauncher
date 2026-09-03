@@ -93,59 +93,57 @@ class PermissionActivity : BasePermissionActivity() {
                             )
                         }
 
-                        if (currentPermissionName.value == getString(R.string.accessibility_access)) {
-                            if (showGuide) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .clickable(
-                                            interactionSource = remember { MutableInteractionSource() },
-                                            indication = null
-                                        ) { showGuide = false }
-                                )
-                            }
-
-                            IconButton(
-                                onClick = {
-                                    if (showGuide) {
-                                        AccessibilityUtils.openAppInfo(context)
-                                    } else {
-                                        showGuide = true
-                                    }
-                                },
+                        if (showGuide) {
+                            Box(
                                 modifier = Modifier
+                                    .fillMaxSize()
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null
+                                    ) { showGuide = false }
+                            )
+                        }
+
+                        IconButton(
+                            onClick = {
+                                if (showGuide) {
+                                    AccessibilityUtils.openAppInfo(context)
+                                } else {
+                                    showGuide = true
+                                }
+                            },
+                            modifier = Modifier
                                     .align(Alignment.TopEnd)
                                     .padding(top = 48.dp, end = 16.dp)
-                            ) {
-                                Icon(
-                                    Icons.Rounded.Info,
-                                    contentDescription = "Accessibility Guide",
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            }
+                        ) {
+                            Icon(
+                                Icons.Rounded.Info,
+                                contentDescription = "Accessibility Guide",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
 
-                            AnimatedVisibility(
-                                visible = showGuide,
-                                enter = fadeIn(),
-                                exit = fadeOut(),
-                                modifier = Modifier
+                        AnimatedVisibility(
+                            visible = showGuide,
+                            enter = fadeIn(),
+                            exit = fadeOut(),
+                            modifier = Modifier
                                     .align(Alignment.TopCenter)
                                     .padding(top = 100.dp)
                                     .padding(horizontal = 32.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
+                        ) {
+                            Box(
+                                modifier = Modifier
                                         .clip(RoundedCornerShape(16.dp))
                                         .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.9f))
                                         .padding(16.dp)
-                                ) {
-                                    Text(
-                                        text = stringResource(R.string.accessibility_guide),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        textAlign = TextAlign.Center,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.accessibility_guide),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    textAlign = TextAlign.Center,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
                             }
                         }
                     }
