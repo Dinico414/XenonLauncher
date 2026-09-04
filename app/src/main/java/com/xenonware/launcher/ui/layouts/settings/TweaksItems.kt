@@ -1,8 +1,15 @@
 package com.xenonware.launcher.ui.layouts.settings
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AdsClick
@@ -35,8 +43,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -46,6 +57,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -53,12 +65,16 @@ import androidx.compose.ui.unit.sp
 import com.xenon.mylibrary.res.SettingsSwitchTile
 import com.xenon.mylibrary.res.SettingsTile
 import com.xenon.mylibrary.res.SettingsTileContext
+import com.xenon.mylibrary.res.XenonSingleChoiceButtonGroup
 import com.xenon.mylibrary.theme.LayoutType
 import com.xenon.mylibrary.values.ExtraLargeSpacing
 import com.xenon.mylibrary.values.NoCornerRadius
 import com.xenonware.launcher.R
 import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
 import com.xenonware.launcher.viewmodel.SettingsViewModel
+import kotlinx.coroutines.delay
+import kotlin.math.abs
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun TweaksItems(
@@ -103,7 +119,10 @@ fun TweaksItems(
         bottomEnd = actualOuterGroupRadius
     ) else RoundedCornerShape(NoCornerRadius)
 
-    var showClock by remember { mutableStateOf(false) }
+    val showClock by viewModel.showClockAtAGlance.collectAsState()
+    val notificationIndicatorType by viewModel.notificationIndicatorType.collectAsState()
+    val notificationMessageType by viewModel.notificationMessageType.collectAsState()
+    
     var hideAtAGlance by remember { mutableStateOf(false) }
     var moveWebSearch by remember { mutableStateOf(false) }
     var hideDockScrolling by remember { mutableStateOf(false) }
@@ -112,7 +131,6 @@ fun TweaksItems(
     var showMuteNotifications by remember { mutableStateOf(false) }
     var showPermanentNotifications by remember { mutableStateOf(false) }
     var disableGrouping by remember { mutableStateOf(false) }
-    var notificationIndicatorType by remember { mutableIntStateOf(2) }
 
     Column {
         // --- At a Glance Tweaks ---
@@ -121,7 +139,7 @@ fun TweaksItems(
                 title = stringResource(R.string.show_clock_at_a_glance),
                 subtitle = stringResource(R.string.show_clock_at_a_glance_description),
                 checked = showClock,
-                onCheckedChange = { showClock = it },
+                onCheckedChange = { viewModel.setShowClockAtAGlance(it) },
                 icon = { Icon(Icons.Rounded.WatchLater, null, tint = tileSubtitleColor) },
                 shape = tileShapeOverride ?: topShape,
                 backgroundColor = tileBackgroundColor,
@@ -139,7 +157,34 @@ fun TweaksItems(
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
                 subtitleColor = tileSubtitleColor,
+                enableRipple = false,
                 contextContent = {
+                    val entries = listOf(0, 1, 2)
+                    val interactionSources = remember { entries.map { MutableInteractionSource() } }
+                    val pressedStates = remember { mutableStateListOf<Boolean>().apply { repeat(entries.size) { add(false) } } }
+
+                    entries.forEachIndexed { index, _ ->
+                        LaunchedEffect(interactionSources[index]) {
+                            var pressStartTime = 0L
+                            interactionSources[index].interactions.collect { interaction ->
+                                when (interaction) {
+                                    is PressInteraction.Press -> {
+                                        pressedStates[index] = true
+                                        pressStartTime = System.currentTimeMillis()
+                                    }
+                                    is PressInteraction.Release -> {
+                                        val duration = System.currentTimeMillis() - pressStartTime
+                                        if (duration < 200) delay((200 - duration).milliseconds)
+                                        pressedStates[index] = false
+                                    }
+                                    is PressInteraction.Cancel -> pressedStates[index] = false
+                                }
+                            }
+                        }
+                    }
+
+                    val pressedIndex = pressedStates.indexOfFirst { it }
+
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -156,17 +201,39 @@ fun TweaksItems(
                         Row(
                             modifier = Modifier
                                 .padding(horizontal = 12.dp)
-                                .height(80.dp),
+                                .height(64.dp),
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            listOf(0, 1, 2).forEach { type ->
+                            entries.forEachIndexed { index, type ->
                                 val isSelected = notificationIndicatorType == type
-                                val label = when (type) {
-                                    0 -> stringResource(R.string.notification_indicator_none)
-                                    1 -> stringResource(R.string.notification_indicator_checkmark)
-                                    else -> stringResource(R.string.notification_indicator_trophy)
+                                val isPressed = pressedStates[index]
+                                val isNeighborPressed = pressedIndex != -1 && abs(index - pressedIndex) == 1
+
+                                val targetWidth = when {
+                                    isPressed -> {
+                                        val neighbors = if (index == 0 || index == entries.size - 1) 1 else 2
+                                        64.dp + (if (neighbors == 1) 6.dp else 12.dp)
+                                    }
+                                    isNeighborPressed -> 58.dp
+                                    else -> 64.dp
                                 }
+
+                                val containerWidth by animateDpAsState(
+                                    targetValue = targetWidth,
+                                    label = "indicatorWidth",
+                                    animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
+                                )
+
+                                val containerRadius by animateDpAsState(
+                                    targetValue = when {
+                                        isPressed -> 6.dp
+                                        isSelected -> 16.dp
+                                        else -> 32.dp
+                                    }, label = "indicatorRadius", animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
+                                )
+
+                                val containerShape = RoundedCornerShape(containerRadius)
                                 val icon = when (type) {
                                     0 -> Icons.Rounded.Block
                                     1 -> Icons.Rounded.Check
@@ -175,40 +242,58 @@ fun TweaksItems(
 
                                 Box(
                                     modifier = Modifier
-                                        .width(100.dp)
+                                        .width(containerWidth)
                                         .fillMaxHeight()
-                                        .clip(RoundedCornerShape(16.dp))
+                                        .clip(containerShape)
                                         .background(
                                             if (isSelected) MaterialTheme.colorScheme.primaryContainer
                                             else MaterialTheme.colorScheme.surfaceContainerHighest.copy(
                                                 alpha = 0.5f
                                             )
                                         )
-                                        .clickable { notificationIndicatorType = type },
+                                        .border(width = 2.dp, color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent, shape = containerShape)
+                                        .clickable(interactionSource = interactionSources[index], indication = null) { viewModel.setNotificationIndicatorType(type) },
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Icon(
-                                            imageVector = icon,
-                                            contentDescription = label,
-                                            modifier = Modifier.size(24.dp),
-                                            tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
-                                            else tileSubtitleColor
-                                        )
-                                        Text(
-                                            text = label,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            fontSize = 10.sp,
-                                            textAlign = TextAlign.Center,
-                                            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
-                                            else tileSubtitleColor,
-                                            modifier = Modifier.padding(top = 4.dp).padding(horizontal = 4.dp)
-                                        )
-                                    }
+                                    Icon(
+                                        imageVector = icon,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(24.dp),
+                                        tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
+                                        else tileSubtitleColor
+                                    )
                                 }
                             }
                         }
                     }
+                }
+            )
+
+            Spacer(Modifier.height(actualInnerGroupSpacing))
+
+            SettingsTileContext(
+                title = stringResource(R.string.notification_message),
+                icon = { Icon(Icons.Rounded.TableRows, null, tint = tileSubtitleColor) },
+                showContext = true,
+                shape = tileShapeOverride ?: middleShape,
+                backgroundColor = tileBackgroundColor,
+                contentColor = tileContentColor,
+                subtitleColor = tileSubtitleColor,
+                enableRipple = false,
+                contextContent = {
+                    XenonSingleChoiceButtonGroup(
+                        options = listOf(0, 1, 2),
+                        selectedOption = notificationMessageType,
+                        onOptionSelect = { viewModel.setNotificationMessageType(it) },
+                        label = { type ->
+                            when (type) {
+                                0 -> stringResource(R.string.notification_message_none)
+                                1 -> stringResource(R.string.notification_message_no_notification)
+                                else -> stringResource(R.string.notification_message_up_to_date)
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                    )
                 }
             )
 

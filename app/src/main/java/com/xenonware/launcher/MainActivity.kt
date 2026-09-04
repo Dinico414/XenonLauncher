@@ -233,6 +233,9 @@ class MainActivity : ComponentActivity() {
                 val dockSafeDrawImePortraitOnly by viewModel.dockSafeDrawImePortraitOnly.collectAsState()
                 val configShortcutType by viewModel.configShortcutType.collectAsState()
                 val blurSetting by viewModel.blurEnabled.collectAsState()
+                val showClockAtAGlance by viewModel.showClockAtAGlance.collectAsState()
+                val notificationIndicatorType by viewModel.notificationIndicatorType.collectAsState()
+                val notificationMessageType by viewModel.notificationMessageType.collectAsState()
 
                 val showCalendarSelectionDialog by viewModel.showCalendarSelectionDialog.collectAsState()
                 val availableCalendars by viewModel.availableCalendars.collectAsState()
@@ -270,6 +273,9 @@ class MainActivity : ComponentActivity() {
                     dockSafeDrawImePortraitOnly = dockSafeDrawImePortraitOnly,
                     configShortcutType = configShortcutType,
                     blurSetting = blurSetting,
+                    showClockAtAGlance = showClockAtAGlance,
+                    notificationIndicatorType = notificationIndicatorType,
+                    notificationMessageType = notificationMessageType,
                     appLabelsEnabled = appLabelsEnabled,
                     isDarkTheme = appIsDarkTheme,
                     wallpaperDarkIcons = wallpaperDarkIcons,
@@ -457,6 +463,9 @@ fun LauncherScreen(
     dockSafeDrawImePortraitOnly: Boolean = false,
     configShortcutType: LauncherViewModel.ShortcutType?,
     blurSetting: Boolean,
+    showClockAtAGlance: Boolean,
+    notificationIndicatorType: Int,
+    notificationMessageType: Int,
     appLabelsEnabled: Boolean,
     isDarkTheme: Boolean,
     wallpaperDarkIcons: Boolean,
@@ -580,6 +589,9 @@ fun LauncherScreen(
                                 notificationCount = notificationCount,
                                 currentTime = currentTime,
                                 currentDate = currentDate,
+                                showClock = showClockAtAGlance,
+                                indicatorType = notificationIndicatorType,
+                                messageType = notificationMessageType,
                                 notifications = notifications,
                                 apps = apps,
                                 calendarEvents = calendarEvents,

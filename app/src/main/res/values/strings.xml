@@ -162,8 +162,12 @@
     <!-- Notifications & Paging -->
     <string name="notification_indicator">Notification Indicator</string>
     <string name="notification_indicator_none">None</string>
-    <string name="notification_indicator_checkmark">No Notification</string>
-    <string name="notification_indicator_trophy">You\'re up to date</string>
+    <string name="notification_indicator_checkmark">Checkmark</string>
+    <string name="notification_indicator_trophy">Trophy</string>
+    <string name="notification_message">Notification Message</string>
+    <string name="notification_message_none">None</string>
+    <string name="notification_message_no_notification">No Notification</string>
+    <string name="notification_message_up_to_date">You\'re up to date</string>
 
     <string name="notification_count_plus" translatable="false">99+</string>
     <plurals name="notification_count">

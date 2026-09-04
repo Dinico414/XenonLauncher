@@ -63,6 +63,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CalendarToday
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
@@ -150,6 +151,9 @@ fun NotificationPage(
     notificationCount: Int,
     currentTime: String,
     currentDate: String,
+    showClock: Boolean,
+    indicatorType: Int,
+    messageType: Int,
     notifications: List<LauncherNotification>,
     apps: List<AppInfo>,
     calendarEvents: List<com.xenonware.launcher.viewmodel.CalendarEvent>,
@@ -406,6 +410,7 @@ fun NotificationPage(
                     AtAGlanceSection(
                         currentTime = currentTime,
                         currentDate = currentDate,
+                        showClock = showClock,
                         calendarEvents = calendarEvents,
                         availableCalendars = availableCalendars,
                         isLandscape = true,
@@ -446,24 +451,41 @@ fun NotificationPage(
                     ) { targetState ->
                         when {
                             targetState == "empty" -> {
+                                val emptyIcon = when (indicatorType) {
+                                    1 -> Icons.Rounded.Check
+                                    2 -> Icons.Rounded.EmojiEvents
+                                    else -> null
+                                }
+                                val emptyMessage = when (messageType) {
+                                    1 -> stringResource(R.string.notification_message_no_notification)
+                                    2 -> stringResource(R.string.notification_message_up_to_date)
+                                    else -> ""
+                                }
+
                                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                     Column(
                                         horizontalAlignment = Alignment.CenterHorizontally,
                                         verticalArrangement = Arrangement.spacedBy(12.dp)
                                     ) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.EmojiEvents,
-                                            contentDescription = null,
-                                            tint = baseColor.copy(alpha = 0.8f),
-                                            modifier = Modifier.size(64.dp)
-                                        )
-                                        Text(
-                                            text = stringResource(R.string.notification_indicator_trophy),
-                                            color = baseColor.copy(alpha = 0.8f),
-                                            fontSize = 18.sp,
-                                            fontFamily = QuicksandTitleVariable,
-                                            fontWeight = FontWeight.Medium
-                                        )
+                                        if (emptyIcon != null) {
+                                            Icon(
+                                                imageVector = emptyIcon,
+                                                contentDescription = null,
+                                                tint = baseColor.copy(alpha = 0.8f),
+                                                modifier = Modifier.size(64.dp)
+                                            )
+                                        }
+                                        if (emptyMessage.isNotEmpty()) {
+                                            Text(
+                                                text = emptyMessage,
+                                                color = baseColor.copy(alpha = 0.8f),
+                                                fontSize = 18.sp,
+                                                fontFamily = QuicksandTitleVariable,
+                                                fontWeight = FontWeight.Medium,
+                                                maxLines = 1,
+                                                modifier = Modifier.basicMarquee()
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -619,6 +641,7 @@ fun NotificationPage(
                     AtAGlanceSection(
                         currentTime = currentTime,
                         currentDate = currentDate,
+                        showClock = showClock,
                         calendarEvents = calendarEvents,
                         availableCalendars = availableCalendars,
                         isLandscape = false,
@@ -658,6 +681,17 @@ fun NotificationPage(
                     ) { targetState ->
                         when {
                             targetState == "empty" -> {
+                                val emptyIcon = when (indicatorType) {
+                                    1 -> Icons.Rounded.Check
+                                    2 -> Icons.Rounded.EmojiEvents
+                                    else -> null
+                                }
+                                val emptyMessage = when (messageType) {
+                                    1 -> stringResource(R.string.notification_message_no_notification)
+                                    2 -> stringResource(R.string.notification_message_up_to_date)
+                                    else -> ""
+                                }
+
                                 Box(
                                     modifier = Modifier.fillMaxSize(),
                                     contentAlignment = Alignment.Center
@@ -666,19 +700,25 @@ fun NotificationPage(
                                         horizontalAlignment = Alignment.CenterHorizontally,
                                         verticalArrangement = Arrangement.spacedBy(12.dp)
                                     ) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.EmojiEvents,
-                                            contentDescription = null,
-                                            tint = baseColor.copy(alpha = 0.8f),
-                                            modifier = Modifier.size(64.dp)
-                                        )
-                                        Text(
-                                            text = stringResource(R.string.notification_indicator_trophy),
-                                            color = baseColor.copy(alpha = 0.8f),
-                                            fontSize = 18.sp,
-                                            fontFamily = QuicksandTitleVariable,
-                                            fontWeight = FontWeight.Medium
-                                        )
+                                        if (emptyIcon != null) {
+                                            Icon(
+                                                imageVector = emptyIcon,
+                                                contentDescription = null,
+                                                tint = baseColor.copy(alpha = 0.8f),
+                                                modifier = Modifier.size(64.dp)
+                                            )
+                                        }
+                                        if (emptyMessage.isNotEmpty()) {
+                                            Text(
+                                                text = emptyMessage,
+                                                color = baseColor.copy(alpha = 0.8f),
+                                                fontSize = 18.sp,
+                                                fontFamily = QuicksandTitleVariable,
+                                                fontWeight = FontWeight.Medium,
+                                                maxLines = 1,
+                                                modifier = Modifier.basicMarquee()
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -903,6 +943,7 @@ fun Modifier.drawVerticalScrollbar(
 fun AtAGlanceSection(
     currentTime: String,
     currentDate: String,
+    showClock: Boolean,
     calendarEvents: List<com.xenonware.launcher.viewmodel.CalendarEvent>,
     availableCalendars: List<com.xenonware.launcher.viewmodel.CalendarInfo>,
     isLandscape: Boolean,
@@ -968,12 +1009,14 @@ fun AtAGlanceSection(
                     modifier = Modifier.weight(1f),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "$currentTime · ",
-                        fontSize = dateFontSize,
-                        fontWeight = FontWeight.Bold,
-                        color = baseColor.copy(alpha = 0.95f)
-                    )
+                    if (showClock) {
+                        Text(
+                            text = "$currentTime · ",
+                            fontSize = dateFontSize,
+                            fontWeight = FontWeight.Bold,
+                            color = baseColor.copy(alpha = 0.95f)
+                        )
+                    }
                     Text(
                         text = currentDate,
                         fontSize = dateFontSize,

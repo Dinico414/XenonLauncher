@@ -161,8 +161,12 @@
     <!-- Notifications & Paging -->
     <string name="notification_indicator">Benachrichtigungs-Indikator</string>
     <string name="notification_indicator_none">Keine</string>
-    <string name="notification_indicator_checkmark">Keine Benachrichtigung</string>
-    <string name="notification_indicator_trophy">Du bist auf dem aktuellen Stand</string>
+    <string name="notification_indicator_checkmark">Häkchen</string>
+    <string name="notification_indicator_trophy">Trophäe</string>
+    <string name="notification_message">Benachrichtigungs-Nachricht</string>
+    <string name="notification_message_none">Keine</string>
+    <string name="notification_message_no_notification">Keine Benachrichtigung</string>
+    <string name="notification_message_up_to_date">Du bist auf dem aktuellen Stand</string>
 
     <plurals name="notification_count">
         <item quantity="one">Du hast %d Benachrichtigung</item>

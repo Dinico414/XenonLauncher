@@ -199,6 +199,15 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _appLabelsEnabled = MutableStateFlow(sharedPreferenceManager.appLabelsEnabled)
     val appLabelsEnabled: StateFlow<Boolean> = _appLabelsEnabled.asStateFlow()
 
+    private val _showClockAtAGlance = MutableStateFlow(sharedPreferenceManager.showClockAtAGlance)
+    val showClockAtAGlance: StateFlow<Boolean> = _showClockAtAGlance.asStateFlow()
+
+    private val _notificationIndicatorType = MutableStateFlow(sharedPreferenceManager.notificationIndicatorType)
+    val notificationIndicatorType: StateFlow<Int> = _notificationIndicatorType.asStateFlow()
+
+    private val _notificationMessageType = MutableStateFlow(sharedPreferenceManager.notificationMessageType)
+    val notificationMessageType: StateFlow<Int> = _notificationMessageType.asStateFlow()
+
     private val _persistedThemeIndexFlow = MutableStateFlow(sharedPreferenceManager.theme)
     val persistedThemeIndex: StateFlow<Int> = _persistedThemeIndexFlow.asStateFlow()
 
@@ -406,6 +415,21 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setDockSafeDrawImePortraitOnly(enabled: Boolean) {
         sharedPreferenceManager.dockSafeDrawImePortraitOnly = enabled
         _dockSafeDrawImePortraitOnly.value = enabled
+    }
+
+    fun setShowClockAtAGlance(enabled: Boolean) {
+        sharedPreferenceManager.showClockAtAGlance = enabled
+        _showClockAtAGlance.value = enabled
+    }
+
+    fun setNotificationIndicatorType(type: Int) {
+        sharedPreferenceManager.notificationIndicatorType = type
+        _notificationIndicatorType.value = type
+    }
+
+    fun setNotificationMessageType(type: Int) {
+        sharedPreferenceManager.notificationMessageType = type
+        _notificationMessageType.value = type
     }
 
     fun setDrawerIconShape(shape: IconShape) {

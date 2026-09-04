@@ -155,6 +155,22 @@ class SharedPreferenceManager(context: Context) {
         get() = prefs.getBoolean("app_labels_enabled", true)
         set(value) = prefs.edit { putBoolean("app_labels_enabled", value) }
 
+    var showClockAtAGlance: Boolean
+        get() = prefs.getBoolean("show_clock_at_a_glance", false)
+        set(value) = prefs.edit { putBoolean("show_clock_at_a_glance", value) }
+
+    var hideAtAGlance: Boolean
+        get() = prefs.getBoolean("hide_at_a_glance", false)
+        set(value) = prefs.edit { putBoolean("hide_at_a_glance", value) }
+
+    var notificationIndicatorType: Int
+        get() = prefs.getInt("notification_indicator_type", 2) // 0: None, 1: Checkmark, 2: Trophy
+        set(value) = prefs.edit { putInt("notification_indicator_type", value) }
+
+    var notificationMessageType: Int
+        get() = prefs.getInt("notification_message_type", 2) // 0: None, 1: No Notification, 2: Up to date
+        set(value) = prefs.edit { putInt("notification_message_type", value) }
+
     var isUserLoggedIn: Boolean
         get() = prefs.getBoolean("is_user_logged_in", false)
         set(value) = prefs.edit { putBoolean("is_user_logged_in", value) }
