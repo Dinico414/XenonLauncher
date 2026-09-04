@@ -122,8 +122,8 @@ fun TweaksItems(
     val showClock by viewModel.showClockAtAGlance.collectAsState()
     val notificationIndicatorType by viewModel.notificationIndicatorType.collectAsState()
     val notificationMessageType by viewModel.notificationMessageType.collectAsState()
+    val hideAtAGlance by viewModel.hideAtAGlance.collectAsState()
     
-    var hideAtAGlance by remember { mutableStateOf(false) }
     var moveWebSearch by remember { mutableStateOf(false) }
     var hideDockScrolling by remember { mutableStateOf(false) }
     var hideDockWidgets by remember { mutableStateOf(false) }
@@ -303,7 +303,7 @@ fun TweaksItems(
                 title = stringResource(R.string.hide_at_a_glance),
                 subtitle = stringResource(R.string.hide_at_a_glance_description),
                 checked = hideAtAGlance,
-                onCheckedChange = { hideAtAGlance = it },
+                onCheckedChange = { viewModel.setHideAtAGlance(it) },
                 icon = { Icon(Icons.Rounded.VisibilityOff, null, tint = tileSubtitleColor) },
                 shape = tileShapeOverride ?: bottomShape,
                 backgroundColor = tileBackgroundColor,

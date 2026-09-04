@@ -202,6 +202,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _showClockAtAGlance = MutableStateFlow(sharedPreferenceManager.showClockAtAGlance)
     val showClockAtAGlance: StateFlow<Boolean> = _showClockAtAGlance.asStateFlow()
 
+    private val _hideAtAGlance = MutableStateFlow(sharedPreferenceManager.hideAtAGlance)
+    val hideAtAGlance: StateFlow<Boolean> = _hideAtAGlance.asStateFlow()
+
     private val _notificationIndicatorType = MutableStateFlow(sharedPreferenceManager.notificationIndicatorType)
     val notificationIndicatorType: StateFlow<Int> = _notificationIndicatorType.asStateFlow()
 
@@ -420,6 +423,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setShowClockAtAGlance(enabled: Boolean) {
         sharedPreferenceManager.showClockAtAGlance = enabled
         _showClockAtAGlance.value = enabled
+    }
+
+    fun setHideAtAGlance(enabled: Boolean) {
+        sharedPreferenceManager.hideAtAGlance = enabled
+        _hideAtAGlance.value = enabled
     }
 
     fun setNotificationIndicatorType(type: Int) {

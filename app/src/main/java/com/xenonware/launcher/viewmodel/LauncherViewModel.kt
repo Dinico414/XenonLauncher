@@ -177,6 +177,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 loadApps()
             }
             "show_clock_at_a_glance" -> _showClockAtAGlance.value = prefManager.showClockAtAGlance
+            "hide_at_a_glance" -> _hideAtAGlance.value = prefManager.hideAtAGlance
             "notification_indicator_type" -> _notificationIndicatorType.value = prefManager.notificationIndicatorType
             "notification_message_type" -> _notificationMessageType.value = prefManager.notificationMessageType
         }
@@ -282,6 +283,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private val _showClockAtAGlance = MutableStateFlow(prefManager.showClockAtAGlance)
     val showClockAtAGlance: StateFlow<Boolean> = _showClockAtAGlance
+
+    private val _hideAtAGlance = MutableStateFlow(prefManager.hideAtAGlance)
+    val hideAtAGlance: StateFlow<Boolean> = _hideAtAGlance
 
     private val _notificationIndicatorType = MutableStateFlow(prefManager.notificationIndicatorType)
     val notificationIndicatorType: StateFlow<Int> = _notificationIndicatorType

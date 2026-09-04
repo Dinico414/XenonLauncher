@@ -102,6 +102,7 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -152,6 +153,7 @@ fun NotificationPage(
     currentTime: String,
     currentDate: String,
     showClock: Boolean,
+    hideAtAGlance: Boolean,
     indicatorType: Int,
     messageType: Int,
     notifications: List<LauncherNotification>,
@@ -386,45 +388,47 @@ fun NotificationPage(
                 // Left Side: At a Glance
                 // Sits beside the list, not above it, so it only moves when the whole
                 // screen moves (hardware keyboard).
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .then(wholeScreenOffset)
-                        .padding(horizontal = 24.dp)
-                        .onGloballyPositioned { atAGlanceSectionPos = it.positionInRoot() }
-                        .combinedClickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
+                if (!hideAtAGlance) {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .then(wholeScreenOffset)
+                            .padding(horizontal = 24.dp)
+                            .onGloballyPositioned { atAGlanceSectionPos = it.positionInRoot() }
+                            .combinedClickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onLongClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    // Approximation of center for menu anchor if no specific offset is provided by combinedClickable
+                                    dropDownOffset = atAGlanceSectionPos + Offset(100f, 100f)
+                                    showAtAGlanceMenu = true
+                                },
+                                onClick = {}
+                            ),
+                        horizontalAlignment = Alignment.Start,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        AtAGlanceSection(
+                            currentTime = currentTime,
+                            currentDate = currentDate,
+                            showClock = showClock,
+                            calendarEvents = calendarEvents,
+                            availableCalendars = availableCalendars,
+                            isLandscape = true,
+                            nextAlarm = nextAlarm,
+                            timers = timers,
+                            stopwatches = stopwatches,
+                            isWallpaperDark = wallpaperDarkIcons,
                             onLongClick = {
-                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                                // Approximation of center for menu anchor if no specific offset is provided by combinedClickable
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 dropDownOffset = atAGlanceSectionPos + Offset(100f, 100f)
                                 showAtAGlanceMenu = true
                             },
-                            onClick = {}
-                        ),
-                    horizontalAlignment = Alignment.Start,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    AtAGlanceSection(
-                        currentTime = currentTime,
-                        currentDate = currentDate,
-                        showClock = showClock,
-                        calendarEvents = calendarEvents,
-                        availableCalendars = availableCalendars,
-                        isLandscape = true,
-                        nextAlarm = nextAlarm,
-                        timers = timers,
-                        stopwatches = stopwatches,
-                        isWallpaperDark = wallpaperDarkIcons,
-                        onLongClick = {
-                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                            dropDownOffset = atAGlanceSectionPos + Offset(100f, 100f)
-                            showAtAGlanceMenu = true
-                        },
-                        modifier = Modifier.fillMaxHeight()
-                    )
+                            modifier = Modifier.fillMaxHeight()
+                        )
+                    }
                 }
 
                 // Right Side: Notifications and Tabs
@@ -617,44 +621,46 @@ fun NotificationPage(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // At a Glance section — sits above the list, so it lifts with it
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(0.28f)
-                        .then(wholeScreenOffset)
-                        .padding(horizontal = 24.dp)
-                        .padding(top = 16.dp)
-                        .onGloballyPositioned { atAGlanceSectionPos = it.positionInRoot() }
-                        .combinedClickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
+                if (!hideAtAGlance) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(0.28f)
+                            .then(wholeScreenOffset)
+                            .padding(horizontal = 24.dp)
+                            .padding(top = 16.dp)
+                            .onGloballyPositioned { atAGlanceSectionPos = it.positionInRoot() }
+                            .combinedClickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onLongClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    dropDownOffset = atAGlanceSectionPos + Offset(100f, 100f)
+                                    showAtAGlanceMenu = true
+                                },
+                                onClick = {}
+                            ),
+                        horizontalAlignment = Alignment.Start,
+                        verticalArrangement = Arrangement.Top
+                    ) {
+                        AtAGlanceSection(
+                            currentTime = currentTime,
+                            currentDate = currentDate,
+                            showClock = showClock,
+                            calendarEvents = calendarEvents,
+                            availableCalendars = availableCalendars,
+                            isLandscape = false,
+                            nextAlarm = nextAlarm,
+                            timers = timers,
+                            stopwatches = stopwatches,
+                            isWallpaperDark = wallpaperDarkIcons,
                             onLongClick = {
-                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 dropDownOffset = atAGlanceSectionPos + Offset(100f, 100f)
                                 showAtAGlanceMenu = true
-                            },
-                            onClick = {}
-                        ),
-                    horizontalAlignment = Alignment.Start,
-                    verticalArrangement = Arrangement.Top
-                ) {
-                    AtAGlanceSection(
-                        currentTime = currentTime,
-                        currentDate = currentDate,
-                        showClock = showClock,
-                        calendarEvents = calendarEvents,
-                        availableCalendars = availableCalendars,
-                        isLandscape = false,
-                        nextAlarm = nextAlarm,
-                        timers = timers,
-                        stopwatches = stopwatches,
-                        isWallpaperDark = wallpaperDarkIcons,
-                        onLongClick = {
-                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                            dropDownOffset = atAGlanceSectionPos + Offset(100f, 100f)
-                            showAtAGlanceMenu = true
-                        }
-                    )
+                            }
+                        )
+                    }
                 }
 
                 Column(

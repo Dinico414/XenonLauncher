@@ -234,6 +234,7 @@ class MainActivity : ComponentActivity() {
                 val configShortcutType by viewModel.configShortcutType.collectAsState()
                 val blurSetting by viewModel.blurEnabled.collectAsState()
                 val showClockAtAGlance by viewModel.showClockAtAGlance.collectAsState()
+                val hideAtAGlance by viewModel.hideAtAGlance.collectAsState()
                 val notificationIndicatorType by viewModel.notificationIndicatorType.collectAsState()
                 val notificationMessageType by viewModel.notificationMessageType.collectAsState()
 
@@ -274,6 +275,7 @@ class MainActivity : ComponentActivity() {
                     configShortcutType = configShortcutType,
                     blurSetting = blurSetting,
                     showClockAtAGlance = showClockAtAGlance,
+                    hideAtAGlance = hideAtAGlance,
                     notificationIndicatorType = notificationIndicatorType,
                     notificationMessageType = notificationMessageType,
                     appLabelsEnabled = appLabelsEnabled,
@@ -464,6 +466,7 @@ fun LauncherScreen(
     configShortcutType: LauncherViewModel.ShortcutType?,
     blurSetting: Boolean,
     showClockAtAGlance: Boolean,
+    hideAtAGlance: Boolean,
     notificationIndicatorType: Int,
     notificationMessageType: Int,
     appLabelsEnabled: Boolean,
@@ -590,6 +593,7 @@ fun LauncherScreen(
                                 currentTime = currentTime,
                                 currentDate = currentDate,
                                 showClock = showClockAtAGlance,
+                                hideAtAGlance = hideAtAGlance,
                                 indicatorType = notificationIndicatorType,
                                 messageType = notificationMessageType,
                                 notifications = notifications,
