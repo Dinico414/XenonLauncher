@@ -82,6 +82,7 @@ import com.xenon.mylibrary.res.AnimatedGradientBackground
 import com.xenon.mylibrary.theme.QuicksandTitleVariable
 import com.xenonware.launcher.accessibility.XenonAccessibilityService
 import com.xenonware.launcher.data.SharedPreferenceManager
+import com.xenonware.launcher.model.FabAction
 import com.xenonware.launcher.ui.layouts.main.AppDrawer
 import com.xenonware.launcher.ui.pages.MediaPage
 import com.xenonware.launcher.ui.pages.NotificationPage
@@ -257,8 +258,10 @@ class MainActivity : ComponentActivity() {
                 val showNotificationManagerDialog by viewModel.showNotificationManagerDialog.collectAsState()
                 val visibleNotificationApps by viewModel.visibleNotificationApps.collectAsState()
 
+                val fabSingleTapAction by viewModel.fabSingleTapAction.collectAsState()
                 val fabDoubleTapAction by viewModel.fabDoubleTapAction.collectAsState()
                 val fabLongPressAction by viewModel.fabLongPressAction.collectAsState()
+                val fabSingleTapValue by viewModel.fabSingleTapValue.collectAsState()
                 val fabDoubleTapValue by viewModel.fabDoubleTapValue.collectAsState()
                 val fabLongPressValue by viewModel.fabLongPressValue.collectAsState()
 
@@ -308,8 +311,21 @@ class MainActivity : ComponentActivity() {
                     onOpenSettings = {
                         startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
                     },
+                    fabSingleTapAction = fabSingleTapAction,
+                    fabDoubleTapAction = fabDoubleTapAction,
+                    fabLongPressAction = fabLongPressAction,
+                    fabSingleTapValue = fabSingleTapValue,
+                    fabDoubleTapValue = fabDoubleTapValue,
+                    fabLongPressValue = fabLongPressValue,
+                    onFabSingleTap = {
+                        if (fabSingleTapAction == FabAction.TRIGGER_ASSISTANT) {
+                            showAssist(Bundle())
+                        } else {
+                            viewModel.executeFabAction(fabSingleTapAction, fabSingleTapValue)
+                        }
+                    },
                     onFabDoubleTap = {
-                        if (fabDoubleTapAction == com.xenonware.launcher.model.FabAction.TRIGGER_ASSISTANT) {
+                        if (fabDoubleTapAction == FabAction.TRIGGER_ASSISTANT) {
                             showAssist(Bundle())
                         } else {
                             viewModel.executeFabAction(fabDoubleTapAction, fabDoubleTapValue)
@@ -497,6 +513,13 @@ fun LauncherScreen(
     pagerState: PagerState,
     onAppClick: (String) -> Unit,
     onOpenSettings: () -> Unit,
+    fabSingleTapAction: FabAction,
+    fabDoubleTapAction: FabAction,
+    fabLongPressAction: FabAction,
+    fabSingleTapValue: String,
+    fabDoubleTapValue: String,
+    fabLongPressValue: String,
+    onFabSingleTap: () -> Unit = {},
     onFabDoubleTap: () -> Unit = {},
     onFabLongPress: () -> Unit = {},
     hideDockScrolling: Boolean = false,
@@ -735,7 +758,7 @@ fun LauncherScreen(
                     } else if (isAppDrawerVisible && isSearchActiveInDrawer && drawerInteractiveProgress > 0.99f) {
                         closeSearchTrigger++
                     } else {
-                        onAppDrawerVisibilityChange(!isAppDrawerVisible)
+                        onFabSingleTap()
                     }
                 },
                 onMediaPlayPause = { viewModel.togglePlayPause() },
@@ -751,6 +774,7 @@ fun LauncherScreen(
                 progress = batteryLevel,
                 isCharging = isCharging,
                 hideActionButton = hideActionButton,
+                fabSingleTapAction = fabSingleTapAction,
                 dockSafeDrawIme = dockSafeDrawIme && !isReplyingToNotification,
                 dockSafeDrawImePortraitOnly = dockSafeDrawImePortraitOnly,
                 onUnpinApp = { viewModel.unpinApp(it) },

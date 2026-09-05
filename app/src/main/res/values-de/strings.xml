@@ -144,6 +144,7 @@
     <string name="all_files_access_description">Wird verwendet, um Dateien zu suchen und benutzerdefinierte Symbole aus dem Speicher zu verwenden.</string>
 
     <!-- FAB Actions -->
+    <string name="fab_single_tap">Einmal tippen</string>
     <string name="fab_double_tap">Doppeltippen</string>
     <string name="fab_long_press">Gedrückt halten</string>
     <string name="configure_action_format">%s konfigurieren</string>
@@ -156,6 +157,7 @@
     <string name="action_open_app">App öffnen</string>
     <string name="action_open_link">Link öffnen</string>
     <string name="action_toggle_flashlight">Taschenlampe umschalten</string>
+    <string name="action_open_app_drawer">App-Drawer öffnen</string>
     <string name="action_none">Keine</string>
 
     <!-- Notifications & Paging -->

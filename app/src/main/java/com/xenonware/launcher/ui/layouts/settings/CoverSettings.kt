@@ -49,7 +49,9 @@ import com.xenonware.launcher.ui.res.GlobalIconPackPicker
 import com.xenonware.launcher.ui.res.NotificationManagerDialog
 import com.xenonware.launcher.ui.res.ShortcutConfigDialog
 import com.xenonware.launcher.viewmodel.LauncherViewModel
+import com.xenonware.launcher.viewmodel.FabConfigMode
 import com.xenonware.launcher.viewmodel.SettingsViewModel
+import com.xenonware.launcher.model.FabAction
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
@@ -97,9 +99,11 @@ fun CoverSettings(
     val globalIconPack by viewModel.globalIconPack.collectAsState()
     val showGlobalIconPackDialog by viewModel.showGlobalIconPackDialog.collectAsState()
 
-    val showFabConfigIsDoubleTap by viewModel.showFabConfigIsDoubleTap.collectAsState()
+    val showFabConfigMode by viewModel.showFabConfigMode.collectAsState()
+    val fabSingleTapAction by viewModel.fabSingleTapAction.collectAsState()
     val fabDoubleTapAction by viewModel.fabDoubleTapAction.collectAsState()
     val fabLongPressAction by viewModel.fabLongPressAction.collectAsState()
+    val fabSingleTapValue by viewModel.fabSingleTapValue.collectAsState()
     val fabDoubleTapValue by viewModel.fabDoubleTapValue.collectAsState()
     val fabLongPressValue by viewModel.fabLongPressValue.collectAsState()
 
@@ -424,9 +428,24 @@ fun CoverSettings(
         }
     }
 
-    showFabConfigIsDoubleTap?.let { isDoubleTap ->
-        val initialAction = if (isDoubleTap) fabDoubleTapAction else fabLongPressAction
-        val initialValue = if (isDoubleTap) fabDoubleTapValue else fabLongPressValue
+    if (showFabConfigMode != FabConfigMode.NONE) {
+        val isDoubleTap = when (showFabConfigMode) {
+            FabConfigMode.DOUBLE -> true
+            FabConfigMode.LONG -> false
+            else -> null
+        }
+        val initialAction = when (showFabConfigMode) {
+            FabConfigMode.SINGLE -> fabSingleTapAction
+            FabConfigMode.DOUBLE -> fabDoubleTapAction
+            FabConfigMode.LONG -> fabLongPressAction
+            else -> FabAction.NONE
+        }
+        val initialValue = when (showFabConfigMode) {
+            FabConfigMode.SINGLE -> fabSingleTapValue
+            FabConfigMode.DOUBLE -> fabDoubleTapValue
+            FabConfigMode.LONG -> fabLongPressValue
+            else -> ""
+        }
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -439,10 +458,10 @@ fun CoverSettings(
                 initialValue = initialValue,
                 iconShape = iconShape,
                 showShadow = showShadow,
-                onDismiss = { viewModel.setShowFabConfig(null) },
+                onDismiss = { viewModel.setShowFabConfig(FabConfigMode.NONE) },
                 onSave = { action, value ->
                     viewModel.setFabAction(isDoubleTap, action, value)
-                    viewModel.setShowFabConfig(null)
+                    viewModel.setShowFabConfig(FabConfigMode.NONE)
                 }
             )
         }

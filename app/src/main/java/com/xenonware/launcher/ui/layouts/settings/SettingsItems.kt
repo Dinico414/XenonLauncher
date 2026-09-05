@@ -92,6 +92,7 @@ import com.xenonware.launcher.presentation.sign_in.SignInState
 import com.xenonware.launcher.ui.res.IconShape
 import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
 import com.xenonware.launcher.viewmodel.LauncherViewModel
+import com.xenonware.launcher.viewmodel.FabConfigMode
 import com.xenonware.launcher.viewmodel.SettingsViewModel
 import kotlinx.coroutines.delay
 import kotlin.math.abs
@@ -162,10 +163,13 @@ fun SettingsItems(
     val dateShortcut by viewModel.dateShortcut.collectAsState()
     val weatherShortcut by viewModel.weatherShortcut.collectAsState()
 
+    val fabSingleTapAction by viewModel.fabSingleTapAction.collectAsState()
     val fabDoubleTapAction by viewModel.fabDoubleTapAction.collectAsState()
     val fabLongPressAction by viewModel.fabLongPressAction.collectAsState()
+    val fabSingleTapValue by viewModel.fabSingleTapValue.collectAsState()
     val fabDoubleTapValue by viewModel.fabDoubleTapValue.collectAsState()
     val fabLongPressValue by viewModel.fabLongPressValue.collectAsState()
+    val hideActionButton by viewModel.hideActionButton.collectAsState()
     val apps by viewModel.apps.collectAsState()
     
     val userData = state.userData
@@ -671,34 +675,49 @@ fun SettingsItems(
     Spacer(Modifier.height(actualOuterGroupSpacing))
 
     // --- DOCK FAB ---
-    Column {
-        SettingsTile(
-            title = stringResource(id = R.string.fab_double_tap),
-            subtitle = getFabActionTitle(fabDoubleTapAction, fabDoubleTapValue, apps),
-            onClick = { viewModel.setShowFabConfig(true) },
-            icon = { Icon(Icons.Rounded.TouchApp, null, tint = tileSubtitleColor) },
-            shape = tileShapeOverride ?: topShape,
-            backgroundColor = tileBackgroundColor,
-            contentColor = tileContentColor,
-            subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding
-        )
-        Spacer(Modifier.height(actualInnerGroupSpacing))
-        SettingsTile(
-            title = stringResource(id = R.string.fab_long_press),
-            subtitle = getFabActionTitle(fabLongPressAction, fabLongPressValue, apps),
-            onClick = { viewModel.setShowFabConfig(false) },
-            icon = { Icon(Icons.Rounded.AdsClick, null, tint = tileSubtitleColor) },
-            shape = tileShapeOverride ?: bottomShape,
-            backgroundColor = tileBackgroundColor,
-            contentColor = tileContentColor,
-            subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding
-        )
+    if (!hideActionButton) {
+        Column {
+            SettingsTile(
+                title = stringResource(id = R.string.fab_single_tap),
+                subtitle = getFabActionTitle(fabSingleTapAction, fabSingleTapValue, apps),
+                onClick = { viewModel.setShowFabConfig(FabConfigMode.SINGLE) },
+                icon = { Icon(Icons.Rounded.TouchApp, null, tint = tileSubtitleColor) },
+                shape = tileShapeOverride ?: topShape,
+                backgroundColor = tileBackgroundColor,
+                contentColor = tileContentColor,
+                subtitleColor = tileSubtitleColor,
+                horizontalPadding = tileHorizontalPadding,
+                verticalPadding = tileVerticalPadding
+            )
+            Spacer(Modifier.height(actualInnerGroupSpacing))
+            SettingsTile(
+                title = stringResource(id = R.string.fab_double_tap),
+                subtitle = getFabActionTitle(fabDoubleTapAction, fabDoubleTapValue, apps),
+                onClick = { viewModel.setShowFabConfig(FabConfigMode.DOUBLE) },
+                icon = { Icon(Icons.Rounded.TouchApp, null, tint = tileSubtitleColor) },
+                shape = tileShapeOverride ?: middleShape,
+                backgroundColor = tileBackgroundColor,
+                contentColor = tileContentColor,
+                subtitleColor = tileSubtitleColor,
+                horizontalPadding = tileHorizontalPadding,
+                verticalPadding = tileVerticalPadding
+            )
+            Spacer(Modifier.height(actualInnerGroupSpacing))
+            SettingsTile(
+                title = stringResource(id = R.string.fab_long_press),
+                subtitle = getFabActionTitle(fabLongPressAction, fabLongPressValue, apps),
+                onClick = { viewModel.setShowFabConfig(FabConfigMode.LONG) },
+                icon = { Icon(Icons.Rounded.AdsClick, null, tint = tileSubtitleColor) },
+                shape = tileShapeOverride ?: bottomShape,
+                backgroundColor = tileBackgroundColor,
+                contentColor = tileContentColor,
+                subtitleColor = tileSubtitleColor,
+                horizontalPadding = tileHorizontalPadding,
+                verticalPadding = tileVerticalPadding
+            )
+        }
+        Spacer(Modifier.height(actualOuterGroupSpacing))
     }
-    Spacer(Modifier.height(actualOuterGroupSpacing))
 
     // --- Notification & At a Glance ---
     Column {
@@ -936,6 +955,7 @@ fun getFabActionTitle(action: FabAction, value: String, apps: List<AppInfo>): St
             else stringResource(R.string.action_open_link)
         }
         FabAction.TOGGLE_FLASHLIGHT -> stringResource(R.string.action_toggle_flashlight)
+        FabAction.OPEN_APP_DRAWER -> stringResource(R.string.action_open_app_drawer)
         FabAction.NONE -> stringResource(R.string.action_none)
     }
 }

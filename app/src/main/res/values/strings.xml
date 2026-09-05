@@ -145,6 +145,7 @@
     <string name="all_files_access_description">Used to search files and use custom icons from storage.</string>
 
     <!-- FAB Actions -->
+    <string name="fab_single_tap">Single Tap</string>
     <string name="fab_double_tap">Double Tap</string>
     <string name="fab_long_press">Long Press</string>
     <string name="configure_action_format">Configure %s</string>
@@ -157,6 +158,7 @@
     <string name="action_open_app">Open App</string>
     <string name="action_open_link">Open Link</string>
     <string name="action_toggle_flashlight">Toggle Flashlight</string>
+    <string name="action_open_app_drawer">Open App Drawer</string>
     <string name="action_none">None</string>
 
     <!-- Notifications & Paging -->

@@ -6,6 +6,7 @@ enum class FabAction {
     OPEN_APP,
     OPEN_LINK,
     TOGGLE_FLASHLIGHT,
+    OPEN_APP_DRAWER,
     NONE;
 
     companion object {

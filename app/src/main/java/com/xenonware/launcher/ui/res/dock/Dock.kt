@@ -35,7 +35,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Apps
+import androidx.compose.material.icons.rounded.Assistant
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.FlashlightOn
+import androidx.compose.material.icons.rounded.Language
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.RocketLaunch
+import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.Surface
@@ -57,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import com.xenonware.launcher.R
 import com.xenonware.launcher.media.MediaState
 import com.xenonware.launcher.model.AppInfo
+import com.xenonware.launcher.model.FabAction
 import com.xenonware.launcher.notification.LauncherNotification
 import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
 import dev.chrisbanes.haze.HazeState
@@ -178,6 +185,7 @@ fun DockPill(
     dockSafeDrawIme: Boolean = false,
     dockSafeDrawImePortraitOnly: Boolean = false,
     hideActionButton: Boolean = false,
+    fabSingleTapAction: FabAction = FabAction.OPEN_APP_DRAWER,
     onUnpinApp: (String) -> Unit = {},
     onPinApp: (String, Int) -> Unit = { _, _ -> },
     onReorderApp: (Int, Int) -> Unit = { _, _ -> },
@@ -229,6 +237,10 @@ fun DockPill(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
+        if (hideActionButton) {
+            Spacer(Modifier.width(DockFabSize / 2))
+        }
+
         Box(
             modifier = Modifier
                 .height(DockHeight)
@@ -319,10 +331,13 @@ fun DockPill(
                 isAppDrawerVisible = isAppDrawerVisible,
                 alpha = fabAlpha,
                 hazeState = hazeState,
+                singleTapAction = fabSingleTapAction,
                 onClick = onFabClick,
                 onDoubleTap = onFabDoubleTap,
                 onLongPress = onFabLongPress
             )
+        } else {
+            Spacer(Modifier.width(DockFabSize / 2))
         }
     }
 }
@@ -337,12 +352,13 @@ private fun DockFab(
     isAppDrawerVisible: Boolean,
     alpha: Float,
     hazeState: HazeState?,
+    singleTapAction: FabAction,
     onClick: () -> Unit,
     onDoubleTap: () -> Unit,
     onLongPress: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val fabShape = RoundedCornerShape(16.dp)
+    val fabShape = CircleShape
 
     Surface(
         shape = fabShape,
@@ -369,10 +385,23 @@ private fun DockFab(
     ) {
         Box(contentAlignment = Alignment.Center) {
             Crossfade(targetState = isAppDrawerVisible, label = "fabIconFade") { visible ->
+                val icon = if (visible) {
+                    Icons.Rounded.Close
+                } else {
+                    when (singleTapAction) {
+                        FabAction.LOCK_DEVICE -> Icons.Rounded.Lock
+                        FabAction.TRIGGER_ASSISTANT -> Icons.Rounded.Assistant
+                        FabAction.OPEN_APP -> Icons.Rounded.RocketLaunch
+                        FabAction.OPEN_LINK -> Icons.Rounded.Language
+                        FabAction.TOGGLE_FLASHLIGHT -> Icons.Rounded.FlashlightOn
+                        FabAction.OPEN_APP_DRAWER -> Icons.Rounded.Apps
+                        else -> Icons.Rounded.TouchApp
+                    }
+                }
                 Icon(
-                    if (visible) Icons.Rounded.Close else Icons.Rounded.Apps,
-                    stringResource(R.string.toggle_apps),
-                    modifier = Modifier.size(32.dp)
+                    imageVector = icon,
+                    contentDescription = stringResource(R.string.toggle_apps),
+                    modifier = Modifier.size(28.dp)
                 )
             }
         }

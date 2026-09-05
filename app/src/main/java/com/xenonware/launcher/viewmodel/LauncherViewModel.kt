@@ -168,8 +168,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             "theme" -> _theme.value = prefManager.theme
             "blacked_out_mode_enabled" -> _blackedOutModeEnabled.value = prefManager.blackedOutModeEnabled
             "cover_theme_enabled" -> _coverThemeEnabled.value = prefManager.coverThemeEnabled
+            "fab_single_tap_action" -> _fabSingleTapAction.value = FabAction.fromString(prefManager.fabSingleTapAction)
             "fab_double_tap_action" -> _fabDoubleTapAction.value = FabAction.fromString(prefManager.fabDoubleTapAction)
             "fab_long_press_action" -> _fabLongPressAction.value = FabAction.fromString(prefManager.fabLongPressAction)
+            "fab_single_tap_value" -> _fabSingleTapValue.value = prefManager.fabSingleTapValue
             "fab_double_tap_value" -> _fabDoubleTapValue.value = prefManager.fabDoubleTapValue
             "fab_long_press_value" -> _fabLongPressValue.value = prefManager.fabLongPressValue
             "global_icon_pack" -> {
@@ -286,11 +288,17 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val _theme = MutableStateFlow(prefManager.theme)
     val theme: StateFlow<Int> = _theme
 
+    private val _fabSingleTapAction = MutableStateFlow(FabAction.fromString(prefManager.fabSingleTapAction))
+    val fabSingleTapAction: StateFlow<FabAction> = _fabSingleTapAction
+
     private val _fabDoubleTapAction = MutableStateFlow(FabAction.fromString(prefManager.fabDoubleTapAction))
     val fabDoubleTapAction: StateFlow<FabAction> = _fabDoubleTapAction
 
     private val _fabLongPressAction = MutableStateFlow(FabAction.fromString(prefManager.fabLongPressAction))
     val fabLongPressAction: StateFlow<FabAction> = _fabLongPressAction
+
+    private val _fabSingleTapValue = MutableStateFlow(prefManager.fabSingleTapValue)
+    val fabSingleTapValue: StateFlow<String> = _fabSingleTapValue
 
     private val _fabDoubleTapValue = MutableStateFlow(prefManager.fabDoubleTapValue)
     val fabDoubleTapValue: StateFlow<String> = _fabDoubleTapValue
@@ -850,6 +858,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 }
             }
             FabAction.TOGGLE_FLASHLIGHT -> toggleFlashlight()
+            FabAction.OPEN_APP_DRAWER -> {
+                _isAppDrawerVisible.value = !_isAppDrawerVisible.value
+            }
             FabAction.NONE -> {}
         }
     }

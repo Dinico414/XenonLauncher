@@ -6,10 +6,12 @@ import android.app.Application
 import android.app.LocaleManager
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import android.graphics.drawable.Drawable
 import android.net.Uri
+import android.os.Build
 import android.os.Process
 import android.provider.CalendarContract
 import android.provider.Settings
@@ -47,12 +49,15 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.time.Duration.Companion.milliseconds
+
+enum class FabConfigMode { NONE, SINGLE, DOUBLE, LONG }
 
 data class BackupInfo(
     val id: String, // Firestore document ID or local filename
@@ -148,7 +153,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _availableLanguages = MutableStateFlow<List<LanguageOption>>(emptyList())
     val availableLanguages: StateFlow<List<LanguageOption>> = _availableLanguages.asStateFlow()
 
-    private val _selectedLanguageTagInDialog = MutableStateFlow(getAppLocaleTag())
+    private val _selectedLanguageTagInDialog = MutableStateFlow("")
     val selectedLanguageTagInDialog: StateFlow<String> = _selectedLanguageTagInDialog.asStateFlow()
 
     private val _showThemeDialog = MutableStateFlow(false)
@@ -190,8 +195,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val auth = FirebaseAuth.getInstance()
     private val firestore = FirebaseFirestore.getInstance()
 
-    private val _showFabConfigIsDoubleTap = MutableStateFlow<Boolean?>(null)
-    val showFabConfigIsDoubleTap: StateFlow<Boolean?> = _showFabConfigIsDoubleTap.asStateFlow()
+    private val _showFabConfigMode = MutableStateFlow(FabConfigMode.NONE)
+    val showFabConfigMode: StateFlow<FabConfigMode> = _showFabConfigMode.asStateFlow()
 
     private val _developerModeEnabled = MutableStateFlow(sharedPreferenceManager.developerModeEnabled)
     val developerModeEnabled: StateFlow<Boolean> = _developerModeEnabled.asStateFlow()
@@ -247,11 +252,17 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _persistedThemeIndexFlow = MutableStateFlow(sharedPreferenceManager.theme)
     val persistedThemeIndex: StateFlow<Int> = _persistedThemeIndexFlow.asStateFlow()
 
+    private val _fabSingleTapAction = MutableStateFlow(FabAction.fromString(sharedPreferenceManager.fabSingleTapAction))
+    val fabSingleTapAction: StateFlow<FabAction> = _fabSingleTapAction.asStateFlow()
+
     private val _fabDoubleTapAction = MutableStateFlow(FabAction.fromString(sharedPreferenceManager.fabDoubleTapAction))
     val fabDoubleTapAction: StateFlow<FabAction> = _fabDoubleTapAction.asStateFlow()
 
     private val _fabLongPressAction = MutableStateFlow(FabAction.fromString(sharedPreferenceManager.fabLongPressAction))
     val fabLongPressAction: StateFlow<FabAction> = _fabLongPressAction.asStateFlow()
+
+    private val _fabSingleTapValue = MutableStateFlow(sharedPreferenceManager.fabSingleTapValue)
+    val fabSingleTapValue: StateFlow<String> = _fabSingleTapValue.asStateFlow()
 
     private val _fabDoubleTapValue = MutableStateFlow(sharedPreferenceManager.fabDoubleTapValue)
     val fabDoubleTapValue: StateFlow<String> = _fabDoubleTapValue.asStateFlow()
@@ -293,7 +304,54 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         initialValue = themeFlags.getOrElse(sharedPreferenceManager.theme) { AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM }
     )
 
+    private val preferenceListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        when (key) {
+            "blacked_out_mode_enabled" -> _blackedOutModeEnabled.value = sharedPreferenceManager.blackedOutModeEnabled
+            "blur_enabled" -> _blurEnabled.value = sharedPreferenceManager.blurEnabled
+            "is_grid_layout" -> _isGridLayout.value = sharedPreferenceManager.isGridLayout
+            "open_keyboard" -> _openKeyboard.value = sharedPreferenceManager.openKeyboard
+            "open_keyboard_portrait_only" -> _openKeyboardPortraitOnly.value = sharedPreferenceManager.openKeyboardPortraitOnly
+            "advanced_search_enabled" -> _advancedSearchEnabled.value = sharedPreferenceManager.advancedSearchEnabled
+            "app_labels_enabled" -> _appLabelsEnabled.value = sharedPreferenceManager.appLabelsEnabled
+            "show_hidden_apps_in_search" -> _showHiddenAppsInSearch.value = sharedPreferenceManager.showHiddenAppsInSearch
+            "notification_badge_type" -> _notificationBadgeType.value = sharedPreferenceManager.notificationBadgeType
+            "dock_safedraw_ime" -> _dockSafeDrawIme.value = sharedPreferenceManager.dockSafeDrawIme
+            "dock_safedraw_ime_portrait_only" -> _dockSafeDrawImePortraitOnly.value = sharedPreferenceManager.dockSafeDrawImePortraitOnly
+            "drawer_icon_shape" -> _drawerIconShape.value = IconShape.valueOf(sharedPreferenceManager.drawerIconShape)
+            "drawer_icon_shadow" -> _drawerIconShadow.value = sharedPreferenceManager.drawerIconShadow
+            "global_icon_pack" -> _globalIconPack.value = sharedPreferenceManager.globalIconPack
+            "time_shortcut" -> _timeShortcut.value = sharedPreferenceManager.timeShortcut
+            "date_shortcut" -> _dateShortcut.value = sharedPreferenceManager.dateShortcut
+            "weather_shortcut" -> _weatherShortcut.value = sharedPreferenceManager.weatherShortcut
+            "visible_calendars" -> _visibleCalendars.value = sharedPreferenceManager.visibleCalendars
+            "visible_notification_apps" -> _visibleNotificationApps.value = sharedPreferenceManager.visibleNotificationApps
+            "theme" -> _persistedThemeIndexFlow.value = sharedPreferenceManager.theme
+            "fab_single_tap_action" -> _fabSingleTapAction.value = FabAction.fromString(sharedPreferenceManager.fabSingleTapAction)
+            "fab_double_tap_action" -> _fabDoubleTapAction.value = FabAction.fromString(sharedPreferenceManager.fabDoubleTapAction)
+            "fab_long_press_action" -> _fabLongPressAction.value = FabAction.fromString(sharedPreferenceManager.fabLongPressAction)
+            "fab_single_tap_value" -> _fabSingleTapValue.value = sharedPreferenceManager.fabSingleTapValue
+            "fab_double_tap_value" -> _fabDoubleTapValue.value = sharedPreferenceManager.fabDoubleTapValue
+            "fab_long_press_value" -> _fabLongPressValue.value = sharedPreferenceManager.fabLongPressValue
+            "show_clock_at_a_glance" -> _showClockAtAGlance.value = sharedPreferenceManager.showClockAtAGlance
+            "hide_at_a_glance" -> _hideAtAGlance.value = sharedPreferenceManager.hideAtAGlance
+            "hide_dock_scrolling" -> _hideDockScrolling.value = sharedPreferenceManager.hideDockScrolling
+            "hide_dock_scrolling_only_small" -> _hideDockScrollingOnlySmall.value = sharedPreferenceManager.hideDockScrollingOnlySmall
+            "hide_dock_widgets" -> _hideDockWidgets.value = sharedPreferenceManager.hideDockWidgets
+            "hide_dock_widgets_landscape_only" -> _hideDockWidgetsLandscapeOnly.value = sharedPreferenceManager.hideDockWidgetsLandscapeOnly
+            "hide_dock_media" -> _hideDockMedia.value = sharedPreferenceManager.hideDockMedia
+            "hide_dock_media_landscape_only" -> _hideDockMediaLandscapeOnly.value = sharedPreferenceManager.hideDockMediaLandscapeOnly
+            "hide_action_button" -> _hideActionButton.value = sharedPreferenceManager.hideActionButton
+            "move_web_search" -> _moveWebSearch.value = sharedPreferenceManager.moveWebSearch
+            "show_mute_notifications" -> _showMuteNotifications.value = sharedPreferenceManager.showMuteNotifications
+            "show_permanent_notifications" -> _showPermanentNotifications.value = sharedPreferenceManager.showPermanentNotifications
+            "disable_grouping" -> _disableGrouping.value = sharedPreferenceManager.disableGrouping
+            "notification_indicator_type" -> _notificationIndicatorType.value = sharedPreferenceManager.notificationIndicatorType
+            "notification_message_type" -> _notificationMessageType.value = sharedPreferenceManager.notificationMessageType
+        }
+    }
+
     init {
+        sharedPreferenceManager.registerListener(preferenceListener)
         viewModelScope.launch {
             activeNightModeFlag.collect { nightMode ->
                 AppCompatDelegate.setDefaultNightMode(nightMode)
@@ -311,74 +369,22 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     private fun loadApps() {
         viewModelScope.launch(Dispatchers.IO) {
-            val context = getApplication<Application>()
-            val pm = context.packageManager
-            val launcherPackage = context.packageName
-            val intent = Intent(Intent.ACTION_MAIN, null).apply {
-                addCategory(Intent.CATEGORY_LAUNCHER)
-            }
-            
-            val overrides = sharedPreferenceManager.getAppOverrides()
-            val currentShape = _drawerIconShape.value
-            val globalPack = _globalIconPack.value
-            val globalPackMap = globalPack?.let { com.xenonware.launcher.util.getIconPackMap(context, it) } ?: emptyMap()
-            
-            val resolvedInfos = pm.queryIntentActivities(intent, 0)
-            val appList = resolvedInfos.mapNotNull { it ->
-                val pkgName = it.activityInfo.packageName
-                if (pkgName == launcherPackage) return@mapNotNull null
-
-                try {
-                    val originalLabel = it.loadLabel(pm).toString()
-                    val originalIcon = it.loadIcon(pm)
-                    
-                    val override = overrides[pkgName]
-                    var finalLabel = originalLabel
-                    var finalIcon: Drawable?
-                    var isCustomized = false
-
-                    if (override != null) {
-                        isCustomized = true
-                        override.customName?.let { finalLabel = it }
-                        
-                        val baseIcon = if (override.iconPackPackage != null && override.iconResourceName != null) {
-                            loadIconFromPack(context, override.iconPackPackage, override.iconResourceName) ?: originalIcon
-                        } else {
-                            originalIcon
-                        }
-                        
-                        finalIcon = generateCustomIcon(context, baseIcon, override, currentShape)
-                    } else {
-                        // Apply global icon pack if available
-                        val componentName = "ComponentInfo{${it.activityInfo.packageName}/${it.activityInfo.name}}"
-                        val globalIconRes = globalPackMap[componentName]
-
-                        val baseIcon = if (globalPack != null && globalIconRes != null) {
-                            loadIconFromPack(context, globalPack, globalIconRes) ?: originalIcon
-                        } else {
-                            originalIcon
-                        }
-
-                        finalIcon = normalizeIcon(context, baseIcon)
-                    }
-
-                    AppInfo(
-                        name = originalLabel,
-                        packageName = pkgName,
-                        icon = finalIcon,
-                        label = finalLabel,
-                        isCustomized = isCustomized
-                    )
-                } catch (_: Exception) {
-                    null
-                }
+            val pm = getApplication<Application>().packageManager
+            val mainIntent = Intent(Intent.ACTION_MAIN, null).apply { addCategory(Intent.CATEGORY_LAUNCHER) }
+            val resolvedApps = pm.queryIntentActivities(mainIntent, 0)
+            val appList = resolvedApps.map { resolveInfo ->
+                AppInfo(
+                    name = resolveInfo.loadLabel(pm).toString(),
+                    packageName = resolveInfo.activityInfo.packageName,
+                    icon = resolveInfo.loadIcon(pm)
+                )
             }.sortedBy { it.label.lowercase() }
             _apps.value = appList
         }
     }
 
     fun onThemeSettingClicked() {
-        _dialogPreviewThemeIndex.value = _persistedThemeIndexFlow.value
+        _dialogPreviewThemeIndex.value = sharedPreferenceManager.theme
         _showThemeDialog.value = true
     }
 
@@ -423,18 +429,18 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun unhideApp(packageName: String) {
-        val current = sharedPreferenceManager.hiddenApps.toMutableList()
-        current.remove(packageName)
-        sharedPreferenceManager.hiddenApps = current
-        _hiddenApps.value = current
+        val hidden = sharedPreferenceManager.hiddenApps.toMutableList()
+        hidden.remove(packageName)
+        sharedPreferenceManager.hiddenApps = hidden
+        _hiddenApps.value = hidden
     }
 
     fun hideApp(packageName: String) {
-        val current = sharedPreferenceManager.hiddenApps.toMutableList()
-        if (!current.contains(packageName)) {
-            current.add(packageName)
-            sharedPreferenceManager.hiddenApps = current
-            _hiddenApps.value = current
+        val hidden = sharedPreferenceManager.hiddenApps.toMutableList()
+        if (!hidden.contains(packageName)) {
+            hidden.add(packageName)
+            sharedPreferenceManager.hiddenApps = hidden
+            _hiddenApps.value = hidden
         }
     }
 
@@ -528,10 +534,39 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         _notificationMessageType.value = type
     }
 
+    fun setFabSingleTapAction(action: FabAction) {
+        sharedPreferenceManager.fabSingleTapAction = action.name
+        _fabSingleTapAction.value = action
+    }
+
+    fun setFabDoubleTapAction(action: FabAction) {
+        sharedPreferenceManager.fabDoubleTapAction = action.name
+        _fabDoubleTapAction.value = action
+    }
+
+    fun setFabLongPressAction(action: FabAction) {
+        sharedPreferenceManager.fabLongPressAction = action.name
+        _fabLongPressAction.value = action
+    }
+
+    fun setFabSingleTapValue(value: String) {
+        sharedPreferenceManager.fabSingleTapValue = value
+        _fabSingleTapValue.value = value
+    }
+
+    fun setFabDoubleTapValue(value: String) {
+        sharedPreferenceManager.fabDoubleTapValue = value
+        _fabDoubleTapValue.value = value
+    }
+
+    fun setFabLongPressValue(value: String) {
+        sharedPreferenceManager.fabLongPressValue = value
+        _fabLongPressValue.value = value
+    }
+
     fun setDrawerIconShape(shape: IconShape) {
         sharedPreferenceManager.drawerIconShape = shape.name
         _drawerIconShape.value = shape
-        loadApps()
     }
 
     fun setDrawerIconShadow(enabled: Boolean) {
@@ -543,7 +578,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         sharedPreferenceManager.globalIconPack = packageName
         _globalIconPack.value = packageName
         _showGlobalIconPackDialog.value = false
-        loadApps()
     }
 
     fun setShowGlobalIconPackDialog(show: Boolean) {
@@ -552,16 +586,14 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun getInstalledIconPacks(): List<ResolveInfo> {
         val pm = getApplication<Application>().packageManager
-        val intent = Intent("com.novalauncher.THEME")
-        val adwIntent = Intent("org.adw.launcher.THEMES")
-        val goIntent = Intent("com.gau.go.launcherex.theme")
-
-        val list = mutableListOf<ResolveInfo>()
-        list.addAll(pm.queryIntentActivities(intent, PackageManager.GET_META_DATA))
-        list.addAll(pm.queryIntentActivities(adwIntent, PackageManager.GET_META_DATA))
-        list.addAll(pm.queryIntentActivities(goIntent, PackageManager.GET_META_DATA))
-
-        return list.distinctBy { it.activityInfo.packageName }
+        val intent = Intent("org.adw.launcher.THEMES")
+        val adw = pm.queryIntentActivities(intent, PackageManager.GET_META_DATA)
+        val intent2 = Intent("com.gau.go.launcherex.theme")
+        val go = pm.queryIntentActivities(intent2, PackageManager.GET_META_DATA)
+        val intent3 = Intent("com.fede.launcher.THEME_ICONPACK")
+        val launcherPro = pm.queryIntentActivities(intent3, PackageManager.GET_META_DATA)
+        
+        return (adw + go + launcherPro).distinctBy { it.activityInfo.packageName }
     }
 
     fun setVisibleCalendars(calendars: List<String>) {
@@ -571,26 +603,25 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun toggleCalendarVisibility(calendarId: String) {
         val current = _visibleCalendars.value.toMutableList()
-        val allAvailable = _availableCalendars.value.map { it.id }
-
-        val new = if (current.isEmpty()) {
-            allAvailable.toMutableList().apply { remove(calendarId) }
+        if (current.isEmpty()) {
+            // "Select all" mode. To toggle one off, we need to list all others.
+            // But usually this means start with empty (all) and add specific IDs.
+            current.add(calendarId)
         } else if (current.contains("__NONE__")) {
-            mutableListOf(calendarId)
+            current.clear()
+            current.add(calendarId)
         } else {
             if (current.contains(calendarId)) {
                 current.remove(calendarId)
-                if (current.isEmpty()) mutableListOf("__NONE__") else current
+                if (current.isEmpty()) current.add("__NONE__")
             } else {
                 current.add(calendarId)
-                if (current.size >= allAvailable.size) mutableListOf() else current
             }
         }
-        setVisibleCalendars(new)
+        setVisibleCalendars(current)
     }
 
     fun setShowCalendarSelectionDialog(show: Boolean) {
-        if (show) loadAvailableCalendars()
         _showCalendarSelectionDialog.value = show
     }
 
@@ -605,82 +636,69 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun toggleNotificationAppVisibility(packageName: String) {
         val current = _visibleNotificationApps.value.toMutableList()
-        val allAvailable = _apps.value.map { it.packageName }
-
-        val new = if (current.isEmpty()) {
-            allAvailable.toMutableList().apply { remove(packageName) }
-        } else if (current.contains("__NONE__")) {
-            mutableListOf(packageName)
+        if (current.contains(packageName)) {
+            current.remove(packageName)
+            if (current.isEmpty()) current.add("__NONE__")
         } else {
-            if (current.contains(packageName)) {
-                current.remove(packageName)
-                if (current.isEmpty()) mutableListOf("__NONE__") else current
-            } else {
-                current.add(packageName)
-                if (current.size >= allAvailable.size) mutableListOf() else current
-            }
+            if (current.contains("__NONE__")) current.remove("__NONE__")
+            current.add(packageName)
         }
-        setVisibleNotificationApps(new)
+        setVisibleNotificationApps(current)
     }
 
-    private fun loadAvailableCalendars() {
+    fun loadAvailableCalendars() {
         viewModelScope.launch(Dispatchers.IO) {
-            val context = getApplication<Application>()
-            if (context.checkSelfPermission(Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
-                return@launch
-            }
-
             val calendars = mutableListOf<CalendarInfo>()
+            val contentResolver = getApplication<Application>().contentResolver
             val uri = CalendarContract.Calendars.CONTENT_URI
             val projection = arrayOf(
                 CalendarContract.Calendars._ID,
                 CalendarContract.Calendars.CALENDAR_DISPLAY_NAME,
                 CalendarContract.Calendars.CALENDAR_COLOR,
-                CalendarContract.Calendars.ACCOUNT_NAME
+                CalendarContract.Calendars.ACCOUNT_NAME,
+                CalendarContract.Calendars.SYNC_EVENTS,
+                CalendarContract.Calendars.VISIBLE,
+                CalendarContract.Calendars.ACCOUNT_TYPE
             )
 
-            context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
-                val idIdx = cursor.getColumnIndex(CalendarContract.Calendars._ID)
-                val nameIdx = cursor.getColumnIndex(CalendarContract.Calendars.CALENDAR_DISPLAY_NAME)
-                val colorIdx = cursor.getColumnIndex(CalendarContract.Calendars.CALENDAR_COLOR)
-                val accountIdx = cursor.getColumnIndex(CalendarContract.Calendars.ACCOUNT_NAME)
-
-                while (cursor.moveToNext()) {
-                    calendars.add(
-                        CalendarInfo(
-                            id = cursor.getString(idIdx),
-                            name = cursor.getString(nameIdx) ?: "Unknown",
-                            color = cursor.getInt(colorIdx),
-                            accountName = cursor.getString(accountIdx) ?: ""
+            try {
+                contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
+                    while (cursor.moveToNext()) {
+                        calendars.add(
+                            CalendarInfo(
+                                id = cursor.getString(0),
+                                name = cursor.getString(1),
+                                color = cursor.getInt(2),
+                                accountName = cursor.getString(3),
+                                syncEvents = cursor.getInt(4) != 0,
+                                visible = cursor.getInt(5) != 0,
+                                accountType = cursor.getString(6)
+                            )
                         )
-                    )
+                    }
                 }
+            } catch (e: Exception) {
+                Log.e("SettingsViewModel", "Failed to query calendars", e)
             }
             _availableCalendars.value = calendars.sortedBy { it.name.lowercase() }
         }
     }
 
     fun onThemeOptionSelectedInDialog(index: Int) {
-        if (index >= 0 && index < themeOptions.size) {
-            _dialogPreviewThemeIndex.value = index
-            _persistedThemeIndexFlow.value = index
-        }
+        _dialogPreviewThemeIndex.value = index
     }
 
     fun applySelectedTheme() {
-        val indexToApply = _dialogPreviewThemeIndex.value
-        if (indexToApply >= 0 && indexToApply < themeOptions.size) {
-            sharedPreferenceManager.theme = indexToApply
-            _persistedThemeIndexFlow.value = indexToApply
-            _currentThemeTitle.value = themeOptions[indexToApply].title
-        }
+        val index = _dialogPreviewThemeIndex.value
+        sharedPreferenceManager.theme = index
+        _persistedThemeIndexFlow.value = index
         _showThemeDialog.value = false
     }
 
     fun dismissThemeDialog() {
         _showThemeDialog.value = false
+        // Reset preview index for next time
         _dialogPreviewThemeIndex.value = sharedPreferenceManager.theme
-        _persistedThemeIndexFlow.value = sharedPreferenceManager.theme
     }
 
     fun onCoverThemeClicked() {
@@ -691,104 +709,70 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         _showCoverSelectionDialog.value = false
     }
 
-    fun saveCoverDisplayMetrics(displaySize: IntSize) {
-        sharedPreferenceManager.coverDisplaySize = displaySize
-        _enableCoverTheme.value = true
+    fun saveCoverDisplayMetrics(size: IntSize) {
+        sharedPreferenceManager.coverDisplaySize = size
         sharedPreferenceManager.coverThemeEnabled = true
+        _enableCoverTheme.value = true
         _showCoverSelectionDialog.value = false
     }
 
-    fun applyCoverTheme(displaySize: IntSize): Boolean {
-        return sharedPreferenceManager.isCoverThemeApplied(displaySize)
+    fun applyCoverTheme(size: IntSize): Boolean {
+        return sharedPreferenceManager.isCoverThemeApplied(size)
     }
 
     fun onLanguageSettingClicked(context: Context) {
-        try {
-            context.startActivity(Intent(Settings.ACTION_APP_LOCALE_SETTINGS).apply {
-                data = Uri.fromParts("package", context.packageName, null)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            })
-        } catch (_: Exception) {
-            _selectedLanguageTagInDialog.value = sharedPreferenceManager.languageTag.ifEmpty { getAppLocaleTag() }
-            _showLanguageDialog.value = true
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val localeManager = context.getSystemService(Context.LOCALE_SERVICE) as LocaleManager
+            val currentLocales = localeManager.applicationLocales
+            _selectedLanguageTagInDialog.value = if (currentLocales.isEmpty) "" else currentLocales.toLanguageTags()
+        } else {
+            _selectedLanguageTagInDialog.value = sharedPreferenceManager.languageTag
         }
+        _showLanguageDialog.value = true
     }
 
-    fun onLanguageSelectedInDialog(localeTag: String) {
-        _selectedLanguageTagInDialog.value = localeTag
+    fun onLanguageSelectedInDialog(tag: String) {
+        _selectedLanguageTagInDialog.value = tag
     }
 
     fun applySelectedLanguage() {
-
+        val tag = _selectedLanguageTagInDialog.value
+        sharedPreferenceManager.languageTag = tag
         _showLanguageDialog.value = false
-        updateCurrentLanguage()
+        // The activity will recreate itself and apply the new locale in attachBaseContext
     }
 
     fun dismissLanguageDialog() {
         _showLanguageDialog.value = false
-        _selectedLanguageTagInDialog.value = getAppLocaleTag()
     }
 
     fun updateCurrentLanguage() {
         _currentLanguage.value = getCurrentLocaleDisplayName()
-        _selectedLanguageTagInDialog.value = getAppLocaleTag()
     }
 
-    private fun getCurrentLocaleDisplayName(): String {
-        val application = getApplication<Application>()
-        
-        // Source 1: AppCompatDelegate override
-        val locales = AppCompatDelegate.getApplicationLocales()
-        if (!locales.isEmpty && locales[0] != null) {
-            val l = locales[0]!!
-            return l.getDisplayName(l).replaceFirstChar { it.uppercase() }
+    fun getCurrentLocaleDisplayName(): String {
+        val tag = sharedPreferenceManager.languageTag
+        return if (tag.isEmpty()) {
+            getApplication<Application>().getString(R.string.system_default)
+        } else {
+            Locale.forLanguageTag(tag).getDisplayName(Locale.forLanguageTag(tag))
+                .replaceFirstChar { it.uppercase() }
         }
-
-        // Source 2: System Per-App Locale (Android 13+)
-        val localeManager = application.getSystemService(LocaleManager::class.java)
-        val appLocales = localeManager.applicationLocales
-        if (!appLocales.isEmpty && appLocales[0] != null) {
-            val l = appLocales[0]!!
-            return l.getDisplayName(l).replaceFirstChar { it.uppercase() }
-        }
-
-        // Source 3: Legacy Manual Override
-        val savedTag = sharedPreferenceManager.languageTag
-        if (savedTag.isNotEmpty()) {
-            val l = Locale.forLanguageTag(savedTag)
-            return l.getDisplayName(l).replaceFirstChar { it.uppercase() }
-        }
-
-        // Final Fallback: System Default
-        return application.getString(R.string.system_default)
     }
 
-    private fun getAppLocaleTag(): String {
-        val application = getApplication<Application>()
-        val locales = AppCompatDelegate.getApplicationLocales()
-        if (!locales.isEmpty) {
-            return locales.toLanguageTags()
-        }
-
-        val localeManager = application.getSystemService(LocaleManager::class.java)
-        val appLocales = localeManager.applicationLocales
-        if (!appLocales.isEmpty) return appLocales.toLanguageTags()
-
-        val saved = sharedPreferenceManager.languageTag
-        if (saved.isNotEmpty()) return saved
-
-        return ""
+    fun getAppLocaleTag(): String {
+        return sharedPreferenceManager.languageTag
     }
 
-    private fun prepareLanguageOptions() {
-        val languages = mutableListOf(
-            LanguageOption(getApplication<Application>().getString(R.string.system_default), "")
-        )
-        val en = Locale.forLanguageTag("en")
-        languages.add(LanguageOption(en.getDisplayName(en).replaceFirstChar { it.uppercase() }, en.toLanguageTag()))
-        val de = Locale.forLanguageTag("de")
-        languages.add(LanguageOption(de.getDisplayName(de).replaceFirstChar { it.uppercase() }, de.toLanguageTag()))
-        _availableLanguages.value = languages
+    fun prepareLanguageOptions() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val options = listOf(
+                LanguageOption("", getApplication<Application>().getString(R.string.system_default)),
+                LanguageOption("en", "English"),
+                LanguageOption("de", "Deutsch"),
+            )
+            _availableLanguages.value = options
+        }
     }
 
     fun onClearDataClicked() {
@@ -796,23 +780,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun confirmClearData() {
-        viewModelScope.launch {
-            val context = getApplication<Application>()
-            try {
-                val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-                @Suppress("DEPRECATION")
-                val success = activityManager.clearApplicationUserData()
-                if (success) {
-                    restartApplication(context)
-                } else {
-                    openAppInfo(context)
-                }
-            } catch (_: Exception) {
-                openAppInfo(context)
-            } finally {
-                _showClearDataDialog.value = false
-            }
-        }
+        val context = getApplication<Application>()
+        val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        activityManager.clearApplicationUserData()
+        _showClearDataDialog.value = false
     }
 
     fun dismissClearDataDialog() {
@@ -824,21 +795,19 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun confirmResetSettings() {
-        viewModelScope.launch {
-            val context = getApplication<Application>()
-            sharedPreferenceManager.clearSettings()
-
-            val defaultThemeIndex = 2
-            _persistedThemeIndexFlow.value = defaultThemeIndex
-            _dialogPreviewThemeIndex.value = defaultThemeIndex
-            _blackedOutModeEnabled.value = sharedPreferenceManager.blackedOutModeEnabled
-            _enableCoverTheme.value = sharedPreferenceManager.coverThemeEnabled
-            refreshDeveloperModeState()
-
-            _showResetSettingsDialog.value = false
-            delay(1000.milliseconds)
-            restartApplication(context)
-        }
+        sharedPreferenceManager.clearSettings()
+        _showResetSettingsDialog.value = false
+        // Re-initialize StateFlows with default values
+        _blackedOutModeEnabled.value = false
+        _blurEnabled.value = true
+        _isGridLayout.value = true
+        _openKeyboard.value = false
+        _advancedSearchEnabled.value = true
+        _appLabelsEnabled.value = true
+        _drawerIconShape.value = IconShape.Circle
+        _drawerIconShadow.value = false
+        // Re-start app to apply all resets
+        restartApplication(getApplication())
     }
 
     fun dismissResetSettingsDialog() {
@@ -846,47 +815,48 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun onInfoTileClicked() {
-        val context = getApplication<Application>()
-        currentToast?.cancel()
-        singleTapJob?.cancel()
-        resetTapsJob?.cancel()
-
-        val currentTime = System.currentTimeMillis()
-
-        if (currentTime - lastMultiTapTime < multiTapCooldownMillis) {
-            if (_developerModeEnabled.value) {
-                Toast.makeText(context, context.getString(R.string.already_in_developer_mode), Toast.LENGTH_SHORT).show()
-            }
-            return
-        }
-
         infoTileTapCount++
-
-        if (infoTileTapCount == 1) {
-            singleTapJob = viewModelScope.launch {
-                delay(tapTimeoutMillis.milliseconds)
-                _showVersionDialog.value = true
-                infoTileTapCount = 0
-            }
-        } else {
-            lastMultiTapTime = currentTime
-            if (_developerModeEnabled.value) {
-                infoTileTapCount = 0
+        if (infoTileTapCount >= requiredTaps) {
+            val now = System.currentTimeMillis()
+            if (now - lastMultiTapTime < multiTapCooldownMillis) {
+                // Cooldown to prevent spamming
                 return
             }
-            if (infoTileTapCount >= requiredTaps) {
+            lastMultiTapTime = now
+
+            if (sharedPreferenceManager.developerModeEnabled) {
+                currentToast?.cancel()
+                currentToast = Toast.makeText(getApplication(), "Developer mode is already enabled", Toast.LENGTH_SHORT)
+                currentToast?.show()
+            } else {
                 sharedPreferenceManager.developerModeEnabled = true
                 _developerModeEnabled.value = true
-                Toast.makeText(context, context.getString(R.string.developer_mode_enabled), Toast.LENGTH_LONG).show()
-                infoTileTapCount = 0
-            } else {
-                val remaining = requiredTaps - infoTileTapCount
-                Toast.makeText(context, context.getString(R.string.taps_remaining_to_developer, remaining), Toast.LENGTH_SHORT).show()
-                resetTapsJob = viewModelScope.launch {
-                    delay(multiTapCooldownMillis.milliseconds)
-                    infoTileTapCount = 0
-                }
+                currentToast?.cancel()
+                currentToast = Toast.makeText(getApplication(), "You are now a developer!", Toast.LENGTH_SHORT)
+                currentToast?.show()
             }
+            infoTileTapCount = 0
+            resetTapsJob?.cancel()
+        } else {
+            resetTapsJob?.cancel()
+            resetTapsJob = viewModelScope.launch {
+                delay(3000)
+                infoTileTapCount = 0
+            }
+
+            if (infoTileTapCount > 3) {
+                val remaining = requiredTaps - infoTileTapCount
+                currentToast?.cancel()
+                currentToast = Toast.makeText(getApplication(), "You are now $remaining steps away from being a developer", Toast.LENGTH_SHORT)
+                currentToast?.show()
+            }
+        }
+
+        // Normal single tap action
+        singleTapJob?.cancel()
+        singleTapJob = viewModelScope.launch {
+            delay(tapTimeoutMillis)
+            _showVersionDialog.value = true
         }
     }
 
@@ -895,7 +865,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun openImpressum(context: Context) {
-        Toast.makeText(context, "Xenon Launcher by XenonWare", Toast.LENGTH_LONG).show()
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://xenonware.com/impressum"))
+        context.startActivity(intent)
     }
 
     fun onSignOutClicked() {
@@ -915,17 +886,26 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         _enableCoverTheme.value = enabled
     }
 
-    fun setFabAction(isDoubleTap: Boolean, action: FabAction, value: String = "") {
-        if (isDoubleTap) {
-            sharedPreferenceManager.fabDoubleTapAction = action.name
-            sharedPreferenceManager.fabDoubleTapValue = value
-            _fabDoubleTapAction.value = action
-            _fabDoubleTapValue.value = value
-        } else {
-            sharedPreferenceManager.fabLongPressAction = action.name
-            sharedPreferenceManager.fabLongPressValue = value
-            _fabLongPressAction.value = action
-            _fabLongPressValue.value = value
+    fun setFabAction(isDoubleTap: Boolean?, action: FabAction, value: String = "") {
+        when (isDoubleTap) {
+            true -> {
+                sharedPreferenceManager.fabDoubleTapAction = action.name
+                sharedPreferenceManager.fabDoubleTapValue = value
+                _fabDoubleTapAction.value = action
+                _fabDoubleTapValue.value = value
+            }
+            false -> {
+                sharedPreferenceManager.fabLongPressAction = action.name
+                sharedPreferenceManager.fabLongPressValue = value
+                _fabLongPressAction.value = action
+                _fabLongPressValue.value = value
+            }
+            null -> {
+                sharedPreferenceManager.fabSingleTapAction = action.name
+                sharedPreferenceManager.fabSingleTapValue = value
+                _fabSingleTapAction.value = action
+                _fabSingleTapValue.value = value
+            }
         }
     }
 
@@ -939,9 +919,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             LauncherViewModel.ShortcutType.DATE -> sharedPreferenceManager.dateShortcut = value
             LauncherViewModel.ShortcutType.WEATHER -> sharedPreferenceManager.weatherShortcut = value
         }
-        _timeShortcut.value = sharedPreferenceManager.timeShortcut
-        _dateShortcut.value = sharedPreferenceManager.dateShortcut
-        _weatherShortcut.value = sharedPreferenceManager.weatherShortcut
+        _configShortcutType.value = null
     }
 
     fun setShowHiddenApps(show: Boolean) {
@@ -949,153 +927,177 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun setShowBackupDialog(show: Boolean) {
-        if (show) loadBackups()
         _showBackupDialog.value = show
+        if (show) loadBackups()
     }
 
     fun loadBackups() {
-        val user = auth.currentUser
-        if (user == null) {
-            _backups.value = emptyList()
-            return
-        }
-
-        _isSyncingBackups.value = true
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                // Changed to 'notes' collection as per the user's reference to the Notes app structure
-                val querySnapshot = firestore.collection("notes")
-                    .document(user.uid)
-                    .collection("backups")
-                    .orderBy("timestamp", Query.Direction.DESCENDING)
-                    .get()
-                    .await()
-
-                val list = querySnapshot.documents.mapNotNull { doc ->
-                    try {
-                        val timestamp = doc.getLong("timestamp") ?: 0L
-                        val device = doc.getString("device") ?: "Unknown Device"
-                        val data = doc.getString("data")
-                        
-                        val date = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date(timestamp))
-                        val time = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(timestamp))
-                        
-                        BackupInfo(doc.id, timestamp, date, time, device, data)
-                    } catch (_: Exception) {
-                        null
+        viewModelScope.launch {
+            _isSyncingBackups.value = true
+            val backups = mutableListOf<BackupInfo>()
+            val user = auth.currentUser
+            if (user != null) {
+                try {
+                    val snapshot = firestore.collection("users")
+                        .document(user.uid)
+                        .collection("backups")
+                        .orderBy("timestamp", Query.Direction.DESCENDING)
+                        .get()
+                        .await()
+                    
+                    snapshot.documents.forEach { doc ->
+                        backups.add(BackupInfo(
+                            id = doc.id,
+                            timestamp = doc.getLong("timestamp") ?: 0L,
+                            date = doc.getString("date") ?: "",
+                            time = doc.getString("time") ?: "",
+                            device = doc.getString("device") ?: "Unknown"
+                        ))
+                    }
+                } catch (e: Exception) {
+                    Log.e("SettingsViewModel", "Failed to load backups", e)
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(getApplication(), "Failed to load backups: ${e.message}", Toast.LENGTH_LONG).show()
                     }
                 }
-                _backups.value = list
-            } catch (e: Exception) {
-                Log.e("SettingsViewModel", "Failed to load backups from Firestore", e)
-                withContext(Dispatchers.Main) {
-                    if (e.message?.contains("permission", ignoreCase = true) == true) {
-                        Toast.makeText(getApplication(), "No cloud permission. Please check account.", Toast.LENGTH_LONG).show()
-                    }
-                }
-            } finally {
-                _isSyncingBackups.value = false
             }
+            _backups.value = backups
+            _isSyncingBackups.value = false
         }
     }
 
     fun startBackup() {
-        val user = auth.currentUser
-        if (user == null) {
-            Toast.makeText(getApplication(), "Please sign in first", Toast.LENGTH_SHORT).show()
-            return
-        }
+        viewModelScope.launch {
+            _isSyncingBackups.value = true
+            val user = auth.currentUser
+            if (user != null) {
+                try {
+                    val data = JSONObject()
+                    sharedPreferenceManager.getAllPreferences().forEach { (key, value) ->
+                        when (value) {
+                            is Set<*> -> {
+                                val array = JSONArray()
+                                value.forEach { array.put(it) }
+                                data.put(key, array)
+                            }
+                            else -> data.put(key, value)
+                        }
+                    }
 
-        _isSyncingBackups.value = true
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val prefs = sharedPreferenceManager.getAllPreferences()
-                val timestamp = System.currentTimeMillis()
-                val device = android.os.Build.MODEL
-                
-                val dataJson = JSONObject()
-                prefs.forEach { (k, v) -> dataJson.put(k, v) }
-                val dataString = dataJson.toString()
+                    val now = Date()
+                    val dateFormat = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
+                    val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+                    
+                    val backup = hashMapOf<String, Any>(
+                        "timestamp" to now.time,
+                        "date" to dateFormat.format(now),
+                        "time" to timeFormat.format(now),
+                        "device" to Build.MODEL,
+                        "data" to data.toString()
+                    )
 
-                val backupDoc = hashMapOf(
-                    "timestamp" to timestamp,
-                    "device" to device,
-                    "data" to dataString
-                )
-
-                firestore.collection("notes")
-                    .document(user.uid)
-                    .collection("backups")
-                    .add(backupDoc)
-                    .await()
-                
-                loadBackups()
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(getApplication(), "Backup saved to cloud", Toast.LENGTH_SHORT).show()
+                    Log.d("SettingsViewModel", "Attempting backup for user: ${user.uid}")
+                    
+                    firestore.collection("users")
+                        .document(user.uid)
+                        .collection("backups")
+                        .add(backup)
+                        .await()
+                    
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(getApplication(), "Backup created successfully", Toast.LENGTH_SHORT).show()
+                    }
+                    loadBackups()
+                } catch (e: Exception) {
+                    Log.e("SettingsViewModel", "Backup failed for UID: ${user.uid}", e)
+                    withContext(Dispatchers.Main) {
+                        if (e.message?.contains("permission") == true) {
+                            Toast.makeText(getApplication(), "Cloud error: Insufficient permissions. Please sign out and sign in again.", Toast.LENGTH_LONG).show()
+                        } else {
+                            Toast.makeText(getApplication(), "Backup failed: ${e.message}", Toast.LENGTH_LONG).show()
+                        }
+                    }
                 }
-            } catch (e: Exception) {
-                Log.e("SettingsViewModel", "Failed to upload backup", e)
+            } else {
                 withContext(Dispatchers.Main) {
-                    val msg = if (e.message?.contains("permission", ignoreCase = true) == true) "No cloud permission" else "Upload failed: ${e.message}"
-                    Toast.makeText(getApplication(), msg, Toast.LENGTH_LONG).show()
+                    Toast.makeText(getApplication(), "Please sign in first", Toast.LENGTH_SHORT).show()
                 }
-            } finally {
-                _isSyncingBackups.value = false
             }
+            _isSyncingBackups.value = false
         }
     }
 
-    fun restoreBackup(backup: BackupInfo) {
-        if (backup.data == null) return
-        
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val dataJson = JSONObject(backup.data)
-                
-                val map = mutableMapOf<String, Any>()
-                dataJson.keys().forEach { k ->
-                    map[k] = dataJson.get(k)
-                }
-                
-                sharedPreferenceManager.importPreferences(map)
-                
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(getApplication(), "Restored successfully", Toast.LENGTH_LONG).show()
-                    delay(1000.milliseconds)
-                    restartApplication(getApplication())
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(getApplication(), "Restore failed", Toast.LENGTH_LONG).show()
+    fun restoreBackup(backupInfo: BackupInfo) {
+        viewModelScope.launch {
+            _isSyncingBackups.value = true
+            val user = auth.currentUser
+            if (user != null) {
+                try {
+                    val doc = firestore.collection("users")
+                        .document(user.uid)
+                        .collection("backups")
+                        .document(backupInfo.id)
+                        .get()
+                        .await()
+                    
+                    val dataJson = doc.getString("data")
+                    if (dataJson != null) {
+                        val json = JSONObject(dataJson)
+                        val map = mutableMapOf<String, Any>()
+                        json.keys().forEach { key ->
+                            val value = json.get(key)
+                            if (value is JSONArray) {
+                                val set = mutableSetOf<String>()
+                                for (i in 0 until value.length()) {
+                                    set.add(value.getString(i))
+                                }
+                                map[key] = set
+                            } else {
+                                map[key] = value
+                            }
+                        }
+                        sharedPreferenceManager.importPreferences(map)
+                        
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(getApplication(), "Settings restored. Restarting...", Toast.LENGTH_SHORT).show()
+                        }
+                        delay(1000)
+                        restartApplication(getApplication())
+                    }
+                } catch (e: Exception) {
+                    Log.e("SettingsViewModel", "Restore failed", e)
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(getApplication(), "Restore failed: ${e.message}", Toast.LENGTH_LONG).show()
+                    }
                 }
             }
+            _isSyncingBackups.value = false
         }
     }
 
-    fun deleteBackup(backup: BackupInfo) {
-        val user = auth.currentUser ?: return
-        
-        _isSyncingBackups.value = true
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                firestore.collection("notes")
-                    .document(user.uid)
-                    .collection("backups")
-                    .document(backup.id)
-                    .delete()
-                    .await()
-                
-                loadBackups()
-            } catch (e: Exception) {
-                Log.e("SettingsViewModel", "Failed to delete backup", e)
-            } finally {
-                _isSyncingBackups.value = false
+    fun deleteBackup(backupInfo: BackupInfo) {
+        viewModelScope.launch {
+            _isSyncingBackups.value = true
+            val user = auth.currentUser
+            if (user != null) {
+                try {
+                    firestore.collection("users")
+                        .document(user.uid)
+                        .collection("backups")
+                        .document(backupInfo.id)
+                        .delete()
+                        .await()
+                    loadBackups()
+                } catch (e: Exception) {
+                    Log.e("SettingsViewModel", "Delete failed", e)
+                }
             }
+            _isSyncingBackups.value = false
         }
     }
 
-    fun setShowFabConfig(isDoubleTap: Boolean?) {
-        _showFabConfigIsDoubleTap.value = isDoubleTap
+    fun setShowFabConfig(mode: FabConfigMode) {
+        _showFabConfigMode.value = mode
     }
 
     fun isDefaultLauncher(context: Context): Boolean {
@@ -1153,4 +1155,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    override fun onCleared() {
+        super.onCleared()
+        sharedPreferenceManager.unregisterListener(preferenceListener)
+    }
 }

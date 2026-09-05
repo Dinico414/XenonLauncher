@@ -51,7 +51,7 @@ import com.xenonware.launcher.model.FabAction
 
 @Composable
 fun FabActionConfigDialog(
-    isDoubleTap: Boolean,
+    isDoubleTap: Boolean?,
     apps: List<AppInfo>,
     initialAction: FabAction,
     initialValue: String,
@@ -75,7 +75,11 @@ fun FabActionConfigDialog(
         derivedStateOf { listState.canScrollForward }
     }
 
-    val actionType = stringResource(if (isDoubleTap) R.string.fab_double_tap else R.string.fab_long_press)
+    val actionType = when (isDoubleTap) {
+        true -> stringResource(R.string.fab_double_tap)
+        false -> stringResource(R.string.fab_long_press)
+        null -> stringResource(R.string.fab_single_tap)
+    }
 
     XenonDialog(
         onDismissRequest = onDismiss,
@@ -221,6 +225,7 @@ private fun getActionName(action: FabAction): String {
         FabAction.OPEN_APP -> stringResource(R.string.action_open_app)
         FabAction.OPEN_LINK -> stringResource(R.string.action_open_link)
         FabAction.TOGGLE_FLASHLIGHT -> stringResource(R.string.action_toggle_flashlight)
+        FabAction.OPEN_APP_DRAWER -> stringResource(R.string.action_open_app_drawer)
         FabAction.NONE -> stringResource(R.string.action_none)
     }
 }

@@ -135,6 +135,10 @@ class SharedPreferenceManager(context: Context) {
         get() = prefs.getBoolean("developer_mode_enabled", false)
         set(value) = prefs.edit { putBoolean("developer_mode_enabled", value) }
 
+    var fabSingleTapAction: String
+        get() = prefs.getString("fab_single_tap_action", "OPEN_APP_DRAWER") ?: "OPEN_APP_DRAWER"
+        set(value) = prefs.edit { putString("fab_single_tap_action", value) }
+
     var fabDoubleTapAction: String
         get() = prefs.getString("fab_double_tap_action", "LOCK_DEVICE") ?: "LOCK_DEVICE"
         set(value) = prefs.edit { putString("fab_double_tap_action", value) }
@@ -142,6 +146,10 @@ class SharedPreferenceManager(context: Context) {
     var fabLongPressAction: String
         get() = prefs.getString("fab_long_press_action", "NONE") ?: "NONE"
         set(value) = prefs.edit { putString("fab_long_press_action", value) }
+
+    var fabSingleTapValue: String
+        get() = prefs.getString("fab_single_tap_value", "") ?: ""
+        set(value) = prefs.edit { putString("fab_single_tap_value", value) }
 
     var fabDoubleTapValue: String
         get() = prefs.getString("fab_double_tap_value", "") ?: ""
@@ -341,6 +349,7 @@ class SharedPreferenceManager(context: Context) {
                     is Long -> putLong(key, value)
                     is Float -> putFloat(key, value)
                     is String -> putString(key, value)
+                    is Set<*> -> @Suppress("UNCHECKED_CAST") putStringSet(key, value as Set<String>)
                 }
             }
         }
