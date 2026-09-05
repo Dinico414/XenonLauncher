@@ -280,6 +280,10 @@
     <string name="hide_dock_scrolling_only_small_description">If enabled, the dock will only hide during scrolling on smaller screens or in landscape mode</string>
     <string name="hide_dock_widgets">Hide dock on widgets page</string>
     <string name="hide_dock_widgets_description">Hide the dock when viewing the widget page</string>
+    <string name="hide_dock_media">Hide dock on media page</string>
+    <string name="hide_dock_media_description">Hide the dock when viewing the media player page</string>
+    <string name="hide_dock_only_landscape">Only in landscape</string>
+    <string name="hide_dock_only_landscape_description">Only hide the dock on this page when the device is in landscape orientation</string>
     <string name="hide_action_button">Hide Action Button</string>
     <string name="hide_action_button_description">Disable the FAB and its actions</string>
     <string name="show_mute_notifications">Show Mute Notifications</string>

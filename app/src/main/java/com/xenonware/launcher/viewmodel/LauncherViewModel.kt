@@ -181,6 +181,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             "hide_dock_scrolling" -> _hideDockScrolling.value = prefManager.hideDockScrolling
             "hide_dock_scrolling_only_small" -> _hideDockScrollingOnlySmall.value = prefManager.hideDockScrollingOnlySmall
             "hide_dock_widgets" -> _hideDockWidgets.value = prefManager.hideDockWidgets
+            "hide_dock_widgets_landscape_only" -> _hideDockWidgetsLandscapeOnly.value = prefManager.hideDockWidgetsLandscapeOnly
+            "hide_dock_media" -> _hideDockMedia.value = prefManager.hideDockMedia
+            "hide_dock_media_landscape_only" -> _hideDockMediaLandscapeOnly.value = prefManager.hideDockMediaLandscapeOnly
             "hide_action_button" -> _hideActionButton.value = prefManager.hideActionButton
             "move_web_search" -> _moveWebSearch.value = prefManager.moveWebSearch
             "show_mute_notifications" -> {
@@ -312,6 +315,15 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private val _hideDockWidgets = MutableStateFlow(prefManager.hideDockWidgets)
     val hideDockWidgets: StateFlow<Boolean> = _hideDockWidgets
+
+    private val _hideDockWidgetsLandscapeOnly = MutableStateFlow(prefManager.hideDockWidgetsLandscapeOnly)
+    val hideDockWidgetsLandscapeOnly: StateFlow<Boolean> = _hideDockWidgetsLandscapeOnly
+
+    private val _hideDockMedia = MutableStateFlow(prefManager.hideDockMedia)
+    val hideDockMedia: StateFlow<Boolean> = _hideDockMedia
+
+    private val _hideDockMediaLandscapeOnly = MutableStateFlow(prefManager.hideDockMediaLandscapeOnly)
+    val hideDockMediaLandscapeOnly: StateFlow<Boolean> = _hideDockMediaLandscapeOnly
 
     private val _hideActionButton = MutableStateFlow(prefManager.hideActionButton)
     val hideActionButton: StateFlow<Boolean> = _hideActionButton

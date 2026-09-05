@@ -129,6 +129,9 @@ fun TweaksItems(
     val hideDockScrolling by viewModel.hideDockScrolling.collectAsState()
     val hideDockScrollingOnlySmall by viewModel.hideDockScrollingOnlySmall.collectAsState()
     val hideDockWidgets by viewModel.hideDockWidgets.collectAsState()
+    val hideDockWidgetsLandscapeOnly by viewModel.hideDockWidgetsLandscapeOnly.collectAsState()
+    val hideDockMedia by viewModel.hideDockMedia.collectAsState()
+    val hideDockMediaLandscapeOnly by viewModel.hideDockMediaLandscapeOnly.collectAsState()
     val hideActionButton by viewModel.hideActionButton.collectAsState()
     val moveWebSearch by viewModel.moveWebSearch.collectAsState()
     val showMuteNotifications by viewModel.showMuteNotifications.collectAsState()
@@ -393,7 +396,7 @@ fun TweaksItems(
 
             Spacer(Modifier.height(actualInnerGroupSpacing))
 
-            SettingsSwitchTile(
+            SettingsSwitchTileContext(
                 title = stringResource(R.string.hide_dock_widgets),
                 subtitle = stringResource(R.string.hide_dock_widgets_description),
                 checked = hideDockWidgets,
@@ -402,7 +405,99 @@ fun TweaksItems(
                 shape = tileShapeOverride ?: middleShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
-                subtitleColor = tileSubtitleColor
+                subtitleColor = tileSubtitleColor,
+                showContext = hideDockWidgets,
+                contextContent = {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = if (LocalIsDarkTheme.current) 0.5f else 1f))
+                            .clickable { viewModel.setHideDockWidgetsLandscapeOnly(!hideDockWidgetsLandscapeOnly) }
+                            .padding(12.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    stringResource(R.string.hide_dock_only_landscape),
+                                    color = tileContentColor,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    stringResource(R.string.hide_dock_only_landscape_description),
+                                    color = tileSubtitleColor,
+                                    fontSize = 14.sp
+                                )
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Checkbox(
+                                checked = hideDockWidgetsLandscapeOnly,
+                                onCheckedChange = { viewModel.setHideDockWidgetsLandscapeOnly(it) },
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = MaterialTheme.colorScheme.primary,
+                                    uncheckedColor = tileSubtitleColor
+                                )
+                            )
+                        }
+                    }
+                }
+            )
+
+            Spacer(Modifier.height(actualInnerGroupSpacing))
+
+            SettingsSwitchTileContext(
+                title = stringResource(R.string.hide_dock_media),
+                subtitle = stringResource(R.string.hide_dock_media_description),
+                checked = hideDockMedia,
+                onCheckedChange = { viewModel.setHideDockMedia(it) },
+                icon = { Icon(Icons.Rounded.WatchLater, null, tint = tileSubtitleColor) },
+                shape = tileShapeOverride ?: middleShape,
+                backgroundColor = tileBackgroundColor,
+                contentColor = tileContentColor,
+                subtitleColor = tileSubtitleColor,
+                showContext = hideDockMedia,
+                contextContent = {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = if (LocalIsDarkTheme.current) 0.5f else 1f))
+                            .clickable { viewModel.setHideDockMediaLandscapeOnly(!hideDockMediaLandscapeOnly) }
+                            .padding(12.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    stringResource(R.string.hide_dock_only_landscape),
+                                    color = tileContentColor,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    stringResource(R.string.hide_dock_only_landscape_description),
+                                    color = tileSubtitleColor,
+                                    fontSize = 14.sp
+                                )
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Checkbox(
+                                checked = hideDockMediaLandscapeOnly,
+                                onCheckedChange = { viewModel.setHideDockMediaLandscapeOnly(it) },
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = MaterialTheme.colorScheme.primary,
+                                    uncheckedColor = tileSubtitleColor
+                                )
+                            )
+                        }
+                    }
+                }
             )
 
             Spacer(Modifier.height(actualInnerGroupSpacing))

@@ -243,6 +243,9 @@ class MainActivity : ComponentActivity() {
                 val hideDockScrolling by viewModel.hideDockScrolling.collectAsState()
                 val hideDockScrollingOnlySmall by viewModel.hideDockScrollingOnlySmall.collectAsState()
                 val hideDockWidgets by viewModel.hideDockWidgets.collectAsState()
+                val hideDockWidgetsLandscapeOnly by viewModel.hideDockWidgetsLandscapeOnly.collectAsState()
+                val hideDockMedia by viewModel.hideDockMedia.collectAsState()
+                val hideDockMediaLandscapeOnly by viewModel.hideDockMediaLandscapeOnly.collectAsState()
                 val hideActionButton by viewModel.hideActionButton.collectAsState()
                 val moveWebSearch by viewModel.moveWebSearch.collectAsState()
                 val notificationIndicatorType by viewModel.notificationIndicatorType.collectAsState()
@@ -289,6 +292,9 @@ class MainActivity : ComponentActivity() {
                     hideDockScrolling = hideDockScrolling,
                     hideDockScrollingOnlySmall = hideDockScrollingOnlySmall,
                     hideDockWidgets = hideDockWidgets,
+                    hideDockWidgetsLandscapeOnly = hideDockWidgetsLandscapeOnly,
+                    hideDockMedia = hideDockMedia,
+                    hideDockMediaLandscapeOnly = hideDockMediaLandscapeOnly,
                     hideActionButton = hideActionButton,
                     notificationIndicatorType = notificationIndicatorType,
                     notificationMessageType = notificationMessageType,
@@ -496,6 +502,9 @@ fun LauncherScreen(
     hideDockScrolling: Boolean = false,
     hideDockScrollingOnlySmall: Boolean = false,
     hideDockWidgets: Boolean = false,
+    hideDockWidgetsLandscapeOnly: Boolean = false,
+    hideDockMedia: Boolean = false,
+    hideDockMediaLandscapeOnly: Boolean = false,
     hideActionButton: Boolean = false,
     moveWebSearch: Boolean = false,
     showBootWelcome: Boolean = false,
@@ -559,6 +568,11 @@ fun LauncherScreen(
     val iconShape by viewModel.drawerIconShape.collectAsState()
     val showShadow by viewModel.drawerIconShadow.collectAsState()
 
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val isDockHiddenByWidgetPage = hideDockWidgets && (!hideDockWidgetsLandscapeOnly || isLandscape)
+    val isDockHiddenByMediaPage = hideDockMedia && (!hideDockMediaLandscapeOnly || isLandscape)
+
     LaunchedEffect(isAppDrawerVisible) {
         if (!isAppDrawerVisible) {
             focusManager.clearFocus()
@@ -602,6 +616,7 @@ fun LauncherScreen(
                                 progress = mediaProgress,
                                 isPermissionGranted = viewModel.isMediaPermissionGranted,
                                 isDarkTheme = isDarkTheme,
+                                isDockVisible = !isDockHiddenByMediaPage,
                                 onOpenSettings = { viewModel.openNotificationAccessSettings() },
                                 onTogglePlayPause = { viewModel.togglePlayPause() },
                                 onSkipNext = { viewModel.skipNext() },
@@ -631,6 +646,7 @@ fun LauncherScreen(
                             )
                             2 -> WidgetPage(
                                 viewModel = viewModel,
+                                isDockVisible = !isDockHiddenByWidgetPage,
                                 onOpenSettings = onOpenSettings
                             )
                         }
@@ -685,7 +701,9 @@ fun LauncherScreen(
             }
 
             val isOnWidgetPage = pagerState.currentPage == 2
-            val isDockHiddenByPage = hideDockWidgets && isOnWidgetPage
+            val isOnMediaPage = pagerState.currentPage == 0
+            
+            val isDockHiddenByPage = (isOnWidgetPage && isDockHiddenByWidgetPage) || (isOnMediaPage && isDockHiddenByMediaPage)
 
             val dockYOffset by animateDpAsState(
                 targetValue = if (isDockVisibleByScroll && !isDockHiddenByPage || !isAppDrawerVisible && !isDockHiddenByPage || !shouldAnimateDockOff && !isDockHiddenByPage) 0.dp else 120.dp,

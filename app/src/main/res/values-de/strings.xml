@@ -278,6 +278,10 @@
     <string name="hide_dock_scrolling_only_small_description">Wenn aktiviert, wird das Dock nur auf kleineren Bildschirmen oder im Querformat beim Scrollen ausgeblendet</string>
     <string name="hide_dock_widgets">Dock auf der Widget-Seite ausblenden</string>
     <string name="hide_dock_widgets_description">Blendet das Dock aus, wenn die Widget-Seite angezeigt wird</string>
+    <string name="hide_dock_media">Dock auf der Medien-Seite ausblenden</string>
+    <string name="hide_dock_media_description">Blendet das Dock aus, wenn die Media-Player-Seite angezeigt wird</string>
+    <string name="hide_dock_only_landscape">Nur im Querformat</string>
+    <string name="hide_dock_only_landscape_description">Dock auf dieser Seite nur ausblenden, wenn sich das Gerät im Querformat befindet</string>
     <string name="hide_action_button">Aktions-Button ausblenden</string>
     <string name="hide_action_button_description">Deaktiviert den FAB und seine Aktionen</string>
     <string name="show_mute_notifications">Stummgeschaltete Benachrichtigungen anzeigen</string>

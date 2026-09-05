@@ -214,6 +214,15 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _hideDockWidgets = MutableStateFlow(sharedPreferenceManager.hideDockWidgets)
     val hideDockWidgets: StateFlow<Boolean> = _hideDockWidgets.asStateFlow()
 
+    private val _hideDockWidgetsLandscapeOnly = MutableStateFlow(sharedPreferenceManager.hideDockWidgetsLandscapeOnly)
+    val hideDockWidgetsLandscapeOnly: StateFlow<Boolean> = _hideDockWidgetsLandscapeOnly.asStateFlow()
+
+    private val _hideDockMedia = MutableStateFlow(sharedPreferenceManager.hideDockMedia)
+    val hideDockMedia: StateFlow<Boolean> = _hideDockMedia.asStateFlow()
+
+    private val _hideDockMediaLandscapeOnly = MutableStateFlow(sharedPreferenceManager.hideDockMediaLandscapeOnly)
+    val hideDockMediaLandscapeOnly: StateFlow<Boolean> = _hideDockMediaLandscapeOnly.asStateFlow()
+
     private val _hideActionButton = MutableStateFlow(sharedPreferenceManager.hideActionButton)
     val hideActionButton: StateFlow<Boolean> = _hideActionButton.asStateFlow()
 
@@ -467,6 +476,21 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setHideDockWidgets(enabled: Boolean) {
         sharedPreferenceManager.hideDockWidgets = enabled
         _hideDockWidgets.value = enabled
+    }
+
+    fun setHideDockWidgetsLandscapeOnly(enabled: Boolean) {
+        sharedPreferenceManager.hideDockWidgetsLandscapeOnly = enabled
+        _hideDockWidgetsLandscapeOnly.value = enabled
+    }
+
+    fun setHideDockMedia(enabled: Boolean) {
+        sharedPreferenceManager.hideDockMedia = enabled
+        _hideDockMedia.value = enabled
+    }
+
+    fun setHideDockMediaLandscapeOnly(enabled: Boolean) {
+        sharedPreferenceManager.hideDockMediaLandscapeOnly = enabled
+        _hideDockMediaLandscapeOnly.value = enabled
     }
 
     fun setHideActionButton(enabled: Boolean) {

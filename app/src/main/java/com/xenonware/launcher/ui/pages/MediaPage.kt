@@ -103,6 +103,7 @@ fun MediaPage(
     onSkipPrevious: () -> Unit,
     onSeek: (Long) -> Unit,
     onOpenSource: () -> Unit,
+    isDockVisible: Boolean = true,
 ) {
     val context = LocalContext.current
     val pm = remember { context.packageManager }
@@ -144,7 +145,7 @@ fun MediaPage(
     val endPadding = safeDrawingPadding.calculateEndPadding(layoutDirection).coerceAtLeast(16.dp)
     val navBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     // 72dp (dock) + 8dp (dock padding) + 8dp (gap) + 4dp (to match widget vertical padding)
-    val dockAreaHeight = 72.dp + navBarHeight + 8.dp + 8.dp + 4.dp
+    val dockAreaHeight = if (isDockVisible) 72.dp + navBarHeight + 8.dp + 8.dp + 4.dp else navBarHeight + 16.dp
 
     val appNameLabel = stringResource(R.string.media)
     val appName = remember(mediaState.packageName, appNameLabel) {

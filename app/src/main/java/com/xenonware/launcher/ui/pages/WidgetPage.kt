@@ -154,7 +154,8 @@ private data class WidgetDrag(
 @Composable
 fun WidgetPage(
     viewModel: LauncherViewModel,
-    onOpenSettings: () -> Unit
+    onOpenSettings: () -> Unit,
+    isDockVisible: Boolean = true
 ) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
@@ -195,7 +196,7 @@ fun WidgetPage(
 
     // Dock area implementation: safe draw (nav bar) + base dock area
     // Dock top is at: navBarHeight + 8.dp (dock bottom padding) + 72.dp (dock height)
-    val totalDockAreaHeight = navBarHeight + 72.dp + 8.dp
+    val totalDockAreaHeight = if (isDockVisible) navBarHeight + 72.dp + 8.dp else navBarHeight + 16.dp
 
     val widgetColumns by viewModel.widgetColumns.collectAsState()
     val widgets by viewModel.widgets.collectAsState()
