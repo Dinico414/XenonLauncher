@@ -35,6 +35,8 @@ data class LauncherNotification(
     val contentIntent: PendingIntent? = null,
     val actions: List<LauncherNotificationAction> = emptyList(),
     val chrono: ChronoState = ChronoState.NONE,
+    val isMuted: Boolean = false,
+    val isOngoing: Boolean = false,
 ) {
     // Convenience accessors so existing call sites keep compiling.
     val isTimer: Boolean get() = chrono.kind == ChronoKind.TIMER
@@ -149,7 +151,7 @@ object NotificationManager {
                 // 3. Ranking / importance
                 val ranking = Ranking()
                 if (rankingMap?.getRanking(sbn.key, ranking) == true) {
-                    if (ranking.importance <= 1 && !isTimeRelated && !showMuteNotifications) {
+                    if (ranking.importance <= 2 && !isTimeRelated && !showMuteNotifications) {
                         return@filter drop("importance=${ranking.importance}")
                     }
                     if (ranking.isSuspended) return@filter drop("suspended")
@@ -298,6 +300,13 @@ object NotificationManager {
                     else -> null
                 }
 
+                val ranking = Ranking()
+                val isMuted = if (rankingMap?.getRanking(sbn.key, ranking) == true) {
+                    ranking.importance <= 2
+                } else false
+                
+                Log.d(TAG, "Notification ${sbn.key}: importance=${ranking.importance}, isMuted=$isMuted")
+
                 LauncherNotification(
                     key = sbn.key,
                     packageName = sbn.packageName,
@@ -318,6 +327,8 @@ object NotificationManager {
                         )
                     } ?: emptyList(),
                     chrono = chrono,
+                    isMuted = isMuted,
+                    isOngoing = sbn.isOngoing
                 )
             }.sortedByDescending { it.postTime }
 

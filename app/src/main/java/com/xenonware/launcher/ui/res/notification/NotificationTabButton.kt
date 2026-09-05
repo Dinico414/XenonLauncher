@@ -49,6 +49,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -70,6 +71,7 @@ fun NotificationTabButton(
     app: AppInfo?,
     notificationIcon: Drawable? = null,
     notificationIconBitmap: ImageBitmap? = null,
+    overrideIcon: ImageVector? = null,
     notificationCount: Int,
     isSelected: Boolean,
     appColor: Color,
@@ -200,36 +202,47 @@ fun NotificationTabButton(
             horizontalArrangement = Arrangement.Center
         ) {
             val iconToDraw = notificationIcon ?: app?.icon
-            val stableKey = remember(iconKey, app?.packageName) {
-                iconKey ?: app?.packageName ?: "no_icon"
+            val stableKey = remember(iconKey, app?.packageName, overrideIcon) {
+                iconKey ?: app?.packageName ?: overrideIcon?.name ?: "no_icon"
             }
 
             Crossfade(targetState = stableKey, label = "tab_icon_fade") { currentKey ->
-                val iconBitmap = remember(currentKey, notificationIconBitmap, iconToDraw) {
-                    notificationIconBitmap ?: try {
-                        iconToDraw?.toBitmap(width = 40, height = 40)?.asImageBitmap()
-                    } catch (_: Exception) {
-                        null
-                    }
-                }
-                if (iconBitmap != null) {
-                    Image(
-                        bitmap = iconBitmap,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(20.dp)
-                            .scale(iconScale.value),
-                        colorFilter = ColorFilter.tint(iconColor)
-                    )
-                } else {
+                if (overrideIcon != null) {
                     Icon(
-                        imageVector = Icons.Rounded.Apps,
+                        imageVector = overrideIcon,
                         contentDescription = null,
                         modifier = Modifier
                             .size(20.dp)
                             .scale(iconScale.value),
                         tint = iconColor
                     )
+                } else {
+                    val iconBitmap = remember(currentKey, notificationIconBitmap, iconToDraw) {
+                        notificationIconBitmap ?: try {
+                            iconToDraw?.toBitmap(width = 40, height = 40)?.asImageBitmap()
+                        } catch (_: Exception) {
+                            null
+                        }
+                    }
+                    if (iconBitmap != null) {
+                        Image(
+                            bitmap = iconBitmap,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(20.dp)
+                                .scale(iconScale.value),
+                            colorFilter = ColorFilter.tint(iconColor)
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Rounded.Apps,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(20.dp)
+                                .scale(iconScale.value),
+                            tint = iconColor
+                        )
+                    }
                 }
             }
 
