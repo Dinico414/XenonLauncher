@@ -276,6 +276,8 @@
     <string name="experimental_move_web_search_description">Place web search results at the end of the list</string>
     <string name="hide_dock_scrolling">Hide dock when scrolling</string>
     <string name="hide_dock_scrolling_description">Hide the dock pill when the app drawer is scrolled down</string>
+    <string name="hide_dock_scrolling_only_small">Only on small devices or landscape</string>
+    <string name="hide_dock_scrolling_only_small_description">If enabled, the dock will only hide during scrolling on smaller screens or in landscape mode</string>
     <string name="hide_dock_widgets">Hide dock on widgets page</string>
     <string name="hide_dock_widgets_description">Hide the dock when viewing the widget page</string>
     <string name="hide_action_button">Hide Action Button</string>

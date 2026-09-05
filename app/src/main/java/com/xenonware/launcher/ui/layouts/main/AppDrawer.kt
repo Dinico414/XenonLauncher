@@ -148,6 +148,7 @@ import dev.chrisbanes.haze.materials.HazeMaterials
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.seconds
 import kotlin.math.max
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -174,7 +175,10 @@ fun AppDrawer(
     blurEnabled: Boolean = true,
     onSearchActiveChange: (Boolean) -> Unit = {},
     closeSearchTrigger: Int = 0,
-    showLabels: Boolean = true
+    showLabels: Boolean = true,
+    hideDockScrolling: Boolean = false,
+    onDockVisibilityChange: (Boolean) -> Unit = {},
+    moveWebSearch: Boolean = false
 ) {
     val dragDropState = LocalDragDropState.current
     val context = LocalContext.current
@@ -313,14 +317,23 @@ fun AppDrawer(
         viewModel.performSearch(searchQuery)
     }
 
-    val filteredResults = remember(searchResults, selectedSearchType, searchQuery) {
+    val filteredResults = remember(searchResults, selectedSearchType, searchQuery, moveWebSearch) {
         if (searchQuery.isBlank()) emptyList()
-        else searchResults.filter { result ->
-            when (selectedSearchType) {
-                SearchType.Apps -> result is SearchResult.App
-                SearchType.Contacts -> result is SearchResult.Contact
-                SearchType.Files -> result is SearchResult.File
-                SearchType.Web -> result is SearchResult.Web
+        else {
+            val baseFilter = searchResults.filter { result ->
+                when (selectedSearchType) {
+                    SearchType.Apps -> result is SearchResult.App
+                    SearchType.Contacts -> result is SearchResult.Contact
+                    SearchType.Files -> result is SearchResult.File
+                    SearchType.Web -> result is SearchResult.Web
+                }
+            }
+
+            if (selectedSearchType == SearchType.Apps && moveWebSearch) {
+                val webResults = searchResults.filterIsInstance<SearchResult.Web>()
+                baseFilter + webResults
+            } else {
+                baseFilter
             }
         }
     }
@@ -470,6 +483,60 @@ fun AppDrawer(
     val dismissThresholdPx = with(density) { 120.dp.toPx() }
     val flingDismissVelocity = 1200f
 
+    var lastScrollTime by remember { mutableStateOf(System.currentTimeMillis()) }
+    
+    // Observer scroll for dock hiding
+    val activeState = if (isGridLayout) gridState else listState
+    
+    val isScrolledToEnd by remember {
+        derivedStateOf {
+            val layoutInfo = activeState.layoutInfo
+            val totalItemsNumber = layoutInfo.totalItemsCount
+            if (totalItemsNumber == 0) return@derivedStateOf false
+            val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull() ?: return@derivedStateOf false
+            lastVisibleItem.index >= totalItemsNumber - 1
+        }
+    }
+
+    LaunchedEffect(activeState.isScrollInProgress, isScrolledToEnd) {
+        if (hideDockScrolling) {
+            if (activeState.isScrollInProgress) {
+                lastScrollTime = System.currentTimeMillis()
+            }
+            if (isScrolledToEnd) {
+                onDockVisibilityChange(true)
+            }
+        } else {
+            onDockVisibilityChange(true)
+        }
+    }
+
+    LaunchedEffect(hideDockScrolling, lastScrollTime) {
+        if (hideDockScrolling) {
+            delay(2.seconds)
+            if (System.currentTimeMillis() - lastScrollTime >= 2000) {
+                onDockVisibilityChange(true)
+            }
+        }
+    }
+
+    val dockScrollConnection = remember(hideDockScrolling) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (hideDockScrolling && source == NestedScrollSource.UserInput) {
+                    if (available.y < -5f) { // Scrolling down
+                        if (!isScrolledToEnd) {
+                            onDockVisibilityChange(false)
+                        }
+                    } else if (available.y > 5f) { // Scrolling up
+                        onDockVisibilityChange(true)
+                    }
+                }
+                return Offset.Zero
+            }
+        }
+    }
+
     val sheetDragConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
@@ -593,6 +660,7 @@ fun AppDrawer(
                             state = gridState,
                             modifier = Modifier
                                 .fillMaxSize()
+                                .nestedScroll(dockScrollConnection)
                                 .nestedScroll(sheetDragConnection)
                                 .then(if (blurEnabled) Modifier.hazeSource(hazeState) else Modifier)
                                 .clip(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)),
@@ -672,6 +740,7 @@ fun AppDrawer(
                             state = listState,
                             modifier = Modifier
                                 .fillMaxSize()
+                                .nestedScroll(dockScrollConnection)
                                 .nestedScroll(sheetDragConnection)
                                 .then(if (blurEnabled) Modifier.hazeSource(hazeState) else Modifier)
                                 .clip(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)),

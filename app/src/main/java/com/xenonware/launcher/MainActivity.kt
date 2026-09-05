@@ -21,8 +21,11 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -63,7 +66,9 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -235,6 +240,11 @@ class MainActivity : ComponentActivity() {
                 val blurSetting by viewModel.blurEnabled.collectAsState()
                 val showClockAtAGlance by viewModel.showClockAtAGlance.collectAsState()
                 val hideAtAGlance by viewModel.hideAtAGlance.collectAsState()
+                val hideDockScrolling by viewModel.hideDockScrolling.collectAsState()
+                val hideDockScrollingOnlySmall by viewModel.hideDockScrollingOnlySmall.collectAsState()
+                val hideDockWidgets by viewModel.hideDockWidgets.collectAsState()
+                val hideActionButton by viewModel.hideActionButton.collectAsState()
+                val moveWebSearch by viewModel.moveWebSearch.collectAsState()
                 val notificationIndicatorType by viewModel.notificationIndicatorType.collectAsState()
                 val notificationMessageType by viewModel.notificationMessageType.collectAsState()
 
@@ -276,6 +286,10 @@ class MainActivity : ComponentActivity() {
                     blurSetting = blurSetting,
                     showClockAtAGlance = showClockAtAGlance,
                     hideAtAGlance = hideAtAGlance,
+                    hideDockScrolling = hideDockScrolling,
+                    hideDockScrollingOnlySmall = hideDockScrollingOnlySmall,
+                    hideDockWidgets = hideDockWidgets,
+                    hideActionButton = hideActionButton,
                     notificationIndicatorType = notificationIndicatorType,
                     notificationMessageType = notificationMessageType,
                     appLabelsEnabled = appLabelsEnabled,
@@ -479,9 +493,16 @@ fun LauncherScreen(
     onOpenSettings: () -> Unit,
     onFabDoubleTap: () -> Unit = {},
     onFabLongPress: () -> Unit = {},
+    hideDockScrolling: Boolean = false,
+    hideDockScrollingOnlySmall: Boolean = false,
+    hideDockWidgets: Boolean = false,
+    hideActionButton: Boolean = false,
+    moveWebSearch: Boolean = false,
     showBootWelcome: Boolean = false,
     onBootWelcomeFinished: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val density = LocalDensity.current
     val hazeState = rememberHazeState()
     val scope = rememberCoroutineScope()
     
@@ -499,6 +520,7 @@ fun LauncherScreen(
 
     var isSearchActiveInDrawer by remember { mutableStateOf(false) }
     var closeSearchTrigger by remember { mutableIntStateOf(0) }
+    var isDockVisibleByScroll by remember { mutableStateOf(true) }
 
     // Non-zero only when a hardware keyboard is attached and a reply is open, so the
     // dock stays put in the normal soft-keyboard case.
@@ -643,16 +665,38 @@ fun LauncherScreen(
                         blurEnabled = blurSetting,
                         onSearchActiveChange = { isSearchActiveInDrawer = it },
                         closeSearchTrigger = closeSearchTrigger,
-                        showLabels = appLabelsEnabled
+                        showLabels = appLabelsEnabled,
+                        hideDockScrolling = hideDockScrolling,
+                        onDockVisibilityChange = { isDockVisibleByScroll = it },
+                        moveWebSearch = moveWebSearch
                     )
                 }
             }
 
             // DOCK LAYER
+            val configuration = LocalConfiguration.current
+            val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+            val isSmallDevice = configuration.screenWidthDp < 400
+            
+            val shouldAnimateDockOff = if (hideDockScrollingOnlySmall) {
+                isLandscape || isSmallDevice
+            } else {
+                true
+            }
+
+            val isOnWidgetPage = pagerState.currentPage == 2
+            val isDockHiddenByPage = hideDockWidgets && isOnWidgetPage
+
+            val dockYOffset by animateDpAsState(
+                targetValue = if (isDockVisibleByScroll && !isDockHiddenByPage || !isAppDrawerVisible && !isDockHiddenByPage || !shouldAnimateDockOff && !isDockHiddenByPage) 0.dp else 120.dp,
+                animationSpec = spring(stiffness = Spring.StiffnessLow),
+                label = "dockYOffset"
+            )
+
             DockPill(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .offset { IntOffset(0, -notificationShift.roundToInt()) },
+                    .offset { IntOffset(0, -notificationShift.roundToInt() + density.run { dockYOffset.roundToPx() }) },
                 apps = pinnedApps,
                 notifications = notifications,
                 badgeType = badgeType,
@@ -688,6 +732,7 @@ fun LauncherScreen(
                 hazeState = if (blurSetting) hazeState else null,
                 progress = batteryLevel,
                 isCharging = isCharging,
+                hideActionButton = hideActionButton,
                 dockSafeDrawIme = dockSafeDrawIme && !isReplyingToNotification,
                 dockSafeDrawImePortraitOnly = dockSafeDrawImePortraitOnly,
                 onUnpinApp = { viewModel.unpinApp(it) },

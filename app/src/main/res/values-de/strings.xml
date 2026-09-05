@@ -274,6 +274,8 @@
     <string name="experimental_move_web_search_description">Platziert Websuchergebnisse am Ende der Liste</string>
     <string name="hide_dock_scrolling">Dock beim Scrollen ausblenden</string>
     <string name="hide_dock_scrolling_description">Blendet das Dock aus, wenn der App-Drawer nach unten gescrollt wird</string>
+    <string name="hide_dock_scrolling_only_small">Nur auf kleinen Geräten oder im Querformat</string>
+    <string name="hide_dock_scrolling_only_small_description">Wenn aktiviert, wird das Dock nur auf kleineren Bildschirmen oder im Querformat beim Scrollen ausgeblendet</string>
     <string name="hide_dock_widgets">Dock auf der Widget-Seite ausblenden</string>
     <string name="hide_dock_widgets_description">Blendet das Dock aus, wenn die Widget-Seite angezeigt wird</string>
     <string name="hide_action_button">Aktions-Button ausblenden</string>

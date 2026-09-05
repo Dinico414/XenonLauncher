@@ -178,6 +178,23 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             }
             "show_clock_at_a_glance" -> _showClockAtAGlance.value = prefManager.showClockAtAGlance
             "hide_at_a_glance" -> _hideAtAGlance.value = prefManager.hideAtAGlance
+            "hide_dock_scrolling" -> _hideDockScrolling.value = prefManager.hideDockScrolling
+            "hide_dock_scrolling_only_small" -> _hideDockScrollingOnlySmall.value = prefManager.hideDockScrollingOnlySmall
+            "hide_dock_widgets" -> _hideDockWidgets.value = prefManager.hideDockWidgets
+            "hide_action_button" -> _hideActionButton.value = prefManager.hideActionButton
+            "move_web_search" -> _moveWebSearch.value = prefManager.moveWebSearch
+            "show_mute_notifications" -> {
+                _showMuteNotifications.value = prefManager.showMuteNotifications
+                NotificationManager.showMuteNotifications = prefManager.showMuteNotifications
+            }
+            "show_permanent_notifications" -> {
+                _showPermanentNotifications.value = prefManager.showPermanentNotifications
+                NotificationManager.showPermanentNotifications = prefManager.showPermanentNotifications
+            }
+            "disable_grouping" -> {
+                _disableGrouping.value = prefManager.disableGrouping
+                NotificationManager.disableGrouping = prefManager.disableGrouping
+            }
             "notification_indicator_type" -> _notificationIndicatorType.value = prefManager.notificationIndicatorType
             "notification_message_type" -> _notificationMessageType.value = prefManager.notificationMessageType
         }
@@ -286,6 +303,30 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private val _hideAtAGlance = MutableStateFlow(prefManager.hideAtAGlance)
     val hideAtAGlance: StateFlow<Boolean> = _hideAtAGlance
+
+    private val _hideDockScrolling = MutableStateFlow(prefManager.hideDockScrolling)
+    val hideDockScrolling: StateFlow<Boolean> = _hideDockScrolling
+
+    private val _hideDockScrollingOnlySmall = MutableStateFlow(prefManager.hideDockScrollingOnlySmall)
+    val hideDockScrollingOnlySmall: StateFlow<Boolean> = _hideDockScrollingOnlySmall
+
+    private val _hideDockWidgets = MutableStateFlow(prefManager.hideDockWidgets)
+    val hideDockWidgets: StateFlow<Boolean> = _hideDockWidgets
+
+    private val _hideActionButton = MutableStateFlow(prefManager.hideActionButton)
+    val hideActionButton: StateFlow<Boolean> = _hideActionButton
+
+    private val _moveWebSearch = MutableStateFlow(prefManager.moveWebSearch)
+    val moveWebSearch: StateFlow<Boolean> = _moveWebSearch
+
+    private val _showMuteNotifications = MutableStateFlow(prefManager.showMuteNotifications)
+    val showMuteNotifications: StateFlow<Boolean> = _showMuteNotifications
+
+    private val _showPermanentNotifications = MutableStateFlow(prefManager.showPermanentNotifications)
+    val showPermanentNotifications: StateFlow<Boolean> = _showPermanentNotifications
+
+    private val _disableGrouping = MutableStateFlow(prefManager.disableGrouping)
+    val disableGrouping: StateFlow<Boolean> = _disableGrouping
 
     private val _notificationIndicatorType = MutableStateFlow(prefManager.notificationIndicatorType)
     val notificationIndicatorType: StateFlow<Int> = _notificationIndicatorType
@@ -550,6 +591,12 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     init {
         prefManager.registerListener(preferenceListener)
+        
+        // Initialize NotificationManager with persistent settings
+        NotificationManager.showMuteNotifications = prefManager.showMuteNotifications
+        NotificationManager.showPermanentNotifications = prefManager.showPermanentNotifications
+        NotificationManager.disableGrouping = prefManager.disableGrouping
+
         // Delay everything except basic time updates if booting
         startTimeUpdates()
         

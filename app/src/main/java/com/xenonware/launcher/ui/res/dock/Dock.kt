@@ -177,6 +177,7 @@ fun DockPill(
     isCharging: Boolean = false,
     dockSafeDrawIme: Boolean = false,
     dockSafeDrawImePortraitOnly: Boolean = false,
+    hideActionButton: Boolean = false,
     onUnpinApp: (String) -> Unit = {},
     onPinApp: (String, Int) -> Unit = { _, _ -> },
     onReorderApp: (Int, Int) -> Unit = { _, _ -> },
@@ -311,16 +312,18 @@ fun DockPill(
             }
         }
 
-        Spacer(Modifier.width(12.dp))
+        if (!hideActionButton) {
+            Spacer(Modifier.width(12.dp))
 
-        DockFab(
-            isAppDrawerVisible = isAppDrawerVisible,
-            alpha = fabAlpha,
-            hazeState = hazeState,
-            onClick = onFabClick,
-            onDoubleTap = onFabDoubleTap,
-            onLongPress = onFabLongPress
-        )
+            DockFab(
+                isAppDrawerVisible = isAppDrawerVisible,
+                alpha = fabAlpha,
+                hazeState = hazeState,
+                onClick = onFabClick,
+                onDoubleTap = onFabDoubleTap,
+                onLongPress = onFabLongPress
+            )
+        }
     }
 }
 

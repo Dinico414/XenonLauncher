@@ -163,6 +163,38 @@ class SharedPreferenceManager(context: Context) {
         get() = prefs.getBoolean("hide_at_a_glance", false)
         set(value) = prefs.edit { putBoolean("hide_at_a_glance", value) }
 
+    var hideDockScrolling: Boolean
+        get() = prefs.getBoolean("hide_dock_scrolling", false)
+        set(value) = prefs.edit { putBoolean("hide_dock_scrolling", value) }
+
+    var hideDockScrollingOnlySmall: Boolean
+        get() = prefs.getBoolean("hide_dock_scrolling_only_small", false)
+        set(value) = prefs.edit { putBoolean("hide_dock_scrolling_only_small", value) }
+
+    var hideDockWidgets: Boolean
+        get() = prefs.getBoolean("hide_dock_widgets", false)
+        set(value) = prefs.edit { putBoolean("hide_dock_widgets", value) }
+
+    var hideActionButton: Boolean
+        get() = prefs.getBoolean("hide_action_button", false)
+        set(value) = prefs.edit { putBoolean("hide_action_button", value) }
+
+    var moveWebSearch: Boolean
+        get() = prefs.getBoolean("move_web_search", false)
+        set(value) = prefs.edit { putBoolean("move_web_search", value) }
+
+    var showMuteNotifications: Boolean
+        get() = prefs.getBoolean("show_mute_notifications", false)
+        set(value) = prefs.edit { putBoolean("show_mute_notifications", value) }
+
+    var showPermanentNotifications: Boolean
+        get() = prefs.getBoolean("show_permanent_notifications", false)
+        set(value) = prefs.edit { putBoolean("show_permanent_notifications", value) }
+
+    var disableGrouping: Boolean
+        get() = prefs.getBoolean("disable_grouping", false)
+        set(value) = prefs.edit { putBoolean("disable_grouping", value) }
+
     var notificationIndicatorType: Int
         get() = prefs.getInt("notification_indicator_type", 2) // 0: None, 1: Checkmark, 2: Trophy
         set(value) = prefs.edit { putInt("notification_indicator_type", value) }

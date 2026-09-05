@@ -39,6 +39,8 @@ import androidx.compose.material.icons.rounded.TravelExplore
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material.icons.rounded.WatchLater
 import androidx.compose.material.icons.rounded.Widgets
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -63,6 +65,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.xenon.mylibrary.res.SettingsSwitchTile
+import com.xenon.mylibrary.res.SettingsSwitchTileContext
 import com.xenon.mylibrary.res.SettingsTile
 import com.xenon.mylibrary.res.SettingsTileContext
 import com.xenon.mylibrary.res.XenonSingleChoiceButtonGroup
@@ -123,14 +126,14 @@ fun TweaksItems(
     val notificationIndicatorType by viewModel.notificationIndicatorType.collectAsState()
     val notificationMessageType by viewModel.notificationMessageType.collectAsState()
     val hideAtAGlance by viewModel.hideAtAGlance.collectAsState()
-    
-    var moveWebSearch by remember { mutableStateOf(false) }
-    var hideDockScrolling by remember { mutableStateOf(false) }
-    var hideDockWidgets by remember { mutableStateOf(false) }
-    var hideActionButton by remember { mutableStateOf(false) }
-    var showMuteNotifications by remember { mutableStateOf(false) }
-    var showPermanentNotifications by remember { mutableStateOf(false) }
-    var disableGrouping by remember { mutableStateOf(false) }
+    val hideDockScrolling by viewModel.hideDockScrolling.collectAsState()
+    val hideDockScrollingOnlySmall by viewModel.hideDockScrollingOnlySmall.collectAsState()
+    val hideDockWidgets by viewModel.hideDockWidgets.collectAsState()
+    val hideActionButton by viewModel.hideActionButton.collectAsState()
+    val moveWebSearch by viewModel.moveWebSearch.collectAsState()
+    val showMuteNotifications by viewModel.showMuteNotifications.collectAsState()
+    val showPermanentNotifications by viewModel.showPermanentNotifications.collectAsState()
+    val disableGrouping by viewModel.disableGrouping.collectAsState()
 
     Column {
         // --- At a Glance Tweaks ---
@@ -319,7 +322,7 @@ fun TweaksItems(
             title = stringResource(R.string.experimental_move_web_search),
             subtitle = stringResource(R.string.experimental_move_web_search_description),
             checked = moveWebSearch,
-            onCheckedChange = { moveWebSearch = it },
+            onCheckedChange = { viewModel.setMoveWebSearch(it) },
             icon = { Icon(Icons.Rounded.TravelExplore, null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: standaloneShape,
             backgroundColor = tileBackgroundColor,
@@ -331,11 +334,11 @@ fun TweaksItems(
 
         // --- Dock Tweaks ---
         Column {
-            SettingsSwitchTile(
+            SettingsSwitchTileContext(
                 title = stringResource(R.string.hide_dock_scrolling),
                 subtitle = stringResource(R.string.hide_dock_scrolling_description),
                 checked = hideDockScrolling,
-                onCheckedChange = { hideDockScrolling = it },
+                onCheckedChange = { viewModel.setHideDockScrolling(it) },
                 icon = {
                     Icon(
                         Icons.Rounded.KeyboardDoubleArrowDown,
@@ -346,7 +349,46 @@ fun TweaksItems(
                 shape = tileShapeOverride ?: topShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
-                subtitleColor = tileSubtitleColor
+                subtitleColor = tileSubtitleColor,
+                showContext = hideDockScrolling && (layoutType == LayoutType.SMALL || layoutType == LayoutType.COMPACT),
+                contextContent = {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = if (LocalIsDarkTheme.current) 0.5f else 1f))
+                            .clickable { viewModel.setHideDockScrollingOnlySmall(!hideDockScrollingOnlySmall) }
+                            .padding(12.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    stringResource(R.string.hide_dock_scrolling_only_small),
+                                    color = tileContentColor,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    stringResource(R.string.hide_dock_scrolling_only_small_description),
+                                    color = tileSubtitleColor,
+                                    fontSize = 14.sp
+                                )
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Checkbox(
+                                checked = hideDockScrollingOnlySmall,
+                                onCheckedChange = { viewModel.setHideDockScrollingOnlySmall(it) },
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = MaterialTheme.colorScheme.primary,
+                                    uncheckedColor = tileSubtitleColor
+                                )
+                            )
+                        }
+                    }
+                }
             )
 
             Spacer(Modifier.height(actualInnerGroupSpacing))
@@ -355,7 +397,7 @@ fun TweaksItems(
                 title = stringResource(R.string.hide_dock_widgets),
                 subtitle = stringResource(R.string.hide_dock_widgets_description),
                 checked = hideDockWidgets,
-                onCheckedChange = { hideDockWidgets = it },
+                onCheckedChange = { viewModel.setHideDockWidgets(it) },
                 icon = { Icon(Icons.Rounded.Widgets, null, tint = tileSubtitleColor) },
                 shape = tileShapeOverride ?: middleShape,
                 backgroundColor = tileBackgroundColor,
@@ -369,7 +411,7 @@ fun TweaksItems(
                 title = stringResource(R.string.hide_action_button),
                 subtitle = stringResource(R.string.hide_action_button_description),
                 checked = hideActionButton,
-                onCheckedChange = { hideActionButton = it },
+                onCheckedChange = { viewModel.setHideActionButton(it) },
                 icon = { Icon(Icons.Rounded.AdsClick, null, tint = tileSubtitleColor) },
                 shape = tileShapeOverride ?: bottomShape,
                 backgroundColor = tileBackgroundColor,
@@ -386,7 +428,7 @@ fun TweaksItems(
                 title = stringResource(R.string.show_mute_notifications),
                 subtitle = stringResource(R.string.show_mute_notifications_description),
                 checked = showMuteNotifications,
-                onCheckedChange = { showMuteNotifications = it },
+                onCheckedChange = { viewModel.setShowMuteNotifications(it) },
                 icon = {
                     Icon(
                         Icons.Rounded.NotificationsPaused,
@@ -406,7 +448,7 @@ fun TweaksItems(
                 title = stringResource(R.string.show_permanent_notifications),
                 subtitle = stringResource(R.string.show_permanent_notifications_description),
                 checked = showPermanentNotifications,
-                onCheckedChange = { showPermanentNotifications = it },
+                onCheckedChange = { viewModel.setShowPermanentNotifications(it) },
                 icon = { Icon(Icons.Rounded.PushPin, null, tint = tileSubtitleColor) },
                 shape = tileShapeOverride ?: middleShape,
                 backgroundColor = tileBackgroundColor,
@@ -420,7 +462,7 @@ fun TweaksItems(
                 title = stringResource(R.string.experimental_disable_grouping),
                 subtitle = stringResource(R.string.experimental_disable_grouping_description),
                 checked = disableGrouping,
-                onCheckedChange = { disableGrouping = it },
+                onCheckedChange = { viewModel.setDisableGrouping(it) },
                 icon = { Icon(Icons.Rounded.TableRows, null, tint = tileSubtitleColor) },
                 shape = tileShapeOverride ?: bottomShape,
                 backgroundColor = tileBackgroundColor,

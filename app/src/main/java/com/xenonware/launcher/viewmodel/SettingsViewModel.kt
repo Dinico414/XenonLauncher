@@ -205,6 +205,30 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _hideAtAGlance = MutableStateFlow(sharedPreferenceManager.hideAtAGlance)
     val hideAtAGlance: StateFlow<Boolean> = _hideAtAGlance.asStateFlow()
 
+    private val _hideDockScrolling = MutableStateFlow(sharedPreferenceManager.hideDockScrolling)
+    val hideDockScrolling: StateFlow<Boolean> = _hideDockScrolling.asStateFlow()
+
+    private val _hideDockScrollingOnlySmall = MutableStateFlow(sharedPreferenceManager.hideDockScrollingOnlySmall)
+    val hideDockScrollingOnlySmall: StateFlow<Boolean> = _hideDockScrollingOnlySmall.asStateFlow()
+
+    private val _hideDockWidgets = MutableStateFlow(sharedPreferenceManager.hideDockWidgets)
+    val hideDockWidgets: StateFlow<Boolean> = _hideDockWidgets.asStateFlow()
+
+    private val _hideActionButton = MutableStateFlow(sharedPreferenceManager.hideActionButton)
+    val hideActionButton: StateFlow<Boolean> = _hideActionButton.asStateFlow()
+
+    private val _moveWebSearch = MutableStateFlow(sharedPreferenceManager.moveWebSearch)
+    val moveWebSearch: StateFlow<Boolean> = _moveWebSearch.asStateFlow()
+
+    private val _showMuteNotifications = MutableStateFlow(sharedPreferenceManager.showMuteNotifications)
+    val showMuteNotifications: StateFlow<Boolean> = _showMuteNotifications.asStateFlow()
+
+    private val _showPermanentNotifications = MutableStateFlow(sharedPreferenceManager.showPermanentNotifications)
+    val showPermanentNotifications: StateFlow<Boolean> = _showPermanentNotifications.asStateFlow()
+
+    private val _disableGrouping = MutableStateFlow(sharedPreferenceManager.disableGrouping)
+    val disableGrouping: StateFlow<Boolean> = _disableGrouping.asStateFlow()
+
     private val _notificationIndicatorType = MutableStateFlow(sharedPreferenceManager.notificationIndicatorType)
     val notificationIndicatorType: StateFlow<Int> = _notificationIndicatorType.asStateFlow()
 
@@ -428,6 +452,46 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setHideAtAGlance(enabled: Boolean) {
         sharedPreferenceManager.hideAtAGlance = enabled
         _hideAtAGlance.value = enabled
+    }
+
+    fun setHideDockScrolling(enabled: Boolean) {
+        sharedPreferenceManager.hideDockScrolling = enabled
+        _hideDockScrolling.value = enabled
+    }
+
+    fun setHideDockScrollingOnlySmall(enabled: Boolean) {
+        sharedPreferenceManager.hideDockScrollingOnlySmall = enabled
+        _hideDockScrollingOnlySmall.value = enabled
+    }
+
+    fun setHideDockWidgets(enabled: Boolean) {
+        sharedPreferenceManager.hideDockWidgets = enabled
+        _hideDockWidgets.value = enabled
+    }
+
+    fun setHideActionButton(enabled: Boolean) {
+        sharedPreferenceManager.hideActionButton = enabled
+        _hideActionButton.value = enabled
+    }
+
+    fun setMoveWebSearch(enabled: Boolean) {
+        sharedPreferenceManager.moveWebSearch = enabled
+        _moveWebSearch.value = enabled
+    }
+
+    fun setShowMuteNotifications(enabled: Boolean) {
+        sharedPreferenceManager.showMuteNotifications = enabled
+        _showMuteNotifications.value = enabled
+    }
+
+    fun setShowPermanentNotifications(enabled: Boolean) {
+        sharedPreferenceManager.showPermanentNotifications = enabled
+        _showPermanentNotifications.value = enabled
+    }
+
+    fun setDisableGrouping(enabled: Boolean) {
+        sharedPreferenceManager.disableGrouping = enabled
+        _disableGrouping.value = enabled
     }
 
     fun setNotificationIndicatorType(type: Int) {

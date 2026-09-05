@@ -57,6 +57,9 @@ object NotificationManager {
     val notifications: StateFlow<List<LauncherNotification>> = _notifications
 
     var visibleApps: Set<String>? = null
+    var showMuteNotifications: Boolean = false
+    var showPermanentNotifications: Boolean = false
+    var disableGrouping: Boolean = false
 
     fun removeNotificationOptimistically(key: String) {
         val current = _notifications.value
@@ -128,7 +131,7 @@ object NotificationManager {
 
                 // 1. Core system filters
                 if (sbn.packageName == ownPackageName) return@filter drop("own package")
-                if (sbn.isOngoing && !isTimeRelated) return@filter drop("ongoing && !timeRelated")
+                if (sbn.isOngoing && !isTimeRelated && !showPermanentNotifications) return@filter drop("ongoing && !timeRelated")
 
                 // 2. Media filter
                 val isTransport = notification.category == Notification.CATEGORY_TRANSPORT
@@ -146,7 +149,7 @@ object NotificationManager {
                 // 3. Ranking / importance
                 val ranking = Ranking()
                 if (rankingMap?.getRanking(sbn.key, ranking) == true) {
-                    if (ranking.importance <= 1 && !isTimeRelated) {
+                    if (ranking.importance <= 1 && !isTimeRelated && !showMuteNotifications) {
                         return@filter drop("importance=${ranking.importance}")
                     }
                     if (ranking.isSuspended) return@filter drop("suspended")
@@ -166,13 +169,17 @@ object NotificationManager {
             }
 
             // 5. Grouping: prefer children over the group summary, per group key.
-            val groupedByGroup = filtered.groupBy { it.groupKey ?: (it.packageName + it.id) }
-            val finalNotifications = groupedByGroup.flatMap { (_, sbnList) ->
-                val summaries =
-                    sbnList.filter { (it.notification.flags and Notification.FLAG_GROUP_SUMMARY) != 0 }
-                val children =
-                    sbnList.filter { (it.notification.flags and Notification.FLAG_GROUP_SUMMARY) == 0 }
-                children.ifEmpty { summaries }
+            val finalNotifications = if (disableGrouping) {
+                filtered
+            } else {
+                val groupedByGroup = filtered.groupBy { it.groupKey ?: (it.packageName + it.id) }
+                groupedByGroup.flatMap { (_, sbnList) ->
+                    val summaries =
+                        sbnList.filter { (it.notification.flags and Notification.FLAG_GROUP_SUMMARY) != 0 }
+                    val children =
+                        sbnList.filter { (it.notification.flags and Notification.FLAG_GROUP_SUMMARY) == 0 }
+                    children.ifEmpty { summaries }
+                }
             }
 
             _notifications.value = finalNotifications.map { sbn ->
