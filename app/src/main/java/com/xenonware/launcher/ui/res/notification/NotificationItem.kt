@@ -136,7 +136,8 @@ fun NotificationItem(
     onOffsetChanged: (Float) -> Unit = {},
     onSwipeActiveChange: (Boolean) -> Unit = {},
     onOpen: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    forceRounded: Boolean = false
 ) {
     val haptic = LocalHapticFeedback.current
     val coroutineScope = rememberCoroutineScope()
@@ -235,19 +236,19 @@ fun NotificationItem(
     }
 
     val topStartRadius by animateDpAsState(
-        targetValue = if (isFirst) largeRadius else lerp(smallRadius, largeRadius, max(swipeProgress, (currentOffsetAbove / dismissThreshold).coerceIn(0f, 1f))),
+        targetValue = if (forceRounded || isFirst) largeRadius else lerp(smallRadius, largeRadius, max(swipeProgress, (currentOffsetAbove / dismissThreshold).coerceIn(0f, 1f))),
         label = "topStartRadius"
     )
     val topEndRadius by animateDpAsState(
-        targetValue = if (isFirst) largeRadius else lerp(smallRadius, largeRadius, max(swipeProgress, (-currentOffsetAbove / dismissThreshold).coerceIn(0f, 1f))),
+        targetValue = if (forceRounded || isFirst) largeRadius else lerp(smallRadius, largeRadius, max(swipeProgress, (-currentOffsetAbove / dismissThreshold).coerceIn(0f, 1f))),
         label = "topEndRadius"
     )
     val bottomStartRadius by animateDpAsState(
-        targetValue = if (isLast) largeRadius else lerp(smallRadius, largeRadius, max(swipeProgress, (currentOffsetBelow / dismissThreshold).coerceIn(0f, 1f))),
+        targetValue = if (forceRounded || isLast) largeRadius else lerp(smallRadius, largeRadius, max(swipeProgress, (currentOffsetBelow / dismissThreshold).coerceIn(0f, 1f))),
         label = "bottomStartRadius"
     )
     val bottomEndRadius by animateDpAsState(
-        targetValue = if (isLast) largeRadius else lerp(smallRadius, largeRadius, max(swipeProgress, (-currentOffsetBelow / dismissThreshold).coerceIn(0f, 1f))),
+        targetValue = if (forceRounded || isLast) largeRadius else lerp(smallRadius, largeRadius, max(swipeProgress, (-currentOffsetBelow / dismissThreshold).coerceIn(0f, 1f))),
         label = "bottomEndRadius"
     )
     val mainShape = RoundedCornerShape(

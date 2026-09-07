@@ -473,6 +473,13 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         XenonNotificationService.dismissAllNotifications()
     }
 
+    fun dismissNotifications(keys: List<String>, optimistic: Boolean = true) {
+        if (optimistic) {
+            NotificationManager.removeNotificationsOptimistically(keys)
+        }
+        XenonNotificationService.dismissNotifications(keys)
+    }
+
     fun dismissNotificationsByPackage(packageName: String) {
         NotificationManager.removeNotificationsByPackageOptimistically(packageName)
         XenonNotificationService.dismissNotificationsByPackage(packageName)
@@ -1547,9 +1554,12 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         val start = localStart(tz)
         val end = localEnd(tz)
         if (start > bounds.endOfTomorrow) return false
-        // Timed events used to be compared against `now`, which silently dropped every
-        // event that had already finished today while all-day events survived.
-        return end > bounds.startOfToday
+        
+        return if (isAllDay) {
+            end > bounds.startOfToday
+        } else {
+            end > bounds.now
+        }
     }
 
     private fun rankOf(event: CalendarEvent, bounds: DayBounds, tz: TimeZone): Int {

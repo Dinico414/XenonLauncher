@@ -32,6 +32,16 @@ class XenonNotificationService : NotificationListenerService() {
             }
         }
 
+        fun dismissNotifications(keys: List<String>) {
+            keys.forEach { key ->
+                try {
+                    instance?.cancelNotification(key)
+                } catch (e: Throwable) {
+                    Log.e(TAG, "Error canceling notification: $key", e)
+                }
+            }
+        }
+
         fun dismissNotificationsByPackage(packageName: String) {
             try {
                 val active = instance?.safeActiveNotifications ?: return

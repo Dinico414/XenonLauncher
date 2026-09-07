@@ -81,6 +81,15 @@ object NotificationManager {
         }
     }
 
+    fun removeNotificationsOptimistically(keys: List<String>) {
+        val current = _notifications.value
+        val updated = current.filter { it.key !in keys }
+        if (updated.size != current.size) {
+            _notifications.value = updated
+            _notificationCount.value = updated.size
+        }
+    }
+
     fun removeAllNotificationsOptimistically() {
         _notifications.value = emptyList()
         _notificationCount.value = 0

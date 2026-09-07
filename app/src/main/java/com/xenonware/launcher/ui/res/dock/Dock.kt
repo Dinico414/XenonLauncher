@@ -358,7 +358,12 @@ private fun DockFab(
     onLongPress: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val fabShape = CircleShape
+    val cornerRadius by animateDpAsState(
+        targetValue = if (isAppDrawerVisible) 16.dp else (DockFabSize / 2),
+        label = "fabCornerRadius",
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+    )
+    val fabShape = RoundedCornerShape(cornerRadius)
 
     Surface(
         shape = fabShape,

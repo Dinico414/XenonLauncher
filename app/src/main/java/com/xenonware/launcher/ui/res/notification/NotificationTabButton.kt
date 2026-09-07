@@ -172,16 +172,16 @@ fun NotificationTabButton(
                         )
                         if (isOverDelete(currentRect)) {
                             onDismiss()
-                        } else {
-                            scope.launch {
-                                dragOffset.animateTo(
-                                    Offset.Zero,
-                                    spring(
-                                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                                        stiffness = Spring.StiffnessLow
-                                    )
+                        }
+                        
+                        scope.launch {
+                            dragOffset.animateTo(
+                                Offset.Zero,
+                                spring(
+                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                    stiffness = Spring.StiffnessLow
                                 )
-                            }
+                            )
                         }
                     },
                     onDragCancel = {

@@ -214,7 +214,7 @@ fun NotificationPage(
 
     val mutedNotifications = remember(notifications, showMuteNotifications) {
         if (showMuteNotifications) {
-            notifications.filter { it.isMuted }
+            notifications.filter { it.isMuted && !it.isOngoing }
         } else {
             emptyList()
         }
@@ -625,7 +625,8 @@ fun NotificationPage(
                                                     try { notification.contentIntent?.send() } catch (_: Exception) {}
                                                 }
                                             },
-                                            onDismiss = { onDismissNotification(notification.key) }
+                                            onDismiss = { onDismissNotification(notification.key) },
+                                            forceRounded = true
                                         )
                                     }
                                 }
@@ -693,7 +694,8 @@ fun NotificationPage(
                                                     try { notification.contentIntent?.send() } catch (_: Exception) {}
                                                 }
                                             },
-                                            onDismiss = { onDismissNotification(notification.key) }
+                                            onDismiss = { onDismissNotification(notification.key) },
+                                            forceRounded = true
                                         )
                                     }
                                 }
@@ -1004,7 +1006,8 @@ fun NotificationPage(
                                                     try { notification.contentIntent?.send() } catch (_: Exception) {}
                                                 }
                                             },
-                                            onDismiss = { onDismissNotification(notification.key) }
+                                            onDismiss = { onDismissNotification(notification.key) },
+                                            forceRounded = true
                                         )
                                     }
                                 }
@@ -1072,7 +1075,8 @@ fun NotificationPage(
                                                     try { notification.contentIntent?.send() } catch (_: Exception) {}
                                                 }
                                             },
-                                            onDismiss = { onDismissNotification(notification.key) }
+                                            onDismiss = { onDismissNotification(notification.key) },
+                                            forceRounded = true
                                         )
                                     }
                                 }
@@ -1861,8 +1865,8 @@ fun NotificationTabs(
                                 onClick = { onPackageSelected(if (isSelected) null else pkg) },
                                 onDismiss = { 
                                     when {
-                                        isMutedTab -> mutedNotifications.forEach { viewModel.dismissNotification(it.key) }
-                                        isPermanentTab -> permanentNotifications.forEach { viewModel.dismissNotification(it.key) }
+                                        isMutedTab -> viewModel.dismissNotifications(mutedNotifications.map { it.key })
+                                        isPermanentTab -> viewModel.dismissNotifications(permanentNotifications.map { it.key }, optimistic = false)
                                         else -> viewModel.dismissNotificationsByPackage(pkg) 
                                     }
                                 },
