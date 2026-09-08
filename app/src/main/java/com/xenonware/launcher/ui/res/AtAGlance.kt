@@ -29,6 +29,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.xenon.mylibrary.theme.QuicksandTitleVariable
 import com.xenonware.launcher.R
 import com.xenonware.launcher.ui.res.dock.StatusCounters
 import kotlinx.coroutines.delay
@@ -109,6 +110,7 @@ fun AtAGlance(
                 maxLines = 1,
                 fontSize = 16.sp,
                 color = contentColor,
+                fontFamily = QuicksandTitleVariable,
                 modifier = Modifier
                     .clip(RoundedCornerShape(100.dp))
                     .clickable(
@@ -126,6 +128,7 @@ fun AtAGlance(
                 maxLines = 1,
                 fontSize = 10.sp,
                 color = contentColor.copy(alpha = 0.7f),
+                fontFamily = QuicksandTitleVariable,
                 modifier = Modifier
                     .clip(RoundedCornerShape(100.dp))
                     .clickable(
@@ -177,7 +180,7 @@ fun AtAGlance(
                 )
             }
             Spacer(Modifier.width(4.dp))
-            Text(temperature.replace("+", ""), color = contentColor, maxLines = 1, fontSize = 14.sp)
+            Text(temperature.replace("+", ""), color = contentColor, maxLines = 1, fontSize = 14.sp, fontFamily = QuicksandTitleVariable)
         }
     }
 }

@@ -962,7 +962,9 @@ fun AppDrawer(
                                         Column {
                                             Text(
                                                 stringResource(R.string.search_history),
-                                                style = typography.labelMedium,
+                                                style = typography.labelMedium.copy(
+                                                    fontFamily = QuicksandTitleVariable
+                                                ),
                                                 color = colorScheme.onSurface.copy(alpha = 0.8f),
                                                 modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
                                             )
@@ -1092,7 +1094,9 @@ fun AppDrawer(
                                 }
                                 .graphicsLayer(clip = false)
                         ) {
-                            CompositionLocalProvider(LocalTextStyle provides typography.labelMedium) {
+                            CompositionLocalProvider(
+                                LocalTextStyle provides typography.labelMedium.copy(fontFamily = QuicksandTitleVariable)
+                            ) {
                                 XenonSingleChoiceButtonGroup(
                                     options = SearchType.entries,
                                     selectedOption = selectedSearchType,

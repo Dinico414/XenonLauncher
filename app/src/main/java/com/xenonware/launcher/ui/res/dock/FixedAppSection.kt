@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.toSize
 import androidx.core.graphics.drawable.toBitmap
+import com.xenon.mylibrary.theme.QuicksandTitleVariable
 import com.xenonware.launcher.R
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.notification.LauncherNotification
@@ -429,6 +430,7 @@ fun FixedAppSection(
                         stringResource(R.string.drag_app_to_pin),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
+                        fontFamily = QuicksandTitleVariable,
                         color = LocalContentColor.current.copy(alpha = 0.5f)
                     )
                 }

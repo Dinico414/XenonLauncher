@@ -288,9 +288,9 @@
     <string name="hide_dock_only_landscape_description">Only hide the dock on this page when the device is in landscape orientation</string>
     <string name="hide_action_button">Hide Action Button</string>
     <string name="hide_action_button_description">Disable the FAB and its actions</string>
-    <string name="show_mute_notifications">Show Mute Notifications</string>
+    <string name="show_mute_notifications">Show Mute Notifications\n(Experimental)</string>
     <string name="show_mute_notifications_description">Include muted/silent notifications in the list</string>
-    <string name="show_permanent_notifications">Show Permanent Notifications</string>
+    <string name="show_permanent_notifications">Show Permanent Notifications\n(Experimental)</string>
     <string name="show_permanent_notifications_description">Display ongoing/permanent system notifications</string>
     <string name="experimental_disable_grouping">Disable Grouping\n(Experimental)</string>
     <string name="experimental_disable_grouping_description">Prevent notifications from being grouped by app</string>

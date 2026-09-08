@@ -1,6 +1,14 @@
 package com.xenonware.launcher.ui.pages
 
+import android.content.res.Configuration
+import android.graphics.Canvas
 import androidx.compose.animation.core.EaseInOut
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Arrangement
@@ -48,7 +56,10 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -70,17 +81,23 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.createBitmap
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.xenon.mylibrary.theme.QuicksandTitleVariable
 import com.xenonware.launcher.R
 import com.xenonware.launcher.media.MediaAction
 import com.xenonware.launcher.media.MediaState
@@ -89,7 +106,9 @@ import com.xenonware.launcher.util.blockHorizontalPagerSwipe
 import com.xenonware.launcher.util.isSmallScreenDevice
 import com.xenonware.launcher.util.shouldDisableLandscapeLayout
 import com.xenonware.launcher.viewmodel.LauncherViewModel
+import kotlinx.coroutines.delay
 import java.util.Locale
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun MediaPage(
@@ -108,8 +127,9 @@ fun MediaPage(
     val context = LocalContext.current
     val pm = remember { context.packageManager }
     val configuration = LocalConfiguration.current
+    val density = LocalDensity.current
     val isLandscape =
-        configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val disableLandscape = shouldDisableLandscapeLayout(context)
     val useLandscapeLayout = isLandscape && !disableLandscape
 
@@ -139,7 +159,7 @@ fun MediaPage(
         statusBarHeight
     }
     val safeDrawingPadding = WindowInsets.safeDrawing.asPaddingValues()
-    val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
+    val layoutDirection = LocalLayoutDirection.current
     val startPadding =
         safeDrawingPadding.calculateStartPadding(layoutDirection).coerceAtLeast(16.dp)
     val endPadding = safeDrawingPadding.calculateEndPadding(layoutDirection).coerceAtLeast(16.dp)
@@ -180,8 +200,6 @@ fun MediaPage(
     val bgProgress = 1f
     
     // Progressive corner radius: 40.dp to 0.dp after 75% swipe
-    // progress is 1.0 when on MediaPage, decreases as we swipe away (0.0 when on NotificationPage)
-    // We want 40.dp at progress 0.75 and 0.dp at progress 1.0
     val normalizedProgress = ((progress - 0.75f) * 4f).coerceIn(0f, 1f)
     val easedProgress = EaseInOut.transform(normalizedProgress)
     val cornerRadius = (40 * (1f - easedProgress)).dp
@@ -268,33 +286,40 @@ fun MediaPage(
                                     null,
                                     tint = contentColor,
                                     modifier = Modifier
-                                        .size(100.dp)
+                                        .size(120.dp)
                                         .musicNote(note)
                                 )
                             }
-
                         }
                     }
                 }
 
-                // Right Side: Controls and Info
+                // Right Side: Info and Controls
                 Column(
                     modifier = Modifier
-                        .weight(1f)
+                        .weight(1.2f)
+                        .fillMaxHeight()
                         .padding(end = endPadding),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     if (!isPermissionGranted) {
                         Text(
                             stringResource(R.string.media_access_required),
                             color = contentColor,
-                            style = MaterialTheme.typography.headlineSmall,
+                            style = MaterialTheme.typography.headlineSmall.copy(fontFamily = QuicksandTitleVariable),
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            stringResource(R.string.media_access_description),
+                            color = subContentColor,
+                            style = MaterialTheme.typography.bodyMedium.copy(fontFamily = QuicksandTitleVariable),
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(24.dp))
                         Button(onClick = onOpenSettings) {
-                            Text(stringResource(R.string.grant))
+                            Text(stringResource(R.string.grant), style = MaterialTheme.typography.labelLarge.copy(fontFamily = QuicksandTitleVariable))
                         }
                     } else {
                         // App Name
@@ -321,7 +346,7 @@ fun MediaPage(
                                 Text(
                                     text = appName,
                                     color = contentColor,
-                                    style = MaterialTheme.typography.labelLarge,
+                                    style = MaterialTheme.typography.labelLarge.copy(fontFamily = QuicksandTitleVariable),
                                     fontWeight = FontWeight.Medium,
                                     modifier = Modifier.padding(
                                         start = if (appName == appNameLabel) 4.dp else 0.dp, end = 4.dp
@@ -334,37 +359,64 @@ fun MediaPage(
 
                         // Info
                         Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .fadingEdges(),
+                            modifier = Modifier.fillMaxWidth(),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
+                            val textMeasurer = rememberTextMeasurer()
+                            val titleStyle = MaterialTheme.typography.headlineMedium.copy(
+                                shadow = textShadow,
+                                fontFamily = QuicksandTitleVariable,
+                                fontWeight = FontWeight.Bold,
+                                color = contentColor,
+                                textAlign = TextAlign.Center
+                            )
+                            val titleText = mediaState.title ?: stringResource(R.string.no_media)
+                            val titleWidth = remember(titleText, titleStyle) {
+                                textMeasurer.measure(titleText, titleStyle).size.width
+                            }
+                            var titleContainerWidth by remember { mutableIntStateOf(0) }
+                            val titleNeedsMarquee = titleWidth > titleContainerWidth && titleContainerWidth > 0
+                            var titleIsScrolling by remember { mutableStateOf(false) }
+
+                            if (titleNeedsMarquee) {
+                                LaunchedEffect(titleText, titleContainerWidth) {
+                                    val velocityPx = with(density) { 30.dp.toPx() }
+                                    val spacingPx = titleContainerWidth / 3f
+                                    val scrollDistance = titleWidth + spacingPx
+                                    val scrollDuration = (scrollDistance / velocityPx * 1000).toLong()
+                                    
+                                    while (true) {
+                                        titleIsScrolling = false
+                                        delay(1200.milliseconds)
+                                        titleIsScrolling = true
+                                        delay(scrollDuration.milliseconds)
+                                    }
+                                }
+                            }
+                            
+                            val startFadeAlpha by animateFloatAsState(if (titleIsScrolling) 1f else 0f, tween(150), label = "titleStartFade")
+
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .basicMarquee(
-                                        iterations = Int.MAX_VALUE,
-                                        repeatDelayMillis = 3000
-                                    ),
+                                    .onGloballyPositioned { titleContainerWidth = it.size.width }
+                                    .fadingEdges(startAlpha = startFadeAlpha, endAlpha = if (titleNeedsMarquee) 1f else 0f)
+                                    .basicMarquee(iterations = Int.MAX_VALUE, repeatDelayMillis = 1200),
                                 contentAlignment = Alignment.Center
-                            ) {
+                            )
+{
                                 Text(
-                                    text = mediaState.title ?: stringResource(R.string.no_media),
-                                    style = MaterialTheme.typography.headlineMedium.copy(shadow = textShadow),
-                                    fontWeight = FontWeight.Bold,
-                                    color = contentColor,
-                                    textAlign = TextAlign.Center,
+                                    text = titleText,
+                                    style = titleStyle,
                                     maxLines = 1,
                                     modifier = Modifier.padding(horizontal = 16.dp)
                                 )
                             }
+                            
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .basicMarquee(
-                                        iterations = Int.MAX_VALUE,
-                                        repeatDelayMillis = 3000
-                                    ),
+                                    .basicMarquee(iterations = Int.MAX_VALUE, repeatDelayMillis = 3000),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
@@ -416,12 +468,12 @@ fun MediaPage(
                                     Text(
                                         formatTime(currentPosition.toLong()),
                                         color = contentColor.copy(alpha = 0.6f),
-                                        style = MaterialTheme.typography.labelSmall
+                                        style = MaterialTheme.typography.labelSmall.copy(fontFamily = QuicksandTitleVariable)
                                     )
                                     Text(
                                         formatTime(mediaState.duration),
                                         color = contentColor.copy(alpha = 0.6f),
-                                        style = MaterialTheme.typography.labelSmall
+                                        style = MaterialTheme.typography.labelSmall.copy(fontFamily = QuicksandTitleVariable)
                                     )
                                 }
                             }
@@ -498,19 +550,19 @@ fun MediaPage(
                     Text(
                         stringResource(R.string.media_access_required),
                         color = contentColor,
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = MaterialTheme.typography.headlineSmall.copy(fontFamily = QuicksandTitleVariable),
                         textAlign = TextAlign.Center
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         stringResource(R.string.media_access_description),
                         color = subContentColor,
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodyMedium.copy(fontFamily = QuicksandTitleVariable),
                         textAlign = TextAlign.Center
                     )
                     Spacer(modifier = Modifier.height(24.dp))
                     Button(onClick = onOpenSettings) {
-                        Text(stringResource(R.string.grant))
+                        Text(stringResource(R.string.grant), style = MaterialTheme.typography.labelLarge.copy(fontFamily = QuicksandTitleVariable))
                     }
                 } else {
                     if (!isSmallDevice) {
@@ -544,7 +596,7 @@ fun MediaPage(
                                     Text(
                                         text = appName,
                                         color = contentColor,
-                                        style = MaterialTheme.typography.labelLarge,
+                                        style = MaterialTheme.typography.labelLarge.copy(fontFamily = QuicksandTitleVariable),
                                         fontWeight = FontWeight.Medium,
                                         modifier = Modifier.padding(
                                             start = if (appName == appNameLabel) 4.dp else 0.dp, end = 4.dp
@@ -559,8 +611,6 @@ fun MediaPage(
 
                     if (isSmallDevice) {
                         // Small Device Layout:
-                        // Left side: App Info at top, Title & Artist at bottom (height = album cover height)
-                        // Right side: Album Cover
                         Row(
                             modifier = Modifier
                                 .padding(vertical = 8.dp)
@@ -600,7 +650,7 @@ fun MediaPage(
                                         Text(
                                             text = appName,
                                             color = contentColor,
-                                            style = MaterialTheme.typography.labelMedium,
+                                            style = MaterialTheme.typography.labelMedium.copy(fontFamily = QuicksandTitleVariable),
                                             fontWeight = FontWeight.Medium,
                                             modifier = Modifier.padding(
                                                 start = if (appName == appNameLabel) 4.dp else 0.dp, end = 4.dp
@@ -617,26 +667,55 @@ fun MediaPage(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .fadingEdges(),
+                                        modifier = Modifier.fillMaxWidth(),
                                         horizontalAlignment = Alignment.CenterHorizontally
                                     ) {
+                                        val textMeasurer = rememberTextMeasurer()
+                                        val titleStyle = MaterialTheme.typography.headlineSmall.copy(
+                                            shadow = textShadow,
+                                            fontFamily = QuicksandTitleVariable,
+                                            fontWeight = FontWeight.Bold,
+                                            color = contentColor,
+                                            textAlign = TextAlign.Center
+                                        )
+                                        val titleText = mediaState.title ?: stringResource(R.string.no_media)
+                                        val titleWidth = remember(titleText, titleStyle) {
+                                            textMeasurer.measure(titleText, titleStyle).size.width
+                                        }
+                                        var titleContainerWidth by remember { mutableIntStateOf(0) }
+                                        val titleNeedsMarquee = titleWidth > titleContainerWidth && titleContainerWidth > 0
+                                        var titleIsScrolling by remember { mutableStateOf(false) }
+
+                                        if (titleNeedsMarquee) {
+                                            LaunchedEffect(titleText, titleContainerWidth) {
+                                                val velocityPx = with(density) { 30.dp.toPx() }
+                                                val spacingPx = titleContainerWidth / 3f
+                                                val scrollDistance = titleWidth + spacingPx
+                                                val scrollDuration = (scrollDistance / velocityPx * 1000).toLong()
+                                                
+                                                while (true) {
+                                                    titleIsScrolling = false
+                                                    delay(1200.milliseconds)
+                                                    titleIsScrolling = true
+                                                    delay(scrollDuration.milliseconds)
+                                                }
+                                            }
+                                        }
+                                        
+                                        val startFadeAlpha by animateFloatAsState(if (titleIsScrolling) 1f else 0f, tween(150), label = "titleStartFadePortrait")
+
                                         Box(
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .basicMarquee(
-                                                    iterations = Int.MAX_VALUE,
-                                                    repeatDelayMillis = 3000
-                                                ),
+                                                .onGloballyPositioned { titleContainerWidth = it.size.width }
+                                                .fadingEdges(startAlpha = startFadeAlpha, endAlpha = if (titleNeedsMarquee) 1f else 0f)
+                                                .basicMarquee(iterations = Int.MAX_VALUE, repeatDelayMillis = 1200),
                                             contentAlignment = Alignment.Center
-                                        ) {
+                                        )
+{
                                             Text(
-                                                text = mediaState.title ?: stringResource(R.string.no_media),
-                                                style = MaterialTheme.typography.headlineSmall.copy(shadow = textShadow),
-                                                fontWeight = FontWeight.Bold,
-                                                color = contentColor,
-                                                textAlign = TextAlign.Center,
+                                                text = titleText,
+                                                style = titleStyle,
                                                 maxLines = 1
                                             )
                                         }
@@ -699,7 +778,7 @@ fun MediaPage(
                         // Normal Device Layout: Album Art centered above Info Column
                         Surface(
                             modifier = Modifier
-                                .size(280.dp)
+                                .size(portraitAlbumArtSize)
                                 .aspectRatio(1f)
                                 .clip(RoundedCornerShape(24.dp)),
                             color = colorScheme.surfaceVariant.copy(alpha = surfaceAlpha),
@@ -722,65 +801,88 @@ fun MediaPage(
                                         null,
                                         tint = contentColor,
                                         modifier = Modifier
-                                            .size(100.dp)
+                                            .size(120.dp)
                                             .musicNote(note)
                                     )
                                 }
                             }
                         }
 
-                        Spacer(modifier = Modifier.weight(1.5f))
+                        Spacer(modifier = Modifier.height(32.dp))
 
-                        // Info
                         Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .fadingEdges(),
+                            modifier = Modifier.fillMaxWidth(),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
+                            val textMeasurer = rememberTextMeasurer()
+                            val titleStyle = MaterialTheme.typography.headlineMedium.copy(
+                                shadow = textShadow,
+                                fontFamily = QuicksandTitleVariable,
+                                fontWeight = FontWeight.Bold,
+                                color = contentColor,
+                                textAlign = TextAlign.Center
+                            )
+                            val titleText = mediaState.title ?: stringResource(R.string.no_media)
+                            val titleWidth = remember(titleText, titleStyle) {
+                                textMeasurer.measure(titleText, titleStyle).size.width
+                            }
+                            var titleContainerWidth by remember { mutableIntStateOf(0) }
+                            val titleNeedsMarquee = titleWidth > titleContainerWidth && titleContainerWidth > 0
+                            var titleIsScrolling by remember { mutableStateOf(false) }
+
+                            if (titleNeedsMarquee) {
+                                LaunchedEffect(titleText, titleContainerWidth) {
+                                    val velocityPx = with(density) { 30.dp.toPx() }
+                                    val spacingPx = titleContainerWidth / 3f
+                                    val scrollDistance = titleWidth + spacingPx
+                                    val scrollDuration = (scrollDistance / velocityPx * 1000).toLong()
+                                    
+                                    while (true) {
+                                        titleIsScrolling = false
+                                        delay(1200.milliseconds)
+                                        titleIsScrolling = true
+                                        delay(scrollDuration.milliseconds)
+                                    }
+                                }
+                            }
+                            
+                            val startFadeAlpha by animateFloatAsState(if (titleIsScrolling) 1f else 0f, tween(200), label = "titleStartFadeNormal")
+
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .basicMarquee(
-                                        iterations = Int.MAX_VALUE,
-                                        repeatDelayMillis = 3000
-                                    ),
+                                    .onGloballyPositioned { titleContainerWidth = it.size.width }
+                                    .fadingEdges(startAlpha = startFadeAlpha, endAlpha = if (titleNeedsMarquee) 1f else 0f)
+                                    .basicMarquee(iterations = Int.MAX_VALUE, repeatDelayMillis = 1200),
+                                contentAlignment = Alignment.Center
+                            )
+{
+                                Text(
+                                    text = titleText,
+                                    style = titleStyle,
+                                    maxLines = 1,
+                                    modifier = Modifier.padding(horizontal = 16.dp)
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .basicMarquee(iterations = Int.MAX_VALUE, repeatDelayMillis = 3000),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = mediaState.title ?: stringResource(R.string.no_media),
-                                    style = MaterialTheme.typography.headlineMedium.copy(shadow = textShadow),
-                                    fontWeight = FontWeight.Bold,
-                                    color = contentColor,
+                                    text = mediaState.artist ?: "",
+                                    style = MaterialTheme.typography.bodyLarge.copy(shadow = textShadow),
+                                    color = subContentColor,
                                     textAlign = TextAlign.Center,
                                     maxLines = 1,
                                     modifier = Modifier.padding(horizontal = 16.dp)
                                 )
                             }
-                            if (mediaState.artist != "") {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .basicMarquee(
-                                            iterations = Int.MAX_VALUE,
-                                            repeatDelayMillis = 3000
-                                        ),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = mediaState.artist ?: "",
-                                        style = MaterialTheme.typography.bodyLarge.copy(shadow = textShadow),
-                                        color = subContentColor,
-                                        textAlign = TextAlign.Center,
-                                        maxLines = 1,
-                                        modifier = Modifier.padding(horizontal = 16.dp)
-                                    )
-                                }
-                            }
                         }
                     }
 
-                    Spacer(modifier = Modifier.weight(1f))
+                    Spacer(modifier = Modifier.weight(1.2f))
 
                     // Progress Bar
                     var sliderPosition by remember { mutableStateOf<Float?>(null) }
@@ -792,7 +894,6 @@ fun MediaPage(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .blockHorizontalPagerSwipe()
-                                .padding(horizontal = 16.dp)
                         ) {
                             Slider(
                                 value = currentPosition.coerceIn(0f, duration),
@@ -817,18 +918,18 @@ fun MediaPage(
                                 Text(
                                     formatTime(currentPosition.toLong()),
                                     color = contentColor.copy(alpha = 0.6f),
-                                    style = MaterialTheme.typography.labelSmall
+                                    style = MaterialTheme.typography.labelSmall.copy(fontFamily = QuicksandTitleVariable)
                                 )
                                 Text(
                                     formatTime(mediaState.duration),
                                     color = contentColor.copy(alpha = 0.6f),
-                                    style = MaterialTheme.typography.labelSmall
+                                    style = MaterialTheme.typography.labelSmall.copy(fontFamily = QuicksandTitleVariable)
                                 )
                             }
                         }
                     }
 
-                    Spacer(modifier = Modifier.weight(1f))
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     // Controls
                     Row(
@@ -844,7 +945,7 @@ fun MediaPage(
                         ) {
                             ShadowedIcon(
                                 imageVector = Icons.Rounded.SkipPrevious,
-                                contentDescription = "Previous",
+                                contentDescription = stringResource(R.string.previous),
                                 modifier = Modifier.size(32.dp),
                                 tint = contentColor
                             )
@@ -858,11 +959,11 @@ fun MediaPage(
                             colors = IconButtonDefaults.filledIconButtonColors(
                                 containerColor = iconButtonContainerColor,
                                 contentColor = iconButtonContentColor
-                            )
+                              )
                         ) {
                             ShadowedIcon(
                                 imageVector = if (mediaState.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                                contentDescription = "Play/Pause",
+                                contentDescription = stringResource(R.string.play_pause),
                                 modifier = Modifier.size(40.dp),
                                 tint = iconButtonContentColor
                             )
@@ -873,7 +974,7 @@ fun MediaPage(
                         ) {
                             ShadowedIcon(
                                 imageVector = Icons.Rounded.SkipNext,
-                                contentDescription = "Next",
+                                contentDescription = stringResource(R.string.next),
                                 modifier = Modifier.size(32.dp),
                                 tint = contentColor
                             )
@@ -883,25 +984,11 @@ fun MediaPage(
                             MediaActionButton(action, contentColor)
                         }
                     }
-
                     Spacer(modifier = Modifier.weight(1f))
-                    Spacer(modifier = Modifier.height(dockAreaHeight))
                 }
             }
         }
     }
-}
-
-@androidx.compose.runtime.Immutable
-private data class MusicNoteAnimation(
-    val rotation: Float,
-    val scale: Float,
-    val playingFactor: Float,
-)
-
-@Composable
-private fun rememberMusicNoteAnimation(isPlaying: Boolean): MusicNoteAnimation {
-    return MusicNoteAnimation(0f, 1f, if (isPlaying) 1f else 0f)
 }
 
 private fun Modifier.musicNote(note: MusicNoteAnimation) = graphicsLayer {
@@ -910,18 +997,31 @@ private fun Modifier.musicNote(note: MusicNoteAnimation) = graphicsLayer {
     scaleY = 1f + (note.scale - 1f) * note.playingFactor
 }
 
-private fun Modifier.fadingEdges(length: Dp = 16.dp) = this
+private fun Modifier.fadingEdges(
+    length: Dp = 16.dp,
+    startAlpha: Float = 1f,
+    endAlpha: Float = 1f
+) = this
     .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
     .drawWithContent {
         drawContent()
         val edgeLengthPx = length.toPx()
         val width = size.width
         if (width > 0) {
+            // Start Fade (Left)
             drawRect(
                 brush = Brush.horizontalGradient(
-                    0f to Color.Transparent,
+                    0f to Color.Black.copy(alpha = 1f - startAlpha),
                     edgeLengthPx / width to Color.Black,
-                    (width - edgeLengthPx) / width to Color.Black,
+                    1f to Color.Black
+                ),
+                blendMode = BlendMode.DstIn
+            )
+            // End Fade (Right)
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    0f to Color.Black,
+                    (width - edgeLengthPx * endAlpha) / width to Color.Black,
                     1f to Color.Transparent
                 ),
                 blendMode = BlendMode.DstIn
@@ -976,7 +1076,7 @@ private fun MediaActionButton(
     tint: Color,
     modifier: Modifier = Modifier,
 ) {
-    val viewModel: LauncherViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    val viewModel: LauncherViewModel = viewModel()
     IconButton(
         onClick = {
             try {
@@ -998,7 +1098,7 @@ private fun MediaActionButton(
                     val width = drawable.intrinsicWidth.coerceAtLeast(1)
                     val height = drawable.intrinsicHeight.coerceAtLeast(1)
                     val bmp = createBitmap(width, height)
-                    val canvas = android.graphics.Canvas(bmp)
+                    val canvas = Canvas(bmp)
                     drawable.setBounds(0, 0, width, height)
                     drawable.draw(canvas)
                     bmp.asImageBitmap()
@@ -1030,4 +1130,41 @@ private fun MediaActionButton(
             )
         }
     }
+}
+
+@Immutable
+private data class MusicNoteAnimation(
+    val rotation: Float,
+    val scale: Float,
+    val playingFactor: Float,
+)
+
+@Composable
+private fun rememberMusicNoteAnimation(isPlaying: Boolean): MusicNoteAnimation {
+    val transition = rememberInfiniteTransition(label = "musicNoteAnim")
+
+    val rotation by transition.animateFloat(
+        initialValue = -5f,
+        targetValue = 5f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1000, easing = EaseInOut),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "musicNoteRotation"
+    )
+    val scale by transition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.15f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 500, easing = EaseInOut),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "musicNoteScale"
+    )
+    val playingFactor by animateFloatAsState(
+        targetValue = if (isPlaying) 1f else 0f,
+        label = "musicNotePlayingFactor"
+    )
+
+    return MusicNoteAnimation(rotation, scale, playingFactor)
 }

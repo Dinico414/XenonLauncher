@@ -1,9 +1,11 @@
 package com.xenonware.launcher.ui.pages
 
 import android.app.ActivityOptions
+import android.app.AlarmManager
+import android.content.ContentUris
 import android.content.Intent
 import android.content.res.Configuration
-import android.util.Log
+import android.provider.CalendarContract
 import android.text.format.DateFormat
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
@@ -20,6 +22,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
@@ -56,6 +59,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.VerticalPager
@@ -67,15 +71,15 @@ import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.EmojiEvents
-import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.NotificationsOff
+import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Wallpaper
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme.colorScheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -85,9 +89,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -117,11 +123,13 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -139,14 +147,19 @@ import com.xenonware.launcher.ui.res.notification.NotificationTabButton
 import com.xenonware.launcher.util.ColorUtils
 import com.xenonware.launcher.util.blockHorizontalPagerSwipe
 import com.xenonware.launcher.util.shouldDisableLandscapeLayout
+import com.xenonware.launcher.viewmodel.CalendarEvent
+import com.xenonware.launcher.viewmodel.CalendarInfo
 import com.xenonware.launcher.viewmodel.LauncherViewModel
+import dev.chrisbanes.haze.HazeState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import java.util.TimeZone
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 
 @Composable
@@ -161,8 +174,8 @@ fun NotificationPage(
     messageType: Int,
     notifications: List<LauncherNotification>,
     apps: List<AppInfo>,
-    calendarEvents: List<com.xenonware.launcher.viewmodel.CalendarEvent>,
-    hazeState: dev.chrisbanes.haze.HazeState?,
+    calendarEvents: List<CalendarEvent>,
+    hazeState: HazeState?,
     blurSetting: Boolean,
     wallpaperDarkIcons: Boolean = false,
     onDismissNotification: (String) -> Unit,
@@ -186,7 +199,7 @@ fun NotificationPage(
     var atAGlanceSectionPos by remember { mutableStateOf(Offset.Zero) }
     var pageContainerPos by remember { mutableStateOf(Offset.Zero) }
 
-    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val haptic = LocalHapticFeedback.current
     val offsets = remember { mutableStateMapOf<String, Float>() }
     var deleteButtonBounds by remember { mutableStateOf(Rect.Zero) }
 
@@ -206,10 +219,7 @@ fun NotificationPage(
             val isPermanent = it.isOngoing && showPermanentNotifications
             !isMuted && !isPermanent
         }
-        val groups = filtered.groupBy { it.packageName }
-        
-        Log.d("NotificationPage", "Total: ${notifications.size}, Muted: ${notifications.count { it.isMuted }}, Permanent: ${notifications.count { it.isOngoing }}, Groups: ${groups.size}")
-        groups
+        filtered.groupBy { it.packageName }
     }
 
     val mutedNotifications = remember(notifications, showMuteNotifications) {
@@ -390,7 +400,7 @@ fun NotificationPage(
         .pointerInput(notificationCount, selectedPackage) {
             detectTapGestures(
                 onLongPress = { offset ->
-                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     dropDownOffset = pageContainerPos + offset
                     showPageMenu = true
                 },
@@ -530,7 +540,6 @@ fun NotificationPage(
                                                 text = emptyMessage,
                                                 color = baseColor.copy(alpha = 0.8f),
                                                 fontSize = 18.sp,
-                                                fontFamily = QuicksandTitleVariable,
                                                 fontWeight = FontWeight.Medium,
                                                 maxLines = 1,
                                                 modifier = Modifier.basicMarquee()
@@ -588,7 +597,7 @@ fun NotificationPage(
                                                 blendMode = BlendMode.DstIn
                                             )
                                         }
-                                        .drawVerticalScrollbar(landscapeListState, colorScheme.primary),
+                                        .drawVerticalScrollbar(landscapeListState, MaterialTheme.colorScheme.primary),
                                     verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.Bottom),
                                     contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
                                 ) {
@@ -657,7 +666,7 @@ fun NotificationPage(
                                                 blendMode = BlendMode.DstIn
                                             )
                                         }
-                                        .drawVerticalScrollbar(landscapeListState, colorScheme.primary),
+                                        .drawVerticalScrollbar(landscapeListState, MaterialTheme.colorScheme.primary),
                                     verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.Bottom),
                                     contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
                                 ) {
@@ -730,7 +739,7 @@ fun NotificationPage(
                                                 blendMode = BlendMode.DstIn
                                             )
                                         }
-                                        .drawVerticalScrollbar(landscapeListState, colorScheme.primary),
+                                        .drawVerticalScrollbar(landscapeListState, MaterialTheme.colorScheme.primary),
                                     verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.Bottom),
                                     contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
                                 ) {
@@ -908,7 +917,6 @@ fun NotificationPage(
                                                 text = emptyMessage,
                                                 color = baseColor.copy(alpha = 0.8f),
                                                 fontSize = 18.sp,
-                                                fontFamily = QuicksandTitleVariable,
                                                 fontWeight = FontWeight.Medium,
                                                 maxLines = 1,
                                                 modifier = Modifier.basicMarquee()
@@ -969,7 +977,7 @@ fun NotificationPage(
                                                 blendMode = BlendMode.DstIn
                                             )
                                         }
-                                        .drawVerticalScrollbar(portraitListState, colorScheme.primary),
+                                        .drawVerticalScrollbar(portraitListState, MaterialTheme.colorScheme.primary),
                                     verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.Bottom),
                                     contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
                                 ) {
@@ -1038,7 +1046,7 @@ fun NotificationPage(
                                                 blendMode = BlendMode.DstIn
                                             )
                                         }
-                                        .drawVerticalScrollbar(portraitListState, colorScheme.primary),
+                                        .drawVerticalScrollbar(portraitListState, MaterialTheme.colorScheme.primary),
                                     verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.Bottom),
                                     contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
                                 ) {
@@ -1050,7 +1058,7 @@ fun NotificationPage(
                                             notification = notification,
                                             appColor = appColor,
                                             isFirst = index == 0,
-                                            isLast = index == mutedNotifications.size - 1,
+                                            isLast = index == permanentNotifications.size - 1,
                                             offsetAbove = 0f,
                                             offsetBelow = 0f,
                                             replyingNotificationKey = replyingNotificationKey,
@@ -1111,7 +1119,7 @@ fun NotificationPage(
                                                 blendMode = BlendMode.DstIn
                                             )
                                         }
-                                        .drawVerticalScrollbar(portraitListState, colorScheme.primary),
+                                        .drawVerticalScrollbar(portraitListState, MaterialTheme.colorScheme.primary),
                                     verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.Bottom),
                                     contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
                                 ) {
@@ -1167,6 +1175,7 @@ fun NotificationPage(
                             sortedAppPackages = effectiveTabs,
                             groupedNotifications = effectiveGroups,
                             mutedNotifications = if (showMuteNotifications) mutedNotifications else emptyList(),
+                            permanentNotifications = if (showPermanentNotifications) permanentNotifications else emptyList(),
                             selectedPackage = selectedPackage,
                             apps = apps,
                             viewModel = viewModel,
@@ -1247,7 +1256,7 @@ fun NotificationPage(
 }
 
 fun Modifier.drawVerticalScrollbar(
-    state: androidx.compose.foundation.lazy.LazyListState,
+    state: LazyListState,
     color: Color
 ): Modifier = drawWithContent {
     drawContent()
@@ -1279,10 +1288,10 @@ fun AtAGlanceSection(
     currentTime: String,
     currentDate: String,
     showClock: Boolean,
-    calendarEvents: List<com.xenonware.launcher.viewmodel.CalendarEvent>,
-    availableCalendars: List<com.xenonware.launcher.viewmodel.CalendarInfo>,
+    calendarEvents: List<CalendarEvent>,
+    availableCalendars: List<CalendarInfo>,
     isLandscape: Boolean,
-    nextAlarm: android.app.AlarmManager.AlarmClockInfo?,
+    nextAlarm: AlarmManager.AlarmClockInfo?,
     timers: List<LauncherNotification>,
     stopwatches: List<LauncherNotification>,
     isWallpaperDark: Boolean = false,
@@ -1297,7 +1306,7 @@ fun AtAGlanceSection(
     val pageHeight = if (isLandscape) 80.dp else 60.dp
 
     val pagerState = rememberPagerState { calendarEvents.size.coerceAtLeast(1) }
-    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val scope = rememberCoroutineScope()
 
     var totalDrag by remember { mutableFloatStateOf(0f) }
     var dragTriggered by remember { mutableStateOf(false) }
@@ -1442,17 +1451,17 @@ fun AtAGlanceSection(
                                     },
                                     onClick = {
                                         try {
-                                            val uri = android.content.ContentUris.withAppendedId(
-                                                android.provider.CalendarContract.Events.CONTENT_URI,
+                                            val uri = ContentUris.withAppendedId(
+                                                CalendarContract.Events.CONTENT_URI,
                                                 event.id
                                             )
                                             val intent = Intent(Intent.ACTION_VIEW).setData(uri)
                                             context.startActivity(intent)
                                         } catch (_: Exception) {
                                             // Fallback to opening calendar at specific time
-                                            val builder = android.provider.CalendarContract.CONTENT_URI.buildUpon()
+                                            val builder = CalendarContract.CONTENT_URI.buildUpon()
                                                 .appendPath("time")
-                                            android.content.ContentUris.appendId(builder, event.startTime)
+                                            ContentUris.appendId(builder, event.startTime)
                                             val intent = Intent(Intent.ACTION_VIEW).setData(builder.build())
                                             context.startActivity(intent)
                                         }
@@ -1478,30 +1487,84 @@ fun AtAGlanceSection(
                                 verticalArrangement = Arrangement.Center,
                                 modifier = Modifier.weight(1f)
                             ) {
+                                val textMeasurer = rememberTextMeasurer()
+                                val textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                    fontSize = eventTitleFontSize,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = QuicksandTitleVariable
+                                )
+                                val textWidth = remember(event.title, textStyle) {
+                                    textMeasurer.measure(event.title, textStyle).size.width
+                                }
+                                var containerWidthPx by remember { mutableIntStateOf(0) }
+                                val needsMarquee = textWidth > containerWidthPx && containerWidthPx > 0
+
+                                var isScrolling by remember { mutableStateOf(false) }
+                                
+                                if (needsMarquee) {
+                                    val densityValue = LocalDensity.current
+                                    LaunchedEffect(event.title, containerWidthPx) {
+                                        val velocityPx = with(densityValue) { 30.dp.toPx() }
+                                        val spacingPx = containerWidthPx / 3f
+                                        val scrollDistance = textWidth + spacingPx
+                                        val scrollDuration = (scrollDistance / velocityPx * 1000).toLong()
+                                        
+                                        while (true) {
+                                            isScrolling = false
+                                            delay(1200.milliseconds)
+                                            isScrolling = true
+                                            delay(scrollDuration.milliseconds)
+                                        }
+                                    }
+                                }
+
+                                val startFadeAlpha by animateFloatAsState(
+                                    targetValue = if (isScrolling) 1f else 0f,
+                                    animationSpec = tween(150),
+                                    label = "marqueeStartFade"
+                                )
+                                val endFadeAlpha by animateFloatAsState(
+                                    targetValue = if (needsMarquee) 1f else 0f,
+                                    animationSpec = tween(150),
+                                    label = "marqueeEndFade"
+                                )
+
                                 Text(
                                     text = event.title,
                                     fontSize = eventTitleFontSize,
                                     fontWeight = FontWeight.Bold,
                                     color = baseColor,
+                                    fontFamily = QuicksandTitleVariable,
                                     maxLines = 1,
                                     modifier = Modifier
                                         .fillMaxWidth()
+                                        .onGloballyPositioned { containerWidthPx = it.size.width }
                                         .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
                                         .drawWithContent {
                                             drawContent()
                                             val fadeWidth = 32.dp.toPx()
-                                            if (size.width > fadeWidth) {
+                                            if (needsMarquee) {
+                                                // Start Fade (Left)
+                                                drawRect(
+                                                    brush = Brush.horizontalGradient(
+                                                        0f to Color.Black.copy(alpha = 1f - startFadeAlpha),
+                                                        fadeWidth / size.width to Color.Black,
+                                                        1f to Color.Black
+                                                    ),
+                                                    blendMode = BlendMode.DstIn
+                                                )
+                                                // End Fade (Right)
                                                 drawRect(
                                                     brush = Brush.horizontalGradient(
                                                         0f to Color.Black,
-                                                        (size.width - fadeWidth) / size.width to Color.Black,
+                                                        (size.width - fadeWidth * endFadeAlpha) / size.width to Color.Black,
                                                         1f to Color.Transparent
                                                     ),
                                                     blendMode = BlendMode.DstIn
                                                 )
                                             }
                                         }
-                                        .basicMarquee()
+                                        .basicMarquee(iterations = Int.MAX_VALUE, repeatDelayMillis = 1200)
                                 )
                                 val todayLabel = stringResource(R.string.today)
                                 val tomorrowLabel = stringResource(R.string.tomorrow)
@@ -1515,7 +1578,7 @@ fun AtAGlanceSection(
                                     val isOngoing = now in event.startTime..event.endTime
 
                                     val eventStartMillis = if (event.isAllDay) {
-                                        event.startTime - java.util.TimeZone.getDefault().getOffset(event.startTime)
+                                        event.startTime - TimeZone.getDefault().getOffset(event.startTime)
                                     } else {
                                         event.startTime
                                     }
@@ -1659,28 +1722,40 @@ fun NotificationTabs(
             // 1. Mark items no longer in sortedAppPackages as leaving,
             // and UNMARK items that have returned.
             displayedPackages.forEach { pkg ->
-                if (pkg !in currentSet) {
-                    if (leavingPackages[pkg] != true) {
-                        leavingPackages[pkg] = true
-                    }
-                } else {
-                    if (leavingPackages[pkg] == true) {
-                        leavingPackages[pkg] = false
-                    }
+                if (pkg !in currentSet && leavingPackages[pkg] != true) {
+                    leavingPackages[pkg] = true
+                } else if (pkg in currentSet && leavingPackages[pkg] == true) {
+                    leavingPackages[pkg] = false
                 }
             }
 
-            // 2. Add any new items from sortedAppPackages
-            val existingSet = displayedPackages.toSet()
-            val newItems = sortedAppPackages.filter { it !in existingSet }
-            if (newItems.isNotEmpty()) {
-                displayedPackages = displayedPackages + newItems
+            // 2. Update displayedPackages preserving order
+            // Special tabs (__MUTED__, __PERMANENT__) MUST always be last.
+            val special = listOf("__MUTED__", "__PERMANENT__")
+            
+            // Start with active normal apps in their sorted order
+            val newDisplayed = sortedAppPackages.filter { it !in special }.toMutableList()
+            
+            // Add leaving normal apps
+            displayedPackages.forEach { pkg ->
+                if (pkg !in currentSet && leavingPackages[pkg] == true && pkg !in special) {
+                    newDisplayed.add(pkg)
+                }
             }
+            
+            // Add special tabs (active or leaving) at the absolute end
+            special.forEach { sPkg ->
+                if (sPkg in currentSet || leavingPackages[sPkg] == true) {
+                    newDisplayed.add(sPkg)
+                }
+            }
+            
+            displayedPackages = newDisplayed
         }
 
         val scrollState = rememberScrollState()
         val view = LocalView.current
-        val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+        val haptic = LocalHapticFeedback.current
 
         val blockPagerScroll = remember {
             object : NestedScrollConnection {
@@ -1801,8 +1876,8 @@ fun NotificationTabs(
                             val liveLatestNotification = liveNotifications.firstOrNull()
                             
                             val liveAppColor = when {
-                                isMutedTab -> colorScheme.surfaceContainerHighest
-                                isPermanentTab -> colorScheme.primary
+                                isMutedTab -> MaterialTheme.colorScheme.surfaceContainerHighest
+                                isPermanentTab -> MaterialTheme.colorScheme.primary
                                 else -> remember(liveApp) { ColorUtils.getDominantColor(liveApp?.icon) }
                             }
                             
@@ -1893,7 +1968,7 @@ fun NotificationTabs(
 
         Surface(
             shape = RoundedCornerShape(deleteCornerRadius),
-            color = colorScheme.error,
+            color = MaterialTheme.colorScheme.error,
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .height(40.dp)
@@ -1902,9 +1977,9 @@ fun NotificationTabs(
                 .clip(RoundedCornerShape(deleteCornerRadius))
                 .combinedClickable(
                     interactionSource = deleteInteractionSource,
-                    indication = androidx.compose.foundation.LocalIndication.current,
+                    indication = LocalIndication.current,
                     onLongClick = {
-                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         onDismissAllNotifications()
                     },
                     onClick = {}
@@ -1914,7 +1989,7 @@ fun NotificationTabs(
                 Icon(
                     imageVector = Icons.Rounded.Delete,
                     contentDescription = stringResource(R.string.clear_all),
-                    tint = colorScheme.onError,
+                    tint = MaterialTheme.colorScheme.onError,
                     modifier = Modifier.size(20.dp)
                 )
             }

@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -35,6 +36,7 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
@@ -43,8 +45,10 @@ import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -60,9 +64,12 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
@@ -71,6 +78,7 @@ import coil.compose.AsyncImage
 import coil.imageLoader
 import coil.request.ImageRequest
 import coil.request.SuccessResult
+import com.xenon.mylibrary.theme.QuicksandTitleVariable
 import com.xenonware.launcher.R
 import com.xenonware.launcher.media.MediaState
 import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
@@ -143,12 +151,12 @@ fun MediaSection(
 /* Album art theming                                                       */
 /* ---------------------------------------------------------------------- */
 
-@androidx.compose.runtime.Immutable
+@Immutable
 private data class MediaTheme(
     val background: Color,
     val content: Color,
     val accent: Color,
-    val scheme: androidx.compose.material3.ColorScheme,
+    val scheme: ColorScheme,
 )
 
 /**
@@ -242,7 +250,7 @@ private fun rememberMediaTheme(mediaState: MediaState): MediaTheme {
 /* Music note idle animation                                               */
 /* ---------------------------------------------------------------------- */
 
-@androidx.compose.runtime.Immutable
+@Immutable
 private data class MusicNoteAnimation(
     val rotation: Float,
     val scale: Float,
@@ -251,9 +259,9 @@ private data class MusicNoteAnimation(
 
 @Composable
 private fun rememberMusicNoteAnimation(isPlaying: Boolean): MusicNoteAnimation {
-    val infiniteTransition = rememberInfiniteTransition(label = "musicNoteAnim")
+    val transition = rememberInfiniteTransition(label = "musicNoteAnim")
 
-    val rotation by infiniteTransition.animateFloat(
+    val rotation by transition.animateFloat(
         initialValue = -5f,
         targetValue = 5f,
         animationSpec = infiniteRepeatable(
@@ -262,7 +270,7 @@ private fun rememberMusicNoteAnimation(isPlaying: Boolean): MusicNoteAnimation {
         ),
         label = "musicNoteRotation"
     )
-    val scale by infiniteTransition.animateFloat(
+    val scale by transition.animateFloat(
         initialValue = 1f,
         targetValue = 1.15f,
         animationSpec = infiniteRepeatable(
@@ -313,6 +321,7 @@ private fun MediaSectionContent(
                     .weight(1f)
                     .padding(start = 8.dp),
                 fontSize = 12.sp,
+                fontFamily = QuicksandTitleVariable,
                 color = contentColor,
                 maxLines = 1,
                 softWrap = false
@@ -322,7 +331,13 @@ private fun MediaSectionContent(
                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                 modifier = Modifier.height(32.dp)
             ) {
-                Text(stringResource(R.string.grant), fontSize = 10.sp, maxLines = 1, softWrap = false)
+                Text(
+                    stringResource(R.string.grant),
+                    fontSize = 10.sp,
+                    fontFamily = QuicksandTitleVariable,
+                    maxLines = 1,
+                    softWrap = false
+                )
             }
         } else {
             val artModel = remember(mediaState.title, mediaState.artist) {
@@ -369,27 +384,75 @@ private fun MediaSectionContent(
             }
             Column(
                 modifier = Modifier
-                    .weight(1f)
-                    .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                    .drawWithContent {
-                        drawContent()
-                        drawRect(
-                            brush = Brush.horizontalGradient(
-                                0.92f to Color.Black,
-                                1f to Color.Transparent
-                            ),
-                            blendMode = BlendMode.DstIn
-                        )
-                    },
+                    .weight(1f),
                 verticalArrangement = Arrangement.Center
             ) {
-                Text(
-                    mediaState.title ?: stringResource(R.string.media),
-                    color = contentColor,
+                val textMeasurer = rememberTextMeasurer()
+                val titleStyle = MaterialTheme.typography.bodyMedium.copy(
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
+                    fontFamily = QuicksandTitleVariable,
+                    color = contentColor
+                )
+                val titleText = mediaState.title ?: stringResource(R.string.media)
+                val titleWidth = remember(titleText, titleStyle) {
+                    textMeasurer.measure(titleText, titleStyle).size.width
+                }
+                var titleContainerWidth by remember { mutableIntStateOf(0) }
+                val titleNeedsMarquee = titleWidth > titleContainerWidth && titleContainerWidth > 0
+                var titleIsScrolling by remember { mutableStateOf(false) }
+
+                if (titleNeedsMarquee) {
+                    val density = LocalDensity.current
+                    LaunchedEffect(titleText, titleContainerWidth) {
+                        val velocityPx = with(density) { 30.dp.toPx() }
+                        val spacingPx = titleContainerWidth / 3f
+                        val scrollDistance = titleWidth + spacingPx
+                        val scrollDuration = (scrollDistance / velocityPx * 1000).toLong()
+                        
+                        while (true) {
+                            titleIsScrolling = false
+                            delay(1200.milliseconds)
+                            titleIsScrolling = true
+                            delay(scrollDuration.milliseconds)
+                        }
+                    }
+                }
+                
+                val startFadeAlpha by animateFloatAsState(if (titleIsScrolling) 1f else 0f, tween(150), label = "dockMediaStartFade")
+
+                Text(
+                    text = titleText,
+                    style = titleStyle,
                     maxLines = 1,
-                    modifier = Modifier.basicMarquee()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .onGloballyPositioned { titleContainerWidth = it.size.width }
+                        .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                        .drawWithContent {
+                            drawContent()
+                            val fadeWidth = 16.dp.toPx()
+                            if (titleNeedsMarquee) {
+                                // Start Fade (Left)
+                                drawRect(
+                                    brush = Brush.horizontalGradient(
+                                        0f to Color.Black.copy(alpha = 1f - startFadeAlpha),
+                                        fadeWidth / size.width to Color.Black,
+                                        1f to Color.Black
+                                    ),
+                                    blendMode = BlendMode.DstIn
+                                )
+                                // End Fade (Right)
+                                drawRect(
+                                    brush = Brush.horizontalGradient(
+                                        (size.width - fadeWidth) / size.width to Color.Black,
+                                        1f to Color.Transparent
+                                    ),
+                                    blendMode = BlendMode.DstIn
+                                )
+                            }
+                        }
+                        .basicMarquee(iterations = Int.MAX_VALUE, repeatDelayMillis = 1200)
                 )
                 if (mediaState.title != null) {
                     Text(

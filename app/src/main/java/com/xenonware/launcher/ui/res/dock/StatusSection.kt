@@ -77,6 +77,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.xenon.mylibrary.theme.QuicksandTitleVariable
 import com.xenonware.launcher.R
 import com.xenonware.launcher.ui.res.AtAGlance
 import kotlinx.coroutines.delay
@@ -466,7 +467,8 @@ fun StatusSection(
                                     Text(
                                         text = "${(progress * 100).toInt()}%",
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 11.sp
+                                        fontSize = 11.sp,
+                                        fontFamily = QuicksandTitleVariable
                                     )
                                 }
 
@@ -531,6 +533,7 @@ fun NotificationCounterBadge(
                 fontSize = if (text.length >= 3) 8.sp else 10.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
+                fontFamily = QuicksandTitleVariable,
                 style = TextStyle(
                     platformStyle = PlatformTextStyle(includeFontPadding = false),
                     textAlign = TextAlign.Center
@@ -552,7 +555,8 @@ fun CalendarCounterIcon(
     val textStyle = TextStyle(
         fontSize = if (text.length >= 3) 7.5.sp else if (text.length == 2) 9.sp else 10.5.sp,
         fontWeight = FontWeight.Bold,
-        color = Color.Black
+        color = Color.Black,
+        fontFamily = QuicksandTitleVariable
     )
 
     Canvas(

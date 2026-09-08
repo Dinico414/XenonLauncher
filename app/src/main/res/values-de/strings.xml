@@ -286,9 +286,9 @@
     <string name="hide_dock_only_landscape_description">Dock auf dieser Seite nur ausblenden, wenn sich das Gerät im Querformat befindet</string>
     <string name="hide_action_button">Aktions-Button ausblenden</string>
     <string name="hide_action_button_description">Deaktiviert den FAB und seine Aktionen</string>
-    <string name="show_mute_notifications">Stummgeschaltete Benachrichtigungen anzeigen</string>
+    <string name="show_mute_notifications">Stummgeschaltete Benachrichtigungen anzeigen\n(Experimentell)</string>
     <string name="show_mute_notifications_description">Stumme Benachrichtigungen in die Liste aufnehmen</string>
-    <string name="show_permanent_notifications">Permanente Benachrichtigungen anzeigen</string>
+    <string name="show_permanent_notifications">Permanente Benachrichtigungen anzeigen\n(Experimentell)</string>
     <string name="show_permanent_notifications_description">Laufende/permanente Systembenachrichtigungen anzeigen</string>
     <string name="experimental_disable_grouping">Gruppierung deaktivieren\n(Experimentell)</string>
     <string name="experimental_disable_grouping_description">Verhindert, dass Benachrichtigungen nach App gruppiert werden</string>
