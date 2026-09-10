@@ -29,8 +29,6 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.clickable
@@ -275,6 +273,9 @@ class MainActivity : ComponentActivity() {
                     currentDate = currentTime.format(viewModel.dateFormatter),
                     weatherTemp = weatherState.temperature,
                     weatherCondition = weatherState.condition,
+                    weatherMaxTemp = weatherState.maxTemp,
+                    weatherMinTemp = weatherState.minTemp,
+                    weatherDailyCondition = weatherState.dailyCondition,
                     notificationCount = notificationCount,
                     notifications = notifications,
                     badgeType = badgeType,
@@ -486,6 +487,9 @@ fun LauncherScreen(
     currentDate: String,
     weatherTemp: String,
     weatherCondition: String,
+    weatherMaxTemp: String? = null,
+    weatherMinTemp: String? = null,
+    weatherDailyCondition: String? = null,
     notificationCount: Int,
     notifications: List<com.xenonware.launcher.notification.LauncherNotification>,
     badgeType: Int,

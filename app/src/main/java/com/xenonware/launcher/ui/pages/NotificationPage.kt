@@ -22,6 +22,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
@@ -126,6 +127,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -141,6 +143,7 @@ import com.xenonware.launcher.R
 import com.xenonware.launcher.accessibility.XenonAccessibilityService
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.notification.LauncherNotification
+import com.xenonware.launcher.ui.res.dock.CalendarCounterIcon
 import com.xenonware.launcher.ui.res.notification.ChronoCluster
 import com.xenonware.launcher.ui.res.notification.NotificationItem
 import com.xenonware.launcher.ui.res.notification.NotificationTabButton
@@ -150,6 +153,7 @@ import com.xenonware.launcher.util.shouldDisableLandscapeLayout
 import com.xenonware.launcher.viewmodel.CalendarEvent
 import com.xenonware.launcher.viewmodel.CalendarInfo
 import com.xenonware.launcher.viewmodel.LauncherViewModel
+import com.xenonware.launcher.viewmodel.WeatherState
 import dev.chrisbanes.haze.HazeState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -183,6 +187,7 @@ fun NotificationPage(
     onOpenSettings: () -> Unit,
     onContentShiftChanged: (Float) -> Unit = {}
 ) {
+    val weatherState by viewModel.weatherState.collectAsState()
     val baseColor = if (wallpaperDarkIcons) Color.Black else Color.White
     val nextAlarm by viewModel.nextAlarm.collectAsState()
     val availableCalendars by viewModel.availableCalendars.collectAsState()
@@ -464,24 +469,25 @@ fun NotificationPage(
                         horizontalAlignment = Alignment.Start,
                         verticalArrangement = Arrangement.Center
                     ) {
-                        AtAGlanceSection(
-                            currentTime = currentTime,
-                            currentDate = currentDate,
-                            showClock = showClock,
-                            calendarEvents = calendarEvents,
-                            availableCalendars = availableCalendars,
-                            isLandscape = true,
-                            nextAlarm = nextAlarm,
-                            timers = timers,
-                            stopwatches = stopwatches,
-                            isWallpaperDark = wallpaperDarkIcons,
-                            onLongClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                dropDownOffset = atAGlanceSectionPos + Offset(100f, 100f)
-                                showAtAGlanceMenu = true
-                            },
-                            modifier = Modifier.fillMaxHeight()
-                        )
+                            AtAGlance(
+                                currentTime = currentTime,
+                                currentDate = currentDate,
+                                showClock = showClock,
+                                calendarEvents = calendarEvents,
+                                availableCalendars = availableCalendars,
+                                isLandscape = true,
+                                nextAlarm = nextAlarm,
+                                timers = timers,
+                                stopwatches = stopwatches,
+                                weatherState = weatherState,
+                                isWallpaperDark = wallpaperDarkIcons,
+                                onLongClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    dropDownOffset = atAGlanceSectionPos + Offset(100f, 100f)
+                                    showAtAGlanceMenu = true
+                                },
+                                modifier = Modifier.fillMaxHeight()
+                            )
                     }
                 }
 
@@ -839,7 +845,7 @@ fun NotificationPage(
                         horizontalAlignment = Alignment.Start,
                         verticalArrangement = Arrangement.Top
                     ) {
-                        AtAGlanceSection(
+                        AtAGlance(
                             currentTime = currentTime,
                             currentDate = currentDate,
                             showClock = showClock,
@@ -849,6 +855,7 @@ fun NotificationPage(
                             nextAlarm = nextAlarm,
                             timers = timers,
                             stopwatches = stopwatches,
+                            weatherState = weatherState,
                             isWallpaperDark = wallpaperDarkIcons,
                             onLongClick = {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -1284,7 +1291,7 @@ fun Modifier.drawVerticalScrollbar(
 }
 
 @Composable
-fun AtAGlanceSection(
+fun AtAGlance(
     currentTime: String,
     currentDate: String,
     showClock: Boolean,
@@ -1294,6 +1301,7 @@ fun AtAGlanceSection(
     nextAlarm: AlarmManager.AlarmClockInfo?,
     timers: List<LauncherNotification>,
     stopwatches: List<LauncherNotification>,
+    weatherState: WeatherState,
     isWallpaperDark: Boolean = false,
     onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
@@ -1305,8 +1313,35 @@ fun AtAGlanceSection(
     val spacing = if (isLandscape) 8.dp else 4.dp
     val pageHeight = if (isLandscape) 80.dp else 60.dp
 
-    val pagerState = rememberPagerState { calendarEvents.size.coerceAtLeast(1) }
+    val pagerState = rememberPagerState { calendarEvents.size + 1 }
     val scope = rememberCoroutineScope()
+
+    val isDay = remember(currentTime) {
+        val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+        hour in 6..18
+    }
+
+    val weatherRes = remember(weatherState.dailyCondition ?: weatherState.condition, isDay) {
+        val c = (weatherState.dailyCondition ?: weatherState.condition).lowercase()
+        val (day, night) = when {
+            c.contains("thunder shower") || c.contains("t-shower") || c.contains("gewitterregen") -> R.drawable.tshower1 to R.drawable.tshower0
+            c.contains("thunder") || c.contains("storm") || c.contains("gewitter") || c.contains("sturm") -> R.drawable.tstorm1 to R.drawable.tstorm0
+            c.contains("tornado") -> R.drawable.tornado1 to R.drawable.tornado0
+            c.contains("hail") || c.contains("hagel") -> R.drawable.hail1 to R.drawable.hail0
+            c.contains("sleet") || c.contains("schneeregen") -> R.drawable.sleet1 to R.drawable.sleet0
+            c.contains("light snow") || c.contains("flurr") || c.contains("leichter schnee") -> R.drawable.lsnow1 to R.drawable.lsnow0
+            c.contains("snow") || c.contains("ice") || c.contains("schnee") || c.contains("eis") -> R.drawable.snow1 to R.drawable.snow0
+            c.contains("shower") || c.contains("drizzle") || c.contains("schauer") || c.contains("niesel") -> R.drawable.shower1 to R.drawable.shower0
+            c.contains("rain") || c.contains("regen") -> R.drawable.rain1 to R.drawable.rain0
+            c.contains("fog") || c.contains("mist") || c.contains("haze") || c.contains("nebel") || c.contains("dunst") -> R.drawable.fog1 to R.drawable.fog0
+            c.contains("wind") -> R.drawable.windy1 to R.drawable.windy0
+            c.contains("partly") || c.contains("teilweise") -> R.drawable.pcloudy1 to R.drawable.pcloudy0
+            c.contains("overcast") || c.contains("cloud") || c.contains("bedeckt") || c.contains("wolken") -> R.drawable.mcloudy1 to R.drawable.mcloudy0
+            c.contains("clear") || c.contains("sunny") || c.contains("klar") || c.contains("sonnig") -> R.drawable.clear1 to R.drawable.clear0
+            else -> R.drawable.unknown1 to R.drawable.unknown0
+        }
+        if (isDay) day else night
+    }
 
     var totalDrag by remember { mutableFloatStateOf(0f) }
     var dragTriggered by remember { mutableStateOf(false) }
@@ -1315,8 +1350,8 @@ fun AtAGlanceSection(
     Box(
         modifier = modifier
             .fillMaxHeight()
-            .pointerInput(calendarEvents.size) {
-                if (calendarEvents.size <= 1) return@pointerInput
+            .pointerInput(calendarEvents.size + 1) {
+                if (calendarEvents.size + 1 <= 1) return@pointerInput
                 detectVerticalDragGestures(
                     onDragStart = {
                         totalDrag = 0f
@@ -1328,7 +1363,7 @@ fun AtAGlanceSection(
                         if (abs(totalDrag) > swipeThreshold) {
                             dragTriggered = true
                             scope.launch {
-                                if (totalDrag < 0 && pagerState.currentPage < calendarEvents.size - 1) {
+                                if (totalDrag < 0 && pagerState.currentPage < calendarEvents.size) {
                                     pagerState.animateScrollToPage(pagerState.currentPage + 1)
                                 } else if (totalDrag > 0 && pagerState.currentPage > 0) {
                                     pagerState.animateScrollToPage(pagerState.currentPage - 1)
@@ -1437,190 +1472,245 @@ fun AtAGlanceSection(
                             },
                         horizontalAlignment = Alignment.Start
                     ) { index ->
-                        val event = calendarEvents[index]
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .combinedClickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null,
-                                    onLongClick = {
-                                        onLongClick?.invoke()
-                                    },
-                                    onClick = {
-                                        try {
-                                            val uri = ContentUris.withAppendedId(
-                                                CalendarContract.Events.CONTENT_URI,
-                                                event.id
-                                            )
-                                            val intent = Intent(Intent.ACTION_VIEW).setData(uri)
-                                            context.startActivity(intent)
-                                        } catch (_: Exception) {
-                                            // Fallback to opening calendar at specific time
-                                            val builder = CalendarContract.CONTENT_URI.buildUpon()
-                                                .appendPath("time")
-                                            ContentUris.appendId(builder, event.startTime)
-                                            val intent = Intent(Intent.ACTION_VIEW).setData(builder.build())
-                                            context.startActivity(intent)
-                                        }
-                                    }
-                                )
-                        ) {
-                            val calInfo = availableCalendars.find { it.id == event.calendarId }
-                            val pillColor = if (event.color != null && event.color != 0) {
-                                Color(event.color)
-                            } else {
-                                calInfo?.color?.let { Color(it) } ?: baseColor.copy(alpha = 0.5f)
-                            }
-
-                            Box(
+                        if (index == 0) {
+                            // WEATHER PAGE
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 modifier = Modifier
-                                    .width(8.dp)
-                                    .height(26.dp)
-                                    .shadow(elevation = 2.dp, shape = RoundedCornerShape(100.dp))
-                                    .background(pillColor, RoundedCornerShape(100.dp))
-                            )
-
-                            Column(
-                                verticalArrangement = Arrangement.Center,
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                val textMeasurer = rememberTextMeasurer()
-                                val textStyle = MaterialTheme.typography.bodyLarge.copy(
-                                    fontSize = eventTitleFontSize,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = QuicksandTitleVariable
-                                )
-                                val textWidth = remember(event.title, textStyle) {
-                                    textMeasurer.measure(event.title, textStyle).size.width
-                                }
-                                var containerWidthPx by remember { mutableIntStateOf(0) }
-                                val needsMarquee = textWidth > containerWidthPx && containerWidthPx > 0
-
-                                var isScrolling by remember { mutableStateOf(false) }
-                                
-                                if (needsMarquee) {
-                                    val densityValue = LocalDensity.current
-                                    LaunchedEffect(event.title, containerWidthPx) {
-                                        val velocityPx = with(densityValue) { 30.dp.toPx() }
-                                        val spacingPx = containerWidthPx / 3f
-                                        val scrollDistance = textWidth + spacingPx
-                                        val scrollDuration = (scrollDistance / velocityPx * 1000).toLong()
-                                        
-                                        while (true) {
-                                            isScrolling = false
-                                            delay(1200.milliseconds)
-                                            isScrolling = true
-                                            delay(scrollDuration.milliseconds)
+                                    .fillMaxSize()
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                        onClick = {
+                                            // Handle weather click if needed
                                         }
-                                    }
+                                    )
+                            ) {
+                                Box(
+                                    modifier = Modifier.size(28.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Image(
+                                        painter = painterResource(id = weatherRes),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(28.dp)
+                                    )
                                 }
 
-                                val startFadeAlpha by animateFloatAsState(
-                                    targetValue = if (isScrolling) 1f else 0f,
-                                    animationSpec = tween(150),
-                                    label = "marqueeStartFade"
-                                )
-                                val endFadeAlpha by animateFloatAsState(
-                                    targetValue = if (needsMarquee) 1f else 0f,
-                                    animationSpec = tween(150),
-                                    label = "marqueeEndFade"
-                                )
-
-                                Text(
-                                    text = event.title,
-                                    fontSize = eventTitleFontSize,
-                                    fontWeight = FontWeight.Bold,
-                                    color = baseColor,
-                                    fontFamily = QuicksandTitleVariable,
-                                    maxLines = 1,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .onGloballyPositioned { containerWidthPx = it.size.width }
-                                        .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                                        .drawWithContent {
-                                            drawContent()
-                                            val fadeWidth = 32.dp.toPx()
-                                            if (needsMarquee) {
-                                                // Start Fade (Left)
-                                                drawRect(
-                                                    brush = Brush.horizontalGradient(
-                                                        0f to Color.Black.copy(alpha = 1f - startFadeAlpha),
-                                                        fadeWidth / size.width to Color.Black,
-                                                        1f to Color.Black
-                                                    ),
-                                                    blendMode = BlendMode.DstIn
+                                Column(
+                                    verticalArrangement = Arrangement.Center,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    val todayLabel = stringResource(R.string.today)
+                                    val tempText = if (weatherState.maxTemp != null && weatherState.minTemp != null) {
+                                        "$todayLabel ${weatherState.maxTemp.replace("+", "")}/${weatherState.minTemp.replace("+", "")}"
+                                    } else {
+                                        weatherState.temperature.replace("+", "")
+                                    }
+                                    Text(
+                                        text = tempText,
+                                        fontSize = eventTitleFontSize,
+                                        fontWeight = FontWeight.Bold,
+                                        color = baseColor,
+                                        fontFamily = QuicksandTitleVariable,
+                                        maxLines = 1
+                                    )
+                                    Text(
+                                        text = weatherState.dailyCondition ?: weatherState.condition,
+                                        fontSize = subtitleFontSize,
+                                        color = baseColor.copy(alpha = 0.7f),
+                                        fontFamily = QuicksandTitleVariable
+                                    )
+                                }
+                            }
+                        } else {
+                            val event = calendarEvents[index - 1]
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .combinedClickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                        onLongClick = {
+                                            onLongClick?.invoke()
+                                        },
+                                        onClick = {
+                                            try {
+                                                val uri = ContentUris.withAppendedId(
+                                                    CalendarContract.Events.CONTENT_URI,
+                                                    event.id
                                                 )
-                                                // End Fade (Right)
-                                                drawRect(
-                                                    brush = Brush.horizontalGradient(
-                                                        0f to Color.Black,
-                                                        (size.width - fadeWidth * endFadeAlpha) / size.width to Color.Black,
-                                                        1f to Color.Transparent
-                                                    ),
-                                                    blendMode = BlendMode.DstIn
-                                                )
+                                                val intent = Intent(Intent.ACTION_VIEW).setData(uri)
+                                                context.startActivity(intent)
+                                            } catch (_: Exception) {
+                                                // Fallback to opening calendar at specific time
+                                                val builder = CalendarContract.CONTENT_URI.buildUpon()
+                                                    .appendPath("time")
+                                                ContentUris.appendId(builder, event.startTime)
+                                                val intent = Intent(Intent.ACTION_VIEW).setData(builder.build())
+                                                context.startActivity(intent)
                                             }
                                         }
-                                        .basicMarquee(iterations = Int.MAX_VALUE, repeatDelayMillis = 1200)
-                                )
-                                val todayLabel = stringResource(R.string.today)
-                                val tomorrowLabel = stringResource(R.string.tomorrow)
-                                val allDayLabel = stringResource(R.string.all_day)
-                                val timeText = remember(event, timeFormatter, todayLabel, tomorrowLabel, allDayLabel) {
-                                    val now = System.currentTimeMillis()
-                                    val nowCal = Calendar.getInstance()
-                                    val tomorrowCal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
-                                    
-                                    // Check if the event is currently active (ongoing)
-                                    val isOngoing = now in event.startTime..event.endTime
-
-                                    val eventStartMillis = if (event.isAllDay) {
-                                        event.startTime - TimeZone.getDefault().getOffset(event.startTime)
-                                    } else {
-                                        event.startTime
-                                    }
-                                    val eventStartCal = Calendar.getInstance().apply { timeInMillis = eventStartMillis }
-
-                                    val isToday = eventStartCal.get(Calendar.YEAR) == nowCal.get(Calendar.YEAR) &&
-                                            eventStartCal.get(Calendar.DAY_OF_YEAR) == nowCal.get(Calendar.DAY_OF_YEAR)
-                                    val isTomorrow = eventStartCal.get(Calendar.YEAR) == tomorrowCal.get(Calendar.YEAR) &&
-                                            eventStartCal.get(Calendar.DAY_OF_YEAR) == tomorrowCal.get(Calendar.DAY_OF_YEAR)
-
-                                    val dayPrefix = when {
-                                        isToday || isOngoing -> "$todayLabel "
-                                        isTomorrow -> "$tomorrowLabel "
-                                        else -> SimpleDateFormat("EEE, d MMM ", Locale.getDefault()).format(eventStartMillis)
-                                    }
-
-                                    if (event.isAllDay) {
-                                        dayPrefix + allDayLabel
-                                    } else {
-                                        dayPrefix + "${timeFormatter.format(event.startTime)} - ${timeFormatter.format(event.endTime)}"
-                                    }
+                                    )
+                            ) {
+                                val calInfo = availableCalendars.find { it.id == event.calendarId }
+                                val pillColor = if (event.color != null && event.color != 0) {
+                                    Color(event.color)
+                                } else {
+                                    calInfo?.color?.let { Color(it) } ?: baseColor.copy(alpha = 0.5f)
                                 }
-                                Text(
-                                    text = timeText,
-                                    fontSize = subtitleFontSize,
-                                    color = baseColor.copy(alpha = 0.7f)
+
+                                Box(
+                                    modifier = Modifier
+                                        .width(8.dp)
+                                        .height(26.dp)
+                                        .shadow(elevation = 2.dp, shape = RoundedCornerShape(100.dp))
+                                        .background(pillColor, RoundedCornerShape(100.dp))
                                 )
+
+                                Column(
+                                    verticalArrangement = Arrangement.Center,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    val textMeasurer = rememberTextMeasurer()
+                                    val textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                        fontSize = eventTitleFontSize,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = QuicksandTitleVariable
+                                    )
+                                    val textWidth = remember(event.title, textStyle) {
+                                        textMeasurer.measure(event.title, textStyle).size.width
+                                    }
+                                    var containerWidthPx by remember { mutableIntStateOf(0) }
+                                    val needsMarquee = textWidth > containerWidthPx && containerWidthPx > 0
+
+                                    var isScrolling by remember { mutableStateOf(false) }
+                                    
+                                    if (needsMarquee) {
+                                        val densityValue = LocalDensity.current
+                                        LaunchedEffect(event.title, containerWidthPx) {
+                                            val velocityPx = with(densityValue) { 30.dp.toPx() }
+                                            val spacingPx = containerWidthPx / 3f
+                                            val scrollDistance = textWidth + spacingPx
+                                            val scrollDuration = (scrollDistance / velocityPx * 1000).toLong()
+                                            
+                                            while (true) {
+                                                isScrolling = false
+                                                delay(1200.milliseconds)
+                                                isScrolling = true
+                                                delay(scrollDuration.milliseconds)
+                                            }
+                                        }
+                                    }
+
+                                    val startFadeAlpha by animateFloatAsState(
+                                        targetValue = if (isScrolling) 1f else 0f,
+                                        animationSpec = tween(150),
+                                        label = "marqueeStartFade"
+                                    )
+                                    val endFadeAlpha by animateFloatAsState(
+                                        targetValue = if (needsMarquee) 1f else 0f,
+                                        animationSpec = tween(150),
+                                        label = "marqueeEndFade"
+                                    )
+
+                                    Text(
+                                        text = event.title,
+                                        fontSize = eventTitleFontSize,
+                                        fontWeight = FontWeight.Bold,
+                                        color = baseColor,
+                                        fontFamily = QuicksandTitleVariable,
+                                        maxLines = 1,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .onGloballyPositioned { containerWidthPx = it.size.width }
+                                            .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                                            .drawWithContent {
+                                                drawContent()
+                                                val fadeWidth = 32.dp.toPx()
+                                                if (needsMarquee) {
+                                                    // Start Fade (Left)
+                                                    drawRect(
+                                                        brush = Brush.horizontalGradient(
+                                                            0f to Color.Black.copy(alpha = 1f - startFadeAlpha),
+                                                            fadeWidth / size.width to Color.Black,
+                                                            1f to Color.Black
+                                                        ),
+                                                        blendMode = BlendMode.DstIn
+                                                    )
+                                                    // End Fade (Right)
+                                                    drawRect(
+                                                        brush = Brush.horizontalGradient(
+                                                            0f to Color.Black,
+                                                            (size.width - fadeWidth * endFadeAlpha) / size.width to Color.Black,
+                                                            1f to Color.Transparent
+                                                        ),
+                                                        blendMode = BlendMode.DstIn
+                                                    )
+                                                }
+                                            }
+                                            .basicMarquee(iterations = Int.MAX_VALUE, repeatDelayMillis = 1200)
+                                    )
+                                    val todayLabel = stringResource(R.string.today)
+                                    val tomorrowLabel = stringResource(R.string.tomorrow)
+                                    val allDayLabel = stringResource(R.string.all_day)
+                                    val timeText = remember(event, timeFormatter, todayLabel, tomorrowLabel, allDayLabel) {
+                                        val now = System.currentTimeMillis()
+                                        val nowCal = Calendar.getInstance()
+                                        val tomorrowCal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
+                                        
+                                        // Check if the event is currently active (ongoing)
+                                        val isOngoing = now in event.startTime..event.endTime
+
+                                        val eventStartMillis = if (event.isAllDay) {
+                                            event.startTime - TimeZone.getDefault().getOffset(event.startTime)
+                                        } else {
+                                            event.startTime
+                                        }
+                                        val eventStartCal = Calendar.getInstance().apply { timeInMillis = eventStartMillis }
+
+                                        val isToday = eventStartCal.get(Calendar.YEAR) == nowCal.get(Calendar.YEAR) &&
+                                                eventStartCal.get(Calendar.DAY_OF_YEAR) == nowCal.get(Calendar.DAY_OF_YEAR)
+                                        val isTomorrow = eventStartCal.get(Calendar.YEAR) == tomorrowCal.get(Calendar.YEAR) &&
+                                                eventStartCal.get(Calendar.DAY_OF_YEAR) == nowCal.get(Calendar.DAY_OF_YEAR)
+
+                                        val dayPrefix = when {
+                                            isToday || isOngoing -> "$todayLabel "
+                                            isTomorrow -> "$tomorrowLabel "
+                                            else -> SimpleDateFormat("EEE, d MMM ", Locale.getDefault()).format(eventStartMillis)
+                                        }
+
+                                        if (event.isAllDay) {
+                                            dayPrefix + allDayLabel
+                                        } else {
+                                            dayPrefix + "${timeFormatter.format(event.startTime)} - ${timeFormatter.format(event.endTime)}"
+                                        }
+                                    }
+                                    Text(
+                                        text = timeText,
+                                        fontSize = subtitleFontSize,
+                                        color = baseColor.copy(alpha = 0.7f)
+                                    )
+                                }
                             }
                         }
                     }
 
-                    if (calendarEvents.size > 1) {
+                    if (calendarEvents.isNotEmpty()) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                            verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
+                            modifier = Modifier.width(48.dp).height(84.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Rounded.KeyboardArrowUp,
                                 contentDescription = stringResource(R.string.scroll_up),
                                 tint = if (pagerState.currentPage > 0) baseColor.copy(alpha = 0.5f) else baseColor.copy(alpha = 0.15f),
                                 modifier = Modifier
-                                    .size(20.dp)
+                                    .size(24.dp)
                                     .clickable(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = null,
@@ -1629,22 +1719,39 @@ fun AtAGlanceSection(
                                         scope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
                                     }
                             )
-                            Text(
-                                text = "${pagerState.currentPage + 1}/${calendarEvents.size}",
-                                color = baseColor.copy(alpha = 0.5f),
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+                            
+                            if (pagerState.currentPage == 0) {
+                                CalendarCounterIcon(
+                                    count = calendarEvents.size,
+                                    modifier = Modifier.padding(bottom = 4.dp),
+                                    color = baseColor.copy(alpha = 0.7f),
+                                    textColor = if (isWallpaperDark) Color.White else Color.Black
+                                )
+                            } else {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp).height(20.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "${pagerState.currentPage}/${calendarEvents.size}",
+                                        color = baseColor.copy(alpha = 0.5f),
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = QuicksandTitleVariable
+                                    )
+                                }
+                            }
+                            
                             Icon(
                                 imageVector = Icons.Rounded.KeyboardArrowDown,
                                 contentDescription = stringResource(R.string.scroll_down),
-                                tint = if (pagerState.currentPage < calendarEvents.size - 1) baseColor.copy(alpha = 0.5f) else baseColor.copy(alpha = 0.15f),
+                                tint = if (pagerState.currentPage < calendarEvents.size) baseColor.copy(alpha = 0.5f) else baseColor.copy(alpha = 0.15f),
                                 modifier = Modifier
-                                    .size(20.dp)
+                                    .size(24.dp)
                                     .clickable(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = null,
-                                        enabled = pagerState.currentPage < calendarEvents.size - 1
+                                        enabled = pagerState.currentPage < calendarEvents.size
                                     ) {
                                         scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
                                     }

@@ -297,4 +297,9 @@
     <string name="experimental_disable_grouping">Gruppierung deaktivieren\n(Experimentell)</string>
     <string name="experimental_disable_grouping_description">Verhindert, dass Benachrichtigungen nach App gruppiert werden</string>
     <string name="all_apps">Alle Apps</string>
+    <string name="temp_unit">Temperatureinheit</string>
+    <string name="temp_unit_description">Wählen Sie die bevorzugte Einheit für die Temperaturanzeige.</string>
+    <string name="celsius">Celsius (°C)</string>
+    <string name="fahrenheit">Fahrenheit (°F)</string>
+    <string name="no_weather_data">keine Wetterdaten</string>
 </resources>

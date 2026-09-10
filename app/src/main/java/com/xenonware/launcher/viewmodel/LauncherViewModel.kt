@@ -73,6 +73,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
@@ -82,14 +84,15 @@ import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
 import java.util.UUID
-import org.json.JSONArray
-import org.json.JSONObject
 import kotlin.coroutines.resume
 import kotlin.time.Duration.Companion.milliseconds
 
 data class WeatherState(
     val temperature: String,
-    val condition: String
+    val condition: String,
+    val maxTemp: String? = null,
+    val minTemp: String? = null,
+    val dailyCondition: String? = null
 )
 
 data class CalendarInfo(
@@ -202,6 +205,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             }
             "notification_indicator_type" -> _notificationIndicatorType.value = prefManager.notificationIndicatorType
             "notification_message_type" -> _notificationMessageType.value = prefManager.notificationMessageType
+            "temp_unit" -> {
+                viewModelScope.launch { updateWeatherOnce() }
+            }
         }
     }
 
@@ -500,8 +506,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private val _weatherState = MutableStateFlow(
         WeatherState(
-            temperature = application.getString(R.string.default_temperature),
-            condition = application.getString(R.string.default_condition)
+            temperature = application.getString(R.string.no_weather_data),
+            condition = ""
         )
     )
     val weatherState: StateFlow<WeatherState> = _weatherState
@@ -720,26 +726,100 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 // Without them, it falls back to IP-based geolocation (less accurate).
                 val locationPath = location?.let { "/${it.latitude},${it.longitude}" } ?: ""
                 val lang = Locale.getDefault().language
-                val url = URL("https://wttr.in$locationPath?format=%t;%C&lang=$lang")
+                // Using format=j1 for detailed forecast including daily high/low
+                val url = URL("https://wttr.in$locationPath?format=j1&lang=$lang")
                 val connection = url.openConnection() as HttpURLConnection
                 connection.connectTimeout = 5000
                 connection.readTimeout = 5000
 
                 val text = connection.inputStream.bufferedReader().use { it.readText() }.trim()
-                if (text.isNotEmpty() && text.contains(";")) {
-                    val parts = text.split(";")
-                    if (parts.size >= 2) {
-                        _weatherState.value = WeatherState(
-                            temperature = parts[0].trim(),
-                            condition = parts[1].trim()
-                        )
-                        return@withContext true
+                if (text.isNotEmpty()) {
+                    val json = JSONObject(text)
+                    val currentCondition = json.getJSONArray("current_condition").getJSONObject(0)
+                    val weather = json.getJSONArray("weather").getJSONObject(0)
+
+                    val tempUnitSetting = prefManager.tempUnit
+                    val isMetric = when (tempUnitSetting) {
+                        1 -> true
+                        2 -> false
+                        else -> Locale.getDefault().country != "US"
                     }
+                    val unit = if (isMetric) "C" else "F"
+                    
+                    val currentTemp = if (isMetric) currentCondition.getString("temp_C") + "°$unit" else currentCondition.getString("temp_F") + "°$unit"
+                    
+                    val lang = Locale.getDefault().language
+                    val descField = if (lang != "en") "lang_$lang" else "weatherDesc"
+                    
+                    val rawDesc = currentCondition.getJSONArray("weatherDesc").getJSONObject(0).getString("value")
+                    val currentDesc = if (currentCondition.has(descField)) {
+                        currentCondition.getJSONArray(descField).getJSONObject(0).getString("value")
+                    } else {
+                        translateWeatherCondition(rawDesc)
+                    }
+                    
+                    val maxTemp = if (isMetric) weather.getString("maxtempC") + "°$unit" else weather.getString("maxtempF") + "°$unit"
+                    val minTemp = if (isMetric) weather.getString("mintempC") + "°$unit" else weather.getString("mintempF") + "°$unit"
+                    
+                    val hourly = weather.getJSONArray("hourly")
+                    val noonForecast = if (hourly.length() > 4) hourly.getJSONObject(4) else hourly.getJSONObject(0)
+                    
+                    val dailyDescRaw = noonForecast.getJSONArray("weatherDesc").getJSONObject(0).getString("value")
+                    val dailyDesc = if (noonForecast.has(descField)) {
+                        noonForecast.getJSONArray(descField).getJSONObject(0).getString("value")
+                    } else {
+                        translateWeatherCondition(dailyDescRaw)
+                    }
+
+                    _weatherState.value = WeatherState(
+                        temperature = currentTemp,
+                        condition = currentDesc,
+                        maxTemp = maxTemp,
+                        minTemp = minTemp,
+                        dailyCondition = dailyDesc
+                    )
+                    return@withContext true
                 }
                 false
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                Log.e("LauncherViewModel", "Weather update failed", e)
+                _weatherState.value = WeatherState(
+                    temperature = getApplication<Application>().getString(R.string.no_weather_data),
+                    condition = ""
+                )
                 false
             }
+        }
+    }
+
+    private fun translateWeatherCondition(condition: String): String {
+        if (Locale.getDefault().language != "de") return condition
+        val c = condition.lowercase().trim()
+        return when {
+            c.contains("overcast") -> "Bedeckt"
+            c.contains("partly cloudy") -> "Teilweise bewölkt"
+            c.contains("cloudy") -> "Bewölkt"
+            c.contains("sunny") -> "Sonnig"
+            c.contains("clear") -> "Klar"
+            c.contains("mist") -> "Dunst"
+            c.contains("fog") -> "Nebel"
+            c.contains("patchy rain") || c.contains("light rain") -> "Leichter Regen"
+            c.contains("moderate rain") -> "Mäßiger Regen"
+            c.contains("heavy rain") -> "Starker Regen"
+            c.contains("thunder") -> "Gewitter"
+            c.contains("snow") -> {
+                if (c.contains("heavy")) "Starker Schneefall"
+                else if (c.contains("moderate")) "Mäßiger Schneefall"
+                else "Leichter Schneefall"
+            }
+            c.contains("sleet") -> "Schneeregen"
+            c.contains("drizzle") -> "Nieselregen"
+            c.contains("shower") -> {
+                if (c.contains("rain")) "Regenschauer"
+                else if (c.contains("snow")) "Schneeschauer"
+                else "Schauer"
+            }
+            else -> condition
         }
     }
 

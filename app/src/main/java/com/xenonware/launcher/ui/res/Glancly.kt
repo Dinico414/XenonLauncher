@@ -38,7 +38,7 @@ import java.util.Calendar
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
-fun AtAGlance(
+fun Glancly(
     time: String,
     date: String,
     temperature: String,

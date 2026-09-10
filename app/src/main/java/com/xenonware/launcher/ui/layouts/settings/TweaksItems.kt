@@ -125,6 +125,7 @@ fun TweaksItems(
     val showClock by viewModel.showClockAtAGlance.collectAsState()
     val notificationIndicatorType by viewModel.notificationIndicatorType.collectAsState()
     val notificationMessageType by viewModel.notificationMessageType.collectAsState()
+    val tempUnit by viewModel.tempUnit.collectAsState()
     val hideAtAGlance by viewModel.hideAtAGlance.collectAsState()
     val hideDockScrolling by viewModel.hideDockScrolling.collectAsState()
     val hideDockScrollingOnlySmall by viewModel.hideDockScrollingOnlySmall.collectAsState()
@@ -296,6 +297,34 @@ fun TweaksItems(
                                 0 -> stringResource(R.string.notification_message_none)
                                 1 -> stringResource(R.string.notification_message_no_notification)
                                 else -> stringResource(R.string.notification_message_up_to_date)
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                    )
+                }
+            )
+
+            Spacer(Modifier.height(actualInnerGroupSpacing))
+
+            SettingsTileContext(
+                title = stringResource(R.string.temp_unit),
+                icon = { Icon(Icons.Rounded.TableRows, null, tint = tileSubtitleColor) },
+                showContext = true,
+                shape = tileShapeOverride ?: middleShape,
+                backgroundColor = tileBackgroundColor,
+                contentColor = tileContentColor,
+                subtitleColor = tileSubtitleColor,
+                enableRipple = false,
+                contextContent = {
+                    XenonSingleChoiceButtonGroup(
+                        options = listOf(0, 1, 2),
+                        selectedOption = tempUnit,
+                        onOptionSelect = { viewModel.setTempUnit(it) },
+                        label = { type ->
+                            when (type) {
+                                0 -> stringResource(R.string.system_default)
+                                1 -> stringResource(R.string.celsius)
+                                else -> stringResource(R.string.fahrenheit)
                             }
                         },
                         modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 16.dp)

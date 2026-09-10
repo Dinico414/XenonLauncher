@@ -223,6 +223,10 @@ class SharedPreferenceManager(context: Context) {
         get() = prefs.getInt("notification_message_type", 2) // 0: None, 1: No Notification, 2: Up to date
         set(value) = prefs.edit { putInt("notification_message_type", value) }
 
+    var tempUnit: Int
+        get() = prefs.getInt("temp_unit", 0) // 0: System, 1: °C, 2: °F
+        set(value) = prefs.edit { putInt("temp_unit", value) }
+
     var isUserLoggedIn: Boolean
         get() = prefs.getBoolean("is_user_logged_in", false)
         set(value) = prefs.edit { putBoolean("is_user_logged_in", value) }

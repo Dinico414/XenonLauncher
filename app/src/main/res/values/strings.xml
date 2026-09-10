@@ -299,4 +299,9 @@
     <string name="experimental_disable_grouping">Disable Grouping\n(Experimental)</string>
     <string name="experimental_disable_grouping_description">Prevent notifications from being grouped by app</string>
     <string name="all_apps">All apps</string>
+    <string name="temp_unit">Temperature Unit</string>
+    <string name="temp_unit_description">Select the preferred unit for temperature display.</string>
+    <string name="celsius">Celsius (°C)</string>
+    <string name="fahrenheit">Fahrenheit (°F)</string>
+    <string name="no_weather_data">no weather data</string>
 </resources>

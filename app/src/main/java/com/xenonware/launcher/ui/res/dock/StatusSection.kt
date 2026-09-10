@@ -19,6 +19,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -67,6 +68,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
@@ -79,7 +81,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.xenon.mylibrary.theme.QuicksandTitleVariable
 import com.xenonware.launcher.R
-import com.xenonware.launcher.ui.res.AtAGlance
+import com.xenonware.launcher.ui.res.Glancly
 import kotlinx.coroutines.delay
 import kotlin.math.PI
 import kotlin.math.cos
@@ -406,7 +408,7 @@ fun StatusSection(
                 }, label = "statusTransition"
             ) { targetExpanded ->
                 if (targetExpanded) {
-                    AtAGlance(
+                    Glancly(
                         currentTime,
                         currentDate,
                         weatherTemp,
@@ -496,6 +498,7 @@ private enum class StatusViewState {
 fun StatusCounters(
     notificationCount: Int,
     calendarEventCount: Int,
+    weatherIcon: Int? = null,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -503,11 +506,34 @@ fun StatusCounters(
         verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        if (weatherIcon != null) {
+            WeatherCounterIcon(iconRes = weatherIcon)
+        }
         if (notificationCount > 0) {
             NotificationCounterBadge(count = notificationCount)
         }
         if (calendarEventCount > 0) {
             CalendarCounterIcon(count = calendarEventCount)
+        }
+    }
+}
+
+@Composable
+fun WeatherCounterIcon(
+    iconRes: Int,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        color = colorScheme.secondaryContainer,
+        shape = CircleShape,
+        modifier = modifier.requiredSize(20.dp)
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Image(
+                painter = painterResource(id = iconRes),
+                contentDescription = null,
+                modifier = Modifier.size(14.dp)
+            )
         }
     }
 }
@@ -548,6 +574,7 @@ fun CalendarCounterIcon(
     count: Int,
     modifier: Modifier = Modifier,
     color: Color = colorScheme.tertiary,
+    textColor: Color = Color.Black
 ) {
     val plusLabel = stringResource(R.string.notification_count_plus)
     val text = if (count > 99) plusLabel else count.toString()
@@ -555,7 +582,7 @@ fun CalendarCounterIcon(
     val textStyle = TextStyle(
         fontSize = if (text.length >= 3) 7.5.sp else if (text.length == 2) 9.sp else 10.5.sp,
         fontWeight = FontWeight.Bold,
-        color = Color.Black,
+        color = textColor,
         fontFamily = QuicksandTitleVariable
     )
 
@@ -641,16 +668,5 @@ fun openNotifications(context: Context) {
             context.sendBroadcast(intent)
         } catch (_: Exception) {
         }
-    }
-}
-
-fun openQuickSettings(context: Context) {
-    try {
-        val statusBarService = context.getSystemService("statusbar")
-        val statusBarManager = Class.forName("android.app.StatusBarManager")
-        val expandMethod = statusBarManager.getMethod("expandSettingsPanel")
-        expandMethod.isAccessible = true
-        expandMethod.invoke(statusBarService)
-    } catch (_: Exception) {
     }
 }

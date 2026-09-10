@@ -371,6 +371,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _notificationMessageType = MutableStateFlow(sharedPreferenceManager.notificationMessageType)
     val notificationMessageType: StateFlow<Int> = _notificationMessageType.asStateFlow()
 
+    private val _tempUnit = MutableStateFlow(sharedPreferenceManager.tempUnit)
+    val tempUnit: StateFlow<Int> = _tempUnit.asStateFlow()
+
     private val _persistedThemeIndexFlow = MutableStateFlow(sharedPreferenceManager.theme)
     val persistedThemeIndex: StateFlow<Int> = _persistedThemeIndexFlow.asStateFlow()
 
@@ -481,6 +484,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             "disable_grouping" -> _disableGrouping.value = sharedPreferenceManager.disableGrouping
             "notification_indicator_type" -> _notificationIndicatorType.value = sharedPreferenceManager.notificationIndicatorType
             "notification_message_type" -> _notificationMessageType.value = sharedPreferenceManager.notificationMessageType
+            "temp_unit" -> _tempUnit.value = sharedPreferenceManager.tempUnit
         }
     }
 
@@ -666,6 +670,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setNotificationMessageType(type: Int) {
         sharedPreferenceManager.notificationMessageType = type
         _notificationMessageType.value = type
+    }
+
+    fun setTempUnit(unit: Int) {
+        sharedPreferenceManager.tempUnit = unit
+        _tempUnit.value = unit
     }
 
     fun setFabSingleTapAction(action: FabAction) {
