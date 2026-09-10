@@ -47,6 +47,7 @@ import com.xenonware.launcher.ui.res.CalendarSelectionDialog
 import com.xenonware.launcher.ui.res.FabActionConfigDialog
 import com.xenonware.launcher.ui.res.GlobalIconPackPicker
 import com.xenonware.launcher.ui.res.NotificationManagerDialog
+import com.xenonware.launcher.ui.res.PermissionsDialog
 import com.xenonware.launcher.ui.res.ShortcutConfigDialog
 import com.xenonware.launcher.viewmodel.LauncherViewModel
 import com.xenonware.launcher.viewmodel.FabConfigMode
@@ -95,6 +96,9 @@ fun CoverSettings(
     val showHiddenAppsDialog by viewModel.showHiddenAppsDialog.collectAsState()
     val hiddenApps by viewModel.hiddenApps.collectAsState()
     val configShortcutType by viewModel.configShortcutType.collectAsState()
+
+    val showPermissionsDialog by viewModel.showPermissionsDialog.collectAsState()
+    val permissionsList by viewModel.permissionsList.collectAsState()
 
     val globalIconPack by viewModel.globalIconPack.collectAsState()
     val showGlobalIconPackDialog by viewModel.showGlobalIconPackDialog.collectAsState()
@@ -401,6 +405,20 @@ fun CoverSettings(
                 onClearAll = { viewModel.setVisibleCalendars(emptyList()) },
                 iconShape = iconShape,
                 showShadow = showShadow
+            )
+        }
+    }
+
+    if (showPermissionsDialog) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .hazeEffect(hazeState)
+        ) {
+            PermissionsDialog(
+                permissions = permissionsList,
+                onDismiss = { viewModel.setShowPermissionsDialog(false) },
+                onOpenPermission = { viewModel.openPermissionSettings(context, it) }
             )
         }
     }

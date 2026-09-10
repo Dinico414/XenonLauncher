@@ -143,6 +143,10 @@
     <string name="post_notifications_description">Allow the app to show notifications.</string>
     <string name="all_files_access">All Files Access</string>
     <string name="all_files_access_description">Used to search files and use custom icons from storage.</string>
+    <string name="permissions">Permissions</string>
+    <string name="permissions_summary">Manage all app permissions</string>
+    <string name="granted">Granted</string>
+    <string name="denied">Denied</string>
 
     <!-- FAB Actions -->
     <string name="fab_single_tap">Single Tap</string>

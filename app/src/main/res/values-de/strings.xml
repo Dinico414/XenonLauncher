@@ -142,6 +142,10 @@
     <string name="post_notifications_description">Erlaube der App, Benachrichtigungen anzuzeigen.</string>
     <string name="all_files_access">Zugriff auf alle Dateien</string>
     <string name="all_files_access_description">Wird verwendet, um Dateien zu suchen und benutzerdefinierte Symbole aus dem Speicher zu verwenden.</string>
+    <string name="permissions">Berechtigungen</string>
+    <string name="permissions_summary">Alle App-Berechtigungen verwalten</string>
+    <string name="granted">Erteilt</string>
+    <string name="denied">Verweigert</string>
 
     <!-- FAB Actions -->
     <string name="fab_single_tap">Einmal tippen</string>

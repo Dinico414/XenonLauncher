@@ -12,10 +12,13 @@ import android.content.pm.ResolveInfo
 import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Build
+import android.os.Environment
 import android.os.Process
 import android.provider.CalendarContract
 import android.provider.Settings
+import android.text.TextUtils
 import android.util.Log
+import androidx.core.content.ContextCompat
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.ui.unit.IntSize
@@ -29,6 +32,7 @@ import com.google.firebase.firestore.Query
 import com.xenon.mylibrary.res.LanguageOption
 import com.xenon.mylibrary.res.ThemeSetting
 import com.xenonware.launcher.R
+import com.xenonware.launcher.accessibility.XenonAccessibilityService
 import com.xenonware.launcher.data.SharedPreferenceManager
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.model.FabAction
@@ -68,6 +72,12 @@ data class BackupInfo(
     val data: String? = null // The actual backup JSON data (if local or already fetched)
 )
 
+data class PermissionStatus(
+    val name: String,
+    val isGranted: Boolean,
+    val permission: String
+)
+
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
     private val sharedPreferenceManager = SharedPreferenceManager(application)
     val themeOptions = ThemeSetting.entries.toTypedArray()
@@ -98,6 +108,118 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     private val _advancedSearchEnabled = MutableStateFlow(sharedPreferenceManager.advancedSearchEnabled)
     val advancedSearchEnabled: StateFlow<Boolean> = _advancedSearchEnabled.asStateFlow()
+
+    private val _permissionsList = MutableStateFlow<List<PermissionStatus>>(emptyList())
+    val permissionsList: StateFlow<List<PermissionStatus>> = _permissionsList.asStateFlow()
+
+    private val _showPermissionsDialog = MutableStateFlow(false)
+    val showPermissionsDialog: StateFlow<Boolean> = _showPermissionsDialog.asStateFlow()
+
+    fun setShowPermissionsDialog(show: Boolean) {
+        _showPermissionsDialog.value = show
+        if (show) {
+            refreshPermissions()
+        }
+    }
+
+    fun refreshPermissions() {
+        val context = getApplication<Application>()
+        val packageManager = context.packageManager
+        val packageInfo = packageManager.getPackageInfo(
+            context.packageName,
+            PackageManager.GET_PERMISSIONS
+        )
+        val requestedPermissions = packageInfo.requestedPermissions ?: emptyArray()
+
+        val newList = requestedPermissions.mapNotNull { permission ->
+            try {
+                val pInfo = packageManager.getPermissionInfo(permission, 0)
+                // Filter for runtime permissions or common special ones
+                val isRuntime = (pInfo.protectionLevel and 0xf) == 1 // PROTECTION_DANGEROUS
+                val isSpecial = permission == Manifest.permission.MANAGE_EXTERNAL_STORAGE ||
+                                permission == Manifest.permission.BIND_NOTIFICATION_LISTENER_SERVICE ||
+                                permission == Manifest.permission.BIND_ACCESSIBILITY_SERVICE
+
+                if (isRuntime || isSpecial) {
+                    val label = when (permission) {
+                        Manifest.permission.READ_CONTACTS -> context.getString(R.string.contacts_access)
+                        Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION -> context.getString(R.string.location_access)
+                        Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR -> context.getString(R.string.calendar_access)
+                        Manifest.permission.POST_NOTIFICATIONS -> context.getString(R.string.post_notifications)
+                        Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_AUDIO -> context.getString(R.string.storage_access)
+                        Manifest.permission.MANAGE_EXTERNAL_STORAGE -> context.getString(R.string.all_files_access)
+                        Manifest.permission.BIND_NOTIFICATION_LISTENER_SERVICE -> context.getString(R.string.notification_access)
+                        Manifest.permission.BIND_ACCESSIBILITY_SERVICE -> context.getString(R.string.accessibility_access)
+                        else -> pInfo.loadLabel(packageManager).toString()
+                    }
+
+                    val isGranted = when (permission) {
+                        Manifest.permission.MANAGE_EXTERNAL_STORAGE -> {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) Environment.isExternalStorageManager() else true
+                        }
+                        Manifest.permission.BIND_NOTIFICATION_LISTENER_SERVICE -> {
+                            val flat = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
+                            !TextUtils.isEmpty(flat) && flat.contains(context.packageName)
+                        }
+                        Manifest.permission.BIND_ACCESSIBILITY_SERVICE -> {
+                            XenonAccessibilityService.instance != null
+                        }
+                        else -> context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
+                    }
+
+                    PermissionStatus(
+                        name = label,
+                        isGranted = isGranted,
+                        permission = permission
+                    )
+                } else null
+            } catch (e: Exception) {
+                null
+            }
+        }.distinctBy { it.name }.sortedBy { it.name }
+
+        _permissionsList.value = newList
+    }
+
+    fun openPermissionSettings(context: Context, permission: String) {
+        val intent = when (permission) {
+            Manifest.permission.MANAGE_EXTERNAL_STORAGE -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                        data = Uri.fromParts("package", context.packageName, null)
+                    }
+                } else {
+                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                        data = Uri.fromParts("package", context.packageName, null)
+                    }
+                }
+            }
+            Manifest.permission.POST_NOTIFICATIONS -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                        putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                    }
+                } else {
+                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                        data = Uri.fromParts("package", context.packageName, null)
+                    }
+                }
+            }
+            Manifest.permission.BIND_NOTIFICATION_LISTENER_SERVICE -> {
+                Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+            }
+            Manifest.permission.BIND_ACCESSIBILITY_SERVICE -> {
+                Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+            }
+            else -> {
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                    data = Uri.fromParts("package", context.packageName, null)
+                }
+            }
+        }
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
+    }
 
     private val _showHiddenAppsInSearch = MutableStateFlow(sharedPreferenceManager.showHiddenAppsInSearch)
     val showHiddenAppsInSearch: StateFlow<Boolean> = _showHiddenAppsInSearch.asStateFlow()
@@ -272,6 +394,18 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     private val _dialogPreviewThemeIndex = MutableStateFlow(sharedPreferenceManager.theme)
     val dialogPreviewThemeIndex: StateFlow<Int> = _dialogPreviewThemeIndex.asStateFlow()
+
+    val currentThemeIndex: StateFlow<Int> = combine(
+        _persistedThemeIndexFlow,
+        _dialogPreviewThemeIndex,
+        _showThemeDialog
+    ) { persistedIndex, previewIndex, isDialogShowing ->
+        if (isDialogShowing) previewIndex else persistedIndex
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = sharedPreferenceManager.theme
+    )
 
     private val _enableCoverTheme = MutableStateFlow(sharedPreferenceManager.coverThemeEnabled)
     val enableCoverTheme: StateFlow<Boolean> = _enableCoverTheme.asStateFlow()
@@ -622,6 +756,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun setShowCalendarSelectionDialog(show: Boolean) {
+        if (show) loadAvailableCalendars()
         _showCalendarSelectionDialog.value = show
     }
 
@@ -648,8 +783,14 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun loadAvailableCalendars() {
         viewModelScope.launch(Dispatchers.IO) {
+            val context = getApplication<Application>()
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
+                _availableCalendars.value = emptyList()
+                return@launch
+            }
+
             val calendars = mutableListOf<CalendarInfo>()
-            val contentResolver = getApplication<Application>().contentResolver
+            val contentResolver = context.contentResolver
             val uri = CalendarContract.Calendars.CONTENT_URI
             val projection = arrayOf(
                 CalendarContract.Calendars._ID,
@@ -663,17 +804,25 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
             try {
                 contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
+                    val idIdx = cursor.getColumnIndex(CalendarContract.Calendars._ID)
+                    val nameIdx = cursor.getColumnIndex(CalendarContract.Calendars.CALENDAR_DISPLAY_NAME)
+                    val colorIdx = cursor.getColumnIndex(CalendarContract.Calendars.CALENDAR_COLOR)
+                    val accountIdx = cursor.getColumnIndex(CalendarContract.Calendars.ACCOUNT_NAME)
+                    val syncIdx = cursor.getColumnIndex(CalendarContract.Calendars.SYNC_EVENTS)
+                    val visibleIdx = cursor.getColumnIndex(CalendarContract.Calendars.VISIBLE)
+                    val typeIdx = cursor.getColumnIndex(CalendarContract.Calendars.ACCOUNT_TYPE)
+
                     while (cursor.moveToNext()) {
+                        val id = cursor.getString(idIdx)
+                        val name = cursor.getString(nameIdx) ?: context.getString(R.string.unknown)
+                        val color = cursor.getInt(colorIdx)
+                        val accountName = cursor.getString(accountIdx) ?: ""
+                        val syncEvents = syncIdx < 0 || cursor.getInt(syncIdx) != 0
+                        val visible = visibleIdx < 0 || cursor.getInt(visibleIdx) != 0
+                        val accountType = if (typeIdx >= 0) cursor.getString(typeIdx) ?: "" else ""
+                        
                         calendars.add(
-                            CalendarInfo(
-                                id = cursor.getString(0),
-                                name = cursor.getString(1),
-                                color = cursor.getInt(2),
-                                accountName = cursor.getString(3),
-                                syncEvents = cursor.getInt(4) != 0,
-                                visible = cursor.getInt(5) != 0,
-                                accountType = cursor.getString(6)
-                            )
+                            CalendarInfo(id, name, color, accountName, syncEvents, visible, accountType)
                         )
                     }
                 }

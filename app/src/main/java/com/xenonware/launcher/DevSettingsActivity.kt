@@ -59,7 +59,7 @@ class DevSettingsActivity : ComponentActivity() {
                 AppCompatDelegate.setDefaultNightMode(activeNightMode)
             }
 
-            val themePref by mainSettingsViewModel.persistedThemeIndex.collectAsState()
+            val themePref by mainSettingsViewModel.currentThemeIndex.collectAsState()
             val blackedOut by mainSettingsViewModel.blackedOutModeEnabled.collectAsState()
             val coverThemeEnabled by mainSettingsViewModel.enableCoverTheme.collectAsState()
 

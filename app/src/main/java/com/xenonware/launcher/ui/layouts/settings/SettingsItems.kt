@@ -91,8 +91,8 @@ import com.xenonware.launcher.presentation.sign_in.GoogleAuthUiClient
 import com.xenonware.launcher.presentation.sign_in.SignInState
 import com.xenonware.launcher.ui.res.IconShape
 import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
-import com.xenonware.launcher.viewmodel.LauncherViewModel
 import com.xenonware.launcher.viewmodel.FabConfigMode
+import com.xenonware.launcher.viewmodel.LauncherViewModel
 import com.xenonware.launcher.viewmodel.SettingsViewModel
 import kotlinx.coroutines.delay
 import kotlin.math.abs
@@ -163,6 +163,9 @@ fun SettingsItems(
     val dateShortcut by viewModel.dateShortcut.collectAsState()
     val weatherShortcut by viewModel.weatherShortcut.collectAsState()
 
+    val showPermissionsDialog by viewModel.showPermissionsDialog.collectAsState()
+    val permissionsList by viewModel.permissionsList.collectAsState()
+
     val fabSingleTapAction by viewModel.fabSingleTapAction.collectAsState()
     val fabDoubleTapAction by viewModel.fabDoubleTapAction.collectAsState()
     val fabLongPressAction by viewModel.fabLongPressAction.collectAsState()
@@ -211,6 +214,7 @@ fun SettingsItems(
         }
     }
 
+
     // --- ACCOUNT ---
     SettingsGoogleTile(
         title = if (state.isSignInSuccessful) userData?.username ?: "Signed in" else stringResource(id = R.string.sign_in_with_google),
@@ -253,6 +257,19 @@ fun SettingsItems(
                 stringResource(R.string.accessibility_access_description),
             onClick = { viewModel.openAccessibilitySettings(context) },
             icon = {  Icon(painterResource(R.drawable.accessibility), null, tint = tileSubtitleColor) },
+            shape = tileShapeOverride ?: middleShape,
+            backgroundColor = tileBackgroundColor,
+            contentColor = tileContentColor,
+            subtitleColor = tileSubtitleColor,
+            horizontalPadding = tileHorizontalPadding,
+            verticalPadding = tileVerticalPadding
+        )
+        Spacer(Modifier.height(actualInnerGroupSpacing))
+        SettingsTile(
+            title = stringResource(R.string.permissions),
+            subtitle = stringResource(R.string.permissions_summary),
+            onClick = { viewModel.setShowPermissionsDialog(true) },
+            icon = { Icon(Icons.Rounded.Tune, null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: bottomShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -270,7 +287,20 @@ fun SettingsItems(
                 stringResource(R.string.accessibility_access_description),
             onClick = { viewModel.openAccessibilitySettings(context) },
             icon = {  Icon(painterResource(R.drawable.accessibility), null, tint = tileSubtitleColor) },
-            shape = tileShapeOverride ?: standaloneShape,
+            shape = tileShapeOverride ?: topShape,
+            backgroundColor = tileBackgroundColor,
+            contentColor = tileContentColor,
+            subtitleColor = tileSubtitleColor,
+            horizontalPadding = tileHorizontalPadding,
+            verticalPadding = tileVerticalPadding
+        )
+        Spacer(Modifier.height(actualInnerGroupSpacing))
+        SettingsTile(
+            title = stringResource(R.string.permissions),
+            subtitle = stringResource(R.string.permissions_summary),
+            onClick = { viewModel.setShowPermissionsDialog(true) },
+            icon = { Icon(Icons.Rounded.Tune, null, tint = tileSubtitleColor) },
+            shape = tileShapeOverride ?: bottomShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,

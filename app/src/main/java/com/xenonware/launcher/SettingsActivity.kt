@@ -79,7 +79,7 @@ class SettingsActivity : ComponentActivity() {
                 AppCompatDelegate.setDefaultNightMode(activeNightMode)
             }
 
-            val themePref by settingsViewModel.persistedThemeIndex.collectAsState()
+            val themePref by settingsViewModel.currentThemeIndex.collectAsState()
             val blackedOut by settingsViewModel.blackedOutModeEnabled.collectAsState()
             val coverThemeEnabled by settingsViewModel.enableCoverTheme.collectAsState()
 
