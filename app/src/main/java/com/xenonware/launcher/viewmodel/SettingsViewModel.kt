@@ -9,7 +9,6 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
-import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -18,10 +17,11 @@ import android.provider.CalendarContract
 import android.provider.Settings
 import android.text.TextUtils
 import android.util.Log
-import androidx.core.content.ContextCompat
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.ui.unit.IntSize
+import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -35,12 +35,11 @@ import com.xenonware.launcher.R
 import com.xenonware.launcher.accessibility.XenonAccessibilityService
 import com.xenonware.launcher.data.SharedPreferenceManager
 import com.xenonware.launcher.model.AppInfo
+import com.xenonware.launcher.model.AppWidgetGroup
 import com.xenonware.launcher.model.FabAction
+import com.xenonware.launcher.model.WidgetPickerItemData
 import com.xenonware.launcher.ui.res.IconShape
 import com.xenonware.launcher.util.AccessibilityUtils
-import com.xenonware.launcher.util.generateCustomIcon
-import com.xenonware.launcher.util.loadIconFromPack
-import com.xenonware.launcher.util.normalizeIcon
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -55,13 +54,12 @@ import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.time.Duration.Companion.milliseconds
 
-enum class FabConfigMode { NONE, SINGLE, DOUBLE, LONG }
+enum class FabConfigMode { NONE, SINGLE, DOUBLE, LONG, SWIPE_UP }
 
 data class BackupInfo(
     val id: String, // Firestore document ID or local filename
@@ -69,13 +67,13 @@ data class BackupInfo(
     val date: String,
     val time: String,
     val device: String,
-    val data: String? = null // The actual backup JSON data (if local or already fetched)
+    val data: String? = null, // The actual backup JSON data (if local or already fetched)
 )
 
 data class PermissionStatus(
     val name: String,
     val isGranted: Boolean,
-    val permission: String
+    val permission: String,
 )
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
@@ -114,6 +112,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     private val _showPermissionsDialog = MutableStateFlow(false)
     val showPermissionsDialog: StateFlow<Boolean> = _showPermissionsDialog.asStateFlow()
+
+    private val _installedShortcuts = MutableStateFlow<Map<AppWidgetGroup, List<WidgetPickerItemData>>>(emptyMap())
+    val installedShortcuts: StateFlow<Map<AppWidgetGroup, List<WidgetPickerItemData>>> = _installedShortcuts.asStateFlow()
 
     fun setShowPermissionsDialog(show: Boolean) {
         _showPermissionsDialog.value = show
@@ -155,7 +156,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
                     val isGranted = when (permission) {
                         Manifest.permission.MANAGE_EXTERNAL_STORAGE -> {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) Environment.isExternalStorageManager() else true
+                            Environment.isExternalStorageManager()
                         }
                         Manifest.permission.BIND_NOTIFICATION_LISTENER_SERVICE -> {
                             val flat = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
@@ -173,7 +174,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                         permission = permission
                     )
                 } else null
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 null
             }
         }.distinctBy { it.name }.sortedBy { it.name }
@@ -184,25 +185,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun openPermissionSettings(context: Context, permission: String) {
         val intent = when (permission) {
             Manifest.permission.MANAGE_EXTERNAL_STORAGE -> {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
-                        data = Uri.fromParts("package", context.packageName, null)
-                    }
-                } else {
-                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                        data = Uri.fromParts("package", context.packageName, null)
-                    }
+                Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                    data = Uri.fromParts("package", context.packageName, null)
                 }
             }
             Manifest.permission.POST_NOTIFICATIONS -> {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
-                        putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
-                    }
-                } else {
-                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                        data = Uri.fromParts("package", context.packageName, null)
-                    }
+                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                    putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
                 }
             }
             Manifest.permission.BIND_NOTIFICATION_LISTENER_SERVICE -> {
@@ -375,7 +364,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     val tempUnit: StateFlow<Int> = _tempUnit.asStateFlow()
 
     private val _persistedThemeIndexFlow = MutableStateFlow(sharedPreferenceManager.theme)
-    val persistedThemeIndex: StateFlow<Int> = _persistedThemeIndexFlow.asStateFlow()
 
     private val _fabSingleTapAction = MutableStateFlow(FabAction.fromString(sharedPreferenceManager.fabSingleTapAction))
     val fabSingleTapAction: StateFlow<FabAction> = _fabSingleTapAction.asStateFlow()
@@ -394,6 +382,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     private val _fabLongPressValue = MutableStateFlow(sharedPreferenceManager.fabLongPressValue)
     val fabLongPressValue: StateFlow<String> = _fabLongPressValue.asStateFlow()
+
+    private val _fabSwipeUpAction = MutableStateFlow(FabAction.fromString(sharedPreferenceManager.fabSwipeUpAction))
+    val fabSwipeUpAction: StateFlow<FabAction> = _fabSwipeUpAction.asStateFlow()
+
+    private val _fabSwipeUpValue = MutableStateFlow(sharedPreferenceManager.fabSwipeUpValue)
+    val fabSwipeUpValue: StateFlow<String> = _fabSwipeUpValue.asStateFlow()
 
     private val _dialogPreviewThemeIndex = MutableStateFlow(sharedPreferenceManager.theme)
     val dialogPreviewThemeIndex: StateFlow<Int> = _dialogPreviewThemeIndex.asStateFlow()
@@ -469,6 +463,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             "fab_single_tap_value" -> _fabSingleTapValue.value = sharedPreferenceManager.fabSingleTapValue
             "fab_double_tap_value" -> _fabDoubleTapValue.value = sharedPreferenceManager.fabDoubleTapValue
             "fab_long_press_value" -> _fabLongPressValue.value = sharedPreferenceManager.fabLongPressValue
+            "fab_swipe_up_action" -> _fabSwipeUpAction.value = FabAction.fromString(sharedPreferenceManager.fabSwipeUpAction)
+            "fab_swipe_up_value" -> _fabSwipeUpValue.value = sharedPreferenceManager.fabSwipeUpValue
             "show_clock_at_a_glance" -> _showClockAtAGlance.value = sharedPreferenceManager.showClockAtAGlance
             "hide_at_a_glance" -> _hideAtAGlance.value = sharedPreferenceManager.hideAtAGlance
             "hide_dock_scrolling" -> _hideDockScrolling.value = sharedPreferenceManager.hideDockScrolling
@@ -503,6 +499,44 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         updateCurrentLanguage()
         prepareLanguageOptions()
         loadApps()
+        loadInstalledShortcuts()
+    }
+
+    private fun loadInstalledShortcuts() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val pm = getApplication<Application>().packageManager
+            val shortcutIntent = Intent(Intent.ACTION_CREATE_SHORTCUT)
+            val shortcuts = pm.queryIntentActivities(shortcutIntent, 0)
+
+            val allPackages = shortcuts.map { it.activityInfo.packageName }.toSet()
+
+            val grouped = allPackages.map { pkg ->
+                val appName = try {
+                    pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
+                } catch (_: Exception) {
+                    pkg
+                }
+                val icon = try {
+                    pm.getApplicationIcon(pkg)
+                } catch (_: Exception) {
+                    null
+                }
+
+                val shortcutItems = shortcuts
+                    .filter { it.activityInfo.packageName == pkg }
+                    .map {
+                        WidgetPickerItemData(
+                            label = it.loadLabel(pm).toString(),
+                            isWidget = false,
+                            shortcutInfo = it
+                        )
+                    }
+
+                AppWidgetGroup(appName, icon) to shortcutItems.sortedBy { it.label }
+            }.filter { it.second.isNotEmpty() }.toMap().toSortedMap()
+
+            _installedShortcuts.value = grouped
+        }
     }
 
     private fun loadApps() {
@@ -677,36 +711,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         _tempUnit.value = unit
     }
 
-    fun setFabSingleTapAction(action: FabAction) {
-        sharedPreferenceManager.fabSingleTapAction = action.name
-        _fabSingleTapAction.value = action
-    }
-
-    fun setFabDoubleTapAction(action: FabAction) {
-        sharedPreferenceManager.fabDoubleTapAction = action.name
-        _fabDoubleTapAction.value = action
-    }
-
-    fun setFabLongPressAction(action: FabAction) {
-        sharedPreferenceManager.fabLongPressAction = action.name
-        _fabLongPressAction.value = action
-    }
-
-    fun setFabSingleTapValue(value: String) {
-        sharedPreferenceManager.fabSingleTapValue = value
-        _fabSingleTapValue.value = value
-    }
-
-    fun setFabDoubleTapValue(value: String) {
-        sharedPreferenceManager.fabDoubleTapValue = value
-        _fabDoubleTapValue.value = value
-    }
-
-    fun setFabLongPressValue(value: String) {
-        sharedPreferenceManager.fabLongPressValue = value
-        _fabLongPressValue.value = value
-    }
-
     fun setDrawerIconShape(shape: IconShape) {
         sharedPreferenceManager.drawerIconShape = shape.name
         _drawerIconShape.value = shape
@@ -879,13 +883,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun onLanguageSettingClicked(context: Context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val localeManager = context.getSystemService(Context.LOCALE_SERVICE) as LocaleManager
-            val currentLocales = localeManager.applicationLocales
-            _selectedLanguageTagInDialog.value = if (currentLocales.isEmpty) "" else currentLocales.toLanguageTags()
-        } else {
-            _selectedLanguageTagInDialog.value = sharedPreferenceManager.languageTag
-        }
+        val localeManager = context.getSystemService(Context.LOCALE_SERVICE) as LocaleManager
+        val currentLocales = localeManager.applicationLocales
+        _selectedLanguageTagInDialog.value = if (currentLocales.isEmpty) "" else currentLocales.toLanguageTags()
         _showLanguageDialog.value = true
     }
 
@@ -916,10 +916,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             Locale.forLanguageTag(tag).getDisplayName(Locale.forLanguageTag(tag))
                 .replaceFirstChar { it.uppercase() }
         }
-    }
-
-    fun getAppLocaleTag(): String {
-        return sharedPreferenceManager.languageTag
     }
 
     fun prepareLanguageOptions() {
@@ -998,7 +994,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         } else {
             resetTapsJob?.cancel()
             resetTapsJob = viewModelScope.launch {
-                delay(3000)
+                delay(3000.milliseconds)
                 infoTileTapCount = 0
             }
 
@@ -1013,7 +1009,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         // Normal single tap action
         singleTapJob?.cancel()
         singleTapJob = viewModelScope.launch {
-            delay(tapTimeoutMillis)
+            delay(tapTimeoutMillis.milliseconds)
             _showVersionDialog.value = true
         }
     }
@@ -1023,7 +1019,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun openImpressum(context: Context) {
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://xenonware.com/impressum"))
+        val intent = Intent(Intent.ACTION_VIEW, "https://xenonware.com/impressum".toUri())
         context.startActivity(intent)
     }
 
@@ -1044,26 +1040,33 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         _enableCoverTheme.value = enabled
     }
 
-    fun setFabAction(isDoubleTap: Boolean?, action: FabAction, value: String = "") {
-        when (isDoubleTap) {
-            true -> {
+    fun setFabAction(configMode: FabConfigMode, action: FabAction, value: String = "") {
+        when (configMode) {
+            FabConfigMode.DOUBLE -> {
                 sharedPreferenceManager.fabDoubleTapAction = action.name
                 sharedPreferenceManager.fabDoubleTapValue = value
                 _fabDoubleTapAction.value = action
                 _fabDoubleTapValue.value = value
             }
-            false -> {
+            FabConfigMode.LONG -> {
                 sharedPreferenceManager.fabLongPressAction = action.name
                 sharedPreferenceManager.fabLongPressValue = value
                 _fabLongPressAction.value = action
                 _fabLongPressValue.value = value
             }
-            null -> {
+            FabConfigMode.SINGLE -> {
                 sharedPreferenceManager.fabSingleTapAction = action.name
                 sharedPreferenceManager.fabSingleTapValue = value
                 _fabSingleTapAction.value = action
                 _fabSingleTapValue.value = value
             }
+            FabConfigMode.SWIPE_UP -> {
+                sharedPreferenceManager.fabSwipeUpAction = action.name
+                sharedPreferenceManager.fabSwipeUpValue = value
+                _fabSwipeUpAction.value = action
+                _fabSwipeUpValue.value = value
+            }
+            FabConfigMode.NONE -> {}
         }
     }
 
@@ -1219,7 +1222,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                         withContext(Dispatchers.Main) {
                             Toast.makeText(getApplication(), "Settings restored. Restarting...", Toast.LENGTH_SHORT).show()
                         }
-                        delay(1000)
+                        delay(1000.milliseconds)
                         restartApplication(getApplication())
                     }
                 } catch (e: Exception) {
@@ -1293,14 +1296,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             context.startActivity(intent)
             Process.killProcess(Process.myPid())
         }
-    }
-
-    private fun openAppInfo(context: Context) {
-        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-            data = Uri.fromParts("package", context.packageName, null)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        context.startActivity(intent)
     }
 
     class SettingsViewModelFactory(private val application: Application) : ViewModelProvider.Factory {

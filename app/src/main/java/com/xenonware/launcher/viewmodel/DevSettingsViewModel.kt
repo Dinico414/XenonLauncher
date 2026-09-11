@@ -1,3 +1,5 @@
+@file:Suppress("unused")
+
 package com.xenonware.launcher.viewmodel
 
 import android.app.Application

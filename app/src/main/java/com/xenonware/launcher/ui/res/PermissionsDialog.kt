@@ -13,7 +13,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import com.xenon.mylibrary.res.XenonDialog
 import com.xenonware.launcher.R
 import com.xenonware.launcher.viewmodel.PermissionStatus
@@ -37,6 +37,7 @@ fun PermissionsDialog(
 
     XenonDialog(
         onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = true),
         title = stringResource(R.string.permissions),
         confirmButtonText = stringResource(R.string.close),
         onConfirmButtonClick = onDismiss,
@@ -68,36 +69,37 @@ private fun PermissionItem(
 ) {
     ListItem(
         modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick),
-        headlineContent = {
+                .clip(RoundedCornerShape(12.dp))
+                .clickable(onClick = onClick),
+        leadingContent = null,
+        trailingContent = {
+                Button(
+                    onClick = onClick,
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = if (status.isGranted)
+                            Color(0xFF4CAF50).copy(alpha = 0.15f)
+                        else
+                            Color(0xFFF44336).copy(alpha = 0.15f),
+                        contentColor = if (status.isGranted) Color(0xFF4CAF50) else Color(0xFFF44336)
+                    ),
+                    shape = CircleShape,
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
+                ) {
+                    Text(
+                        text = if (status.isGranted) stringResource(R.string.granted) else stringResource(R.string.denied),
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
+            },
+        overlineContent = null,
+        supportingContent = null,
+        content =
+        {
             Text(
                 text = status.name,
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface,
             )
         },
-        trailingContent = {
-            Button(
-                onClick = onClick,
-                colors = ButtonDefaults.filledTonalButtonColors(
-                    containerColor = if (status.isGranted)
-                        Color(0xFF4CAF50).copy(alpha = 0.15f)
-                    else
-                        Color(0xFFF44336).copy(alpha = 0.15f),
-                    contentColor = if (status.isGranted) Color(0xFF4CAF50) else Color(0xFFF44336)
-                ),
-                shape = CircleShape,
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
-            ) {
-                Text(
-                    text = if (status.isGranted) stringResource(R.string.granted) else stringResource(R.string.denied),
-                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
-                )
-            }
-        },
-        colors = ListItemDefaults.colors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
-        )
     )
 }

@@ -63,7 +63,8 @@ import androidx.core.graphics.drawable.toBitmap
 import androidx.core.graphics.drawable.toDrawable
 import com.xenon.mylibrary.res.XenonDialog
 import com.xenonware.launcher.R
-import com.xenonware.launcher.viewmodel.LauncherViewModel
+import com.xenonware.launcher.model.AppWidgetGroup
+import com.xenonware.launcher.model.WidgetPickerItemData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -85,9 +86,10 @@ private fun untypedRes(id: Int): Int = id
 
 @Composable
 fun WidgetSelectorDialog(
-    installedWidgets: Map<LauncherViewModel.AppWidgetGroup, List<LauncherViewModel.WidgetPickerItemData>>,
+    installedWidgets: Map<AppWidgetGroup, List<WidgetPickerItemData>>,
     onDismiss: () -> Unit,
-    onWidgetSelected: (LauncherViewModel.WidgetPickerItemData) -> Unit,
+    onWidgetSelected: (WidgetPickerItemData) -> Unit,
+    title: String = stringResource(R.string.widgets)
 ) {
     val expandedGroups = remember { mutableStateListOf<String>() }
     val listState = rememberLazyListState()
@@ -120,7 +122,7 @@ fun WidgetSelectorDialog(
     XenonDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = true),
-        title = stringResource(R.string.widgets),
+        title = title,
         contentManagesScrolling = true,
         externalShowTopDivider = showTopDivider,
         externalShowBottomDivider = showBottomDivider
@@ -159,26 +161,26 @@ fun WidgetSelectorDialog(
 sealed class PickerListItem {
     abstract val key: String
 
-    data class Header(val group: LauncherViewModel.AppWidgetGroup) : PickerListItem() {
+    data class Header(val group: AppWidgetGroup) : PickerListItem() {
         override val key: String = "header_${group.appName}"
     }
 
     data class ShortcutsGrid(
         val appName: String,
-        val shortcuts: List<LauncherViewModel.WidgetPickerItemData>,
+        val shortcuts: List<WidgetPickerItemData>,
     ) : PickerListItem() {
         override val key: String = "shortcuts_${appName}"
     }
 
-    data class Widget(val data: LauncherViewModel.WidgetPickerItemData) : PickerListItem() {
+    data class Widget(val data: WidgetPickerItemData) : PickerListItem() {
         override val key: String = data.id
     }
 }
 
 @Composable
 fun ShortcutsGrid(
-    shortcuts: List<LauncherViewModel.WidgetPickerItemData>,
-    onSelected: (LauncherViewModel.WidgetPickerItemData) -> Unit,
+    shortcuts: List<WidgetPickerItemData>,
+    onSelected: (WidgetPickerItemData) -> Unit,
 ) {
     val rowConfigs = remember(shortcuts.size) {
         when (shortcuts.size) {
@@ -244,8 +246,8 @@ fun ShortcutsGrid(
 
 @Composable
 fun ShortcutPickerItem(
-    item: LauncherViewModel.WidgetPickerItemData,
-    onSelected: (LauncherViewModel.WidgetPickerItemData) -> Unit,
+    item: WidgetPickerItemData,
+    onSelected: (WidgetPickerItemData) -> Unit,
 ) {
     val context = LocalContext.current
     val pm = context.packageManager
@@ -309,7 +311,7 @@ fun ShortcutPickerItem(
 
 @Composable
 fun CategoryHeader(
-    group: LauncherViewModel.AppWidgetGroup,
+    group: AppWidgetGroup,
     isExpanded: Boolean,
     onToggle: () -> Unit,
 ) {
@@ -407,8 +409,8 @@ fun CategoryHeader(
 @SuppressLint("LocalContextResourcesRead")
 @Composable
 fun WidgetPickerItem(
-    item: LauncherViewModel.WidgetPickerItemData,
-    onSelected: (LauncherViewModel.WidgetPickerItemData) -> Unit,
+    item: WidgetPickerItemData,
+    onSelected: (WidgetPickerItemData) -> Unit,
 ) {
     val context = LocalContext.current
     val pm = context.packageManager

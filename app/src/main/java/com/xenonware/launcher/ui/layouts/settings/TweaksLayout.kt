@@ -1,6 +1,5 @@
 package com.xenonware.launcher.ui.layouts.settings
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -28,6 +27,7 @@ import com.xenon.mylibrary.values.MediumPadding
 import com.xenon.mylibrary.values.NoSpacing
 import com.xenonware.launcher.R
 import com.xenonware.launcher.viewmodel.SettingsViewModel
+import com.xenonware.launcher.viewmodel.classes.TweaksItems
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 

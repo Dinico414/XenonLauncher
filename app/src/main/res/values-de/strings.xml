@@ -151,6 +151,7 @@
     <string name="fab_single_tap">Einmal tippen</string>
     <string name="fab_double_tap">Doppeltippen</string>
     <string name="fab_long_press">Gedrückt halten</string>
+    <string name="fab_swipe_up">Nach oben wischen</string>
     <string name="configure_action_format">%s konfigurieren</string>
     <string name="select_action">Aktion wählen</string>
     <string name="select_app">App wählen</string>
@@ -162,6 +163,7 @@
     <string name="action_open_link">Link öffnen</string>
     <string name="action_toggle_flashlight">Taschenlampe umschalten</string>
     <string name="action_open_app_drawer">App-Drawer öffnen</string>
+    <string name="action_open_shortcut">Verknüpfung öffnen</string>
     <string name="action_none">Keine</string>
 
     <!-- Notifications & Paging -->
@@ -302,4 +304,5 @@
     <string name="celsius">Celsius (°C)</string>
     <string name="fahrenheit">Fahrenheit (°F)</string>
     <string name="no_weather_data">keine Wetterdaten</string>
+    <string name="select_shortcut">Verknüpfung wählen</string>
 </resources>

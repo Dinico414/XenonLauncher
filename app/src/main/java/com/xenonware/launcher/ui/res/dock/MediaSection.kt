@@ -399,7 +399,7 @@ private fun MediaSectionContent(
                     textMeasurer.measure(titleText, titleStyle).size.width
                 }
                 var titleContainerWidth by remember { mutableIntStateOf(0) }
-                val titleNeedsMarquee = titleWidth > titleContainerWidth && titleContainerWidth > 0
+                val titleNeedsMarquee = titleContainerWidth in 1..<titleWidth
                 var titleIsScrolling by remember { mutableStateOf(false) }
 
                 if (titleNeedsMarquee) {

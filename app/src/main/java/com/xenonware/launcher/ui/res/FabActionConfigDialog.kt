@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -19,14 +18,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
@@ -39,7 +33,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -47,25 +40,32 @@ import androidx.compose.ui.window.DialogProperties
 import com.xenon.mylibrary.res.XenonDialog
 import com.xenonware.launcher.R
 import com.xenonware.launcher.model.AppInfo
+import com.xenonware.launcher.model.AppWidgetGroup
 import com.xenonware.launcher.model.FabAction
+import com.xenonware.launcher.model.WidgetPickerItemData
+import com.xenonware.launcher.viewmodel.FabConfigMode
 
 @Composable
 fun FabActionConfigDialog(
-    isDoubleTap: Boolean?,
+    configMode: FabConfigMode,
     apps: List<AppInfo>,
+    installedShortcuts: Map<AppWidgetGroup, List<WidgetPickerItemData>>,
     initialAction: FabAction,
     initialValue: String,
     iconShape: IconShape,
     showShadow: Boolean,
     onDismiss: () -> Unit,
     onSave: (FabAction, String) -> Unit,
+    onPickShortcut: (WidgetPickerItemData) -> Unit,
 ) {
     var selectedAction by remember { mutableStateOf(initialAction) }
     var linkValue by remember { mutableStateOf(if (initialAction == FabAction.OPEN_LINK) initialValue else "") }
     var selectedPackage by remember { mutableStateOf(if (initialAction == FabAction.OPEN_APP) initialValue else "") }
+    var shortcutName by remember { mutableStateOf(if (initialAction == FabAction.OPEN_SHORTCUT) initialValue.substringBefore("|") else "") }
 
     var showAppPicker by remember { mutableStateOf(false) }
     var showLinkInput by remember { mutableStateOf(false) }
+    var showShortcutPicker by remember { mutableStateOf(false) }
 
     val listState = rememberLazyListState()
     val showTopDivider by remember {
@@ -75,10 +75,12 @@ fun FabActionConfigDialog(
         derivedStateOf { listState.canScrollForward }
     }
 
-    val actionType = when (isDoubleTap) {
-        true -> stringResource(R.string.fab_double_tap)
-        false -> stringResource(R.string.fab_long_press)
-        null -> stringResource(R.string.fab_single_tap)
+    val actionType = when (configMode) {
+        FabConfigMode.DOUBLE -> stringResource(R.string.fab_double_tap)
+        FabConfigMode.LONG -> stringResource(R.string.fab_long_press)
+        FabConfigMode.SINGLE -> stringResource(R.string.fab_single_tap)
+        FabConfigMode.SWIPE_UP -> stringResource(R.string.fab_swipe_up)
+        else -> ""
     }
 
     XenonDialog(
@@ -90,6 +92,7 @@ fun FabActionConfigDialog(
             val finalValue = when (selectedAction) {
                 FabAction.OPEN_APP -> selectedPackage
                 FabAction.OPEN_LINK -> linkValue
+                FabAction.OPEN_SHORTCUT -> initialValue // Value is handled by the shortcut launcher result
                 else -> ""
             }
             onSave(selectedAction, finalValue)
@@ -118,7 +121,7 @@ fun FabActionConfigDialog(
             val actions = FabAction.entries
             items(actions) { action ->
                 val isSelected = selectedAction == action
-                val isSubmenuAction = action == FabAction.OPEN_APP || action == FabAction.OPEN_LINK
+                val isSubmenuAction = action == FabAction.OPEN_APP || action == FabAction.OPEN_LINK || action == FabAction.OPEN_SHORTCUT
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -150,7 +153,7 @@ fun FabActionConfigDialog(
                                 val subtitle = when (action) {
                                     FabAction.OPEN_APP -> apps.find { it.packageName == selectedPackage }?.label ?: stringResource(R.string.not_set)
                                     FabAction.OPEN_LINK -> linkValue.ifEmpty { stringResource(R.string.not_set) }
-                                    else -> ""
+                                    FabAction.OPEN_SHORTCUT -> if (initialAction == FabAction.OPEN_SHORTCUT) shortcutName else stringResource(R.string.not_set)
                                 }
                                 Text(
                                     text = subtitle,
@@ -170,8 +173,11 @@ fun FabActionConfigDialog(
                         Box(
                             modifier = Modifier
                                 .clickable {
-                                    if (action == FabAction.OPEN_APP) showAppPicker = true
-                                    else if (action == FabAction.OPEN_LINK) showLinkInput = true
+                                    when (action) {
+                                        FabAction.OPEN_APP -> showAppPicker = true
+                                        FabAction.OPEN_LINK -> showLinkInput = true
+                                        FabAction.OPEN_SHORTCUT -> showShortcutPicker = true
+                                    }
                                 }
                                 .padding(12.dp),
                             contentAlignment = Alignment.Center
@@ -215,6 +221,18 @@ fun FabActionConfigDialog(
             }
         )
     }
+
+    if (showShortcutPicker) {
+        WidgetSelectorDialog(
+            installedWidgets = installedShortcuts,
+            title = stringResource(R.string.select_shortcut),
+            onDismiss = { showShortcutPicker = false },
+            onWidgetSelected = { item ->
+                onPickShortcut(item)
+                showShortcutPicker = false
+            }
+        )
+    }
 }
 
 @Composable
@@ -226,6 +244,7 @@ private fun getActionName(action: FabAction): String {
         FabAction.OPEN_LINK -> stringResource(R.string.action_open_link)
         FabAction.TOGGLE_FLASHLIGHT -> stringResource(R.string.action_toggle_flashlight)
         FabAction.OPEN_APP_DRAWER -> stringResource(R.string.action_open_app_drawer)
+        FabAction.OPEN_SHORTCUT -> stringResource(R.string.action_open_shortcut)
         FabAction.NONE -> stringResource(R.string.action_none)
     }
 }

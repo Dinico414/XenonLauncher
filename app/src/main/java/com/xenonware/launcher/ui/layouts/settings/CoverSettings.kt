@@ -1,5 +1,10 @@
 package com.xenonware.launcher.ui.layouts.settings
 
+import android.app.Activity
+import android.content.ComponentName
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
@@ -34,13 +39,14 @@ import com.xenon.mylibrary.res.DialogSignOut
 import com.xenon.mylibrary.res.DialogThemeSelection
 import com.xenon.mylibrary.res.DialogVersionNumber
 import com.xenon.mylibrary.res.ThemeSetting
+import com.xenon.mylibrary.theme.LayoutType
 import com.xenon.mylibrary.values.MediumPadding
 import com.xenon.mylibrary.values.NoCornerRadius
 import com.xenon.mylibrary.values.NoSpacing
 import com.xenon.mylibrary.values.SmallerCornerRadius
 import com.xenonware.launcher.BuildConfig
 import com.xenonware.launcher.R
-import com.xenonware.launcher.presentation.sign_in.GoogleAuthUiClient
+import com.xenonware.launcher.model.FabAction
 import com.xenonware.launcher.presentation.sign_in.SignInState
 import com.xenonware.launcher.ui.res.BackupRestoreDialog
 import com.xenonware.launcher.ui.res.CalendarSelectionDialog
@@ -49,10 +55,10 @@ import com.xenonware.launcher.ui.res.GlobalIconPackPicker
 import com.xenonware.launcher.ui.res.NotificationManagerDialog
 import com.xenonware.launcher.ui.res.PermissionsDialog
 import com.xenonware.launcher.ui.res.ShortcutConfigDialog
-import com.xenonware.launcher.viewmodel.LauncherViewModel
 import com.xenonware.launcher.viewmodel.FabConfigMode
+import com.xenonware.launcher.viewmodel.LauncherViewModel
 import com.xenonware.launcher.viewmodel.SettingsViewModel
-import com.xenonware.launcher.model.FabAction
+import com.xenonware.launcher.viewmodel.classes.SettingsItems
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
@@ -64,7 +70,6 @@ fun CoverSettings(
     viewModel: SettingsViewModel,
     onNavigateToDeveloperOptions: () -> Unit,
     state: SignInState,
-    googleAuthUiClient: GoogleAuthUiClient,
     onSignInClick: () -> Unit,
     onSignOutClick: () -> Unit,
     onConfirmSignOut: () -> Unit,
@@ -110,6 +115,8 @@ fun CoverSettings(
     val fabSingleTapValue by viewModel.fabSingleTapValue.collectAsState()
     val fabDoubleTapValue by viewModel.fabDoubleTapValue.collectAsState()
     val fabLongPressValue by viewModel.fabLongPressValue.collectAsState()
+    val fabSwipeUpAction by viewModel.fabSwipeUpAction.collectAsState()
+    val fabSwipeUpValue by viewModel.fabSwipeUpValue.collectAsState()
 
     val apps by viewModel.apps.collectAsState()
     val iconShape by viewModel.drawerIconShape.collectAsState()
@@ -118,6 +125,25 @@ fun CoverSettings(
     val timeShortcut by viewModel.timeShortcut.collectAsState()
     val dateShortcut by viewModel.dateShortcut.collectAsState()
     val weatherShortcut by viewModel.weatherShortcut.collectAsState()
+
+    val installedShortcuts by viewModel.installedShortcuts.collectAsState()
+
+    val shortcutLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val data = result.data ?: return@rememberLauncherForActivityResult
+            val intent = data.getParcelableExtra(
+                Intent.EXTRA_SHORTCUT_INTENT, Intent::class.java
+            )
+            val name = data.getStringExtra(Intent.EXTRA_SHORTCUT_NAME)
+
+            if (intent != null && name != null) {
+                val value = "$name|${intent.toUri(0)}"
+                viewModel.setFabAction(showFabConfigMode, FabAction.OPEN_SHORTCUT, value)
+            }
+        }
+    }
 
     val packageManager = context.packageManager
     val packageName = context.packageName
@@ -183,7 +209,7 @@ fun CoverSettings(
                     coverThemeEnabled = coverThemeEnabled,
                     currentLanguage = currentLanguage,
                     appVersion = appVersion,
-                    layoutType = com.xenon.mylibrary.theme.LayoutType.COVER,
+                    layoutType = LayoutType.COVER,
                     tileBackgroundColor = coverScreenBackgroundColor,
                     tileContentColor = coverScreenContentColor,
                     tileSubtitleColor = coverScreenContentColor.copy(alpha = 0.7f),
@@ -192,7 +218,6 @@ fun CoverSettings(
                     tileVerticalPadding = MediumPadding,
                     useGroupStyling = false,
                     state = state,
-                    googleAuthUiClient = googleAuthUiClient,
                     onNavigateToDeveloperOptions = onNavigateToDeveloperOptions,
                     onSignInClick = onSignInClick,
                     onSignOutClick = onSignOutClick,
@@ -447,21 +472,18 @@ fun CoverSettings(
     }
 
     if (showFabConfigMode != FabConfigMode.NONE) {
-        val isDoubleTap = when (showFabConfigMode) {
-            FabConfigMode.DOUBLE -> true
-            FabConfigMode.LONG -> false
-            else -> null
-        }
         val initialAction = when (showFabConfigMode) {
             FabConfigMode.SINGLE -> fabSingleTapAction
             FabConfigMode.DOUBLE -> fabDoubleTapAction
             FabConfigMode.LONG -> fabLongPressAction
+            FabConfigMode.SWIPE_UP -> fabSwipeUpAction
             else -> FabAction.NONE
         }
         val initialValue = when (showFabConfigMode) {
             FabConfigMode.SINGLE -> fabSingleTapValue
             FabConfigMode.DOUBLE -> fabDoubleTapValue
             FabConfigMode.LONG -> fabLongPressValue
+            FabConfigMode.SWIPE_UP -> fabSwipeUpValue
             else -> ""
         }
         Box(
@@ -470,16 +492,26 @@ fun CoverSettings(
                 .hazeEffect(hazeState)
         ) {
             FabActionConfigDialog(
-                isDoubleTap = isDoubleTap,
+                configMode = showFabConfigMode,
                 apps = apps,
+                installedShortcuts = installedShortcuts,
                 initialAction = initialAction,
                 initialValue = initialValue,
                 iconShape = iconShape,
                 showShadow = showShadow,
                 onDismiss = { viewModel.setShowFabConfig(FabConfigMode.NONE) },
                 onSave = { action, value ->
-                    viewModel.setFabAction(isDoubleTap, action, value)
+                    viewModel.setFabAction(showFabConfigMode, action, value)
                     viewModel.setShowFabConfig(FabConfigMode.NONE)
+                },
+                onPickShortcut = { item ->
+                    val intent = Intent(Intent.ACTION_CREATE_SHORTCUT).apply {
+                        component = ComponentName(
+                            item.shortcutInfo!!.activityInfo.packageName,
+                            item.shortcutInfo.activityInfo.name
+                        )
+                    }
+                    shortcutLauncher.launch(intent)
                 }
             )
         }

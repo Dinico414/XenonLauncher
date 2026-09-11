@@ -4,13 +4,11 @@ import android.app.AppOpsManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.provider.Settings
 
 object AccessibilityUtils {
 
     fun isAccessibilityRestricted(context: Context): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return false
         val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
         return try {
             val mode = appOps.checkOpNoThrow(
@@ -19,7 +17,7 @@ object AccessibilityUtils {
                 context.packageName
             )
             mode == AppOpsManager.MODE_ERRORED
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             false
         }
     }

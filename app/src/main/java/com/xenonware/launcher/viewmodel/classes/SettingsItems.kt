@@ -1,4 +1,4 @@
-package com.xenonware.launcher.ui.layouts.settings
+package com.xenonware.launcher.viewmodel.classes
 
 import android.content.Intent
 import android.widget.Toast
@@ -31,6 +31,7 @@ import androidx.compose.material.icons.rounded.Circle
 import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Keyboard
+import androidx.compose.material.icons.rounded.KeyboardDoubleArrowUp
 import androidx.compose.material.icons.rounded.KeyboardHide
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.NotificationsOff
@@ -62,7 +63,6 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -72,6 +72,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.xenon.mylibrary.res.SettingsGoogleTile
 import com.xenon.mylibrary.res.SettingsSwitchMenuTile
 import com.xenon.mylibrary.res.SettingsSwitchTile
@@ -87,7 +88,6 @@ import com.xenonware.launcher.R
 import com.xenonware.launcher.TweaksActivity
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.model.FabAction
-import com.xenonware.launcher.presentation.sign_in.GoogleAuthUiClient
 import com.xenonware.launcher.presentation.sign_in.SignInState
 import com.xenonware.launcher.ui.res.IconShape
 import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
@@ -120,7 +120,6 @@ fun SettingsItems(
     switchColorsOverride: SwitchColors? = null,
     useGroupStyling: Boolean = true,
     state: SignInState,
-    googleAuthUiClient: GoogleAuthUiClient,
     onSignInClick: () -> Unit,
     onSignOutClick: () -> Unit,
     onShowHiddenApps: () -> Unit,
@@ -162,9 +161,6 @@ fun SettingsItems(
     val timeShortcut by viewModel.timeShortcut.collectAsState()
     val dateShortcut by viewModel.dateShortcut.collectAsState()
     val weatherShortcut by viewModel.weatherShortcut.collectAsState()
-
-    val showPermissionsDialog by viewModel.showPermissionsDialog.collectAsState()
-    val permissionsList by viewModel.permissionsList.collectAsState()
 
     val fabSingleTapAction by viewModel.fabSingleTapAction.collectAsState()
     val fabDoubleTapAction by viewModel.fabDoubleTapAction.collectAsState()
@@ -738,6 +734,21 @@ fun SettingsItems(
                 subtitle = getFabActionTitle(fabLongPressAction, fabLongPressValue, apps),
                 onClick = { viewModel.setShowFabConfig(FabConfigMode.LONG) },
                 icon = { Icon(Icons.Rounded.AdsClick, null, tint = tileSubtitleColor) },
+                shape = tileShapeOverride ?: middleShape,
+                backgroundColor = tileBackgroundColor,
+                contentColor = tileContentColor,
+                subtitleColor = tileSubtitleColor,
+                horizontalPadding = tileHorizontalPadding,
+                verticalPadding = tileVerticalPadding
+            )
+            val fabSwipeUpAction by viewModel.fabSwipeUpAction.collectAsState()
+            val fabSwipeUpValue by viewModel.fabSwipeUpValue.collectAsState()
+            Spacer(Modifier.height(actualInnerGroupSpacing))
+            SettingsTile(
+                title = stringResource(id = R.string.fab_swipe_up),
+                subtitle = getFabActionTitle(fabSwipeUpAction, fabSwipeUpValue, apps),
+                onClick = { viewModel.setShowFabConfig(FabConfigMode.SWIPE_UP) },
+                icon = { Icon(Icons.Rounded.KeyboardDoubleArrowUp, null, tint = tileSubtitleColor) },
                 shape = tileShapeOverride ?: bottomShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
@@ -983,6 +994,12 @@ fun getFabActionTitle(action: FabAction, value: String, apps: List<AppInfo>): St
         FabAction.OPEN_LINK -> {
             if (value.isNotEmpty()) "${stringResource(R.string.action_open_link)}: $value"
             else stringResource(R.string.action_open_link)
+        }
+        FabAction.OPEN_SHORTCUT -> {
+            if (value.isNotEmpty()) {
+                val name = value.substringBefore("|")
+                "${stringResource(R.string.action_open_shortcut)}: $name"
+            } else stringResource(R.string.action_open_shortcut)
         }
         FabAction.TOGGLE_FLASHLIGHT -> stringResource(R.string.action_toggle_flashlight)
         FabAction.OPEN_APP_DRAWER -> stringResource(R.string.action_open_app_drawer)

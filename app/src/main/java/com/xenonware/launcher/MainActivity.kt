@@ -211,7 +211,7 @@ class MainActivity : ComponentActivity() {
                     BackHandler(enabled = true) {}
                 }
 
-                val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+                val configuration = LocalConfiguration.current
                 LaunchedEffect(configuration.orientation) {
                     viewModel.setIsLandscape(configuration.orientation == Configuration.ORIENTATION_LANDSCAPE)
                 }
@@ -262,6 +262,8 @@ class MainActivity : ComponentActivity() {
                 val fabSingleTapValue by viewModel.fabSingleTapValue.collectAsState()
                 val fabDoubleTapValue by viewModel.fabDoubleTapValue.collectAsState()
                 val fabLongPressValue by viewModel.fabLongPressValue.collectAsState()
+                val fabSwipeUpAction by viewModel.fabSwipeUpAction.collectAsState()
+                val fabSwipeUpValue by viewModel.fabSwipeUpValue.collectAsState()
 
                 LauncherScreen(
                     viewModel = viewModel,
@@ -273,9 +275,6 @@ class MainActivity : ComponentActivity() {
                     currentDate = currentTime.format(viewModel.dateFormatter),
                     weatherTemp = weatherState.temperature,
                     weatherCondition = weatherState.condition,
-                    weatherMaxTemp = weatherState.maxTemp,
-                    weatherMinTemp = weatherState.minTemp,
-                    weatherDailyCondition = weatherState.dailyCondition,
                     notificationCount = notificationCount,
                     notifications = notifications,
                     badgeType = badgeType,
@@ -313,11 +312,6 @@ class MainActivity : ComponentActivity() {
                         startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
                     },
                     fabSingleTapAction = fabSingleTapAction,
-                    fabDoubleTapAction = fabDoubleTapAction,
-                    fabLongPressAction = fabLongPressAction,
-                    fabSingleTapValue = fabSingleTapValue,
-                    fabDoubleTapValue = fabDoubleTapValue,
-                    fabLongPressValue = fabLongPressValue,
                     onFabSingleTap = {
                         if (fabSingleTapAction == FabAction.TRIGGER_ASSISTANT) {
                             showAssist(Bundle())
@@ -333,16 +327,19 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                     onFabLongPress = {
-                        if (fabLongPressAction != com.xenonware.launcher.model.FabAction.NONE) {
+                        if (fabLongPressAction != FabAction.NONE) {
                             val vibratorManager = getSystemService(VIBRATOR_MANAGER_SERVICE) as android.os.VibratorManager
                             val vibrator = vibratorManager.defaultVibrator
                             vibrator.vibrate(android.os.VibrationEffect.createOneShot(50, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
                         }
-                        if (fabLongPressAction == com.xenonware.launcher.model.FabAction.TRIGGER_ASSISTANT) {
+                        if (fabLongPressAction == FabAction.TRIGGER_ASSISTANT) {
                             showAssist(Bundle())
                         } else {
                             viewModel.executeFabAction(fabLongPressAction, fabLongPressValue)
                         }
+                    },
+                    onFabSwipeUp = {
+                        viewModel.executeFabAction(fabSwipeUpAction, fabSwipeUpValue)
                     },
                     showBootWelcome = isBooting,
                     onBootWelcomeFinished = { 
@@ -487,9 +484,6 @@ fun LauncherScreen(
     currentDate: String,
     weatherTemp: String,
     weatherCondition: String,
-    weatherMaxTemp: String? = null,
-    weatherMinTemp: String? = null,
-    weatherDailyCondition: String? = null,
     notificationCount: Int,
     notifications: List<com.xenonware.launcher.notification.LauncherNotification>,
     badgeType: Int,
@@ -518,14 +512,10 @@ fun LauncherScreen(
     onAppClick: (String) -> Unit,
     onOpenSettings: () -> Unit,
     fabSingleTapAction: FabAction,
-    fabDoubleTapAction: FabAction,
-    fabLongPressAction: FabAction,
-    fabSingleTapValue: String,
-    fabDoubleTapValue: String,
-    fabLongPressValue: String,
     onFabSingleTap: () -> Unit = {},
     onFabDoubleTap: () -> Unit = {},
     onFabLongPress: () -> Unit = {},
+    onFabSwipeUp: () -> Unit = {},
     hideDockScrolling: Boolean = false,
     hideDockScrollingOnlySmall: Boolean = false,
     hideDockWidgets: Boolean = false,
@@ -537,7 +527,6 @@ fun LauncherScreen(
     showBootWelcome: Boolean = false,
     onBootWelcomeFinished: () -> Unit = {}
 ) {
-    val context = LocalContext.current
     val density = LocalDensity.current
     val hazeState = rememberHazeState()
     val scope = rememberCoroutineScope()
@@ -754,7 +743,6 @@ fun LauncherScreen(
                 weatherTemp = weatherTemp,
                 weatherCondition = weatherCondition,
                 onAppClick = onAppClick,
-                onSettingsClick = onOpenSettings,
                 onFabClick = {
                     if (isImeVisible) {
                         focusManager.clearFocus()
@@ -773,6 +761,7 @@ fun LauncherScreen(
                 onWeatherClick = { viewModel.handleShortcutClick(LauncherViewModel.ShortcutType.WEATHER) },
                 onFabDoubleTap = onFabDoubleTap,
                 onFabLongPress = onFabLongPress,
+                onFabSwipeUp = onFabSwipeUp,
                 isAppDrawerVisible = isAppDrawerVisible,
                 hazeState = if (blurSetting) hazeState else null,
                 progress = batteryLevel,

@@ -1,7 +1,6 @@
 package com.xenonware.launcher.ui.res.search
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,7 +24,6 @@ import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme.colorScheme
-import androidx.compose.material3.MaterialTheme.typography
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,7 +35,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.net.toUri
 import coil.compose.rememberAsyncImagePainter
 import com.xenonware.launcher.model.SearchHistoryEntry
 import com.xenonware.launcher.model.SearchHistoryType
@@ -104,7 +101,6 @@ fun SearchHistoryItem(entry: SearchHistoryEntry, onClick: (SearchHistoryEntry) -
                             }
                         }
                     }
-                    else -> {}
                 }
             }
             Spacer(Modifier.width(16.dp))

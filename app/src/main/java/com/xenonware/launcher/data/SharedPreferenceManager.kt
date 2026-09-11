@@ -159,6 +159,14 @@ class SharedPreferenceManager(context: Context) {
         get() = prefs.getString("fab_long_press_value", "") ?: ""
         set(value) = prefs.edit { putString("fab_long_press_value", value) }
 
+    var fabSwipeUpAction: String
+        get() = prefs.getString("fab_swipe_up_action", "NONE") ?: "NONE"
+        set(value) = prefs.edit { putString("fab_swipe_up_action", value) }
+
+    var fabSwipeUpValue: String
+        get() = prefs.getString("fab_swipe_up_value", "") ?: ""
+        set(value) = prefs.edit { putString("fab_swipe_up_value", value) }
+
     var appLabelsEnabled: Boolean
         get() = prefs.getBoolean("app_labels_enabled", true)
         set(value) = prefs.edit { putBoolean("app_labels_enabled", value) }

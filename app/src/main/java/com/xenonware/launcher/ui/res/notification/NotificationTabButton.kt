@@ -79,7 +79,6 @@ fun NotificationTabButton(
     onClick: () -> Unit,
     onDismiss: () -> Unit = {},
     isOverDelete: (Rect) -> Boolean = { false },
-    deleteButtonBounds: Rect = Rect.Zero,
     onDragStateChanged: (Boolean) -> Unit = {},
     iconKey: String? = null,
     modifier: Modifier = Modifier

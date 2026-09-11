@@ -82,9 +82,4 @@ object ColorUtils {
         return 0.2126 * color.red + 0.7152 * color.green + 0.0722 * color.blue
     }
 
-    fun calculateContrastRatio(color1: Color, color2: Color): Float {
-        val l1 = calculateLuminance(color1) + 0.05
-        val l2 = calculateLuminance(color2) + 0.05
-        return (maxOf(l1, l2) / minOf(l1, l2)).toFloat()
-    }
 }

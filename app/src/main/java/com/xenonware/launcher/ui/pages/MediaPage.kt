@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -159,8 +158,6 @@ fun MediaPage(
     }
     val safeDrawingPadding = WindowInsets.safeDrawing.asPaddingValues()
     val layoutDirection = LocalLayoutDirection.current
-    val startPadding =
-        safeDrawingPadding.calculateStartPadding(layoutDirection).coerceAtLeast(16.dp)
     val endPadding = safeDrawingPadding.calculateEndPadding(layoutDirection).coerceAtLeast(16.dp)
     val navBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     // 72dp (dock) + 8dp (dock padding) + 8dp (gap) + 4dp (to match widget vertical padding)
@@ -374,7 +371,7 @@ fun MediaPage(
                                 textMeasurer.measure(titleText, titleStyle).size.width
                             }
                             var titleContainerWidth by remember { mutableIntStateOf(0) }
-                            val titleNeedsMarquee = titleWidth > titleContainerWidth && titleContainerWidth > 0
+                            val titleNeedsMarquee = titleContainerWidth in 1..<titleWidth
                             var titleIsScrolling by remember { mutableStateOf(false) }
 
                             if (titleNeedsMarquee) {
@@ -682,7 +679,7 @@ fun MediaPage(
                                             textMeasurer.measure(titleText, titleStyle).size.width
                                         }
                                         var titleContainerWidth by remember { mutableIntStateOf(0) }
-                                        val titleNeedsMarquee = titleWidth > titleContainerWidth && titleContainerWidth > 0
+                                        val titleNeedsMarquee = titleContainerWidth in 1..<titleWidth
                                         var titleIsScrolling by remember { mutableStateOf(false) }
 
                                         if (titleNeedsMarquee) {
@@ -826,7 +823,7 @@ fun MediaPage(
                                 textMeasurer.measure(titleText, titleStyle).size.width
                             }
                             var titleContainerWidth by remember { mutableIntStateOf(0) }
-                            val titleNeedsMarquee = titleWidth > titleContainerWidth && titleContainerWidth > 0
+                            val titleNeedsMarquee = titleContainerWidth in 1..<titleWidth
                             var titleIsScrolling by remember { mutableStateOf(false) }
 
                             if (titleNeedsMarquee) {

@@ -6,7 +6,6 @@ import android.annotation.SuppressLint
 import android.app.AlarmManager
 import android.app.Application
 import android.appwidget.AppWidgetManager
-import android.appwidget.AppWidgetProviderInfo
 import android.content.BroadcastReceiver
 import android.content.ContentResolver
 import android.content.ContentUris
@@ -48,11 +47,13 @@ import com.xenonware.launcher.media.MediaControllerManager
 import com.xenonware.launcher.media.MediaState
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.model.AppOverride
+import com.xenonware.launcher.model.AppWidgetGroup
 import com.xenonware.launcher.model.FabAction
 import com.xenonware.launcher.model.SearchHistoryEntry
 import com.xenonware.launcher.model.SearchHistoryType
 import com.xenonware.launcher.model.SearchResult
 import com.xenonware.launcher.model.WidgetItem
+import com.xenonware.launcher.model.WidgetPickerItemData
 import com.xenonware.launcher.notification.NotificationManager
 import com.xenonware.launcher.notification.XenonNotificationService
 import com.xenonware.launcher.ui.res.IconShape
@@ -83,7 +84,6 @@ import java.time.format.DateTimeFormatter
 import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
-import java.util.UUID
 import kotlin.coroutines.resume
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -122,12 +122,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private companion object {
         const val TAG = "LauncherViewModel"
 
-
-        /**
-         * Timed events that already ended earlier today still count as "today".
-         * Set too false to go back to only showing running/upcoming events.
-         */
-        const val INCLUDE_PAST_EVENTS_TODAY = true
 
         const val DAY_MILLIS = 24 * 60 * 60 * 1000L
     }
@@ -177,6 +171,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             "fab_single_tap_value" -> _fabSingleTapValue.value = prefManager.fabSingleTapValue
             "fab_double_tap_value" -> _fabDoubleTapValue.value = prefManager.fabDoubleTapValue
             "fab_long_press_value" -> _fabLongPressValue.value = prefManager.fabLongPressValue
+            "fab_swipe_up_action" -> _fabSwipeUpAction.value = FabAction.fromString(prefManager.fabSwipeUpAction)
+            "fab_swipe_up_value" -> _fabSwipeUpValue.value = prefManager.fabSwipeUpValue
             "global_icon_pack" -> {
                 _globalIconPack.value = prefManager.globalIconPack
                 loadApps()
@@ -236,7 +232,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     val blurEnabled: StateFlow<Boolean> = _blurEnabled
 
     private val _globalIconPack = MutableStateFlow(prefManager.globalIconPack)
-    val globalIconPack: StateFlow<String?> = _globalIconPack
 
     private val _pinnedApps = MutableStateFlow<List<AppInfo>>(emptyList())
     val pinnedApps: StateFlow<List<AppInfo>> = _pinnedApps
@@ -267,14 +262,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private val _installedWidgets = MutableStateFlow<Map<AppWidgetGroup, List<WidgetPickerItemData>>>(emptyMap())
     val installedWidgets: StateFlow<Map<AppWidgetGroup, List<WidgetPickerItemData>>> = _installedWidgets
-
-    data class WidgetPickerItemData(
-        val label: String,
-        val isWidget: Boolean,
-        val widgetInfo: AppWidgetProviderInfo? = null,
-        val shortcutInfo: ResolveInfo? = null,
-        val id: String = UUID.randomUUID().toString()
-    )
 
     private val _advancedSearchEnabled = MutableStateFlow(prefManager.advancedSearchEnabled)
     val advancedSearchEnabled: StateFlow<Boolean> = _advancedSearchEnabled
@@ -311,6 +298,12 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private val _fabLongPressValue = MutableStateFlow(prefManager.fabLongPressValue)
     val fabLongPressValue: StateFlow<String> = _fabLongPressValue
+
+    private val _fabSwipeUpAction = MutableStateFlow(FabAction.fromString(prefManager.fabSwipeUpAction))
+    val fabSwipeUpAction: StateFlow<FabAction> = _fabSwipeUpAction
+
+    private val _fabSwipeUpValue = MutableStateFlow(prefManager.fabSwipeUpValue)
+    val fabSwipeUpValue: StateFlow<String> = _fabSwipeUpValue
 
     private val _isAppDrawerVisible = MutableStateFlow(false)
     val isAppDrawerVisible: StateFlow<Boolean> = _isAppDrawerVisible
@@ -352,7 +345,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     val showPermanentNotifications: StateFlow<Boolean> = _showPermanentNotifications
 
     private val _disableGrouping = MutableStateFlow(prefManager.disableGrouping)
-    val disableGrouping: StateFlow<Boolean> = _disableGrouping
 
     private val _notificationIndicatorType = MutableStateFlow(prefManager.notificationIndicatorType)
     val notificationIndicatorType: StateFlow<Int> = _notificationIndicatorType
@@ -434,12 +426,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private var searchJob: Job? = null
 
-    data class AppWidgetGroup(
-        val appName: String,
-        val icon: Drawable?
-    ) : Comparable<AppWidgetGroup> {
-        override fun compareTo(other: AppWidgetGroup): Int = appName.compareTo(other.appName)
-    }
 
     private val packageReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -519,7 +505,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     val isCharging: StateFlow<Boolean> = _isCharging
 
     private val _isFlashlightOn = MutableStateFlow(false)
-    val isFlashlightOn: StateFlow<Boolean> = _isFlashlightOn
 
     private val cameraManager by lazy { application.getSystemService(Context.CAMERA_SERVICE) as CameraManager }
     private var cameraId: String? = null
@@ -542,27 +527,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
      * picker with a "not synced" hint, otherwise the tick looks like it did something.
      */
     private val _unsyncedSelectedCalendars = MutableStateFlow<List<CalendarInfo>>(emptyList())
-    val unsyncedSelectedCalendars: StateFlow<List<CalendarInfo>> = _unsyncedSelectedCalendars
-
-    /** Opens the system calendar sync settings so the user can enable the missing calendars. */
-    fun openCalendarSyncSettings() {
-        val context = getApplication<Application>()
-        val calendarPackages = listOf("com.google.android.calendar", "com.android.calendar")
-        for (pkg in calendarPackages) {
-            val intent = context.packageManager.getLaunchIntentForPackage(pkg)
-            if (intent != null) {
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                context.startActivity(intent)
-                return
-            }
-        }
-        try {
-            context.startActivity(
-                Intent(android.provider.Settings.ACTION_SYNC_SETTINGS)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            )
-        } catch (_: Exception) {}
-    }
 
     private val _showNotificationManagerDialog = MutableStateFlow(false)
     val showNotificationManagerDialog: StateFlow<Boolean> = _showNotificationManagerDialog
@@ -947,6 +911,17 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             FabAction.TOGGLE_FLASHLIGHT -> toggleFlashlight()
             FabAction.OPEN_APP_DRAWER -> {
                 _isAppDrawerVisible.value = !_isAppDrawerVisible.value
+            }
+            FabAction.OPEN_SHORTCUT -> {
+                if (value.isNotEmpty()) {
+                    try {
+                        val intentUri = value.substringAfter("|")
+                        val intent = Intent.parseUri(intentUri, 0).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(intent)
+                    } catch (_: Exception) {}
+                }
             }
             FabAction.NONE -> {}
         }

@@ -33,7 +33,6 @@ fun SettingsLayout(
                     viewModel = viewModel,
                     onNavigateToDeveloperOptions = onNavigateToDeveloperOptions,
                     state = state,
-                    googleAuthUiClient = googleAuthUiClient,
                     onSignInClick = onSignInClick,
                     onSignOutClick = onSignOutClick,
                     onConfirmSignOut = onConfirmSignOut

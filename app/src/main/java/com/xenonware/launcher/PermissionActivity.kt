@@ -18,7 +18,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -29,6 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -40,7 +40,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import com.xenon.mylibrary.activity.BasePermissionActivity
@@ -56,11 +55,11 @@ class PermissionActivity : BasePermissionActivity() {
 
     private val sharedPreferenceManager by lazy { SharedPreferenceManager(this) }
     private val currentPermissionName = mutableStateOf("")
-    private val refreshTrigger = mutableStateOf(0)
+    private val refreshTrigger = mutableIntStateOf(0)
 
     override fun onResume() {
         super.onResume()
-        refreshTrigger.value++
+        refreshTrigger.intValue++
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

@@ -110,10 +110,10 @@ import com.xenon.mylibrary.res.MenuItem
 import com.xenon.mylibrary.res.XenonDropDown
 import com.xenonware.launcher.R
 import com.xenonware.launcher.model.WidgetItem
-import com.xenonware.launcher.util.InteractiveAppWidgetHost
-import com.xenonware.launcher.util.InteractiveAppWidgetHostView
 import com.xenonware.launcher.ui.res.WidgetEditBorder
 import com.xenonware.launcher.ui.res.WidgetSelectorDialog
+import com.xenonware.launcher.util.InteractiveAppWidgetHost
+import com.xenonware.launcher.util.InteractiveAppWidgetHostView
 import com.xenonware.launcher.viewmodel.LauncherViewModel
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
@@ -733,6 +733,7 @@ fun WidgetPage(
                                             scaleY = restScale
                                         }
                                         .zIndex(if (isSelected) 1f else 0f)
+
                                 ) {
                                     // Widget Content Box
                                     Box(

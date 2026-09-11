@@ -83,8 +83,8 @@ fun Glancly(
             c.contains("rain") || c.contains("regen") -> R.drawable.rain1 to R.drawable.rain0
             c.contains("fog") || c.contains("mist") || c.contains("haze") || c.contains("nebel") || c.contains("dunst") -> R.drawable.fog1 to R.drawable.fog0
             c.contains("wind") -> R.drawable.windy1 to R.drawable.windy0
-            c.contains("partly") || c.contains("teilweise") -> R.drawable.pcloudy1 to R.drawable.pcloudy0
-            c.contains("overcast") || c.contains("cloud") || c.contains("bedeckt") || c.contains("wolken") -> R.drawable.mcloudy1 to R.drawable.mcloudy0
+            c.contains("partly") || c.contains("teilweise") || c.contains("leicht bewölkt") -> R.drawable.pcloudy1 to R.drawable.pcloudy0
+            c.contains("overcast") || c.contains("cloud") || c.contains("bedeckt") || c.contains("wolken") || c.contains("wolkig") || c.contains("bewölkt") -> R.drawable.mcloudy1 to R.drawable.mcloudy0
             c.contains("clear") || c.contains("sunny") || c.contains("klar") || c.contains("sonnig") -> R.drawable.clear1 to R.drawable.clear0
             else -> R.drawable.unknown1 to R.drawable.unknown0
         }

@@ -143,7 +143,6 @@ import com.xenonware.launcher.R
 import com.xenonware.launcher.accessibility.XenonAccessibilityService
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.notification.LauncherNotification
-import com.xenonware.launcher.ui.res.dock.CalendarCounterIcon
 import com.xenonware.launcher.ui.res.dock.StatusCounters
 import com.xenonware.launcher.ui.res.notification.ChronoCluster
 import com.xenonware.launcher.ui.res.notification.NotificationItem
@@ -810,7 +809,6 @@ fun NotificationPage(
                             onPackageSelected = { selectedPackage = it },
                             deleteButtonBounds = deleteButtonBounds,
                             onDeleteButtonBoundsChanged = { deleteButtonBounds = it },
-                            isLandscape = true,
                             modifier = wholeScreenOffset
                         )
                     }
@@ -1319,7 +1317,7 @@ fun AtAGlance(
     val pagerState = rememberPagerState { calendarEvents.size + 1 }
     val scope = rememberCoroutineScope()
     
-    var weatherViewMode by remember { mutableStateOf(WeatherViewMode.NOW) }
+    var weatherViewMode by remember { mutableStateOf(WeatherViewMode.TODAY) }
 
     val isDay = remember(currentTime) {
         val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
@@ -1340,8 +1338,8 @@ fun AtAGlance(
             c.contains("rain") || c.contains("regen") -> R.drawable.rain1 to R.drawable.rain0
             c.contains("fog") || c.contains("mist") || c.contains("haze") || c.contains("nebel") || c.contains("dunst") -> R.drawable.fog1 to R.drawable.fog0
             c.contains("wind") -> R.drawable.windy1 to R.drawable.windy0
-            c.contains("partly") || c.contains("teilweise") -> R.drawable.pcloudy1 to R.drawable.pcloudy0
-            c.contains("overcast") || c.contains("cloud") || c.contains("bedeckt") || c.contains("wolken") -> R.drawable.mcloudy1 to R.drawable.mcloudy0
+            c.contains("partly") || c.contains("teilweise") || c.contains("leicht bewölkt") -> R.drawable.pcloudy1 to R.drawable.pcloudy0
+            c.contains("overcast") || c.contains("cloud") || c.contains("bedeckt") || c.contains("wolken") || c.contains("wolkig") || c.contains("bewölkt") -> R.drawable.mcloudy1 to R.drawable.mcloudy0
             c.contains("clear") || c.contains("sunny") || c.contains("klar") || c.contains("sonnig") -> R.drawable.clear1 to R.drawable.clear0
             else -> R.drawable.unknown1 to R.drawable.unknown0
         }
@@ -1615,7 +1613,7 @@ fun AtAGlance(
                                         textMeasurer.measure(event.title, textStyle).size.width
                                     }
                                     var containerWidthPx by remember { mutableIntStateOf(0) }
-                                    val needsMarquee = textWidth > containerWidthPx && containerWidthPx > 0
+                                    val needsMarquee = containerWidthPx in 1..<textWidth
 
                                     var isScrolling by remember { mutableStateOf(false) }
                                     
@@ -1818,7 +1816,6 @@ fun NotificationTabs(
     onPackageSelected: (String?) -> Unit,
     deleteButtonBounds: Rect,
     onDeleteButtonBoundsChanged: (Rect) -> Unit,
-    isLandscape: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     BoxWithConstraints(
@@ -2091,7 +2088,6 @@ fun NotificationTabs(
                                     }
                                     overlapRatio >= 0.5f || tabRect.center.x >= deleteButtonBounds.left
                                 },
-                                deleteButtonBounds = deleteButtonBounds,
                                 iconKey = iconKeyToUse,
                                 modifier = Modifier
                                     .fillMaxWidth()

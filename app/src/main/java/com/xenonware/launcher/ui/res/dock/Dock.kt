@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredWidth
@@ -47,6 +48,7 @@ import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -59,6 +61,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.xenonware.launcher.R
 import com.xenonware.launcher.media.MediaState
@@ -70,6 +73,7 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import dev.chrisbanes.haze.materials.HazeMaterials
+import kotlin.math.roundToInt
 
 /* ---------------------------------------------------------------------- */
 /* Shared dock values                                                      */
@@ -168,10 +172,10 @@ fun DockPill(
     weatherTemp: String,
     weatherCondition: String,
     onAppClick: (String) -> Unit,
-    onSettingsClick: () -> Unit,
     onFabClick: () -> Unit,
     onFabDoubleTap: () -> Unit = {},
     onFabLongPress: () -> Unit = {},
+    onFabSwipeUp: () -> Unit = {},
     onMediaPlayPause: () -> Unit,
     onMediaSkipNext: () -> Unit,
     onOpenMediaPermission: () -> Unit,
@@ -334,7 +338,8 @@ fun DockPill(
                 singleTapAction = fabSingleTapAction,
                 onClick = onFabClick,
                 onDoubleTap = onFabDoubleTap,
-                onLongPress = onFabLongPress
+                onLongPress = onFabLongPress,
+                onSwipeUp = onFabSwipeUp
             )
         } else {
             Spacer(Modifier.width(DockFabSize / 2))
@@ -356,8 +361,16 @@ private fun DockFab(
     onClick: () -> Unit,
     onDoubleTap: () -> Unit,
     onLongPress: () -> Unit,
+    onSwipeUp: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var verticalOffset by remember { mutableFloatStateOf(0f) }
+    val animatedVerticalOffset by animateFloatAsState(
+        targetValue = verticalOffset,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        label = "fabBounce"
+    )
+
     val cornerRadius by animateDpAsState(
         targetValue = if (isAppDrawerVisible) 16.dp else (DockFabSize / 2),
         label = "fabCornerRadius",
@@ -371,6 +384,7 @@ private fun DockFab(
         contentColor = colorScheme.onPrimary,
         tonalElevation = 0.dp,
         modifier = modifier
+            .offset { IntOffset(0, animatedVerticalOffset.roundToInt()) }
             .size(DockFabSize)
             .graphicsLayer(clip = false)
             .then(if (hazeState == null) Modifier.shadow(8.dp, fabShape) else Modifier)
@@ -380,6 +394,25 @@ private fun DockFab(
                     onTap = { onClick() },
                     onDoubleTap = { onDoubleTap() },
                     onLongPress = { onLongPress() }
+                )
+            }
+            .pointerInput(Unit) {
+                detectVerticalDragGestures(
+                    onVerticalDrag = { _, dragAmount ->
+                        // Only follow if dragging UP
+                        if (dragAmount < 0 || verticalOffset < 0) {
+                            verticalOffset = (verticalOffset + dragAmount).coerceIn(-40f, 0f)
+                        }
+                    },
+                    onDragEnd = {
+                        if (verticalOffset <= -20f) {
+                            onSwipeUp()
+                        }
+                        verticalOffset = 0f
+                    },
+                    onDragCancel = {
+                        verticalOffset = 0f
+                    }
                 )
             }
             .then(

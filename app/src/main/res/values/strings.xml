@@ -152,6 +152,7 @@
     <string name="fab_single_tap">Single Tap</string>
     <string name="fab_double_tap">Double Tap</string>
     <string name="fab_long_press">Long Press</string>
+    <string name="fab_swipe_up">Swipe Up</string>
     <string name="configure_action_format">Configure %s</string>
     <string name="select_action">Select Action</string>
     <string name="select_app">Select App</string>
@@ -163,6 +164,7 @@
     <string name="action_open_link">Open Link</string>
     <string name="action_toggle_flashlight">Toggle Flashlight</string>
     <string name="action_open_app_drawer">Open App Drawer</string>
+    <string name="action_open_shortcut">Open Shortcut</string>
     <string name="action_none">None</string>
 
     <!-- Notifications & Paging -->
@@ -304,4 +306,5 @@
     <string name="celsius">Celsius (°C)</string>
     <string name="fahrenheit">Fahrenheit (°F)</string>
     <string name="no_weather_data">no weather data</string>
+    <string name="select_shortcut">Select Shortcut</string>
 </resources>
