@@ -14,7 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.xenon.mylibrary.theme.QuicksandTitleVariable
+import com.xenonware.launcher.ui.theme.mainFontFamily
 
 @Composable
 fun ContactAvatar(name: String, modifier: Modifier = Modifier) {
@@ -44,7 +44,7 @@ fun ContactAvatar(name: String, modifier: Modifier = Modifier) {
         Text(
             text = firstLetter.toString(),
             fontSize = 28.sp,
-            fontFamily = QuicksandTitleVariable,
+            fontFamily = mainFontFamily,
             fontWeight = FontWeight.SemiBold,
             color = textColor
         )

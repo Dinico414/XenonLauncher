@@ -363,6 +363,25 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _tempUnit = MutableStateFlow(sharedPreferenceManager.tempUnit)
     val tempUnit: StateFlow<Int> = _tempUnit.asStateFlow()
 
+    private val _fontType = MutableStateFlow(sharedPreferenceManager.fontType)
+    val fontType: StateFlow<Int> = _fontType.asStateFlow()
+
+    private val _mainFontType = MutableStateFlow(sharedPreferenceManager.mainFontType)
+    val mainFontType: StateFlow<Int> = _mainFontType.asStateFlow()
+
+    private val _robotoFlexSettings = MutableStateFlow(sharedPreferenceManager.robotoFlexSettings)
+    val robotoFlexSettings: StateFlow<String> = _robotoFlexSettings.asStateFlow()
+
+    private val _googleSansFlexSettings = MutableStateFlow(sharedPreferenceManager.googleSansFlexSettings)
+    val googleSansFlexSettings: StateFlow<String> = _googleSansFlexSettings.asStateFlow()
+
+    private val _showFontConfigDialog = MutableStateFlow(false)
+    val showFontConfigDialog: StateFlow<Boolean> = _showFontConfigDialog.asStateFlow()
+
+    fun setShowFontConfigDialog(show: Boolean) {
+        _showFontConfigDialog.value = show
+    }
+
     private val _persistedThemeIndexFlow = MutableStateFlow(sharedPreferenceManager.theme)
 
     private val _fabSingleTapAction = MutableStateFlow(FabAction.fromString(sharedPreferenceManager.fabSingleTapAction))
@@ -481,6 +500,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             "notification_indicator_type" -> _notificationIndicatorType.value = sharedPreferenceManager.notificationIndicatorType
             "notification_message_type" -> _notificationMessageType.value = sharedPreferenceManager.notificationMessageType
             "temp_unit" -> _tempUnit.value = sharedPreferenceManager.tempUnit
+            "font_type" -> _fontType.value = sharedPreferenceManager.fontType
+            "main_font_type" -> _mainFontType.value = sharedPreferenceManager.mainFontType
+            "roboto_flex_settings" -> _robotoFlexSettings.value = sharedPreferenceManager.robotoFlexSettings
+            "google_sans_flex_settings" -> _googleSansFlexSettings.value = sharedPreferenceManager.googleSansFlexSettings
         }
     }
 
@@ -709,6 +732,26 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setTempUnit(unit: Int) {
         sharedPreferenceManager.tempUnit = unit
         _tempUnit.value = unit
+    }
+
+    fun setFontType(type: Int) {
+        sharedPreferenceManager.fontType = type
+        _fontType.value = type
+    }
+
+    fun setMainFontType(type: Int) {
+        sharedPreferenceManager.mainFontType = type
+        _mainFontType.value = type
+    }
+
+    fun setRobotoFlexSettings(settingsJson: String) {
+        sharedPreferenceManager.robotoFlexSettings = settingsJson
+        _robotoFlexSettings.value = settingsJson
+    }
+
+    fun setGoogleSansFlexSettings(settingsJson: String) {
+        sharedPreferenceManager.googleSansFlexSettings = settingsJson
+        _googleSansFlexSettings.value = settingsJson
     }
 
     fun setDrawerIconShape(shape: IconShape) {

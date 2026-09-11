@@ -7,14 +7,17 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.xenon.mylibrary.theme.LayoutType
+import com.xenon.mylibrary.theme.QuicksandTitleVariable
 
 @Composable
 fun ScreenEnvironment(
@@ -23,6 +26,8 @@ fun ScreenEnvironment(
     blackedOutModeEnabled: Boolean,
     statusBarDarkIconsOverride: Boolean? = null,
     navigationBarDarkIconsOverride: Boolean? = null,
+    fontFamily: FontFamily = FontFamily.Default,
+    mainFont: FontFamily = QuicksandTitleVariable,
     content: @Composable (layoutType: LayoutType, isLandscape: Boolean) -> Unit
 ) {
     val configuration = LocalConfiguration.current
@@ -52,32 +57,37 @@ fun ScreenEnvironment(
             }
         }
 
-        XenonTheme(
-            darkTheme = appIsDarkTheme,
-            useBlackedOutDarkTheme = if (appIsDarkTheme) blackedOutModeEnabled else false,
-            dynamicColor = useDynamicColor,
-            isCoverMode = layoutType == LayoutType.COVER
+        CompositionLocalProvider(
+            LocalMainFontFamily provides mainFont
         ) {
-            val systemUiController = rememberSystemUiController()
-            val view = LocalView.current
+            XenonTheme(
+                darkTheme = appIsDarkTheme,
+                useBlackedOutDarkTheme = if (appIsDarkTheme) blackedOutModeEnabled else false,
+                dynamicColor = useDynamicColor,
+                isCoverMode = layoutType == LayoutType.COVER,
+                fontFamily = fontFamily
+            ) {
+                val systemUiController = rememberSystemUiController()
+                val view = LocalView.current
 
-            val darkIconsForSystemBars =
-                if (layoutType == LayoutType.COVER) false else !appIsDarkTheme
+                val darkIconsForSystemBars =
+                    if (layoutType == LayoutType.COVER) false else !appIsDarkTheme
 
-            if (!view.isInEditMode) {
-                SideEffect {
-                    systemUiController.setStatusBarColor(
-                        color = Color.Transparent,
-                        darkIcons = statusBarDarkIconsOverride ?: darkIconsForSystemBars
-                    )
-                    systemUiController.setNavigationBarColor(
-                        color = Color.Transparent,
-                        darkIcons = navigationBarDarkIconsOverride ?: darkIconsForSystemBars,
-                        navigationBarContrastEnforced = false
-                    )
+                if (!view.isInEditMode) {
+                    SideEffect {
+                        systemUiController.setStatusBarColor(
+                            color = Color.Transparent,
+                            darkIcons = statusBarDarkIconsOverride ?: darkIconsForSystemBars
+                        )
+                        systemUiController.setNavigationBarColor(
+                            color = Color.Transparent,
+                            darkIcons = navigationBarDarkIconsOverride ?: darkIconsForSystemBars,
+                            navigationBarContrastEnforced = false
+                        )
+                    }
                 }
+                content(layoutType, isLandscape)
             }
-            content(layoutType, isLandscape)
         }
     }
 }

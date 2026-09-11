@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.font.FontFamily
 import androidx.core.graphics.ColorUtils
 import androidx.core.view.WindowCompat
 
@@ -156,6 +157,7 @@ fun XenonTheme(
     useBlackedOutDarkTheme: Boolean = false,
     isCoverMode: Boolean = false,
     dynamicColor: Boolean = true,
+    fontFamily: FontFamily = FontFamily.Default,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
@@ -211,13 +213,17 @@ fun XenonTheme(
         }
     }
 
+    val appTypography = remember(fontFamily) {
+        createTypography(fontFamily)
+    }
+
     CompositionLocalProvider(
         LocalExtendedMaterialColorScheme provides extendedColorScheme,
         LocalIsDarkTheme provides darkTheme
     ) {
         MaterialTheme(
             colorScheme = baseColorScheme,
-            typography = Typography,
+            typography = appTypography,
             content = content
         )
     }

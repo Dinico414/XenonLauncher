@@ -20,7 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.xenon.mylibrary.theme.QuicksandTitleVariable
+import com.xenonware.launcher.ui.theme.mainFontFamily
 import com.xenonware.launcher.R
 import com.xenonware.launcher.util.ColorUtils
 
@@ -62,7 +62,7 @@ fun NotificationBadge(
                 text = if (count > 99) plusLabel else count.toString(),
                 color = ColorUtils.getContrastColor(badgeColor),
                 fontSize = 12.sp,
-                fontFamily = QuicksandTitleVariable,
+                fontFamily = mainFontFamily,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
             )

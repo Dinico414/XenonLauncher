@@ -95,7 +95,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.graphics.createBitmap
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import com.xenon.mylibrary.theme.QuicksandTitleVariable
+import com.xenonware.launcher.ui.theme.mainFontFamily
 import com.xenonware.launcher.R
 import com.xenonware.launcher.media.MediaAction
 import com.xenonware.launcher.media.MediaState
@@ -303,19 +303,19 @@ fun MediaPage(
                         Text(
                             stringResource(R.string.media_access_required),
                             color = contentColor,
-                            style = MaterialTheme.typography.headlineSmall.copy(fontFamily = QuicksandTitleVariable),
+                            style = MaterialTheme.typography.headlineSmall.copy(fontFamily = mainFontFamily),
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             stringResource(R.string.media_access_description),
                             color = subContentColor,
-                            style = MaterialTheme.typography.bodyMedium.copy(fontFamily = QuicksandTitleVariable),
+                            style = MaterialTheme.typography.bodyMedium.copy(fontFamily = mainFontFamily),
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(24.dp))
                         Button(onClick = onOpenSettings) {
-                            Text(stringResource(R.string.grant), style = MaterialTheme.typography.labelLarge.copy(fontFamily = QuicksandTitleVariable))
+                            Text(stringResource(R.string.grant), style = MaterialTheme.typography.labelLarge.copy(fontFamily = mainFontFamily))
                         }
                     } else {
                         // App Name
@@ -342,7 +342,7 @@ fun MediaPage(
                                 Text(
                                     text = appName,
                                     color = contentColor,
-                                    style = MaterialTheme.typography.labelLarge.copy(fontFamily = QuicksandTitleVariable),
+                                    style = MaterialTheme.typography.labelLarge.copy(fontFamily = mainFontFamily),
                                     fontWeight = FontWeight.Medium,
                                     modifier = Modifier.padding(
                                         start = if (appName == appNameLabel) 4.dp else 0.dp, end = 4.dp
@@ -361,7 +361,7 @@ fun MediaPage(
                             val textMeasurer = rememberTextMeasurer()
                             val titleStyle = MaterialTheme.typography.headlineMedium.copy(
                                 shadow = textShadow,
-                                fontFamily = QuicksandTitleVariable,
+                                fontFamily = mainFontFamily,
                                 fontWeight = FontWeight.Bold,
                                 color = contentColor,
                                 textAlign = TextAlign.Center
@@ -464,12 +464,12 @@ fun MediaPage(
                                     Text(
                                         formatTime(currentPosition.toLong()),
                                         color = contentColor.copy(alpha = 0.6f),
-                                        style = MaterialTheme.typography.labelSmall.copy(fontFamily = QuicksandTitleVariable)
+                                        style = MaterialTheme.typography.labelSmall.copy(fontFamily = mainFontFamily)
                                     )
                                     Text(
                                         formatTime(mediaState.duration),
                                         color = contentColor.copy(alpha = 0.6f),
-                                        style = MaterialTheme.typography.labelSmall.copy(fontFamily = QuicksandTitleVariable)
+                                        style = MaterialTheme.typography.labelSmall.copy(fontFamily = mainFontFamily)
                                     )
                                 }
                             }
@@ -547,19 +547,19 @@ fun MediaPage(
                     Text(
                         stringResource(R.string.media_access_required),
                         color = contentColor,
-                        style = MaterialTheme.typography.headlineSmall.copy(fontFamily = QuicksandTitleVariable),
+                        style = MaterialTheme.typography.headlineSmall.copy(fontFamily = mainFontFamily),
                         textAlign = TextAlign.Center
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         stringResource(R.string.media_access_description),
                         color = subContentColor,
-                        style = MaterialTheme.typography.bodyMedium.copy(fontFamily = QuicksandTitleVariable),
+                        style = MaterialTheme.typography.bodyMedium.copy(fontFamily = mainFontFamily),
                         textAlign = TextAlign.Center
                     )
                     Spacer(modifier = Modifier.height(24.dp))
                     Button(onClick = onOpenSettings) {
-                        Text(stringResource(R.string.grant), style = MaterialTheme.typography.labelLarge.copy(fontFamily = QuicksandTitleVariable))
+                        Text(stringResource(R.string.grant), style = MaterialTheme.typography.labelLarge.copy(fontFamily = mainFontFamily))
                     }
                 } else {
                     if (!isSmallDevice) {
@@ -592,7 +592,7 @@ fun MediaPage(
                                     Text(
                                         text = appName,
                                         color = contentColor,
-                                        style = MaterialTheme.typography.labelLarge.copy(fontFamily = QuicksandTitleVariable),
+                                        style = MaterialTheme.typography.labelLarge.copy(fontFamily = mainFontFamily),
                                         fontWeight = FontWeight.Medium,
                                         modifier = Modifier.padding(
                                             start = if (appName == appNameLabel) 4.dp else 0.dp, end = 4.dp
@@ -646,7 +646,7 @@ fun MediaPage(
                                         Text(
                                             text = appName,
                                             color = contentColor,
-                                            style = MaterialTheme.typography.labelMedium.copy(fontFamily = QuicksandTitleVariable),
+                                            style = MaterialTheme.typography.labelMedium.copy(fontFamily = mainFontFamily),
                                             fontWeight = FontWeight.Medium,
                                             modifier = Modifier.padding(
                                                 start = if (appName == appNameLabel) 4.dp else 0.dp, end = 4.dp
@@ -669,7 +669,7 @@ fun MediaPage(
                                         val textMeasurer = rememberTextMeasurer()
                                         val titleStyle = MaterialTheme.typography.headlineSmall.copy(
                                             shadow = textShadow,
-                                            fontFamily = QuicksandTitleVariable,
+                                            fontFamily = mainFontFamily,
                                             fontWeight = FontWeight.Bold,
                                             color = contentColor,
                                             textAlign = TextAlign.Center
@@ -813,7 +813,7 @@ fun MediaPage(
                             val textMeasurer = rememberTextMeasurer()
                             val titleStyle = MaterialTheme.typography.headlineMedium.copy(
                                 shadow = textShadow,
-                                fontFamily = QuicksandTitleVariable,
+                                fontFamily = mainFontFamily,
                                 fontWeight = FontWeight.Bold,
                                 color = contentColor,
                                 textAlign = TextAlign.Center
@@ -914,12 +914,12 @@ fun MediaPage(
                                 Text(
                                     formatTime(currentPosition.toLong()),
                                     color = contentColor.copy(alpha = 0.6f),
-                                    style = MaterialTheme.typography.labelSmall.copy(fontFamily = QuicksandTitleVariable)
+                                    style = MaterialTheme.typography.labelSmall.copy(fontFamily = mainFontFamily)
                                 )
                                 Text(
                                     formatTime(mediaState.duration),
                                     color = contentColor.copy(alpha = 0.6f),
-                                    style = MaterialTheme.typography.labelSmall.copy(fontFamily = QuicksandTitleVariable)
+                                    style = MaterialTheme.typography.labelSmall.copy(fontFamily = mainFontFamily)
                                 )
                             }
                         }

@@ -35,6 +35,7 @@ import androidx.compose.material.icons.rounded.TableRows
 import androidx.compose.material.icons.rounded.TravelExplore
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material.icons.rounded.WatchLater
+import androidx.compose.material.icons.rounded.FontDownload
 import androidx.compose.material.icons.rounded.Widgets
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
@@ -59,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.xenon.mylibrary.res.SettingsSwitchTile
 import com.xenon.mylibrary.res.SettingsSwitchTileContext
+import com.xenon.mylibrary.res.SettingsTile
 import com.xenon.mylibrary.res.SettingsTileContext
 import com.xenon.mylibrary.res.XenonSingleChoiceButtonGroup
 import com.xenon.mylibrary.theme.LayoutType
@@ -322,6 +324,33 @@ fun TweaksItems(
                         modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
                     )
                 }
+            )
+
+            Spacer(Modifier.height(actualInnerGroupSpacing))
+
+            val fontType by viewModel.fontType.collectAsState()
+            val mainFontType by viewModel.mainFontType.collectAsState()
+
+            val fontSubtitle = run {
+                fun getName(type: Int): String = when (type) {
+                    1 -> "Roboto Flex"
+                    2 -> "Google Sans Flex"
+                    3 -> "Quicksand"
+                    else -> "System"
+                }
+                "${stringResource(R.string.font_target_main)}: ${getName(mainFontType)} • ${stringResource(R.string.font_target_secondary)}: ${getName(fontType)}"
+            }
+            SettingsTile(
+                title = stringResource(R.string.font_settings),
+                subtitle = fontSubtitle,
+                icon = { Icon(Icons.Rounded.FontDownload, null, tint = tileSubtitleColor) },
+                onClick = { viewModel.setShowFontConfigDialog(true) },
+                shape = tileShapeOverride ?: middleShape,
+                backgroundColor = tileBackgroundColor,
+                contentColor = tileContentColor,
+                subtitleColor = tileSubtitleColor,
+                horizontalPadding = 16.dp,
+                verticalPadding = 16.dp
             )
 
             Spacer(Modifier.height(actualInnerGroupSpacing))

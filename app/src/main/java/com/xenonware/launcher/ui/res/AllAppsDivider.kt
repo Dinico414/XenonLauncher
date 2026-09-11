@@ -11,7 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.xenon.mylibrary.theme.QuicksandTitleVariable
+import com.xenonware.launcher.ui.theme.mainFontFamily
 import com.xenonware.launcher.R
 
 @Composable
@@ -27,7 +27,7 @@ fun AllAppsDivider(modifier: Modifier = Modifier) {
             text = stringResource(R.string.all_apps),
             modifier = Modifier.padding(horizontal = 16.dp),
             style = typography.labelMedium.copy(
-                fontFamily = QuicksandTitleVariable
+                fontFamily = mainFontFamily
             ),
             color = colorScheme.onSurface.copy(alpha = 0.8f)
         )

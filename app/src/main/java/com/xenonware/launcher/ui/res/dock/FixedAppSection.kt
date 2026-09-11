@@ -5,6 +5,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -63,7 +64,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.toSize
 import androidx.core.graphics.drawable.toBitmap
-import com.xenon.mylibrary.theme.QuicksandTitleVariable
+import com.xenonware.launcher.ui.theme.mainFontFamily
 import com.xenonware.launcher.R
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.notification.LauncherNotification
@@ -167,7 +168,8 @@ fun AppsSection(
         modifier = modifier.dockSectionSize(isExpanded),
         shape = DockSectionShape,
         color = colorScheme.surfaceContainerLowest.copy(alpha = dockButtonAlpha()),
-        contentColor = colorScheme.onSurface
+        contentColor = colorScheme.onSurface,
+        border = BorderStroke(1.dp, colorScheme.onSurface.copy(alpha = 0.15f))
     ) {
         if (isExpanded) {
             FixedAppSection(
@@ -430,7 +432,7 @@ fun FixedAppSection(
                         stringResource(R.string.drag_app_to_pin),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
-                        fontFamily = QuicksandTitleVariable,
+                        fontFamily = mainFontFamily,
                         color = LocalContentColor.current.copy(alpha = 0.5f)
                     )
                 }

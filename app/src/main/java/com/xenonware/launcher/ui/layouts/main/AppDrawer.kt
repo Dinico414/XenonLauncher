@@ -126,7 +126,7 @@ import androidx.core.net.toUri
 import com.xenon.mylibrary.res.MenuItem
 import com.xenon.mylibrary.res.XenonDropDown
 import com.xenon.mylibrary.res.XenonSingleChoiceButtonGroup
-import com.xenon.mylibrary.theme.QuicksandTitleVariable
+import com.xenonware.launcher.ui.theme.mainFontFamily
 import com.xenonware.launcher.R
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.model.SearchHistoryType
@@ -963,7 +963,7 @@ fun AppDrawer(
                                             Text(
                                                 stringResource(R.string.search_history),
                                                 style = typography.labelMedium.copy(
-                                                    fontFamily = QuicksandTitleVariable
+                                                    fontFamily = mainFontFamily
                                                 ),
                                                 color = colorScheme.onSurface.copy(alpha = 0.8f),
                                                 modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
@@ -1095,7 +1095,7 @@ fun AppDrawer(
                                 .graphicsLayer(clip = false)
                         ) {
                             CompositionLocalProvider(
-                                LocalTextStyle provides typography.labelMedium.copy(fontFamily = QuicksandTitleVariable)
+                                LocalTextStyle provides typography.labelMedium.copy(fontFamily = mainFontFamily)
                             ) {
                                 XenonSingleChoiceButtonGroup(
                                     options = SearchType.entries,
@@ -1154,7 +1154,7 @@ fun AppDrawer(
 
                             val textStyle = typography.titleLarge.merge(
                                 TextStyle(
-                                    fontFamily = QuicksandTitleVariable,
+                                    fontFamily = mainFontFamily,
                                     textAlign = TextAlign.Center,
                                     color = colorScheme.onSurface
                                 )

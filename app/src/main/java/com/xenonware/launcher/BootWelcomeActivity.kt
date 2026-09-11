@@ -21,7 +21,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.xenon.mylibrary.res.AnimatedGradientBackground
-import com.xenon.mylibrary.theme.QuicksandTitleVariable
+import com.xenonware.launcher.ui.theme.mainFontFamily
 import com.xenon.mylibrary.theme.XenonTheme
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
@@ -66,7 +66,7 @@ class BootWelcomeActivity : ComponentActivity() {
                         text = stringResource(R.string.welcome),
                         modifier = Modifier.align(Alignment.Center).alpha(alpha.value),
                         style = MaterialTheme.typography.displayLarge.copy(
-                            fontFamily = QuicksandTitleVariable,
+                            fontFamily = mainFontFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 48.sp,
                             color = Color.White

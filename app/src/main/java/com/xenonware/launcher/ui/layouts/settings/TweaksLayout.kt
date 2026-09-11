@@ -1,5 +1,6 @@
 package com.xenonware.launcher.ui.layouts.settings
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -13,6 +14,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
@@ -26,8 +29,10 @@ import com.xenon.mylibrary.values.LargestPadding
 import com.xenon.mylibrary.values.MediumPadding
 import com.xenon.mylibrary.values.NoSpacing
 import com.xenonware.launcher.R
+import com.xenonware.launcher.ui.res.FontConfigDialog
 import com.xenonware.launcher.viewmodel.SettingsViewModel
 import com.xenonware.launcher.viewmodel.classes.TweaksItems
+import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 
@@ -94,5 +99,34 @@ fun TweaksLayout(
                     )
                 }
             })
+
+        val showFontConfigDialog by viewModel.showFontConfigDialog.collectAsState()
+        val fontType by viewModel.fontType.collectAsState()
+        val mainFontType by viewModel.mainFontType.collectAsState()
+        val robotoFlexSettings by viewModel.robotoFlexSettings.collectAsState()
+        val googleSansFlexSettings by viewModel.googleSansFlexSettings.collectAsState()
+
+        if (showFontConfigDialog) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .hazeEffect(hazeState)
+            ) {
+                FontConfigDialog(
+                    initialMainFontType = mainFontType,
+                    initialSecondaryFontType = fontType,
+                    initialRobotoSettings = robotoFlexSettings,
+                    initialGoogleSansSettings = googleSansFlexSettings,
+                    onDismiss = { viewModel.setShowFontConfigDialog(false) },
+                    onSave = { mainType, secType, roboto, googleSans ->
+                        viewModel.setMainFontType(mainType)
+                        viewModel.setFontType(secType)
+                        viewModel.setRobotoFlexSettings(roboto)
+                        viewModel.setGoogleSansFlexSettings(googleSans)
+                        viewModel.setShowFontConfigDialog(false)
+                    }
+                )
+            }
+        }
     }
 }

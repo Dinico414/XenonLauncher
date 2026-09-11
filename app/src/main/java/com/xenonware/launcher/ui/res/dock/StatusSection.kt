@@ -18,6 +18,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -79,7 +80,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.xenon.mylibrary.theme.QuicksandTitleVariable
+import com.xenonware.launcher.ui.theme.mainFontFamily
 import com.xenonware.launcher.R
 import com.xenonware.launcher.ui.res.Glancly
 import kotlinx.coroutines.delay
@@ -270,7 +271,7 @@ fun StatusSection(
         shape = DockSectionShape,
         color = backgroundColor,
         contentColor = contentColor,
-        border = null // Border is drawn manually for better control over rounded ends
+        border = BorderStroke(1.dp, colorScheme.onSurface.copy(alpha = 0.15f))
     ) {
         Box(
             modifier = Modifier
@@ -470,7 +471,7 @@ fun StatusSection(
                                         text = "${(progress * 100).toInt()}%",
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 11.sp,
-                                        fontFamily = QuicksandTitleVariable
+                                        fontFamily = mainFontFamily
                                     )
                                 }
 
@@ -565,7 +566,7 @@ fun NotificationCounterBadge(
                 fontSize = if (text.length >= 3) 8.sp else 10.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
-                fontFamily = QuicksandTitleVariable,
+                fontFamily = mainFontFamily,
                 style = TextStyle(
                     platformStyle = PlatformTextStyle(includeFontPadding = false),
                     textAlign = TextAlign.Center
@@ -589,7 +590,7 @@ fun CalendarCounterIcon(
         fontSize = if (text.length >= 3) 7.5.sp else if (text.length == 2) 9.sp else 10.5.sp,
         fontWeight = FontWeight.Bold,
         color = textColor,
-        fontFamily = QuicksandTitleVariable
+        fontFamily = mainFontFamily
     )
 
     Canvas(

@@ -138,7 +138,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import com.xenon.mylibrary.res.MenuItem
 import com.xenon.mylibrary.res.XenonDropDown
-import com.xenon.mylibrary.theme.QuicksandTitleVariable
+import com.xenonware.launcher.ui.theme.mainFontFamily
 import com.xenonware.launcher.R
 import com.xenonware.launcher.accessibility.XenonAccessibilityService
 import com.xenonware.launcher.model.AppInfo
@@ -571,7 +571,7 @@ fun NotificationPage(
                                             text = if (allMuted) stringResource(R.string.notification_message_no_notification) else pluralStringResource(R.plurals.notification_count, notificationCount, notificationCount),
                                             color = baseColor.copy(alpha = 0.8f),
                                             fontSize = 18.sp,
-                                            fontFamily = QuicksandTitleVariable,
+                                            fontFamily = mainFontFamily,
                                             fontWeight = FontWeight.Medium
                                         )
                                     }
@@ -951,7 +951,7 @@ fun NotificationPage(
                                             text = if (allMuted) stringResource(R.string.notification_message_no_notification) else pluralStringResource(R.plurals.notification_count, notificationCount, notificationCount),
                                             color = baseColor.copy(alpha = 0.8f),
                                             fontSize = 18.sp,
-                                            fontFamily = QuicksandTitleVariable,
+                                            fontFamily = mainFontFamily,
                                             fontWeight = FontWeight.Medium
                                         )
                                     }
@@ -1540,14 +1540,14 @@ fun AtAGlance(
                                             fontSize = eventTitleFontSize,
                                             fontWeight = FontWeight.Bold,
                                             color = baseColor,
-                                            fontFamily = QuicksandTitleVariable,
+                                            fontFamily = mainFontFamily,
                                             maxLines = 1
                                         )
                                         Text(
                                             text = conditionText,
                                             fontSize = subtitleFontSize,
                                             color = baseColor.copy(alpha = 0.7f),
-                                            fontFamily = QuicksandTitleVariable
+                                            fontFamily = mainFontFamily
                                         )
                                     }
                                 }
@@ -1607,7 +1607,7 @@ fun AtAGlance(
                                     val textStyle = MaterialTheme.typography.bodyLarge.copy(
                                         fontSize = eventTitleFontSize,
                                         fontWeight = FontWeight.Bold,
-                                        fontFamily = QuicksandTitleVariable
+                                        fontFamily = mainFontFamily
                                     )
                                     val textWidth = remember(event.title, textStyle) {
                                         textMeasurer.measure(event.title, textStyle).size.width
@@ -1650,7 +1650,7 @@ fun AtAGlance(
                                         fontSize = eventTitleFontSize,
                                         fontWeight = FontWeight.Bold,
                                         color = baseColor,
-                                        fontFamily = QuicksandTitleVariable,
+                                        fontFamily = mainFontFamily,
                                         maxLines = 1,
                                         modifier = Modifier
                                             .fillMaxWidth()
@@ -1766,7 +1766,7 @@ fun AtAGlance(
                                         color = baseColor.copy(alpha = 0.5f),
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Bold,
-                                        fontFamily = QuicksandTitleVariable
+                                        fontFamily = mainFontFamily
                                     )
                                 }
                             }

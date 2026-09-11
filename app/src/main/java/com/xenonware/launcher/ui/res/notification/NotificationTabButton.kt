@@ -60,7 +60,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
-import com.xenon.mylibrary.theme.QuicksandTitleVariable
+import com.xenonware.launcher.ui.theme.mainFontFamily
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.util.ColorUtils
 import kotlinx.coroutines.launch
@@ -257,7 +257,7 @@ fun NotificationTabButton(
                         color = iconColor,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
-                        fontFamily = QuicksandTitleVariable
+                        fontFamily = mainFontFamily
                     )
                 }
             }

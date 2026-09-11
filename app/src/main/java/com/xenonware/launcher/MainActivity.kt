@@ -77,7 +77,7 @@ import androidx.compose.ui.zIndex
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import com.xenon.mylibrary.res.AnimatedGradientBackground
-import com.xenon.mylibrary.theme.QuicksandTitleVariable
+import com.xenonware.launcher.ui.theme.mainFontFamily
 import com.xenonware.launcher.accessibility.XenonAccessibilityService
 import com.xenonware.launcher.data.SharedPreferenceManager
 import com.xenonware.launcher.model.FabAction
@@ -88,7 +88,10 @@ import com.xenonware.launcher.ui.pages.WidgetPage
 import com.xenonware.launcher.ui.res.CalendarSelectionDialog
 import com.xenonware.launcher.ui.res.ShortcutConfigDialog
 import com.xenonware.launcher.ui.res.dock.DockPill
+import com.xenonware.launcher.ui.theme.FontAxes
+import com.xenonware.launcher.ui.theme.FontType
 import com.xenonware.launcher.ui.theme.ScreenEnvironment
+import com.xenonware.launcher.ui.theme.createCustomFontFamily
 import com.xenonware.launcher.util.DragHandler
 import com.xenonware.launcher.util.WindowBlurBehind
 import com.xenonware.launcher.util.rememberBlurAvailable
@@ -201,11 +204,46 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            val fontType by viewModel.fontType.collectAsState()
+            val mainFontType by viewModel.mainFontType.collectAsState()
+            val robotoSettings by viewModel.robotoFlexSettings.collectAsState()
+            val googleSansSettings by viewModel.googleSansFlexSettings.collectAsState()
+
+            val customSecondaryFontFamily = remember(fontType, robotoSettings, googleSansSettings) {
+                createCustomFontFamily(
+                    fontType = FontType.fromId(fontType),
+                    robotoSettings = FontAxes.parseSettings(
+                        robotoSettings,
+                        FontAxes.ROBOTO_FLEX_AXES
+                    ),
+                    googleSansSettings = FontAxes.parseSettings(
+                        googleSansSettings,
+                        FontAxes.GOOGLE_SANS_AXES
+                    )
+                )
+            }
+
+            val customMainFontFamily = remember(mainFontType, robotoSettings, googleSansSettings) {
+                createCustomFontFamily(
+                    fontType = FontType.fromId(mainFontType),
+                    robotoSettings = FontAxes.parseSettings(
+                        robotoSettings,
+                        FontAxes.ROBOTO_FLEX_AXES
+                    ),
+                    googleSansSettings = FontAxes.parseSettings(
+                        googleSansSettings,
+                        FontAxes.GOOGLE_SANS_AXES
+                    )
+                )
+            }
+
             ScreenEnvironment(
                 themePreference = themePref,
                 coverTheme = applyCoverTheme,
                 blackedOutModeEnabled = blackedOut,
-                statusBarDarkIconsOverride = statusBarDarkIcons
+                statusBarDarkIconsOverride = statusBarDarkIcons,
+                fontFamily = customSecondaryFontFamily,
+                mainFont = customMainFontFamily
             ) { _, _ ->
                 if (isBooting) {
                     BackHandler(enabled = true) {}
@@ -852,7 +890,7 @@ fun LauncherScreen(
                             .align(Alignment.Center)
                             .alpha(alpha.value),
                         style = MaterialTheme.typography.displayLarge.copy(
-                            fontFamily = QuicksandTitleVariable,
+                            fontFamily = mainFontFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 48.sp,
                             color = Color.White

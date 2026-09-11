@@ -235,6 +235,22 @@ class SharedPreferenceManager(context: Context) {
         get() = prefs.getInt("temp_unit", 0) // 0: System, 1: °C, 2: °F
         set(value) = prefs.edit { putInt("temp_unit", value) }
 
+    var fontType: Int
+        get() = prefs.getInt("font_type", 0) // 0: System, 1: Roboto Flex, 2: Google Sans Flex, 3: Quicksand
+        set(value) = prefs.edit { putInt("font_type", value) }
+
+    var mainFontType: Int
+        get() = prefs.getInt("main_font_type", 3) // Default to 3: Quicksand
+        set(value) = prefs.edit { putInt("main_font_type", value) }
+
+    var robotoFlexSettings: String
+        get() = prefs.getString("roboto_flex_settings", "{}") ?: "{}"
+        set(value) = prefs.edit { putString("roboto_flex_settings", value) }
+
+    var googleSansFlexSettings: String
+        get() = prefs.getString("google_sans_flex_settings", "{}") ?: "{}"
+        set(value) = prefs.edit { putString("google_sans_flex_settings", value) }
+
     var isUserLoggedIn: Boolean
         get() = prefs.getBoolean("is_user_logged_in", false)
         set(value) = prefs.edit { putBoolean("is_user_logged_in", value) }

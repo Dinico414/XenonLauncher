@@ -204,6 +204,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             "temp_unit" -> {
                 viewModelScope.launch { updateWeatherOnce() }
             }
+            "font_type" -> _fontType.value = prefManager.fontType
+            "main_font_type" -> _mainFontType.value = prefManager.mainFontType
+            "roboto_flex_settings" -> _robotoFlexSettings.value = prefManager.robotoFlexSettings
+            "google_sans_flex_settings" -> _googleSansFlexSettings.value = prefManager.googleSansFlexSettings
         }
     }
 
@@ -351,6 +355,18 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private val _notificationMessageType = MutableStateFlow(prefManager.notificationMessageType)
     val notificationMessageType: StateFlow<Int> = _notificationMessageType
+
+    private val _fontType = MutableStateFlow(prefManager.fontType)
+    val fontType: StateFlow<Int> = _fontType
+
+    private val _mainFontType = MutableStateFlow(prefManager.mainFontType)
+    val mainFontType: StateFlow<Int> = _mainFontType
+
+    private val _robotoFlexSettings = MutableStateFlow(prefManager.robotoFlexSettings)
+    val robotoFlexSettings: StateFlow<String> = _robotoFlexSettings
+
+    private val _googleSansFlexSettings = MutableStateFlow(prefManager.googleSansFlexSettings)
+    val googleSansFlexSettings: StateFlow<String> = _googleSansFlexSettings
 
     fun setAppDrawerVisible(visible: Boolean) {
         _isAppDrawerVisible.value = visible

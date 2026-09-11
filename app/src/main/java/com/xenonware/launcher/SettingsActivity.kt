@@ -24,7 +24,10 @@ import com.xenonware.launcher.data.SharedPreferenceManager
 import com.xenonware.launcher.presentation.sign_in.GoogleAuthUiClient
 import com.xenonware.launcher.presentation.sign_in.SignInViewModel
 import com.xenonware.launcher.ui.layouts.settings.SettingsLayout
+import com.xenonware.launcher.ui.theme.FontAxes
+import com.xenonware.launcher.ui.theme.FontType
 import com.xenonware.launcher.ui.theme.ScreenEnvironment
+import com.xenonware.launcher.ui.theme.createCustomFontFamily
 import com.xenonware.launcher.viewmodel.SettingsViewModel
 import kotlinx.coroutines.launch
 
@@ -87,10 +90,45 @@ class SettingsActivity : ComponentActivity() {
                 settingsViewModel.applyCoverTheme(currentContainerSize)
             }
 
+            val fontType by settingsViewModel.fontType.collectAsState()
+            val mainFontType by settingsViewModel.mainFontType.collectAsState()
+            val robotoSettings by settingsViewModel.robotoFlexSettings.collectAsState()
+            val googleSansSettings by settingsViewModel.googleSansFlexSettings.collectAsState()
+
+            val customFontFamily = remember(fontType, robotoSettings, googleSansSettings) {
+                createCustomFontFamily(
+                    fontType = FontType.fromId(fontType),
+                    robotoSettings = FontAxes.parseSettings(
+                        robotoSettings,
+                        FontAxes.ROBOTO_FLEX_AXES
+                    ),
+                    googleSansSettings = FontAxes.parseSettings(
+                        googleSansSettings,
+                        FontAxes.GOOGLE_SANS_AXES
+                    )
+                )
+            }
+
+            val customMainFontFamily = remember(mainFontType, robotoSettings, googleSansSettings) {
+                createCustomFontFamily(
+                    fontType = FontType.fromId(mainFontType),
+                    robotoSettings = FontAxes.parseSettings(
+                        robotoSettings,
+                        FontAxes.ROBOTO_FLEX_AXES
+                    ),
+                    googleSansSettings = FontAxes.parseSettings(
+                        googleSansSettings,
+                        FontAxes.GOOGLE_SANS_AXES
+                    )
+                )
+            }
+
             ScreenEnvironment(
                 themePreference = themePref,
                 coverTheme = applyCoverTheme,
-                blackedOutModeEnabled = blackedOut
+                blackedOutModeEnabled = blackedOut,
+                fontFamily = customFontFamily,
+                mainFont = customMainFontFamily
             ) { layoutType, isLandscape ->
 
                 val context = LocalContext.current

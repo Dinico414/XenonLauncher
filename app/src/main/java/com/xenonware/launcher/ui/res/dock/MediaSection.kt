@@ -78,10 +78,10 @@ import coil.compose.AsyncImage
 import coil.imageLoader
 import coil.request.ImageRequest
 import coil.request.SuccessResult
-import com.xenon.mylibrary.theme.QuicksandTitleVariable
 import com.xenonware.launcher.R
 import com.xenonware.launcher.media.MediaState
 import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
+import com.xenonware.launcher.ui.theme.mainFontFamily
 import com.xenonware.launcher.util.ColorUtils
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
@@ -106,7 +106,7 @@ fun MediaSection(
     val contentColor = theme.content
 
     // Always have the border at 0.5 alpha when media is present, hide it if not.
-    val borderAlpha = if (mediaState.packageName != null) 0.5f else 0f
+    val borderAlpha = if (mediaState.packageName != null) 0.5f else 0.15f
 
     Surface(
         onClick = {
@@ -321,7 +321,7 @@ private fun MediaSectionContent(
                     .weight(1f)
                     .padding(start = 8.dp),
                 fontSize = 12.sp,
-                fontFamily = QuicksandTitleVariable,
+                fontFamily = mainFontFamily,
                 color = contentColor,
                 maxLines = 1,
                 softWrap = false
@@ -334,7 +334,7 @@ private fun MediaSectionContent(
                 Text(
                     stringResource(R.string.grant),
                     fontSize = 10.sp,
-                    fontFamily = QuicksandTitleVariable,
+                    fontFamily = mainFontFamily,
                     maxLines = 1,
                     softWrap = false
                 )
@@ -391,7 +391,7 @@ private fun MediaSectionContent(
                 val titleStyle = MaterialTheme.typography.bodyMedium.copy(
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    fontFamily = QuicksandTitleVariable,
+                    fontFamily = mainFontFamily,
                     color = contentColor
                 )
                 val titleText = mediaState.title ?: stringResource(R.string.media)
