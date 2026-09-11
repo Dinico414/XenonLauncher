@@ -26,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AdsClick
 import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.KeyboardDoubleArrowDown
 import androidx.compose.material.icons.rounded.Notifications
@@ -132,6 +133,7 @@ fun TweaksItems(
     val showMuteNotifications by viewModel.showMuteNotifications.collectAsState()
     val showPermanentNotifications by viewModel.showPermanentNotifications.collectAsState()
     val disableGrouping by viewModel.disableGrouping.collectAsState()
+    val notificationDeleteSinglePress by viewModel.notificationDeleteSinglePress.collectAsState()
     val fontType by viewModel.fontType.collectAsState()
     val mainFontType by viewModel.mainFontType.collectAsState()
 
@@ -387,6 +389,20 @@ fun TweaksItems(
                 checked = disableGrouping,
                 onCheckedChange = { viewModel.setDisableGrouping(it) },
                 icon = { Icon(Icons.Rounded.TableRows, null, tint = tileSubtitleColor) },
+                shape = tileShapeOverride ?: middleShape,
+                backgroundColor = tileBackgroundColor,
+                contentColor = tileContentColor,
+                subtitleColor = tileSubtitleColor
+            )
+
+            Spacer(Modifier.height(actualInnerGroupSpacing))
+
+            SettingsSwitchTile(
+                title = stringResource(R.string.notification_delete_single_press),
+                subtitle = stringResource(R.string.notification_delete_single_press_description),
+                checked = notificationDeleteSinglePress,
+                onCheckedChange = { viewModel.setNotificationDeleteSinglePress(it) },
+                icon = { Icon(Icons.Rounded.Delete, null, tint = tileSubtitleColor) },
                 shape = tileShapeOverride ?: bottomShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,

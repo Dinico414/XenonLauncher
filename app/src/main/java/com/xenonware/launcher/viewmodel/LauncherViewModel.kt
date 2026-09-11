@@ -199,6 +199,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 _disableGrouping.value = prefManager.disableGrouping
                 NotificationManager.disableGrouping = prefManager.disableGrouping
             }
+            "notification_delete_single_press" -> _notificationDeleteSinglePress.value = prefManager.notificationDeleteSinglePress
             "notification_indicator_type" -> _notificationIndicatorType.value = prefManager.notificationIndicatorType
             "notification_message_type" -> _notificationMessageType.value = prefManager.notificationMessageType
             "temp_unit" -> {
@@ -350,6 +351,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private val _disableGrouping = MutableStateFlow(prefManager.disableGrouping)
     val disableGrouping: StateFlow<Boolean> = _disableGrouping
+
+    private val _notificationDeleteSinglePress = MutableStateFlow(prefManager.notificationDeleteSinglePress)
+    val notificationDeleteSinglePress: StateFlow<Boolean> = _notificationDeleteSinglePress
 
     private val _notificationIndicatorType = MutableStateFlow(prefManager.notificationIndicatorType)
     val notificationIndicatorType: StateFlow<Int> = _notificationIndicatorType

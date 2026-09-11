@@ -223,6 +223,10 @@ class SharedPreferenceManager(context: Context) {
         get() = prefs.getBoolean("disable_grouping", false)
         set(value) = prefs.edit { putBoolean("disable_grouping", value) }
 
+    var notificationDeleteSinglePress: Boolean
+        get() = prefs.getBoolean("notification_delete_single_press", false)
+        set(value) = prefs.edit { putBoolean("notification_delete_single_press", value) }
+
     var notificationIndicatorType: Int
         get() = prefs.getInt("notification_indicator_type", 2) // 0: None, 1: Checkmark, 2: Trophy
         set(value) = prefs.edit { putInt("notification_indicator_type", value) }

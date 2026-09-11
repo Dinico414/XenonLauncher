@@ -354,6 +354,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _disableGrouping = MutableStateFlow(sharedPreferenceManager.disableGrouping)
     val disableGrouping: StateFlow<Boolean> = _disableGrouping.asStateFlow()
 
+    private val _notificationDeleteSinglePress = MutableStateFlow(sharedPreferenceManager.notificationDeleteSinglePress)
+    val notificationDeleteSinglePress: StateFlow<Boolean> = _notificationDeleteSinglePress.asStateFlow()
+
     private val _notificationIndicatorType = MutableStateFlow(sharedPreferenceManager.notificationIndicatorType)
     val notificationIndicatorType: StateFlow<Int> = _notificationIndicatorType.asStateFlow()
 
@@ -497,6 +500,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             "show_mute_notifications" -> _showMuteNotifications.value = sharedPreferenceManager.showMuteNotifications
             "show_permanent_notifications" -> _showPermanentNotifications.value = sharedPreferenceManager.showPermanentNotifications
             "disable_grouping" -> _disableGrouping.value = sharedPreferenceManager.disableGrouping
+            "notification_delete_single_press" -> _notificationDeleteSinglePress.value = sharedPreferenceManager.notificationDeleteSinglePress
             "notification_indicator_type" -> _notificationIndicatorType.value = sharedPreferenceManager.notificationIndicatorType
             "notification_message_type" -> _notificationMessageType.value = sharedPreferenceManager.notificationMessageType
             "temp_unit" -> _tempUnit.value = sharedPreferenceManager.tempUnit
@@ -717,6 +721,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setDisableGrouping(enabled: Boolean) {
         sharedPreferenceManager.disableGrouping = enabled
         _disableGrouping.value = enabled
+    }
+
+    fun setNotificationDeleteSinglePress(enabled: Boolean) {
+        sharedPreferenceManager.notificationDeleteSinglePress = enabled
+        _notificationDeleteSinglePress.value = enabled
     }
 
     fun setNotificationIndicatorType(type: Int) {

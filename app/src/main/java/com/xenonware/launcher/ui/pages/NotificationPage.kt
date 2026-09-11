@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.provider.CalendarContract
 import android.text.format.DateFormat
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -736,6 +737,14 @@ fun NotificationPage(
                             }
                             targetState == "all" -> {
                                 val allNotificationsList = groupedNotifications["__ALL__"] ?: emptyList()
+                                val groupedByApp = remember(allNotificationsList) {
+                                    val map = linkedMapOf<String, MutableList<LauncherNotification>>()
+                                    for (notification in allNotificationsList) {
+                                        map.getOrPut(notification.packageName) { mutableListOf() }.add(notification)
+                                    }
+                                    map.values.toList()
+                                }
+
                                 LazyColumn(
                                     state = landscapeListState,
                                     modifier = Modifier
@@ -765,42 +774,52 @@ fun NotificationPage(
                                     verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.Bottom),
                                     contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
                                 ) {
-                                    itemsIndexed(allNotificationsList, key = { _, it -> it.key }) { index, notification ->
-                                        val app = apps.find { it.packageName == notification.packageName }
-                                        val appColor = remember(app) { ColorUtils.getDominantColor(app?.icon) }
-                                        
-                                        NotificationItem(
-                                            notification = notification,
-                                            appColor = appColor,
-                                            isFirst = index == 0,
-                                            isLast = index == allNotificationsList.size - 1,
-                                            offsetAbove = 0f,
-                                            offsetBelow = 0f,
-                                            replyingNotificationKey = replyingNotificationKey,
-                                            onReplyOpen = { viewModel.setReplyingNotification(it) },
-                                            onReplyBoundsChanged = onReplyBounds,
-                                            onOffsetChanged = { offsets[notification.key] = it },
-                                            modifier = Modifier.animateItem(
-                                                fadeInSpec = tween(durationMillis = 120),
-                                                placementSpec = spring(
-                                                    dampingRatio = Spring.DampingRatioNoBouncy,
-                                                    stiffness = Spring.StiffnessHigh
-                                                ),
-                                                fadeOutSpec = tween(durationMillis = 120)
-                                            ),
-                                            onOpen = {
-                                                try {
-                                                    val options = ActivityOptions.makeBasic()
-                                                    options.pendingIntentBackgroundActivityStartMode =
-                                                        ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
-                                                    notification.contentIntent?.send(context, 0, null, null, null, null, options.toBundle())
-                                                } catch (_: Exception) {
-                                                    try { notification.contentIntent?.send() } catch (_: Exception) {}
-                                                }
-                                            },
-                                            onDismiss = { onDismissNotification(notification.key) },
-                                            forceRounded = true
-                                        )
+                                    groupedByApp.forEachIndexed { groupIndex, notificationsInGroup ->
+                                        itemsIndexed(notificationsInGroup, key = { _, it -> it.key }) { indexInGroup, notification ->
+                                            val isFirst = indexInGroup == 0
+                                            val isLast = indexInGroup == notificationsInGroup.size - 1
+                                            val isLastGroup = groupIndex == groupedByApp.size - 1
+                                            val offsetAbove = if (indexInGroup > 0) offsets[notificationsInGroup[indexInGroup - 1].key] ?: 0f else 0f
+                                            val offsetBelow = if (indexInGroup < notificationsInGroup.size - 1) offsets[notificationsInGroup[indexInGroup + 1].key] ?: 0f else 0f
+                                            val app = apps.find { it.packageName == notification.packageName }
+                                            val appColor = remember(app) { ColorUtils.getDominantColor(app?.icon) }
+
+                                            NotificationItem(
+                                                notification = notification,
+                                                appColor = appColor,
+                                                isFirst = isFirst,
+                                                isLast = isLast,
+                                                offsetAbove = offsetAbove,
+                                                offsetBelow = offsetBelow,
+                                                replyingNotificationKey = replyingNotificationKey,
+                                                onReplyOpen = { viewModel.setReplyingNotification(it) },
+                                                onReplyBoundsChanged = onReplyBounds,
+                                                onOffsetChanged = { offsets[notification.key] = it },
+                                                modifier = Modifier
+                                                    .animateItem(
+                                                        fadeInSpec = tween(durationMillis = 120),
+                                                        placementSpec = spring(
+                                                            dampingRatio = Spring.DampingRatioNoBouncy,
+                                                            stiffness = Spring.StiffnessHigh
+                                                        ),
+                                                        fadeOutSpec = tween(durationMillis = 120)
+                                                    )
+                                                    .then(
+                                                        if (isLast && !isLastGroup) Modifier.padding(bottom = 2.dp) else Modifier
+                                                    ),
+                                                onOpen = {
+                                                    try {
+                                                        val options = ActivityOptions.makeBasic()
+                                                        options.pendingIntentBackgroundActivityStartMode =
+                                                            ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+                                                        notification.contentIntent?.send(context, 0, null, null, null, null, options.toBundle())
+                                                    } catch (_: Exception) {
+                                                        try { notification.contentIntent?.send() } catch (_: Exception) {}
+                                                    }
+                                                },
+                                                onDismiss = { onDismissNotification(notification.key) }
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -1187,6 +1206,14 @@ fun NotificationPage(
                             }
                             targetState == "all" -> {
                                 val allNotificationsList = groupedNotifications["__ALL__"] ?: emptyList()
+                                val groupedByApp = remember(allNotificationsList) {
+                                    val map = linkedMapOf<String, MutableList<LauncherNotification>>()
+                                    for (notification in allNotificationsList) {
+                                        map.getOrPut(notification.packageName) { mutableListOf() }.add(notification)
+                                    }
+                                    map.values.toList()
+                                }
+
                                 LazyColumn(
                                     state = portraitListState,
                                     modifier = Modifier
@@ -1216,42 +1243,52 @@ fun NotificationPage(
                                     verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.Bottom),
                                     contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
                                 ) {
-                                    itemsIndexed(allNotificationsList, key = { _, it -> it.key }) { index, notification ->
-                                        val app = apps.find { it.packageName == notification.packageName }
-                                        val appColor = remember(app) { ColorUtils.getDominantColor(app?.icon) }
-                                        
-                                        NotificationItem(
-                                            notification = notification,
-                                            appColor = appColor,
-                                            isFirst = index == 0,
-                                            isLast = index == allNotificationsList.size - 1,
-                                            offsetAbove = 0f,
-                                            offsetBelow = 0f,
-                                            replyingNotificationKey = replyingNotificationKey,
-                                            onReplyOpen = { viewModel.setReplyingNotification(it) },
-                                            onReplyBoundsChanged = onReplyBounds,
-                                            onOffsetChanged = { offsets[notification.key] = it },
-                                            modifier = Modifier.animateItem(
-                                                fadeInSpec = tween(durationMillis = 120),
-                                                placementSpec = spring(
-                                                    dampingRatio = Spring.DampingRatioNoBouncy,
-                                                    stiffness = Spring.StiffnessHigh
-                                                ),
-                                                fadeOutSpec = tween(durationMillis = 120)
-                                            ),
-                                            onOpen = {
-                                                try {
-                                                    val options = ActivityOptions.makeBasic()
-                                                    options.pendingIntentBackgroundActivityStartMode =
-                                                        ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
-                                                    notification.contentIntent?.send(context, 0, null, null, null, null, options.toBundle())
-                                                } catch (_: Exception) {
-                                                    try { notification.contentIntent?.send() } catch (_: Exception) {}
-                                                }
-                                            },
-                                            onDismiss = { onDismissNotification(notification.key) },
-                                            forceRounded = true
-                                        )
+                                    groupedByApp.forEachIndexed { groupIndex, notificationsInGroup ->
+                                        itemsIndexed(notificationsInGroup, key = { _, it -> it.key }) { indexInGroup, notification ->
+                                            val isFirst = indexInGroup == 0
+                                            val isLast = indexInGroup == notificationsInGroup.size - 1
+                                            val isLastGroup = groupIndex == groupedByApp.size - 1
+                                            val offsetAbove = if (indexInGroup > 0) offsets[notificationsInGroup[indexInGroup - 1].key] ?: 0f else 0f
+                                            val offsetBelow = if (indexInGroup < notificationsInGroup.size - 1) offsets[notificationsInGroup[indexInGroup + 1].key] ?: 0f else 0f
+                                            val app = apps.find { it.packageName == notification.packageName }
+                                            val appColor = remember(app) { ColorUtils.getDominantColor(app?.icon) }
+
+                                            NotificationItem(
+                                                notification = notification,
+                                                appColor = appColor,
+                                                isFirst = isFirst,
+                                                isLast = isLast,
+                                                offsetAbove = offsetAbove,
+                                                offsetBelow = offsetBelow,
+                                                replyingNotificationKey = replyingNotificationKey,
+                                                onReplyOpen = { viewModel.setReplyingNotification(it) },
+                                                onReplyBoundsChanged = onReplyBounds,
+                                                onOffsetChanged = { offsets[notification.key] = it },
+                                                modifier = Modifier
+                                                    .animateItem(
+                                                        fadeInSpec = tween(durationMillis = 120),
+                                                        placementSpec = spring(
+                                                            dampingRatio = Spring.DampingRatioNoBouncy,
+                                                            stiffness = Spring.StiffnessHigh
+                                                        ),
+                                                        fadeOutSpec = tween(durationMillis = 120)
+                                                    )
+                                                    .then(
+                                                        if (isLast && !isLastGroup) Modifier.padding(bottom = 2.dp) else Modifier
+                                                    ),
+                                                onOpen = {
+                                                    try {
+                                                        val options = ActivityOptions.makeBasic()
+                                                        options.pendingIntentBackgroundActivityStartMode =
+                                                            ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+                                                        notification.contentIntent?.send(context, 0, null, null, null, null, options.toBundle())
+                                                    } catch (_: Exception) {
+                                                        try { notification.contentIntent?.send() } catch (_: Exception) {}
+                                                    }
+                                                },
+                                                onDismiss = { onDismissNotification(notification.key) }
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -1983,6 +2020,8 @@ fun NotificationTabs(
             .fillMaxWidth()
             .blockHorizontalPagerSwipe()
     ) {
+        val context = LocalContext.current
+        val notificationDeleteSinglePress by viewModel.notificationDeleteSinglePress.collectAsState()
         val containerWidth = maxWidth
         val horizontalPadding = 16.dp
         val availableWidth = containerWidth - (horizontalPadding * 2)
@@ -2282,7 +2321,18 @@ fun NotificationTabs(
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         onDismissAllNotifications()
                     },
-                    onClick = {}
+                    onClick = {
+                        if (notificationDeleteSinglePress) {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onDismissAllNotifications()
+                        } else {
+                            Toast.makeText(
+                                context,
+                                R.string.long_press_to_delete_all,
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
                 )
         ) {
             Box(contentAlignment = Alignment.Center) {
