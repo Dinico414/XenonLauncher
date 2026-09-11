@@ -34,7 +34,6 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -570,8 +569,7 @@ fun MediaPage(
                         // Top App Info / Open Source Button (Only shown in normal layout)
                         Row(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .statusBarsPadding(),
+                                .fillMaxWidth(),
                             horizontalArrangement = Arrangement.Start
                         ) {
                             Surface(
