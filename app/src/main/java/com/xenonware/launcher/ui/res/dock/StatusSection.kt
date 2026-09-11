@@ -499,7 +499,9 @@ fun StatusCounters(
     notificationCount: Int,
     calendarEventCount: Int,
     weatherIcon: Int? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    calendarColor: Color = colorScheme.tertiary,
+    calendarTextColor: Color = Color.Black
 ) {
     Column(
         modifier = modifier,
@@ -513,7 +515,11 @@ fun StatusCounters(
             NotificationCounterBadge(count = notificationCount)
         }
         if (calendarEventCount > 0) {
-            CalendarCounterIcon(count = calendarEventCount)
+            CalendarCounterIcon(
+                count = calendarEventCount,
+                color = calendarColor,
+                textColor = calendarTextColor
+            )
         }
     }
 }

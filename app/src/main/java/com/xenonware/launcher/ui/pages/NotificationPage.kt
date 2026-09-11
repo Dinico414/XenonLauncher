@@ -144,6 +144,7 @@ import com.xenonware.launcher.accessibility.XenonAccessibilityService
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.notification.LauncherNotification
 import com.xenonware.launcher.ui.res.dock.CalendarCounterIcon
+import com.xenonware.launcher.ui.res.dock.StatusCounters
 import com.xenonware.launcher.ui.res.notification.ChronoCluster
 import com.xenonware.launcher.ui.res.notification.NotificationItem
 import com.xenonware.launcher.ui.res.notification.NotificationTabButton
@@ -1290,6 +1291,8 @@ fun Modifier.drawVerticalScrollbar(
     }
 }
 
+private enum class WeatherViewMode { NOW, TODAY }
+
 @Composable
 fun AtAGlance(
     currentTime: String,
@@ -1315,14 +1318,16 @@ fun AtAGlance(
 
     val pagerState = rememberPagerState { calendarEvents.size + 1 }
     val scope = rememberCoroutineScope()
+    
+    var weatherViewMode by remember { mutableStateOf(WeatherViewMode.NOW) }
 
     val isDay = remember(currentTime) {
         val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
         hour in 6..18
     }
 
-    val weatherRes = remember(weatherState.dailyCondition ?: weatherState.condition, isDay) {
-        val c = (weatherState.dailyCondition ?: weatherState.condition).lowercase()
+    fun getWeatherIcon(condition: String, currentIsDay: Boolean): Int {
+        val c = condition.lowercase()
         val (day, night) = when {
             c.contains("thunder shower") || c.contains("t-shower") || c.contains("gewitterregen") -> R.drawable.tshower1 to R.drawable.tshower0
             c.contains("thunder") || c.contains("storm") || c.contains("gewitter") || c.contains("sturm") -> R.drawable.tstorm1 to R.drawable.tstorm0
@@ -1340,7 +1345,7 @@ fun AtAGlance(
             c.contains("clear") || c.contains("sunny") || c.contains("klar") || c.contains("sonnig") -> R.drawable.clear1 to R.drawable.clear0
             else -> R.drawable.unknown1 to R.drawable.unknown0
         }
-        if (isDay) day else night
+        return if (currentIsDay) day else night
     }
 
     var totalDrag by remember { mutableFloatStateOf(0f) }
@@ -1474,54 +1479,79 @@ fun AtAGlance(
                     ) { index ->
                         if (index == 0) {
                             // WEATHER PAGE
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null,
-                                        onClick = {
-                                            // Handle weather click if needed
-                                        }
-                                    )
-                            ) {
-                                Box(
-                                    modifier = Modifier.size(28.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Image(
-                                        painter = painterResource(id = weatherRes),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(28.dp)
-                                    )
+                            AnimatedContent(
+                                targetState = weatherViewMode,
+                                transitionSpec = {
+                                    fadeIn(animationSpec = tween(500)) togetherWith fadeOut(animationSpec = tween(500))
+                                },
+                                label = "weatherFade"
+                            ) { mode ->
+                                val conditionText = if (mode == WeatherViewMode.TODAY) {
+                                    weatherState.dailyCondition ?: weatherState.condition
+                                } else {
+                                    weatherState.condition
+                                }
+                                val iconRes = if (mode == WeatherViewMode.TODAY) {
+                                    getWeatherIcon(conditionText, true)
+                                } else {
+                                    getWeatherIcon(conditionText, isDay)
                                 }
 
-                                Column(
-                                    verticalArrangement = Arrangement.Center,
-                                    modifier = Modifier.weight(1f)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clickable(
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication = null,
+                                            onClick = {
+                                                weatherViewMode = if (weatherViewMode == WeatherViewMode.NOW) WeatherViewMode.TODAY else WeatherViewMode.NOW
+                                            }
+                                        )
                                 ) {
-                                    val todayLabel = stringResource(R.string.today)
-                                    val tempText = if (weatherState.maxTemp != null && weatherState.minTemp != null) {
-                                        "$todayLabel ${weatherState.maxTemp.replace("+", "")}/${weatherState.minTemp.replace("+", "")}"
-                                    } else {
-                                        weatherState.temperature.replace("+", "")
+                                    Box(
+                                        modifier = Modifier.size(28.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Image(
+                                            painter = painterResource(id = iconRes),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(28.dp)
+                                        )
                                     }
-                                    Text(
-                                        text = tempText,
-                                        fontSize = eventTitleFontSize,
-                                        fontWeight = FontWeight.Bold,
-                                        color = baseColor,
-                                        fontFamily = QuicksandTitleVariable,
-                                        maxLines = 1
-                                    )
-                                    Text(
-                                        text = weatherState.dailyCondition ?: weatherState.condition,
-                                        fontSize = subtitleFontSize,
-                                        color = baseColor.copy(alpha = 0.7f),
-                                        fontFamily = QuicksandTitleVariable
-                                    )
+
+                                    Column(
+                                        verticalArrangement = Arrangement.Center,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        val todayLabel = stringResource(R.string.today)
+                                        val currentLocale = LocalConfiguration.current.locales[0]
+                                        val nowLabel = stringResource(R.string.now).replaceFirstChar { if (it.isLowerCase()) it.titlecase(currentLocale) else it.toString() }
+                                        val tempText = if (mode == WeatherViewMode.TODAY) {
+                                            if (weatherState.maxTemp != null && weatherState.minTemp != null) {
+                                                "$todayLabel ${weatherState.maxTemp.replace("+", "")}/${weatherState.minTemp.replace("+", "")}"
+                                            } else {
+                                                weatherState.temperature.replace("+", "")
+                                            }
+                                        } else {
+                                            "$nowLabel ${weatherState.temperature.replace("+", "")}"
+                                        }
+                                        Text(
+                                            text = tempText,
+                                            fontSize = eventTitleFontSize,
+                                            fontWeight = FontWeight.Bold,
+                                            color = baseColor,
+                                            fontFamily = QuicksandTitleVariable,
+                                            maxLines = 1
+                                        )
+                                        Text(
+                                            text = conditionText,
+                                            fontSize = subtitleFontSize,
+                                            color = baseColor.copy(alpha = 0.7f),
+                                            fontFamily = QuicksandTitleVariable
+                                        )
+                                    }
                                 }
                             }
                         } else {
@@ -1721,11 +1751,12 @@ fun AtAGlance(
                             )
                             
                             if (pagerState.currentPage == 0) {
-                                CalendarCounterIcon(
-                                    count = calendarEvents.size,
-                                    modifier = Modifier.padding(bottom = 4.dp),
-                                    color = baseColor.copy(alpha = 0.7f),
-                                    textColor = if (isWallpaperDark) Color.White else Color.Black
+                                StatusCounters(
+                                    notificationCount = 0,
+                                    calendarEventCount = calendarEvents.size,
+                                    calendarColor = baseColor.copy(alpha = 0.7f),
+                                    calendarTextColor = if (isWallpaperDark) Color.White else Color.Black,
+                                    modifier = Modifier.padding(bottom = 4.dp)
                                 )
                             } else {
                                 Box(
