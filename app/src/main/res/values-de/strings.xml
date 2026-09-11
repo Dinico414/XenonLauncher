@@ -278,7 +278,7 @@
     <string name="show_clock_at_a_glance_description">Zeigt die aktuelle Uhrzeit im Abschnitt „Auf einen Blick“ an</string>
     <string name="hide_at_a_glance">„Auf einen Blick“ ausblenden</string>
     <string name="hide_at_a_glance_description">Entfernt den Abschnitt „Auf einen Blick“ vollständig von der Benachrichtigungsseite</string>
-    <string name="experimental_move_web_search">Websuche verschieben\n(Experimentell)</string>
+    <string name="experimental_move_web_search">Websuche verschieben</string>
     <string name="experimental_move_web_search_description">Platziert Websuchergebnisse am Ende der Liste</string>
     <string name="hide_dock_scrolling">Dock beim Scrollen ausblenden</string>
     <string name="hide_dock_scrolling_description">Blendet das Dock aus, wenn der App-Drawer nach unten gescrollt wird</string>
@@ -296,7 +296,7 @@
     <string name="show_mute_notifications_description">Stumme Benachrichtigungen in die Liste aufnehmen</string>
     <string name="show_permanent_notifications">Permanente Benachrichtigungen anzeigen\n(Experimentell)</string>
     <string name="show_permanent_notifications_description">Laufende/permanente Systembenachrichtigungen anzeigen</string>
-    <string name="experimental_disable_grouping">Gruppierung deaktivieren\n(Experimentell)</string>
+    <string name="experimental_disable_grouping">Gruppierung deaktivieren</string>
     <string name="experimental_disable_grouping_description">Verhindert, dass Benachrichtigungen nach App gruppiert werden</string>
     <string name="notification_delete_single_press">Kurzes Drücken zum Löschen</string>
     <string name="notification_delete_single_press_description">Alle Benachrichtigungen mit kurzem statt langem Drücken löschen</string>

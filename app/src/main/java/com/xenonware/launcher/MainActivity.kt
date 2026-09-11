@@ -62,6 +62,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
@@ -337,6 +338,7 @@ class MainActivity : ComponentActivity() {
                     hideDockMedia = hideDockMedia,
                     hideDockMediaLandscapeOnly = hideDockMediaLandscapeOnly,
                     hideActionButton = hideActionButton,
+                    moveWebSearch = moveWebSearch,
                     notificationIndicatorType = notificationIndicatorType,
                     notificationMessageType = notificationMessageType,
                     appLabelsEnabled = appLabelsEnabled,
@@ -665,39 +667,63 @@ fun LauncherScreen(
                         userScrollEnabled = !dragDropState.isDragging
                     ) { page ->
                         when (page) {
-                            0 -> MediaPage(
-                                mediaState = viewModel.mediaState,
-                                progress = mediaProgress,
-                                isPermissionGranted = viewModel.isMediaPermissionGranted,
-                                isDarkTheme = isDarkTheme,
-                                isDockVisible = !isDockHiddenByMediaPage,
-                                onOpenSettings = { viewModel.openNotificationAccessSettings() },
-                                onTogglePlayPause = { viewModel.togglePlayPause() },
-                                onSkipNext = { viewModel.skipNext() },
-                                onSkipPrevious = { viewModel.skipPrevious() },
-                                onSeek = { viewModel.seekTo(it) },
-                                onOpenSource = { viewModel.openMediaApp() }
-                            )
-                            1 -> NotificationPage(
-                                viewModel = viewModel,
-                                notificationCount = notificationCount,
-                                currentTime = currentTime,
-                                currentDate = currentDate,
-                                showClock = showClockAtAGlance,
-                                hideAtAGlance = hideAtAGlance,
-                                indicatorType = notificationIndicatorType,
-                                messageType = notificationMessageType,
-                                notifications = notifications,
-                                apps = apps,
-                                calendarEvents = calendarEvents,
-                                hazeState = hazeState,
-                                blurSetting = blurSetting,
-                                wallpaperDarkIcons = wallpaperDarkIcons,
-                                onDismissNotification = { viewModel.dismissNotification(it) },
-                                onDismissAllNotifications = { viewModel.dismissAllNotifications() },
-                                onOpenSettings = onOpenSettings,
-                                onContentShiftChanged = { notificationShift = it }
-                            )
+                            0 -> Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .zIndex(1f)
+                            ) {
+                                MediaPage(
+                                    mediaState = viewModel.mediaState,
+                                    progress = mediaProgress,
+                                    isPermissionGranted = viewModel.isMediaPermissionGranted,
+                                    isDarkTheme = isDarkTheme,
+                                    isDockVisible = !isDockHiddenByMediaPage,
+                                    onOpenSettings = { viewModel.openNotificationAccessSettings() },
+                                    onTogglePlayPause = { viewModel.togglePlayPause() },
+                                    onSkipNext = { viewModel.skipNext() },
+                                    onSkipPrevious = { viewModel.skipPrevious() },
+                                    onSeek = { viewModel.seekTo(it) },
+                                    onOpenSource = { viewModel.openMediaApp() }
+                                )
+                            }
+                            1 -> Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .zIndex(0f)
+                                    .graphicsLayer {
+                                        if (mediaProgress > 0f) {
+                                            translationX = -0.25f * size.width * mediaProgress
+                                        }
+                                    }
+                                    .then(
+                                        if (blurAvailable && mediaProgress > 0f) {
+                                            Modifier.blur(radius = (20 * mediaProgress).dp)
+                                        } else {
+                                            Modifier
+                                        }
+                                    )
+                            ) {
+                                NotificationPage(
+                                    viewModel = viewModel,
+                                    notificationCount = notificationCount,
+                                    currentTime = currentTime,
+                                    currentDate = currentDate,
+                                    showClock = showClockAtAGlance,
+                                    hideAtAGlance = hideAtAGlance,
+                                    indicatorType = notificationIndicatorType,
+                                    messageType = notificationMessageType,
+                                    notifications = notifications,
+                                    apps = apps,
+                                    calendarEvents = calendarEvents,
+                                    hazeState = hazeState,
+                                    blurSetting = blurSetting,
+                                    wallpaperDarkIcons = wallpaperDarkIcons,
+                                    onDismissNotification = { viewModel.dismissNotification(it) },
+                                    onDismissAllNotifications = { viewModel.dismissAllNotifications() },
+                                    onOpenSettings = onOpenSettings,
+                                    onContentShiftChanged = { notificationShift = it }
+                                )
+                            }
                             2 -> WidgetPage(
                                 viewModel = viewModel,
                                 isDockVisible = !isDockHiddenByWidgetPage,

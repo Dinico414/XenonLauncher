@@ -280,7 +280,7 @@
     <string name="show_clock_at_a_glance_description">Display the current time in the At a Glance section</string>
     <string name="hide_at_a_glance">Hide At a Glance</string>
     <string name="hide_at_a_glance_description">Completely remove the At a Glance section from the notification page</string>
-    <string name="experimental_move_web_search">Move Web Search\n(Experimental)</string>
+    <string name="experimental_move_web_search">Move Web Search</string>
     <string name="experimental_move_web_search_description">Place web search results at the end of the list</string>
     <string name="hide_dock_scrolling">Hide dock when scrolling</string>
     <string name="hide_dock_scrolling_description">Hide the dock pill when the app drawer is scrolled down</string>
@@ -298,7 +298,7 @@
     <string name="show_mute_notifications_description">Include muted/silent notifications in the list</string>
     <string name="show_permanent_notifications">Show Permanent Notifications\n(Experimental)</string>
     <string name="show_permanent_notifications_description">Display ongoing/permanent system notifications</string>
-    <string name="experimental_disable_grouping">Disable Grouping\n(Experimental)</string>
+    <string name="experimental_disable_grouping">Disable Grouping</string>
     <string name="experimental_disable_grouping_description">Prevent notifications from being grouped by app</string>
     <string name="notification_delete_single_press">Short Press to Delete</string>
     <string name="notification_delete_single_press_description">Delete all notifications with a short press instead of a long press</string>

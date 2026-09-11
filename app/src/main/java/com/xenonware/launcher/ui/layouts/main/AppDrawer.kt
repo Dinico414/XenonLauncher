@@ -1,6 +1,7 @@
 package com.xenonware.launcher.ui.layouts.main
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.os.Environment
 import android.provider.Settings
@@ -67,6 +68,7 @@ import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.MaterialTheme.typography
@@ -129,6 +131,7 @@ import com.xenon.mylibrary.res.XenonSingleChoiceButtonGroup
 import com.xenonware.launcher.ui.theme.mainFontFamily
 import com.xenonware.launcher.R
 import com.xenonware.launcher.model.AppInfo
+import com.xenonware.launcher.model.SearchHistoryEntry
 import com.xenonware.launcher.model.SearchHistoryType
 import com.xenonware.launcher.model.SearchResult
 import com.xenonware.launcher.ui.res.AllAppsDivider
@@ -240,8 +243,8 @@ fun AppDrawer(
 
     var selectedSearchType by remember { mutableStateOf(SearchType.Apps) }
 
-    LaunchedEffect(advancedSearchEnabled) {
-        if (!advancedSearchEnabled) {
+    LaunchedEffect(advancedSearchEnabled, moveWebSearch) {
+        if (!advancedSearchEnabled || (moveWebSearch && selectedSearchType == SearchType.Web)) {
             selectedSearchType = SearchType.Apps
         }
     }
@@ -654,6 +657,17 @@ fun AppDrawer(
                     )
                     val contentTopPadding = with(density) { animatedBarHeight.toDp() } + 16.dp
 
+                    val filteredHistory = remember(searchHistory, selectedSearchType, moveWebSearch) {
+                        searchHistory.filter { entry ->
+                            when (selectedSearchType) {
+                                SearchType.Apps -> entry.type == SearchHistoryType.APP || (moveWebSearch && entry.type == SearchHistoryType.WEB)
+                                SearchType.Contacts -> entry.type == SearchHistoryType.CONTACT
+                                SearchType.Files -> entry.type == SearchHistoryType.FILE
+                                SearchType.Web -> entry.type == SearchHistoryType.WEB
+                            }
+                        }
+                    }
+
                     if (isGridLayout && selectedSearchType == SearchType.Apps) {
                         LazyVerticalGrid(
                             columns = GridCells.Fixed(if (isWideScreen) 6 else 4),
@@ -718,6 +732,25 @@ fun AppDrawer(
                                 }
                             }
 
+                            if (moveWebSearch && searchQuery.isNotBlank()) {
+                                val webResults = searchResults.filterIsInstance<SearchResult.Web>()
+                                if (webResults.isNotEmpty()) {
+                                    item(span = { GridItemSpan(maxLineSpan) }) {
+                                        Column(
+                                            modifier = Modifier.padding(bottom = 8.dp),
+                                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            webResults.forEach { result ->
+                                                SearchResultItem(
+                                                    result = result,
+                                                    onClick = { handleSearchResultClick(it) }
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
                             items(filteredApps) { app ->
                                 AppDrawerGridLayout(
                                     app = app,
@@ -732,6 +765,26 @@ fun AppDrawer(
                                     showShadow = showShadow,
                                     showLabels = showLabels
                                 )
+                            }
+
+                            if (moveWebSearch && searchQuery.isNotBlank()) {
+                                if (filteredHistory.isNotEmpty()) {
+                                    item(span = { GridItemSpan(maxLineSpan) }) {
+                                        SearchHistoryBlock(
+                                            history = filteredHistory,
+                                            context = context,
+                                            onSearchWeb = {
+                                                searchQuery = it
+                                                viewModel.performSearch(it)
+                                            },
+                                            onAppClick = {
+                                                onAppClick(it)
+                                                onDismiss()
+                                            },
+                                            onDismiss = onDismiss
+                                        )
+                                    }
+                                }
                             }
                         }
                     } else {
@@ -796,6 +849,25 @@ fun AppDrawer(
                                                         modifier = Modifier.padding(
                                                             bottom = 20.dp
                                                         )
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (moveWebSearch && searchQuery.isNotBlank()) {
+                                    val webResults = searchResults.filterIsInstance<SearchResult.Web>()
+                                    if (webResults.isNotEmpty()) {
+                                        item(span = { GridItemSpan(maxLineSpan) }) {
+                                            Column(
+                                                modifier = Modifier.padding(bottom = 8.dp),
+                                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                webResults.forEach { result ->
+                                                    SearchResultItem(
+                                                        result = result,
+                                                        onClick = { handleSearchResultClick(it) }
                                                     )
                                                 }
                                             }
@@ -929,6 +1001,26 @@ fun AppDrawer(
                                         }
                                     }
                                 }
+
+                                if (moveWebSearch && searchQuery.isNotBlank()) {
+                                    if (filteredHistory.isNotEmpty()) {
+                                        item(span = { GridItemSpan(maxLineSpan) }) {
+                                            SearchHistoryBlock(
+                                                history = filteredHistory,
+                                                context = context,
+                                                onSearchWeb = {
+                                                    searchQuery = it
+                                                    viewModel.performSearch(it)
+                                                },
+                                                onAppClick = {
+                                                    onAppClick(it)
+                                                    onDismiss()
+                                                },
+                                                onDismiss = onDismiss
+                                            )
+                                        }
+                                    }
+                                }
                             } else {
                                 if (searchQuery.isNotEmpty()) {
                                     items(filteredResults) { result ->
@@ -948,74 +1040,29 @@ fun AppDrawer(
                                     }
                                 }
 
-                                val filteredHistory = searchHistory.filter { entry ->
-                                    when (selectedSearchType) {
-                                        SearchType.Apps -> entry.type == SearchHistoryType.APP
-                                        SearchType.Contacts -> entry.type == SearchHistoryType.CONTACT
-                                        SearchType.Files -> entry.type == SearchHistoryType.FILE
-                                        SearchType.Web -> entry.type == SearchHistoryType.WEB
-                                    }
-                                }
-
                                 if (filteredHistory.isNotEmpty()) {
                                     item(span = { GridItemSpan(maxLineSpan) }) {
-                                        Column {
-                                            Text(
-                                                stringResource(R.string.search_history),
-                                                style = typography.labelMedium.copy(
-                                                    fontFamily = mainFontFamily
-                                                ),
-                                                color = colorScheme.onSurface.copy(alpha = 0.8f),
-                                                modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
-                                            )
-                                            Column(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .clip(RoundedCornerShape(20.dp))
-                                                    .background(colorScheme.surfaceContainer.copy(alpha = 0.8f))
-                                            ) {
-                                                filteredHistory.forEachIndexed { index, entry ->
-                                                    SearchHistoryItem(entry) { historyEntry ->
-                                                        when (historyEntry.type) {
-                                                            SearchHistoryType.WEB -> {
-                                                                searchQuery = historyEntry.value
-                                                                viewModel.performSearch(historyEntry.value)
-                                                            }
-                                                            SearchHistoryType.CONTACT -> {
-                                                                val intent = Intent(Intent.ACTION_DIAL, "tel:${historyEntry.subLabel}".toUri())
-                                                                context.startActivity(intent)
-                                                                onDismiss()
-                                                            }
-                                                            SearchHistoryType.FILE -> {
-                                                                val intent = Intent(Intent.ACTION_VIEW).apply {
-                                                                    setDataAndType(historyEntry.value.toUri(), historyEntry.iconUri)
-                                                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                                                }
-                                                                context.startActivity(Intent.createChooser(intent, openFileLabel))
-                                                                onDismiss()
-                                                            }
-                                                            SearchHistoryType.APP -> {
-                                                                onAppClick(historyEntry.value)
-                                                                onDismiss()
-                                                            }
-                                                        }
-                                                    }
-                                                    if (index < filteredHistory.size - 1) {
-                                                        HorizontalDivider(
-                                                            modifier = Modifier.padding(horizontal = 16.dp),
-                                                            color = colorScheme.onSurface.copy(alpha = 0.05f)
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                        }
+                                        SearchHistoryBlock(
+                                            history = filteredHistory,
+                                            context = context,
+                                            onSearchWeb = {
+                                                searchQuery = it
+                                                viewModel.performSearch(it)
+                                            },
+                                            onAppClick = {
+                                                onAppClick(it)
+                                                onDismiss()
+                                            },
+                                            onDismiss = onDismiss
+                                        )
                                     }
                                 }
                             }
                         }
                     }
 
-                    if (filteredApps.isEmpty() && searchQuery.isNotBlank() && selectedSearchType == SearchType.Apps) {
+                    val webResults = searchResults.filterIsInstance<SearchResult.Web>()
+                    if (filteredApps.isEmpty() && searchQuery.isNotBlank() && selectedSearchType == SearchType.Apps && (!moveWebSearch || webResults.isEmpty())) {
                         Text(
                             stringResource(R.string.no_apps_found),
                             color = colorScheme.onSurfaceVariant,
@@ -1097,9 +1144,13 @@ fun AppDrawer(
                             CompositionLocalProvider(
                                 LocalTextStyle provides typography.labelMedium.copy(fontFamily = mainFontFamily)
                             ) {
+                                val searchOptions = remember(moveWebSearch) {
+                                    if (moveWebSearch) listOf(SearchType.Apps, SearchType.Contacts, SearchType.Files)
+                                    else SearchType.entries
+                                }
                                 XenonSingleChoiceButtonGroup(
-                                    options = SearchType.entries,
-                                    selectedOption = selectedSearchType,
+                                    options = searchOptions,
+                                    selectedOption = if (moveWebSearch && selectedSearchType == SearchType.Web) SearchType.Apps else selectedSearchType,
                                     onOptionSelect = { selectedSearchType = it },
                                     label = {
                                         when(it) {
@@ -1312,3 +1363,64 @@ fun AppDrawer(
         }
     }
 }
+
+@Composable
+private fun SearchHistoryBlock(
+    history: List<SearchHistoryEntry>,
+    context: Context,
+    onSearchWeb: (String) -> Unit,
+    onAppClick: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val openFileLabel = stringResource(R.string.open_file)
+    Column {
+        Text(
+            stringResource(R.string.search_history),
+            style = MaterialTheme.typography.labelMedium.copy(
+                fontFamily = mainFontFamily
+            ),
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+        )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.8f))
+        ) {
+            history.forEachIndexed { index, entry ->
+                SearchHistoryItem(entry) { historyEntry ->
+                    when (historyEntry.type) {
+                        SearchHistoryType.WEB -> {
+                            onSearchWeb(historyEntry.value)
+                        }
+                        SearchHistoryType.CONTACT -> {
+                            val intent = Intent(Intent.ACTION_DIAL, "tel:${historyEntry.subLabel}".toUri())
+                            context.startActivity(intent)
+                            onDismiss()
+                        }
+                        SearchHistoryType.FILE -> {
+                            val intent = Intent(Intent.ACTION_VIEW).apply {
+                                setDataAndType(historyEntry.value.toUri(), historyEntry.iconUri)
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                            context.startActivity(Intent.createChooser(intent, openFileLabel))
+                            onDismiss()
+                        }
+                        SearchHistoryType.APP -> {
+                            onAppClick(historyEntry.value)
+                            onDismiss()
+                        }
+                    }
+                }
+                if (index < history.size - 1) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)
+                    )
+                }
+            }
+        }
+    }
+}
+

@@ -1269,6 +1269,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 // 4. Web Search and Website suggestions
                 results.add(SearchResult.Web(query, false))
                 results.add(SearchResult.Web(query, true))
+            } else if (_moveWebSearch.value) {
+                results.add(SearchResult.Web(query, false))
+                results.add(SearchResult.Web(query, true))
             }
 
             _searchResults.value = results

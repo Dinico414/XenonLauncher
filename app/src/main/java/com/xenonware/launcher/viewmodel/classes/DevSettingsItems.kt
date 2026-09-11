@@ -65,7 +65,8 @@ fun DevSettingsItems(
         SettingsSwitchTile(
             title = stringResource(R.string.enable_dev_mode),
             checked = devModeEnabled,
-            onCheckedChange = { viewModel.setDeveloperModeEnabled(it) }
+            onCheckedChange = { viewModel.setDeveloperModeEnabled(it) },
+            onClick = { viewModel.setDeveloperModeEnabled(!devModeEnabled) }
         )
 
         val crashLogSubtitle = if (crashLogExists) stringResource(R.string.recent_crashes) else stringResource(R.string.no_crashes)
