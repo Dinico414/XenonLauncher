@@ -74,6 +74,7 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.NotificationsOff
 import androidx.compose.material.icons.rounded.PushPin
@@ -195,6 +196,7 @@ fun NotificationPage(
     val stopwatches by viewModel.activeStopwatches.collectAsState(initial = emptyList())
     val showMuteNotifications by viewModel.showMuteNotifications.collectAsState()
     val showPermanentNotifications by viewModel.showPermanentNotifications.collectAsState()
+    val disableGrouping by viewModel.disableGrouping.collectAsState()
 
     var selectedPackage by remember { mutableStateOf<String?>(null) }
     var showAtAGlanceMenu by remember { mutableStateOf(false) }
@@ -218,13 +220,17 @@ fun NotificationPage(
         else selectedPackage = null
     }
 
-    val groupedNotifications = remember(notifications, showMuteNotifications, showPermanentNotifications) {
+    val groupedNotifications = remember(notifications, showMuteNotifications, showPermanentNotifications, disableGrouping) {
         val filtered = notifications.filter {
             val isMuted = it.isMuted && showMuteNotifications
             val isPermanent = it.isOngoing && showPermanentNotifications
             !isMuted && !isPermanent
         }
-        filtered.groupBy { it.packageName }
+        if (disableGrouping) {
+            if (filtered.isNotEmpty()) mapOf("__ALL__" to filtered) else emptyMap()
+        } else {
+            filtered.groupBy { it.packageName }
+        }
     }
 
     val mutedNotifications = remember(notifications, showMuteNotifications) {
@@ -251,8 +257,11 @@ fun NotificationPage(
     }
 
     // Reset selection if the selected app has no notifications left
-    LaunchedEffect(notifications, showMuteNotifications, showPermanentNotifications) {
-        if (selectedPackage != null && selectedPackage != "__MUTED__" && selectedPackage != "__PERMANENT__" && !groupedNotifications.containsKey(selectedPackage)) {
+    LaunchedEffect(notifications, showMuteNotifications, showPermanentNotifications, disableGrouping) {
+        if (selectedPackage != null && selectedPackage != "__MUTED__" && selectedPackage != "__PERMANENT__" && selectedPackage != "__ALL__" && !groupedNotifications.containsKey(selectedPackage)) {
+            selectedPackage = null
+        }
+        if (selectedPackage == "__ALL__" && !groupedNotifications.containsKey("__ALL__")) {
             selectedPackage = null
         }
         if (selectedPackage == "__MUTED__" && mutedNotifications.isEmpty()) {
@@ -263,11 +272,16 @@ fun NotificationPage(
         }
     }
 
-    val sortedAppPackages = remember(groupedNotifications, mutedNotifications, permanentNotifications) {
-        val apps = groupedNotifications.keys.toMutableList()
-        apps.sortWith(compareByDescending { pkg ->
-            groupedNotifications[pkg]?.maxOfOrNull { it.postTime } ?: 0L
-        })
+    val sortedAppPackages = remember(groupedNotifications, mutedNotifications, permanentNotifications, disableGrouping) {
+        val apps = if (disableGrouping) {
+            if (groupedNotifications.containsKey("__ALL__")) mutableListOf("__ALL__") else mutableListOf()
+        } else {
+            val list = groupedNotifications.keys.toMutableList()
+            list.sortWith(compareByDescending { pkg ->
+                groupedNotifications[pkg]?.maxOfOrNull { it.postTime } ?: 0L
+            })
+            list
+        }
         
         if (mutedNotifications.isNotEmpty()) {
             apps.add("__MUTED__")
@@ -283,6 +297,10 @@ fun NotificationPage(
     var lastTabsData by remember { mutableStateOf<Pair<List<String>, Map<String, List<LauncherNotification>>>?>(null) }
     if (sortedAppPackages.isNotEmpty()) {
         lastTabsData = sortedAppPackages to groupedNotifications
+    }
+    LaunchedEffect(disableGrouping) {
+        lastTabsData = null
+        selectedPackage = null
     }
     val effectiveTabs = if (notificationCount > 0) sortedAppPackages else lastTabsData?.first ?: emptyList()
     val effectiveGroups = if (notificationCount > 0) groupedNotifications else lastTabsData?.second ?: emptyMap()
@@ -503,6 +521,7 @@ fun NotificationPage(
                         selectedPackage == null -> "summary"
                         selectedPackage == "__MUTED__" -> "muted"
                         selectedPackage == "__PERMANENT__" -> "permanent"
+                        selectedPackage == "__ALL__" -> "all"
                         else -> "details|$selectedPackage"
                     }
 
@@ -715,6 +734,76 @@ fun NotificationPage(
                                     }
                                 }
                             }
+                            targetState == "all" -> {
+                                val allNotificationsList = groupedNotifications["__ALL__"] ?: emptyList()
+                                LazyColumn(
+                                    state = landscapeListState,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .then(contentOffset)
+                                        .nestedScroll(hideKeyboardOnOverscroll)
+                                        .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                                        .drawWithContent {
+                                            drawContent()
+                                            val fadeHeight = 16.dp.toPx()
+                                            drawRect(
+                                                brush = Brush.verticalGradient(
+                                                    0f to Color.Transparent,
+                                                    fadeHeight / size.height to Color.Black
+                                                ),
+                                                blendMode = BlendMode.DstIn
+                                            )
+                                            drawRect(
+                                                brush = Brush.verticalGradient(
+                                                    (size.height - fadeHeight) / size.height to Color.Black,
+                                                    1f to Color.Transparent
+                                                ),
+                                                blendMode = BlendMode.DstIn
+                                            )
+                                        }
+                                        .drawVerticalScrollbar(landscapeListState, MaterialTheme.colorScheme.primary),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.Bottom),
+                                    contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
+                                ) {
+                                    itemsIndexed(allNotificationsList, key = { _, it -> it.key }) { index, notification ->
+                                        val app = apps.find { it.packageName == notification.packageName }
+                                        val appColor = remember(app) { ColorUtils.getDominantColor(app?.icon) }
+                                        
+                                        NotificationItem(
+                                            notification = notification,
+                                            appColor = appColor,
+                                            isFirst = index == 0,
+                                            isLast = index == allNotificationsList.size - 1,
+                                            offsetAbove = 0f,
+                                            offsetBelow = 0f,
+                                            replyingNotificationKey = replyingNotificationKey,
+                                            onReplyOpen = { viewModel.setReplyingNotification(it) },
+                                            onReplyBoundsChanged = onReplyBounds,
+                                            onOffsetChanged = { offsets[notification.key] = it },
+                                            modifier = Modifier.animateItem(
+                                                fadeInSpec = tween(durationMillis = 120),
+                                                placementSpec = spring(
+                                                    dampingRatio = Spring.DampingRatioNoBouncy,
+                                                    stiffness = Spring.StiffnessHigh
+                                                ),
+                                                fadeOutSpec = tween(durationMillis = 120)
+                                            ),
+                                            onOpen = {
+                                                try {
+                                                    val options = ActivityOptions.makeBasic()
+                                                    options.pendingIntentBackgroundActivityStartMode =
+                                                        ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+                                                    notification.contentIntent?.send(context, 0, null, null, null, null, options.toBundle())
+                                                } catch (_: Exception) {
+                                                    try { notification.contentIntent?.send() } catch (_: Exception) {}
+                                                }
+                                            },
+                                            onDismiss = { onDismissNotification(notification.key) },
+                                            forceRounded = true
+                                        )
+                                    }
+                                }
+                            }
                             targetState.startsWith("details|") -> {
                                 val pkg = targetState.substringAfter("|")
                                 val app = apps.find { it.packageName == pkg }
@@ -877,6 +966,7 @@ fun NotificationPage(
                         selectedPackage == null -> "summary"
                         selectedPackage == "__MUTED__" -> "muted"
                         selectedPackage == "__PERMANENT__" -> "permanent"
+                        selectedPackage == "__ALL__" -> "all"
                         else -> "details|$selectedPackage"
                     }
 
@@ -1065,6 +1155,76 @@ fun NotificationPage(
                                             appColor = appColor,
                                             isFirst = index == 0,
                                             isLast = index == permanentNotifications.size - 1,
+                                            offsetAbove = 0f,
+                                            offsetBelow = 0f,
+                                            replyingNotificationKey = replyingNotificationKey,
+                                            onReplyOpen = { viewModel.setReplyingNotification(it) },
+                                            onReplyBoundsChanged = onReplyBounds,
+                                            onOffsetChanged = { offsets[notification.key] = it },
+                                            modifier = Modifier.animateItem(
+                                                fadeInSpec = tween(durationMillis = 120),
+                                                placementSpec = spring(
+                                                    dampingRatio = Spring.DampingRatioNoBouncy,
+                                                    stiffness = Spring.StiffnessHigh
+                                                ),
+                                                fadeOutSpec = tween(durationMillis = 120)
+                                            ),
+                                            onOpen = {
+                                                try {
+                                                    val options = ActivityOptions.makeBasic()
+                                                    options.pendingIntentBackgroundActivityStartMode =
+                                                        ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+                                                    notification.contentIntent?.send(context, 0, null, null, null, null, options.toBundle())
+                                                } catch (_: Exception) {
+                                                    try { notification.contentIntent?.send() } catch (_: Exception) {}
+                                                }
+                                            },
+                                            onDismiss = { onDismissNotification(notification.key) },
+                                            forceRounded = true
+                                        )
+                                    }
+                                }
+                            }
+                            targetState == "all" -> {
+                                val allNotificationsList = groupedNotifications["__ALL__"] ?: emptyList()
+                                LazyColumn(
+                                    state = portraitListState,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .then(contentOffset)
+                                        .nestedScroll(hideKeyboardOnOverscroll)
+                                        .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                                        .drawWithContent {
+                                            drawContent()
+                                            val fadeHeight = 16.dp.toPx()
+                                            drawRect(
+                                                brush = Brush.verticalGradient(
+                                                    0f to Color.Transparent,
+                                                    fadeHeight / size.height to Color.Black
+                                                ),
+                                                blendMode = BlendMode.DstIn
+                                            )
+                                            drawRect(
+                                                brush = Brush.verticalGradient(
+                                                    (size.height - fadeHeight) / size.height to Color.Black,
+                                                    1f to Color.Transparent
+                                                ),
+                                                blendMode = BlendMode.DstIn
+                                            )
+                                        }
+                                        .drawVerticalScrollbar(portraitListState, MaterialTheme.colorScheme.primary),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.Bottom),
+                                    contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
+                                ) {
+                                    itemsIndexed(allNotificationsList, key = { _, it -> it.key }) { index, notification ->
+                                        val app = apps.find { it.packageName == notification.packageName }
+                                        val appColor = remember(app) { ColorUtils.getDominantColor(app?.icon) }
+                                        
+                                        NotificationItem(
+                                            notification = notification,
+                                            appColor = appColor,
+                                            isFirst = index == 0,
+                                            isLast = index == allNotificationsList.size - 1,
                                             offsetAbove = 0f,
                                             offsetBelow = 0f,
                                             replyingNotificationKey = replyingNotificationKey,
@@ -2000,8 +2160,9 @@ fun NotificationTabs(
                         ) {
                             val isMutedTab = pkg == "__MUTED__"
                             val isPermanentTab = pkg == "__PERMANENT__"
+                            val isAllTab = pkg == "__ALL__"
                             val liveApp = remember(apps, pkg) { 
-                                if (isMutedTab || isPermanentTab) null else apps.find { it.packageName == pkg } 
+                                if (isMutedTab || isPermanentTab || isAllTab) null else apps.find { it.packageName == pkg } 
                             }
                             val liveNotifications = when {
                                 isMutedTab -> mutedNotifications
@@ -2013,6 +2174,7 @@ fun NotificationTabs(
                             val liveAppColor = when {
                                 isMutedTab -> MaterialTheme.colorScheme.surfaceContainerHighest
                                 isPermanentTab -> MaterialTheme.colorScheme.primary
+                                isAllTab -> MaterialTheme.colorScheme.primary
                                 else -> remember(liveApp) { ColorUtils.getDominantColor(liveApp?.icon) }
                             }
                             
@@ -2020,7 +2182,7 @@ fun NotificationTabs(
                             val isSelected = selectedPackage == pkg
 
                             val liveIconBitmap = remember(liveLatestNotification?.iconKey, liveLatestNotification?.icon, liveApp?.icon) {
-                                if (isMutedTab || isPermanentTab) return@remember null
+                                if (isMutedTab || isPermanentTab || isAllTab) return@remember null
                                 val drawable = liveLatestNotification?.icon ?: liveApp?.icon
                                 try {
                                     drawable?.toBitmap(width = 40, height = 40)?.asImageBitmap()
@@ -2029,10 +2191,11 @@ fun NotificationTabs(
                                 }
                             }
 
-                            if (liveNotifications.isNotEmpty() && (liveIconBitmap != null || isMutedTab || isPermanentTab)) {
+                            if (liveNotifications.isNotEmpty() && (liveIconBitmap != null || isMutedTab || isPermanentTab || isAllTab)) {
                                 val iconKeyPrefix = when {
                                     isMutedTab -> "muted_tab"
                                     isPermanentTab -> "permanent_tab"
+                                    isAllTab -> "all_tab"
                                     else -> liveLatestNotification?.iconKey
                                 }
                                 cachedTabInfo[pkg] = CachedTabInfo(
@@ -2053,6 +2216,7 @@ fun NotificationTabs(
                             val iconKeyToUse = cached?.iconKey ?: when {
                                 isMutedTab -> "muted_tab"
                                 isPermanentTab -> "permanent_tab"
+                                isAllTab -> "all_tab"
                                 else -> liveLatestNotification?.iconKey
                             }
                             val countToUse = if (liveNotifications.isEmpty()) (cached?.notificationCount ?: 1) else liveNotifications.size
@@ -2066,6 +2230,7 @@ fun NotificationTabs(
                                 overrideIcon = when {
                                     isMutedTab -> Icons.Rounded.NotificationsOff
                                     isPermanentTab -> Icons.Rounded.PushPin
+                                    isAllTab -> Icons.Rounded.Notifications
                                     else -> null
                                 },
                                 notificationCount = countToUse,
@@ -2077,6 +2242,7 @@ fun NotificationTabs(
                                     when {
                                         isMutedTab -> viewModel.dismissNotifications(mutedNotifications.map { it.key })
                                         isPermanentTab -> viewModel.dismissNotifications(permanentNotifications.map { it.key }, optimistic = false)
+                                        isAllTab -> onDismissAllNotifications()
                                         else -> viewModel.dismissNotificationsByPackage(pkg) 
                                     }
                                 },

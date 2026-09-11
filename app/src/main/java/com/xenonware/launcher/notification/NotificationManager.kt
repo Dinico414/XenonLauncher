@@ -37,6 +37,7 @@ data class LauncherNotification(
     val chrono: ChronoState = ChronoState.NONE,
     val isMuted: Boolean = false,
     val isOngoing: Boolean = false,
+    val rank: Int = 0
 ) {
     // Convenience accessors so existing call sites keep compiling.
     val isTimer: Boolean get() = chrono.kind == ChronoKind.TIMER
@@ -91,8 +92,14 @@ object NotificationManager {
     }
 
     fun removeAllNotificationsOptimistically() {
-        _notifications.value = emptyList()
-        _notificationCount.value = 0
+        if (showPermanentNotifications) {
+            val remaining = _notifications.value.filter { it.isOngoing }
+            _notifications.value = remaining
+            _notificationCount.value = remaining.size
+        } else {
+            _notifications.value = emptyList()
+            _notificationCount.value = 0
+        }
     }
 
     fun updateFromNotifications(
@@ -180,17 +187,19 @@ object NotificationManager {
             }
 
             // 5. Grouping: prefer children over the group summary, per group key.
-            val finalNotifications = if (disableGrouping) {
-                filtered
-            } else {
-                val groupedByGroup = filtered.groupBy { it.groupKey ?: (it.packageName + it.id) }
-                groupedByGroup.flatMap { (_, sbnList) ->
-                    val summaries =
-                        sbnList.filter { (it.notification.flags and Notification.FLAG_GROUP_SUMMARY) != 0 }
-                    val children =
-                        sbnList.filter { (it.notification.flags and Notification.FLAG_GROUP_SUMMARY) == 0 }
-                    children.ifEmpty { summaries }
-                }
+            val groupedByGroup = filtered.groupBy { it.groupKey ?: (it.packageName + it.id) }
+            val finalNotifications = groupedByGroup.flatMap { (_, sbnList) ->
+                val summaries =
+                    sbnList.filter { (it.notification.flags and Notification.FLAG_GROUP_SUMMARY) != 0 }
+                val children =
+                    sbnList.filter { (it.notification.flags and Notification.FLAG_GROUP_SUMMARY) == 0 }
+                children.ifEmpty { summaries }
+            }
+
+            val rankOrder = try {
+                rankingMap?.orderedKeys?.withIndex()?.associate { it.value to it.index } ?: emptyMap()
+            } catch (_: Throwable) {
+                emptyMap()
             }
 
             _notifications.value = finalNotifications.map { sbn ->
@@ -310,11 +319,17 @@ object NotificationManager {
                 }
 
                 val ranking = Ranking()
-                val isMuted = if (rankingMap?.getRanking(sbn.key, ranking) == true) {
+                val hasRanking = try {
+                    rankingMap?.getRanking(sbn.key, ranking) == true
+                } catch (_: Throwable) {
+                    false
+                }
+                val isMuted = if (hasRanking) {
                     ranking.importance <= 2
                 } else false
+                val rank = rankOrder[sbn.key] ?: if (hasRanking) ranking.rank else Int.MAX_VALUE
                 
-                Log.d(TAG, "Notification ${sbn.key}: importance=${ranking.importance}, isMuted=$isMuted")
+                Log.d(TAG, "Notification ${sbn.key}: importance=${ranking.importance}, isMuted=$isMuted, rank=$rank")
 
                 LauncherNotification(
                     key = sbn.key,
@@ -337,9 +352,13 @@ object NotificationManager {
                     } ?: emptyList(),
                     chrono = chrono,
                     isMuted = isMuted,
-                    isOngoing = sbn.isOngoing
+                    isOngoing = sbn.isOngoing,
+                    rank = rank
                 )
-            }.sortedByDescending { it.postTime }
+            }.sortedWith(
+                compareBy<LauncherNotification> { it.rank }
+                    .thenByDescending { it.postTime }
+            )
 
             _notificationCount.value = _notifications.value.size
 

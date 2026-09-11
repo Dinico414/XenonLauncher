@@ -123,9 +123,23 @@ class XenonNotificationService : NotificationListenerService() {
     private lateinit var prefManager: SharedPreferenceManager
 
     private val preferenceListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-        if (key == "visible_notification_apps") {
-            NotificationManager.visibleApps = prefManager.visibleNotificationApps.toSet()
-            updateNotificationCount()
+        when (key) {
+            "visible_notification_apps" -> {
+                NotificationManager.visibleApps = prefManager.visibleNotificationApps.toSet()
+                updateNotificationCount()
+            }
+            "show_permanent_notifications" -> {
+                NotificationManager.showPermanentNotifications = prefManager.showPermanentNotifications
+                updateNotificationCount()
+            }
+            "show_mute_notifications" -> {
+                NotificationManager.showMuteNotifications = prefManager.showMuteNotifications
+                updateNotificationCount()
+            }
+            "disable_grouping" -> {
+                NotificationManager.disableGrouping = prefManager.disableGrouping
+                updateNotificationCount()
+            }
         }
     }
 
@@ -133,6 +147,9 @@ class XenonNotificationService : NotificationListenerService() {
         instance = this
         prefManager = SharedPreferenceManager(this)
         NotificationManager.visibleApps = prefManager.visibleNotificationApps.toSet()
+        NotificationManager.showPermanentNotifications = prefManager.showPermanentNotifications
+        NotificationManager.showMuteNotifications = prefManager.showMuteNotifications
+        NotificationManager.disableGrouping = prefManager.disableGrouping
         prefManager.registerListener(preferenceListener)
         updateNotificationCount()
     }

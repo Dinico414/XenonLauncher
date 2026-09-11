@@ -132,6 +132,8 @@ fun TweaksItems(
     val showMuteNotifications by viewModel.showMuteNotifications.collectAsState()
     val showPermanentNotifications by viewModel.showPermanentNotifications.collectAsState()
     val disableGrouping by viewModel.disableGrouping.collectAsState()
+    val fontType by viewModel.fontType.collectAsState()
+    val mainFontType by viewModel.mainFontType.collectAsState()
 
     Column {
         // --- At a Glance Tweaks ---
@@ -151,10 +153,55 @@ fun TweaksItems(
             Spacer(Modifier.height(actualInnerGroupSpacing))
 
             SettingsTileContext(
+                title = stringResource(R.string.temp_unit),
+                icon = { Icon(Icons.Rounded.TableRows, null, tint = tileSubtitleColor) },
+                showContext = true,
+                shape = tileShapeOverride ?: middleShape,
+                backgroundColor = tileBackgroundColor,
+                contentColor = tileContentColor,
+                subtitleColor = tileSubtitleColor,
+                enableRipple = false,
+                contextContent = {
+                    XenonSingleChoiceButtonGroup(
+                        options = listOf(0, 1, 2),
+                        selectedOption = tempUnit,
+                        onOptionSelect = { viewModel.setTempUnit(it) },
+                        label = { type ->
+                            when (type) {
+                                0 -> stringResource(R.string.system_default)
+                                1 -> stringResource(R.string.celsius)
+                                else -> stringResource(R.string.fahrenheit)
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                    )
+                }
+            )
+
+            Spacer(Modifier.height(actualInnerGroupSpacing))
+
+            SettingsSwitchTile(
+                title = stringResource(R.string.hide_at_a_glance),
+                subtitle = stringResource(R.string.hide_at_a_glance_description),
+                checked = hideAtAGlance,
+                onCheckedChange = { viewModel.setHideAtAGlance(it) },
+                icon = { Icon(Icons.Rounded.VisibilityOff, null, tint = tileSubtitleColor) },
+                shape = tileShapeOverride ?: bottomShape,
+                backgroundColor = tileBackgroundColor,
+                contentColor = tileContentColor,
+                subtitleColor = tileSubtitleColor
+            )
+        }
+
+        Spacer(Modifier.height(actualOuterGroupSpacing))
+
+        // --- Notification Tweaks ---
+        Column {
+            SettingsTileContext(
                 title = stringResource(R.string.notification_indicator),
                 icon = { Icon(Icons.Rounded.Notifications, null, tint = tileSubtitleColor) },
                 showContext = true,
-                shape = tileShapeOverride ?: middleShape,
+                shape = tileShapeOverride ?: topShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
                 subtitleColor = tileSubtitleColor,
@@ -300,73 +347,77 @@ fun TweaksItems(
 
             Spacer(Modifier.height(actualInnerGroupSpacing))
 
-            SettingsTileContext(
-                title = stringResource(R.string.temp_unit),
-                icon = { Icon(Icons.Rounded.TableRows, null, tint = tileSubtitleColor) },
-                showContext = true,
-                shape = tileShapeOverride ?: middleShape,
-                backgroundColor = tileBackgroundColor,
-                contentColor = tileContentColor,
-                subtitleColor = tileSubtitleColor,
-                enableRipple = false,
-                contextContent = {
-                    XenonSingleChoiceButtonGroup(
-                        options = listOf(0, 1, 2),
-                        selectedOption = tempUnit,
-                        onOptionSelect = { viewModel.setTempUnit(it) },
-                        label = { type ->
-                            when (type) {
-                                0 -> stringResource(R.string.system_default)
-                                1 -> stringResource(R.string.celsius)
-                                else -> stringResource(R.string.fahrenheit)
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+            SettingsSwitchTile(
+                title = stringResource(R.string.show_mute_notifications),
+                subtitle = stringResource(R.string.show_mute_notifications_description),
+                checked = showMuteNotifications,
+                onCheckedChange = { viewModel.setShowMuteNotifications(it) },
+                icon = {
+                    Icon(
+                        Icons.Rounded.NotificationsPaused,
+                        null,
+                        tint = tileSubtitleColor
                     )
-                }
-            )
-
-            Spacer(Modifier.height(actualInnerGroupSpacing))
-
-            val fontType by viewModel.fontType.collectAsState()
-            val mainFontType by viewModel.mainFontType.collectAsState()
-
-            val fontSubtitle = run {
-                fun getName(type: Int): String = when (type) {
-                    1 -> "Roboto Flex"
-                    2 -> "Google Sans Flex"
-                    3 -> "Quicksand"
-                    else -> "System"
-                }
-                "${stringResource(R.string.font_target_main)}: ${getName(mainFontType)} • ${stringResource(R.string.font_target_secondary)}: ${getName(fontType)}"
-            }
-            SettingsTile(
-                title = stringResource(R.string.font_settings),
-                subtitle = fontSubtitle,
-                icon = { Icon(Icons.Rounded.FontDownload, null, tint = tileSubtitleColor) },
-                onClick = { viewModel.setShowFontConfigDialog(true) },
+                },
                 shape = tileShapeOverride ?: middleShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
-                subtitleColor = tileSubtitleColor,
-                horizontalPadding = 16.dp,
-                verticalPadding = 16.dp
+                subtitleColor = tileSubtitleColor
             )
 
             Spacer(Modifier.height(actualInnerGroupSpacing))
 
             SettingsSwitchTile(
-                title = stringResource(R.string.hide_at_a_glance),
-                subtitle = stringResource(R.string.hide_at_a_glance_description),
-                checked = hideAtAGlance,
-                onCheckedChange = { viewModel.setHideAtAGlance(it) },
-                icon = { Icon(Icons.Rounded.VisibilityOff, null, tint = tileSubtitleColor) },
+                title = stringResource(R.string.show_permanent_notifications),
+                subtitle = stringResource(R.string.show_permanent_notifications_description),
+                checked = showPermanentNotifications,
+                onCheckedChange = { viewModel.setShowPermanentNotifications(it) },
+                icon = { Icon(Icons.Rounded.PushPin, null, tint = tileSubtitleColor) },
+                shape = tileShapeOverride ?: middleShape,
+                backgroundColor = tileBackgroundColor,
+                contentColor = tileContentColor,
+                subtitleColor = tileSubtitleColor
+            )
+
+            Spacer(Modifier.height(actualInnerGroupSpacing))
+
+            SettingsSwitchTile(
+                title = stringResource(R.string.experimental_disable_grouping),
+                subtitle = stringResource(R.string.experimental_disable_grouping_description),
+                checked = disableGrouping,
+                onCheckedChange = { viewModel.setDisableGrouping(it) },
+                icon = { Icon(Icons.Rounded.TableRows, null, tint = tileSubtitleColor) },
                 shape = tileShapeOverride ?: bottomShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
                 subtitleColor = tileSubtitleColor
             )
         }
+
+        Spacer(Modifier.height(actualOuterGroupSpacing))
+
+        // --- Font Tweaks ---
+        val fontSubtitle = run {
+            fun getName(type: Int): String = when (type) {
+                1 -> "Roboto Flex"
+                2 -> "Google Sans Flex"
+                3 -> "Quicksand"
+                else -> "System"
+            }
+            "${stringResource(R.string.font_target_main)}: ${getName(mainFontType)} • ${stringResource(R.string.font_target_secondary)}: ${getName(fontType)}"
+        }
+        SettingsTile(
+            title = stringResource(R.string.font_settings),
+            subtitle = fontSubtitle,
+            icon = { Icon(Icons.Rounded.FontDownload, null, tint = tileSubtitleColor) },
+            onClick = { viewModel.setShowFontConfigDialog(true) },
+            shape = tileShapeOverride ?: standaloneShape,
+            backgroundColor = tileBackgroundColor,
+            contentColor = tileContentColor,
+            subtitleColor = tileSubtitleColor,
+            horizontalPadding = 16.dp,
+            verticalPadding = 16.dp
+        )
 
         Spacer(Modifier.height(actualOuterGroupSpacing))
 
@@ -558,57 +609,6 @@ fun TweaksItems(
                 checked = hideActionButton,
                 onCheckedChange = { viewModel.setHideActionButton(it) },
                 icon = { Icon(Icons.Rounded.AdsClick, null, tint = tileSubtitleColor) },
-                shape = tileShapeOverride ?: bottomShape,
-                backgroundColor = tileBackgroundColor,
-                contentColor = tileContentColor,
-                subtitleColor = tileSubtitleColor
-            )
-        }
-
-        Spacer(Modifier.height(actualOuterGroupSpacing))
-
-        // --- Notification Tweaks ---
-        Column {
-            SettingsSwitchTile(
-                title = stringResource(R.string.show_mute_notifications),
-                subtitle = stringResource(R.string.show_mute_notifications_description),
-                checked = showMuteNotifications,
-                onCheckedChange = { viewModel.setShowMuteNotifications(it) },
-                icon = {
-                    Icon(
-                        Icons.Rounded.NotificationsPaused,
-                        null,
-                        tint = tileSubtitleColor
-                    )
-                },
-                shape = tileShapeOverride ?: topShape,
-                backgroundColor = tileBackgroundColor,
-                contentColor = tileContentColor,
-                subtitleColor = tileSubtitleColor
-            )
-
-            Spacer(Modifier.height(actualInnerGroupSpacing))
-
-            SettingsSwitchTile(
-                title = stringResource(R.string.show_permanent_notifications),
-                subtitle = stringResource(R.string.show_permanent_notifications_description),
-                checked = showPermanentNotifications,
-                onCheckedChange = { viewModel.setShowPermanentNotifications(it) },
-                icon = { Icon(Icons.Rounded.PushPin, null, tint = tileSubtitleColor) },
-                shape = tileShapeOverride ?: middleShape,
-                backgroundColor = tileBackgroundColor,
-                contentColor = tileContentColor,
-                subtitleColor = tileSubtitleColor
-            )
-
-            Spacer(Modifier.height(actualInnerGroupSpacing))
-
-            SettingsSwitchTile(
-                title = stringResource(R.string.experimental_disable_grouping),
-                subtitle = stringResource(R.string.experimental_disable_grouping_description),
-                checked = disableGrouping,
-                onCheckedChange = { viewModel.setDisableGrouping(it) },
-                icon = { Icon(Icons.Rounded.TableRows, null, tint = tileSubtitleColor) },
                 shape = tileShapeOverride ?: bottomShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,

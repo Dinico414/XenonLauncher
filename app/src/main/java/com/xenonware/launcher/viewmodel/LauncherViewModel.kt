@@ -349,6 +349,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     val showPermanentNotifications: StateFlow<Boolean> = _showPermanentNotifications
 
     private val _disableGrouping = MutableStateFlow(prefManager.disableGrouping)
+    val disableGrouping: StateFlow<Boolean> = _disableGrouping
 
     private val _notificationIndicatorType = MutableStateFlow(prefManager.notificationIndicatorType)
     val notificationIndicatorType: StateFlow<Int> = _notificationIndicatorType
