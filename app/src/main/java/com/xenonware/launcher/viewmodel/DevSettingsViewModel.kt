@@ -9,6 +9,7 @@ import android.widget.Toast
 import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.xenonware.launcher.PermissionActivity
 import com.xenonware.launcher.R
 import com.xenonware.launcher.data.SharedPreferenceManager
 import com.xenonware.launcher.media.MediaControllerManager
@@ -39,6 +40,15 @@ class DevSettingsViewModel(application: Application) : AndroidViewModel(applicat
             sharedPreferenceManager.developerModeEnabled = enabled
             _devModeToggleState.value = enabled
         }
+    }
+
+    fun restartSetup() {
+        sharedPreferenceManager.isFirstLaunch = true
+        val context = getApplication<Application>()
+        val intent = Intent(context, PermissionActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        }
+        context.startActivity(intent)
     }
 
     private fun getCrashLogFile(): File {

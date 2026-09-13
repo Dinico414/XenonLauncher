@@ -9,37 +9,15 @@ import android.os.Environment
 import android.provider.Settings
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import com.xenon.mylibrary.activity.BasePermissionActivity
@@ -74,77 +52,22 @@ class PermissionActivity : BasePermissionActivity() {
                 dynamicColor = true
             ) {
                 AnimatedGradientBackground(modifier = Modifier.fillMaxSize()) {
-                    val context = LocalContext.current
-                    var showGuide by remember { mutableStateOf(false) }
-
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        Surface(
-                            modifier = Modifier.fillMaxSize(),
-                            color = Color.Transparent
-                        ) {
-                            val trigger by refreshTrigger
-                            val permissions = remember(trigger) { getPermissions() }
-                            PermissionScreen(
-                                permissions = permissions,
-                                isFirstLaunch = isFirstLaunch(),
-                                grantButtonText = if (currentPermissionName.value == getString(R.string.default_home)) getString(R.string.set_as_home) else getString(R.string.grant_permission),
-                                onFinish = { onPermissionsFinished() }
-                            )
-                        }
-
-                        if (showGuide) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null
-                                    ) { showGuide = false }
-                            )
-                        }
-
-                        IconButton(
-                            onClick = {
-                                if (showGuide) {
-                                    AccessibilityUtils.openAppInfo(context)
-                                } else {
-                                    showGuide = true
-                                }
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = Color.Transparent
+                    ) {
+                        val trigger by refreshTrigger
+                        val permissions = remember(trigger) { getPermissions() }
+                        PermissionScreen(
+                            permissions = permissions,
+                            isFirstLaunch = isFirstLaunch(),
+                            grantButtonText = if (currentPermissionName.value == getString(R.string.default_home)) {
+                                getString(R.string.set_as_home)
+                            } else {
+                                getString(R.string.grant_permission)
                             },
-                            modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .padding(top = 48.dp, end = 16.dp)
-                        ) {
-                            Icon(
-                                Icons.Rounded.Info,
-                                contentDescription = "Accessibility Guide",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-
-                        AnimatedVisibility(
-                            visible = showGuide,
-                            enter = fadeIn(),
-                            exit = fadeOut(),
-                            modifier = Modifier
-                                    .align(Alignment.TopCenter)
-                                    .padding(top = 100.dp)
-                                    .padding(horizontal = 32.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                        .clip(RoundedCornerShape(16.dp))
-                                        .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.9f))
-                                        .padding(16.dp)
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.accessibility_guide),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    textAlign = TextAlign.Center,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-                        }
+                            onFinish = { onPermissionsFinished() }
+                        )
                     }
                 }
             }
@@ -185,6 +108,10 @@ class PermissionActivity : BasePermissionActivity() {
             },
             request = {
                 AccessibilityUtils.requestAccessibility(it)
+            },
+            guideText = getString(R.string.accessibility_guide),
+            onInfoClick = {
+                AccessibilityUtils.openAppInfo(it)
             }
         ))
 

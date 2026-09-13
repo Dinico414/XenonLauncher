@@ -2,10 +2,8 @@ package com.xenonware.launcher
 
 import android.app.WallpaperColors
 import android.app.WallpaperManager
-import android.content.ComponentName
 import android.content.ContextWrapper
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Bundle
 import android.os.Handler
@@ -134,7 +132,7 @@ class MainActivity : ComponentActivity() {
 
         sharedPreferenceManager = SharedPreferenceManager(applicationContext)
 
-        if (!isFreshBoot && (sharedPreferenceManager.isFirstLaunch || !hasRequiredPermissions())) {
+        if (!isFreshBoot && sharedPreferenceManager.isFirstLaunch) {
             startActivity(Intent(this, PermissionActivity::class.java))
             finish()
             return
@@ -385,7 +383,7 @@ class MainActivity : ComponentActivity() {
                     onBootWelcomeFinished = { 
                         viewModel.setBooting(false)
                         window.clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
-                        if (sharedPreferenceManager.isFirstLaunch || !hasRequiredPermissions()) {
+                        if (sharedPreferenceManager.isFirstLaunch) {
                             startActivity(Intent(this@MainActivity, PermissionActivity::class.java))
                             finish()
                         }
@@ -458,33 +456,6 @@ class MainActivity : ComponentActivity() {
             context = newBase.createConfigurationContext(config)
         }
         super.attachBaseContext(ContextWrapper(context))
-    }
-
-    private fun hasRequiredPermissions(): Boolean {
-        val requiredRuntimePermissions = mutableListOf(
-            android.Manifest.permission.ACCESS_COARSE_LOCATION,
-            android.Manifest.permission.READ_CALENDAR,
-            android.Manifest.permission.READ_MEDIA_IMAGES,
-            android.Manifest.permission.READ_CONTACTS,
-            android.Manifest.permission.POST_NOTIFICATIONS
-        )
-
-        val allGranted = requiredRuntimePermissions.all {
-            ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
-        }
-
-        // Notification Listener
-        val notificationEnabled = Settings.Secure.getString(contentResolver, "enabled_notification_listeners")?.contains(packageName) == true
-
-        // Accessibility Service
-        val expectedComponentName = ComponentName(this, XenonAccessibilityService::class.java)
-        val enabledServices = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
-        val accessibilityEnabled = enabledServices?.contains(expectedComponentName.flattenToString()) == true
-
-        // All Files Access
-        val allFilesAccessEnabled = android.os.Environment.isExternalStorageManager()
-
-        return allGranted && notificationEnabled && accessibilityEnabled && allFilesAccessEnabled
     }
 }
 

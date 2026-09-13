@@ -17,6 +17,7 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Email
 import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -35,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.xenon.mylibrary.res.SettingsSwitchTile
+import com.xenon.mylibrary.res.SettingsTile
 import com.xenon.mylibrary.res.SettingsTileContext
 import com.xenon.mylibrary.res.XenonDialog
 import com.xenon.mylibrary.res.XenonIcon
@@ -179,6 +181,14 @@ fun DevSettingsItems(
                     }
                 }
             }
+        )
+
+        SettingsTile(
+            title = stringResource(R.string.force_setup_flow),
+            subtitle = stringResource(R.string.force_setup_flow_description),
+            icon = { XenonIcon(Icons.Rounded.RestartAlt).Render(Modifier) },
+            onClick = { viewModel.restartSetup() },
+            modifier = Modifier.padding(top = LargestPadding)
         )
 
         if (showCrashLogDialog) {

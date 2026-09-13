@@ -303,6 +303,8 @@
     <string name="notification_delete_single_press">Short Press to Delete</string>
     <string name="notification_delete_single_press_description">Delete all notifications with a short press instead of a long press</string>
     <string name="long_press_to_delete_all">Long press to delete all notifications</string>
+    <string name="force_setup_flow">Re-run Setup</string>
+    <string name="force_setup_flow_description">Reset first launch state and restart the permission setup wizard</string>
     <string name="all_apps">All apps</string>
     <string name="temp_unit">Temperature Unit</string>
     <string name="temp_unit_description">Select the preferred unit for temperature display.</string>
