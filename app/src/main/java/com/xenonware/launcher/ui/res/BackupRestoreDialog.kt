@@ -1,7 +1,23 @@
 package com.xenonware.launcher.ui.res
 
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.layout.*
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -9,8 +25,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material.icons.rounded.Sync
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
@@ -19,6 +42,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.xenon.mylibrary.res.XenonDialog
+import com.xenon.mylibrary.values.BiggestPadding
+import com.xenon.mylibrary.values.IconSizeMedium
+import com.xenon.mylibrary.values.LargeMediumCornerRadius
+import com.xenon.mylibrary.values.LargeMediumPadding
+import com.xenon.mylibrary.values.LargeMediumSpacer
+import com.xenon.mylibrary.values.LargestSpacer
+import com.xenon.mylibrary.values.MediumSpacing
 import com.xenonware.launcher.R
 import com.xenonware.launcher.viewmodel.BackupInfo
 import com.xenonware.launcher.viewmodel.SettingsViewModel
@@ -72,39 +102,39 @@ fun BackupRestoreDialog(
                 Button(
                     onClick = { viewModel.startBackup() },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(LargeMediumCornerRadius),
                     enabled = !isSyncing,
-                    contentPadding = PaddingValues(12.dp)
+                    contentPadding = PaddingValues(LargeMediumPadding)
                 ) {
                     Text(stringResource(R.string.start_backup))
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(LargestSpacer))
 
                 LazyColumn(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(MediumSpacing)
                 ) {
                     if (isSyncing) {
                         item {
                             Surface(
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
+                                shape = RoundedCornerShape(LargeMediumCornerRadius),
                                 color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(12.dp),
+                                    modifier = Modifier.padding(LargeMediumPadding),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
                                         imageVector = Icons.Rounded.Sync,
                                         contentDescription = null,
                                         modifier = Modifier
-                                            .size(24.dp)
+                                            .size(IconSizeMedium)
                                             .rotate(rotation),
                                         tint = MaterialTheme.colorScheme.primary
                                     )
-                                    Spacer(Modifier.width(12.dp))
+                                    Spacer(Modifier.width(LargeMediumSpacer))
                                     Text(
                                         text = stringResource(R.string.syncing_with_cloud),
                                         style = MaterialTheme.typography.bodyMedium,
@@ -121,7 +151,7 @@ fun BackupRestoreDialog(
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 32.dp),
+                                    .padding(vertical = BiggestPadding),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
@@ -152,12 +182,12 @@ fun BackupItem(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(LargeMediumCornerRadius),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
     ) {
         Row(
             modifier = Modifier
-                .padding(12.dp)
+                .padding(LargeMediumPadding)
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {

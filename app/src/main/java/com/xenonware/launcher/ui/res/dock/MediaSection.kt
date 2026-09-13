@@ -78,6 +78,27 @@ import coil.compose.AsyncImage
 import coil.imageLoader
 import coil.request.ImageRequest
 import coil.request.SuccessResult
+import com.xenon.mylibrary.values.BigSpacing
+import com.xenon.mylibrary.values.BiggerSpacing
+import com.xenon.mylibrary.values.BiggestSpacing
+import com.xenon.mylibrary.values.ExtraBigSpacing
+import com.xenon.mylibrary.values.IconSizeSmall
+import com.xenon.mylibrary.values.IconSizeSmaller
+import com.xenon.mylibrary.values.LargeMediumCornerRadius
+import com.xenon.mylibrary.values.LargeMediumIconSize
+import com.xenon.mylibrary.values.LargestCornerRadius
+import com.xenon.mylibrary.values.LargestSpacing
+import com.xenon.mylibrary.values.MediumCornerRadius
+import com.xenon.mylibrary.values.MediumIconSize
+import com.xenon.mylibrary.values.MediumLargePadding
+import com.xenon.mylibrary.values.MediumPadding
+import com.xenon.mylibrary.values.MediumSpacer
+import com.xenon.mylibrary.values.NoPadding
+import com.xenon.mylibrary.values.SmallPadding
+import com.xenon.mylibrary.values.SmallSpacer
+import com.xenon.mylibrary.values.SmallerPadding
+import com.xenon.mylibrary.values.SmallerStroke
+import com.xenon.mylibrary.values.SmallestStroke
 import com.xenonware.launcher.R
 import com.xenonware.launcher.media.MediaState
 import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
@@ -120,7 +141,7 @@ fun MediaSection(
         // Surface inflates its outer node to the 48.dp minimum touch target, so
         // anything drawn out there traces a 48x48 square (a circle, once the
         // corners are clamped) instead of the visible 32x48 pill.
-        border = BorderStroke(1.dp, theme.accent.copy(alpha = borderAlpha))
+        border = BorderStroke(SmallestStroke, theme.accent.copy(alpha = borderAlpha))
     ) {
         MaterialTheme(colorScheme = theme.scheme) {
             if (isExpanded) {
@@ -138,7 +159,7 @@ fun MediaSection(
                         Icons.Rounded.MusicNote,
                         null,
                         modifier = Modifier
-                            .size(24.dp)
+                            .size(MediumIconSize)
                             .musicNote(note)
                     )
                 }
@@ -310,8 +331,8 @@ private fun MediaSectionContent(
     Row(
         modifier = Modifier
             .fillMaxSize()
-            .padding(10.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(MediumLargePadding),
+        horizontalArrangement = Arrangement.spacedBy(MediumSpacer),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (!isPermissionGranted) {
@@ -319,7 +340,7 @@ private fun MediaSectionContent(
                 stringResource(R.string.media_access_required),
                 modifier = Modifier
                     .weight(1f)
-                    .padding(start = 8.dp),
+                    .padding(start = MediumPadding),
                 fontSize = 12.sp,
                 fontFamily = mainFontFamily,
                 color = contentColor,
@@ -328,8 +349,8 @@ private fun MediaSectionContent(
             )
             Button(
                 onClick = onRequestPermission,
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                modifier = Modifier.height(32.dp)
+                contentPadding = PaddingValues(horizontal = MediumPadding, vertical = SmallPadding),
+                modifier = Modifier.height(BiggestSpacing)
             ) {
                 Text(
                     stringResource(R.string.grant),
@@ -352,7 +373,7 @@ private fun MediaSectionContent(
                     progress = { progress },
                     modifier = Modifier.fillMaxSize().alpha(if(mediaState.title != null) 1f else 0f),
                     color = colorScheme.onPrimaryContainer,
-                    strokeWidth = 2.dp,
+                    strokeWidth = SmallerStroke,
                     trackColor = colorScheme.onSurface.copy(alpha = 0.1f),
                 )
                 if (artModel != null) {
@@ -360,14 +381,14 @@ private fun MediaSectionContent(
                         model = artModel,
                         contentDescription = stringResource(R.string.album_art),
                         modifier = Modifier
-                            .padding(if(mediaState.title != null) 2.dp else 0.dp)
+                            .padding(if(mediaState.title != null) SmallerPadding else NoPadding)
                             .size(if(mediaState.title != null) 36.dp else 44.dp)
                             .clip(CircleShape),
                         contentScale = ContentScale.Crop
                     )
                 } else {
                     Surface(
-                        modifier = Modifier.size(40.dp),
+                        modifier = Modifier.size(ExtraBigSpacing),
                         shape = CircleShape,
                         color = colorScheme.surfaceVariant
                     ) {
@@ -376,7 +397,7 @@ private fun MediaSectionContent(
                             null,
                             tint = colorScheme.onSurfaceVariant,
                             modifier = Modifier
-                                .padding(8.dp)
+                                .padding(MediumPadding)
                                 .musicNote(note)
                         )
                     }
@@ -405,7 +426,7 @@ private fun MediaSectionContent(
                 if (titleNeedsMarquee) {
                     val density = LocalDensity.current
                     LaunchedEffect(titleText, titleContainerWidth) {
-                        val velocityPx = with(density) { 30.dp.toPx() }
+                        val velocityPx = with(density) { BiggerSpacing.toPx() }
                         val spacingPx = titleContainerWidth / 3f
                         val scrollDistance = titleWidth + spacingPx
                         val scrollDuration = (scrollDistance / velocityPx * 1000).toLong()
@@ -431,7 +452,7 @@ private fun MediaSectionContent(
                         .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
                         .drawWithContent {
                             drawContent()
-                            val fadeWidth = 16.dp.toPx()
+                            val fadeWidth = LargestSpacing.toPx()
                             if (titleNeedsMarquee) {
                                 // Start Fade (Left)
                                 drawRect(
@@ -469,9 +490,9 @@ private fun MediaSectionContent(
                 val isPlayPressed by playInteractionSource.collectIsPressedAsState()
                 val playRadius by animateDpAsState(
                     targetValue = when {
-                        isPlayPressed -> 8.dp
-                        mediaState.isPlaying -> 12.dp
-                        else -> 16.dp
+                        isPlayPressed -> MediumCornerRadius
+                        mediaState.isPlaying -> LargeMediumCornerRadius
+                        else -> LargestCornerRadius
                     },
                     label = "playRadius"
                 )
@@ -482,28 +503,28 @@ private fun MediaSectionContent(
                     shape = RoundedCornerShape(playRadius),
                     color = colorScheme.primaryContainer,
                     contentColor = colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(width = 28.dp, height = 36.dp)
+                    modifier = Modifier.size(width = BigSpacing, height = 36.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             if (mediaState.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                             null,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(IconSizeSmall)
                         )
                     }
                 }
 
-                Spacer(Modifier.width(4.dp))
+                Spacer(Modifier.width(SmallSpacer))
 
                 IconButton(
                     onClick = onSkipNext,
-                    modifier = Modifier.size(width = 28.dp, height = 36.dp)
+                    modifier = Modifier.size(width = LargeMediumIconSize, height = 36.dp)
                 ) {
                     Icon(
                         Icons.Rounded.SkipNext,
                         null,
                         tint = contentColor,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(IconSizeSmaller)
                     )
                 }
             }

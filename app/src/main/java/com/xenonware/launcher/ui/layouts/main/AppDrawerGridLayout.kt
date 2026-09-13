@@ -35,9 +35,15 @@ import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.platform.ViewConfiguration
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
+import com.xenon.mylibrary.values.ExtraBiggestBigSpacing
+import com.xenon.mylibrary.values.ExtraLargerSpacing
+import com.xenon.mylibrary.values.HugeSpacing
+import com.xenon.mylibrary.values.HugestSpacing
+import com.xenon.mylibrary.values.SmallElevation
+import com.xenon.mylibrary.values.SmallSpacer
+import com.xenon.mylibrary.values.SmallerSpacing
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.ui.res.notification.NotificationBadge
 import com.xenonware.launcher.util.DragDropState
@@ -95,7 +101,7 @@ fun AppDrawerGridLayout(
                         totalDragDistance = 0f
                     }, onDrag = { change, dragAmount ->
                         totalDragDistance += dragAmount.getDistance()
-                        val threshold = with(density) { 24.dp.toPx() }
+                        val threshold = with(density) { ExtraLargerSpacing.toPx() }
 
                         if (totalDragDistance > threshold && !isActualDrag) {
                             isActualDrag = true
@@ -108,7 +114,7 @@ fun AppDrawerGridLayout(
 
                             if (dragDropState.dockBounds.contains(dragDropState.dragOffset)) {
                                 val relativeX = dragDropState.dragOffset.x - dragDropState.dockBounds.left
-                                val itemWidth = with(density) { 52.dp.toPx() }
+                                val itemWidth = with(density) { ExtraBiggestBigSpacing.toPx() }
                                 dragDropState.targetIndex = (relativeX / itemWidth).toInt().coerceIn(0, 100)
                             } else {
                                 dragDropState.targetIndex = -1
@@ -123,7 +129,7 @@ fun AppDrawerGridLayout(
                                 finalPos.y - dragDropState.dockBounds.bottom
                             } else 0f
 
-                            val hitThreshold = with(density) { 80.dp.toPx() }
+                            val hitThreshold = with(density) { HugestSpacing.toPx() }
 
                             if (dragDropState.dockBounds.contains(finalPos) || verticalDist < hitThreshold) {
                                 onPinApp(app.packageName, dragDropState.targetIndex)
@@ -142,8 +148,8 @@ fun AppDrawerGridLayout(
                         bitmap = icon.toBitmap().asImageBitmap(),
                         contentDescription = app.label,
                         modifier = Modifier
-                            .size(56.dp)
-                            .then(if (showShadow) Modifier.shadow(4.dp, shape) else Modifier)
+                            .size(HugeSpacing)
+                            .then(if (showShadow) Modifier.shadow(SmallElevation, shape) else Modifier)
                             .clip(shape)
                     )
                 }
@@ -151,11 +157,11 @@ fun AppDrawerGridLayout(
                     count = notificationCount,
                     badgeType = badgeType,
                     appIcon = app.icon,
-                    modifier = Modifier.offset(x = 2.dp, y = (-2).dp)
+                    modifier = Modifier.offset(x = SmallerSpacing, y = SmallerSpacing * (-1))
                 )
             }
             if (showLabels) {
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(SmallSpacer))
                 Text(
                     app.label,
                     color = colorScheme.onSurface,

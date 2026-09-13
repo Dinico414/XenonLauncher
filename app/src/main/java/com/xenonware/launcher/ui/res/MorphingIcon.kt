@@ -9,8 +9,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
+import com.xenon.mylibrary.values.ExtraLargerSpacing
+import com.xenon.mylibrary.values.SmallerStroke
 
 /**
  * A composable that draws an icon that can morph between a Back arrow and a Close (X) icon.
@@ -25,10 +26,10 @@ fun MorphingBackCloseIcon(
     progress: Float,
     color: Color,
     modifier: Modifier = Modifier,
-    size: Dp = 24.dp
+    size: Dp = ExtraLargerSpacing
 ) {
     Canvas(modifier = modifier.size(size)) {
-        val strokeWidth = 2.dp.toPx()
+        val strokeWidth = SmallerStroke.toPx()
         
         // Segments: 0.0 = Close, 1.0 = Back
         

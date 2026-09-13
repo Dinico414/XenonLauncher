@@ -25,6 +25,7 @@ import com.xenon.mylibrary.ActivityScreen
 import com.xenon.mylibrary.theme.DeviceConfigProvider
 import com.xenon.mylibrary.theme.LayoutType
 import com.xenon.mylibrary.theme.LocalDeviceConfig
+import com.xenon.mylibrary.values.IconSizeMedium
 import com.xenon.mylibrary.values.LargestPadding
 import com.xenon.mylibrary.values.MediumPadding
 import com.xenon.mylibrary.values.NoSpacing
@@ -73,7 +74,7 @@ fun TweaksLayout(
                 Icon(
                     imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                     contentDescription = stringResource(R.string.navigate_back_description),
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(IconSizeMedium)
                 )
             },
             onNavigationIconClick = onNavigateBack,

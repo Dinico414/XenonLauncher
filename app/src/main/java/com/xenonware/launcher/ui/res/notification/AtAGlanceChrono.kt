@@ -27,7 +27,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
-import androidx.compose.ui.unit.dp
+import com.xenon.mylibrary.values.IconSizeSmallest
+import com.xenon.mylibrary.values.LargeMediumSpacer
+import com.xenon.mylibrary.values.SmallSpacer
 import com.xenonware.launcher.notification.LauncherNotification
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
@@ -86,7 +88,7 @@ fun ChronoCluster(
 
     Row(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(LargeMediumSpacer),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Each item owns a ticker locked to its own base.
@@ -161,13 +163,13 @@ fun TimePreviewItem(
     val baseColor = if (isWallpaperDark) Color.Black else Color.White
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+        horizontalArrangement = Arrangement.spacedBy(SmallSpacer)
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
             tint = baseColor.copy(alpha = alpha),
-            modifier = Modifier.size(16.dp)
+            modifier = Modifier.size(IconSizeSmallest)
         )
         Text(
             text = text,

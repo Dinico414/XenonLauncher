@@ -26,6 +26,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.xenon.mylibrary.res.XenonDialog
+import com.xenon.mylibrary.values.IconSizeLarge
+import com.xenon.mylibrary.values.LargeMediumCornerRadius
+import com.xenon.mylibrary.values.LargeMediumSpacer
+import com.xenon.mylibrary.values.LargestPadding
+import com.xenon.mylibrary.values.MediumPadding
+import com.xenon.mylibrary.values.SmallPadding
 import com.xenonware.launcher.R
 import com.xenonware.launcher.model.AppInfo
 
@@ -75,7 +81,7 @@ fun NotificationManagerDialog(
                     description,
                     fontSize = 14.sp,
                     color = colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 16.dp)
+                    modifier = Modifier.padding(bottom = LargestPadding)
                 )
             }
             
@@ -85,18 +91,18 @@ fun NotificationManagerDialog(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(LargeMediumCornerRadius))
                         .clickable { onToggleApp(app.packageName) }
-                        .padding(vertical = 8.dp, horizontal = 4.dp),
+                        .padding(vertical = MediumPadding, horizontal = SmallPadding),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     AppIcon(
                         app = app,
                         iconShape = iconShape,
                         showShadow = showShadow,
-                        size = 32.dp
+                        size = IconSizeLarge
                     )
-                    Spacer(Modifier.width(12.dp))
+                    Spacer(Modifier.width(LargeMediumSpacer))
                     Text(
                         app.label,
                         fontSize = 16.sp,

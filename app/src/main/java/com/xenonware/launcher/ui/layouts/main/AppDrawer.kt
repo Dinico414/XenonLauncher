@@ -68,7 +68,6 @@ import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.MaterialTheme.typography
@@ -81,6 +80,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -128,7 +128,31 @@ import androidx.core.net.toUri
 import com.xenon.mylibrary.res.MenuItem
 import com.xenon.mylibrary.res.XenonDropDown
 import com.xenon.mylibrary.res.XenonSingleChoiceButtonGroup
-import com.xenonware.launcher.ui.theme.mainFontFamily
+import com.xenon.mylibrary.values.BiggerCornerRadius
+import com.xenon.mylibrary.values.BiggestCornerRadius
+import com.xenon.mylibrary.values.DefaultFABSize
+import com.xenon.mylibrary.values.ExtraBiggerSpacing
+import com.xenon.mylibrary.values.ExtraBiggestBigSpacing
+import com.xenon.mylibrary.values.ExtraLargeCornerRadius
+import com.xenon.mylibrary.values.ExtraLargePadding
+import com.xenon.mylibrary.values.ExtraLargeSpacing
+import com.xenon.mylibrary.values.ExtraLargerSpacer
+import com.xenon.mylibrary.values.ExtraLargerSpacing
+import com.xenon.mylibrary.values.HugestSpacing
+import com.xenon.mylibrary.values.IconSizeMedium
+import com.xenon.mylibrary.values.LargeMediumElevation
+import com.xenon.mylibrary.values.LargestCornerRadius
+import com.xenon.mylibrary.values.LargestPadding
+import com.xenon.mylibrary.values.LargestSpacer
+import com.xenon.mylibrary.values.MediumPadding
+import com.xenon.mylibrary.values.MediumSpacer
+import com.xenon.mylibrary.values.NoCornerRadius
+import com.xenon.mylibrary.values.NoElevation
+import com.xenon.mylibrary.values.NoSpacing
+import com.xenon.mylibrary.values.SmallElevation
+import com.xenon.mylibrary.values.SmallPadding
+import com.xenon.mylibrary.values.SmallSpacer
+import com.xenon.mylibrary.values.SmallerSpacing
 import com.xenonware.launcher.R
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.model.SearchHistoryEntry
@@ -140,6 +164,7 @@ import com.xenonware.launcher.ui.res.MorphingBackCloseIcon
 import com.xenonware.launcher.ui.res.notification.NotificationBadge
 import com.xenonware.launcher.ui.res.search.SearchHistoryItem
 import com.xenonware.launcher.ui.res.search.SearchResultItem
+import com.xenonware.launcher.ui.theme.mainFontFamily
 import com.xenonware.launcher.util.LocalDragDropState
 import com.xenonware.launcher.util.matches
 import com.xenonware.launcher.viewmodel.LauncherViewModel
@@ -151,9 +176,9 @@ import dev.chrisbanes.haze.materials.HazeMaterials
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.time.Duration.Companion.seconds
 import kotlin.math.max
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 
 enum class SearchType {
@@ -486,7 +511,7 @@ fun AppDrawer(
     val dismissThresholdPx = with(density) { 120.dp.toPx() }
     val flingDismissVelocity = 1200f
 
-    var lastScrollTime by remember { mutableStateOf(System.currentTimeMillis()) }
+    var lastScrollTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
     
     // Observer scroll for dock hiding
     val activeState = if (isGridLayout) gridState else listState
@@ -597,13 +622,13 @@ fun AppDrawer(
                     scaleX = s
                     scaleY = s
                     transformOrigin = TransformOrigin(0.5f, 1f)
-                    translationY = offsetY + 24.dp.toPx() * p
+                    translationY = offsetY + ExtraLargerSpacer.toPx() * p
                 }
                 .onSizeChanged { sheetHeightPx = it.height }
                 .statusBarsPadding()
                 .then(
                     if (isWideScreen) {
-                        Modifier.padding(horizontal = 56.dp).widthIn(max = 640.dp).fillMaxHeight()
+                        Modifier.padding(horizontal = DefaultFABSize).widthIn(max = 640.dp).fillMaxHeight()
                     } else {
                         Modifier.fillMaxSize()
                     }
@@ -614,8 +639,8 @@ fun AppDrawer(
                     run {
                         val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
                         RoundedCornerShape(
-                            topStart = if (statusBarHeight > 0.dp) 32.dp else 0.dp,
-                            topEnd = if (statusBarHeight > 0.dp) 32.dp else 0.dp
+                            topStart = if (statusBarHeight > NoSpacing) BiggestCornerRadius else NoCornerRadius,
+                            topEnd = if (statusBarHeight > NoSpacing) BiggestCornerRadius else NoCornerRadius
                         )
                     }
                 )
@@ -627,7 +652,7 @@ fun AppDrawer(
                     .animateContentSize(animationSpec = tween(300))
                     .graphicsLayer(clip = false)
             ) {
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(LargestSpacer))
 
                 // Drag handle
                 Box(
@@ -640,14 +665,14 @@ fun AppDrawer(
                         .align(Alignment.CenterHorizontally)
                 )
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(LargestSpacer))
 
                 // Bar floats over the scrolling list; the list is hazed where it passes behind it.
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
+                        .padding(horizontal = LargestPadding)
                         .graphicsLayer(clip = false)
                 ) {
                     val animatedBarHeight by animateFloatAsState(
@@ -655,7 +680,7 @@ fun AppDrawer(
                         animationSpec = tween(500),
                         label = "barHeight"
                     )
-                    val contentTopPadding = with(density) { animatedBarHeight.toDp() } + 16.dp
+                    val contentTopPadding = with(density) { animatedBarHeight.toDp() } + LargestPadding
 
                     val filteredHistory = remember(searchHistory, selectedSearchType, moveWebSearch) {
                         searchHistory.filter { entry ->
@@ -677,12 +702,12 @@ fun AppDrawer(
                                 .nestedScroll(dockScrollConnection)
                                 .nestedScroll(sheetDragConnection)
                                 .then(if (blurEnabled) Modifier.hazeSource(hazeState) else Modifier)
-                                .clip(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)),
+                                .clip(RoundedCornerShape(topStart = BiggerCornerRadius, topEnd = BiggerCornerRadius)),
                             contentPadding = PaddingValues(
                                 top = contentTopPadding, bottom = 120.dp
                             ),
-                            verticalArrangement = Arrangement.spacedBy(if (showLabels) 24.dp else 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            verticalArrangement = Arrangement.spacedBy(if (showLabels) ExtraLargerSpacer else LargestSpacer),
+                            horizontalArrangement = Arrangement.spacedBy(LargestSpacer)
                         ) {
                             item(span = { GridItemSpan(maxLineSpan) }) {
                                 Box {
@@ -693,11 +718,11 @@ fun AppDrawer(
                                         modifier = Modifier.graphicsLayer(clip = false)
                                     ) {
                                         if (recentApps.isNotEmpty()) {
-                                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            Column(verticalArrangement = Arrangement.spacedBy(SmallSpacer)) {
                                                 Row(
                                                     modifier = Modifier.fillMaxWidth(),
                                                     horizontalArrangement = Arrangement.spacedBy(
-                                                        16.dp
+                                                        LargestSpacer
                                                     )
                                                 ) {
                                                     recentApps.forEach { app ->
@@ -737,8 +762,8 @@ fun AppDrawer(
                                 if (webResults.isNotEmpty()) {
                                     item(span = { GridItemSpan(maxLineSpan) }) {
                                         Column(
-                                            modifier = Modifier.padding(bottom = 8.dp),
-                                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                            modifier = Modifier.padding(bottom = MediumPadding),
+                                            verticalArrangement = Arrangement.spacedBy(MediumSpacer)
                                         ) {
                                             webResults.forEach { result ->
                                                 SearchResultItem(
@@ -796,12 +821,12 @@ fun AppDrawer(
                                 .nestedScroll(dockScrollConnection)
                                 .nestedScroll(sheetDragConnection)
                                 .then(if (blurEnabled) Modifier.hazeSource(hazeState) else Modifier)
-                                .clip(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)),
+                                .clip(RoundedCornerShape(topStart = BiggerCornerRadius, topEnd = BiggerCornerRadius)),
                             contentPadding = PaddingValues(
                                 top = contentTopPadding, bottom = 120.dp
                             ),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            verticalArrangement = Arrangement.spacedBy(MediumSpacer),
+                            horizontalArrangement = Arrangement.spacedBy(LargestSpacer)
                         ) {
                             if (selectedSearchType == SearchType.Apps) {
                                 item(span = { GridItemSpan(maxLineSpan) }) {
@@ -813,11 +838,11 @@ fun AppDrawer(
                                             modifier = Modifier.graphicsLayer(clip = false)
                                         ) {
                                             if (recentApps.isNotEmpty()) {
-                                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                Column(verticalArrangement = Arrangement.spacedBy(SmallSpacer)) {
                                                     Row(
                                                         modifier = Modifier.fillMaxWidth(),
                                                         horizontalArrangement = Arrangement.spacedBy(
-                                                            16.dp
+                                                            LargestSpacer
                                                         )
                                                     ) {
                                                         recentApps.forEach { app ->
@@ -847,7 +872,7 @@ fun AppDrawer(
 
                                                     AllAppsDivider(
                                                         modifier = Modifier.padding(
-                                                            bottom = 20.dp
+                                                            bottom = ExtraLargePadding
                                                         )
                                                     )
                                                 }
@@ -861,8 +886,8 @@ fun AppDrawer(
                                     if (webResults.isNotEmpty()) {
                                         item(span = { GridItemSpan(maxLineSpan) }) {
                                             Column(
-                                                modifier = Modifier.padding(bottom = 8.dp),
-                                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                                modifier = Modifier.padding(bottom = MediumPadding),
+                                                verticalArrangement = Arrangement.spacedBy(MediumSpacer)
                                             ) {
                                                 webResults.forEach { result ->
                                                     SearchResultItem(
@@ -894,7 +919,7 @@ fun AppDrawer(
                                             horizontalArrangement = if (showLabels) Arrangement.Start else Arrangement.Center,
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .clip(RoundedCornerShape(16.dp))
+                                                .clip(RoundedCornerShape(LargestCornerRadius))
                                                 .onGloballyPositioned { itemPos = it.positionInRoot() }
                                                 .pointerInput(Unit) {
                                                     detectTapGestures(
@@ -912,7 +937,7 @@ fun AppDrawer(
                                                         totalDragDistance = 0f
                                                     }, onDrag = { change, dragAmount ->
                                                         totalDragDistance += dragAmount.getDistance()
-                                                        val threshold = with(density) { 24.dp.toPx() }
+                                                        val threshold = with(density) { ExtraLargerSpacing.toPx() }
 
                                                         if (totalDragDistance > threshold && !isActualDrag) {
                                                             isActualDrag = true
@@ -932,7 +957,7 @@ fun AppDrawer(
                                                                 val relativeX =
                                                                     dragDropState.dragOffset.x - dragDropState.dockBounds.left
                                                                 val itemWidth =
-                                                                    with(density) { 52.dp.toPx() }
+                                                                    with(density) { ExtraBiggestBigSpacing.toPx() }
                                                                 dragDropState.targetIndex =
                                                                     (relativeX / itemWidth).toInt()
                                                                         .coerceIn(0, 100)
@@ -951,7 +976,7 @@ fun AppDrawer(
                                                                 } else 0f
 
                                                             val hitThreshold =
-                                                                with(density) { 80.dp.toPx() }
+                                                                with(density) { HugestSpacing.toPx() }
 
                                                             if (dragDropState.dockBounds.contains(
                                                                     finalPos
@@ -968,7 +993,7 @@ fun AppDrawer(
                                                         dragDropState.stopDrag()
                                                     }, onDragCancel = { dragDropState.stopDrag() })
                                                 }
-                                                .padding(horizontal = 8.dp, vertical = 8.dp)) {
+                                                .padding(horizontal = MediumPadding, vertical = MediumPadding)) {
                                             Box(contentAlignment = Alignment.TopEnd) {
                                                 app.icon?.let { icon ->
                                                     val shape = iconShape.getShape()
@@ -976,8 +1001,8 @@ fun AppDrawer(
                                                         bitmap = icon.toBitmap().asImageBitmap(),
                                                         contentDescription = app.label,
                                                         modifier = Modifier
-                                                            .size(48.dp)
-                                                            .then(if (showShadow) Modifier.shadow(4.dp, shape) else Modifier)
+                                                            .size(ExtraBiggerSpacing)
+                                                            .then(if (showShadow) Modifier.shadow(SmallElevation, shape) else Modifier)
                                                             .clip(shape)
                                                     )
                                                 }
@@ -985,11 +1010,11 @@ fun AppDrawer(
                                                     count = groupedNotifications[app.packageName]?.size ?: 0,
                                                     badgeType = badgeType,
                                                     appIcon = app.icon,
-                                                    modifier = Modifier.offset(x = 2.dp, y = (-2).dp)
+                                                    modifier = Modifier.offset(x = SmallerSpacing, y = SmallerSpacing * (-1))
                                                 )
                                             }
                                             if (showLabels) {
-                                                Spacer(Modifier.width(16.dp))
+                                                Spacer(Modifier.width(LargestSpacer))
                                                 Text(
                                                     app.label,
                                                     color = colorScheme.onSurface,
@@ -1136,7 +1161,7 @@ fun AppDrawer(
                                 .zIndex(0f)
                                 .graphicsLayer {
                                     // Progressive back gesture support for search categories
-                                    translationY = -searchBackProgress.value * 20.dp.toPx()
+                                    translationY = -searchBackProgress.value * ExtraLargeSpacing.toPx()
                                     alpha = 1f - searchBackProgress.value
                                 }
                                 .graphicsLayer(clip = false)
@@ -1164,7 +1189,7 @@ fun AppDrawer(
                                     buttonHeight = 36.dp,
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(top = 8.dp)
+                                        .padding(top = MediumPadding)
                                 )
                             }
                         }
@@ -1180,7 +1205,7 @@ fun AppDrawer(
                                         Offset(pos.x + coords.size.width, pos.y + coords.size.height)
                                     }
                                 }
-                                .shadow(elevation = if (blurEnabled) 0.dp else 12.dp, shape = CircleShape)
+                                .shadow(elevation = if (blurEnabled) NoElevation else LargeMediumElevation, shape = CircleShape)
                                 .clip(CircleShape)
                                 .hazeEffect(state = hazeState, style = HazeMaterials.ultraThin())
                                 .background(colorScheme.surfaceContainer.copy(alpha = if(blurEnabled) 0.4f else 1f))
@@ -1194,12 +1219,12 @@ fun AppDrawer(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             IconButton(
-                                onClick = { closeSearchOrDismiss() }, Modifier.padding(4.dp)
+                                onClick = { closeSearchOrDismiss() }, Modifier.padding(SmallPadding)
                             ) {
                                 MorphingBackCloseIcon(
                                     progress = iconMorphProgress,
                                     color = colorScheme.onSurface,
-                                    modifier = Modifier.size(24.dp)
+                                    modifier = Modifier.size(IconSizeMedium)
                                 )
                             }
 
@@ -1241,7 +1266,7 @@ fun AppDrawer(
                             Box {
                                 IconButton(
                                     onClick = { showMenu = !showMenu },
-                                    modifier = Modifier.padding(4.dp)
+                                    modifier = Modifier.padding(SmallPadding)
                                 ) {
                                     Icon(
                                         Icons.Rounded.MoreVert,
@@ -1294,7 +1319,7 @@ fun AppDrawer(
                                     ),
                                     hazeState = if (blurEnabled) hazeState else null,
                                     anchorPos = searchBarAnchor,
-                                    offsetY = 8.dp,
+                                    offsetY = MediumSpacer,
                                     alignment = Alignment.TopEnd
                                 )
                             }
@@ -1376,17 +1401,17 @@ private fun SearchHistoryBlock(
     Column {
         Text(
             stringResource(R.string.search_history),
-            style = MaterialTheme.typography.labelMedium.copy(
+            style = typography.labelMedium.copy(
                 fontFamily = mainFontFamily
             ),
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+            color = colorScheme.onSurface.copy(alpha = 0.8f),
+            modifier = Modifier.padding(top = LargestSpacer, bottom = MediumSpacer)
         )
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.8f))
+                .clip(RoundedCornerShape(ExtraLargeCornerRadius))
+                .background(colorScheme.surfaceContainer.copy(alpha = 0.8f))
         ) {
             history.forEachIndexed { index, entry ->
                 SearchHistoryItem(entry) { historyEntry ->
@@ -1415,8 +1440,8 @@ private fun SearchHistoryBlock(
                 }
                 if (index < history.size - 1) {
                     HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)
+                        modifier = Modifier.padding(horizontal = LargestPadding),
+                        color = colorScheme.onSurface.copy(alpha = 0.05f)
                     )
                 }
             }

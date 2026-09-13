@@ -36,6 +36,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.xenon.mylibrary.res.XenonDialog
+import com.xenon.mylibrary.values.ExtraLargerSpacing
+import com.xenon.mylibrary.values.LargeMediumPadding
+import com.xenon.mylibrary.values.LargestCornerRadius
+import com.xenon.mylibrary.values.MediumPadding
+import com.xenon.mylibrary.values.MediumSpacer
 import com.xenonware.launcher.R
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.viewmodel.LauncherViewModel
@@ -112,8 +117,8 @@ fun ShortcutConfigDialog(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(vertical = MediumPadding),
+            verticalArrangement = Arrangement.spacedBy(MediumSpacer)
         ) {
             val isLinkSelected = selectionMode == "link"
             // Link Tile
@@ -121,7 +126,7 @@ fun ShortcutConfigDialog(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(LargestCornerRadius))
                     .background(if (isLinkSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceBright)
             ) {
                 Row(
@@ -129,13 +134,13 @@ fun ShortcutConfigDialog(
                     modifier = Modifier
                         .weight(1f)
                         .clickable { selectionMode = "link" }
-                        .padding(12.dp)
+                        .padding(LargeMediumPadding)
                 ) {
                     RadioButton(
                         selected = isLinkSelected,
                         onClick = { selectionMode = "link" }
                     )
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(MediumSpacer))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = stringResource(R.string.link),
@@ -161,13 +166,13 @@ fun ShortcutConfigDialog(
                             selectionMode = "link"
                             showLinkInput = true
                         }
-                        .padding(12.dp),
+                        .padding(LargeMediumPadding),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                         contentDescription = null,
-                        modifier = Modifier.size(24.dp),
+                        modifier = Modifier.size(ExtraLargerSpacing),
                         tint = if (isLinkSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                     )
                 }
@@ -179,7 +184,7 @@ fun ShortcutConfigDialog(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(LargestCornerRadius))
                     .background(if (isAppSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceBright)
             ) {
                 Row(
@@ -187,13 +192,13 @@ fun ShortcutConfigDialog(
                     modifier = Modifier
                         .weight(1f)
                         .clickable { selectionMode = "app" }
-                        .padding(12.dp)
+                        .padding(LargeMediumPadding)
                 ) {
                     RadioButton(
                         selected = isAppSelected,
                         onClick = { selectionMode = "app" }
                     )
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(MediumSpacer))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = stringResource(R.string.select_app),
@@ -219,13 +224,13 @@ fun ShortcutConfigDialog(
                             selectionMode = "app"
                             showAppPicker = true
                         }
-                        .padding(12.dp),
+                        .padding(LargeMediumPadding),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                         contentDescription = null,
-                        modifier = Modifier.size(24.dp),
+                        modifier = Modifier.size(ExtraLargerSpacing),
                         tint = if (isAppSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                     )
                 }

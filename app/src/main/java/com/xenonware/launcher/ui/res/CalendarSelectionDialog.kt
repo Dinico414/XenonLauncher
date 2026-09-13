@@ -33,6 +33,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.xenon.mylibrary.res.XenonDialog
+import com.xenon.mylibrary.values.BiggestPadding
+import com.xenon.mylibrary.values.LargeMediumCornerRadius
+import com.xenon.mylibrary.values.LargeMediumSpacer
+import com.xenon.mylibrary.values.LargestPadding
+import com.xenon.mylibrary.values.LargestSpacing
+import com.xenon.mylibrary.values.MediumPadding
+import com.xenon.mylibrary.values.SmallPadding
 import com.xenonware.launcher.R
 import com.xenonware.launcher.viewmodel.CalendarInfo
 
@@ -78,7 +85,7 @@ fun CalendarSelectionDialog(
                     stringResource(R.string.calendar_selection_description),
                     fontSize = 14.sp,
                     color = colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 16.dp)
+                    modifier = Modifier.padding(bottom = LargestPadding)
                 )
             }
             if (availableCalendars.isEmpty()) {
@@ -86,7 +93,7 @@ fun CalendarSelectionDialog(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 32.dp),
+                            .padding(vertical = BiggestPadding),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -104,18 +111,18 @@ fun CalendarSelectionDialog(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(LargeMediumCornerRadius))
                             .clickable { onToggleCalendar(calendar.id) }
-                            .padding(vertical = 8.dp, horizontal = 4.dp),
+                            .padding(vertical = MediumPadding, horizontal = SmallPadding),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(16.dp)
+                                .size(LargestSpacing)
                                 .clip(CircleShape)
                                 .background(Color(calendar.color))
                         )
-                        Spacer(Modifier.width(12.dp))
+                        Spacer(Modifier.width(LargeMediumSpacer))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 calendar.name,

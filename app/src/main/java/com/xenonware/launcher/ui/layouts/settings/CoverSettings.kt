@@ -29,7 +29,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import com.xenon.mylibrary.ActivityScreen
 import com.xenon.mylibrary.res.DialogClearDataConfirmation
 import com.xenon.mylibrary.res.DialogCoverDisplaySelection
@@ -40,6 +39,7 @@ import com.xenon.mylibrary.res.DialogThemeSelection
 import com.xenon.mylibrary.res.DialogVersionNumber
 import com.xenon.mylibrary.res.ThemeSetting
 import com.xenon.mylibrary.theme.LayoutType
+import com.xenon.mylibrary.values.IconSizeMedium
 import com.xenon.mylibrary.values.MediumPadding
 import com.xenon.mylibrary.values.NoCornerRadius
 import com.xenon.mylibrary.values.NoSpacing
@@ -180,7 +180,7 @@ fun CoverSettings(
             Icon(
                 imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                 contentDescription = stringResource(R.string.navigate_back_description),
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(IconSizeMedium)
             )
         },
         expandable = false,

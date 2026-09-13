@@ -108,6 +108,28 @@ import androidx.core.graphics.drawable.toBitmap
 import androidx.core.view.drawToBitmap
 import com.xenon.mylibrary.res.MenuItem
 import com.xenon.mylibrary.res.XenonDropDown
+import com.xenon.mylibrary.values.BiggestPadding
+import com.xenon.mylibrary.values.ExtraBigSpacing
+import com.xenon.mylibrary.values.ExtraLargeCornerRadius
+import com.xenon.mylibrary.values.ExtraLargeIconSize
+import com.xenon.mylibrary.values.ExtraLargeSpacing
+import com.xenon.mylibrary.values.ExtraLargerCornerRadius
+import com.xenon.mylibrary.values.ExtraLargerPadding
+import com.xenon.mylibrary.values.HugeBiggerSpacing
+import com.xenon.mylibrary.values.HugeSpacing
+import com.xenon.mylibrary.values.HugestSpacing
+import com.xenon.mylibrary.values.LargeMediumPadding
+import com.xenon.mylibrary.values.LargestElevation
+import com.xenon.mylibrary.values.LargestPadding
+import com.xenon.mylibrary.values.MediumCornerRadius
+import com.xenon.mylibrary.values.MediumPadding
+import com.xenon.mylibrary.values.MediumSmallElevation
+import com.xenon.mylibrary.values.MediumSmallPadding
+import com.xenon.mylibrary.values.MediumSmallerCornerRadius
+import com.xenon.mylibrary.values.MediumSpacer
+import com.xenon.mylibrary.values.SmallPadding
+import com.xenon.mylibrary.values.SmallerPadding
+import com.xenon.mylibrary.values.SmallerStroke
 import com.xenonware.launcher.R
 import com.xenonware.launcher.model.WidgetItem
 import com.xenonware.launcher.ui.res.WidgetEditBorder
@@ -166,13 +188,13 @@ fun WidgetPage(
         configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
 
     // Grid layout constants
-    val horizontalPadding = 16.dp
-    val topGridPadding = 8.dp
-    val bottomGridPadding = 8.dp
+    val horizontalPadding = LargestPadding
+    val topGridPadding = MediumPadding
+    val bottomGridPadding = MediumPadding
 
     // Inner padding applied to each widget cell — subtracted before reporting size to the provider
-    val cellInsetHorizontal = 2.dp
-    val cellInsetVertical = 4.dp
+    val cellInsetHorizontal = SmallerPadding
+    val cellInsetVertical = SmallPadding
 
     // Drag tuning. Trigger zones are derived from the grid further down so they line up exactly
     // with the gradient indicators drawn during a drag — what you see is what triggers.
@@ -196,7 +218,7 @@ fun WidgetPage(
 
     // Dock area implementation: safe draw (nav bar) + base dock area
     // Dock top is at: navBarHeight + 8.dp (dock bottom padding) + 72.dp (dock height)
-    val totalDockAreaHeight = if (isDockVisible) navBarHeight + 72.dp + 8.dp else navBarHeight + 16.dp
+    val totalDockAreaHeight = if (isDockVisible) navBarHeight + HugeBiggerSpacing + MediumPadding else navBarHeight + LargestPadding
 
     val widgetColumns by viewModel.widgetColumns.collectAsState()
     val widgets by viewModel.widgets.collectAsState()
@@ -509,7 +531,7 @@ fun WidgetPage(
                             )
                     ) {
                         Canvas(modifier = Modifier.fillMaxSize()) {
-                            val cornerPx = 24.dp.toPx()
+                            val cornerPx = ExtraLargerCornerRadius.toPx()
                             val path = Path().apply {
                                 moveTo(0f, size.height - cornerPx)
                                 quadraticTo(0f, size.height, cornerPx, size.height)
@@ -545,7 +567,7 @@ fun WidgetPage(
                             )
                     ) {
                         Canvas(modifier = Modifier.fillMaxSize()) {
-                            val cornerPx = 24.dp.toPx()
+                            val cornerPx = ExtraLargerCornerRadius.toPx()
                             val path = Path().apply {
                                 moveTo(0f, cornerPx)
                                 quadraticTo(0f, 0f, cornerPx, 0f)
@@ -629,14 +651,14 @@ fun WidgetPage(
                             Column(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .padding(horizontal = 32.dp),
+                                    .padding(horizontal = BiggestPadding),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center
                             ) {
                                 Box(
                                     modifier = Modifier
                                         .clickable { showWidgetSelector = true }
-                                        .size(80.dp)
+                                        .size(HugestSpacing)
                                         .background(
                                             colorScheme.primaryContainer.copy(alpha = 0.3f),
                                             CircleShape
@@ -646,7 +668,7 @@ fun WidgetPage(
                                     Icon(
                                         Icons.Rounded.Add,
                                         null,
-                                        modifier = Modifier.size(40.dp),
+                                        modifier = Modifier.size(ExtraLargeIconSize),
                                         tint = colorScheme.onPrimaryContainer
                                     )
                                 }
@@ -739,7 +761,7 @@ fun WidgetPage(
                                     Box(
                                         modifier = Modifier
                                             .fillMaxSize()
-                                            .clip(RoundedCornerShape(24.dp))
+                                            .clip(RoundedCornerShape(ExtraLargerCornerRadius))
                                     ) {
                                         if (widget.type == "shortcut") {
                                             ShortcutWidgetContent(widget)
@@ -786,9 +808,9 @@ fun WidgetPage(
                                             modifier = Modifier
                                                 .fillMaxSize()
                                                 .border(
-                                                    width = 2.dp,
+                                                    width = SmallerStroke,
                                                     color = colorScheme.primary.copy(alpha = selectionProgress),
-                                                    shape = RoundedCornerShape(24.dp)
+                                                    shape = RoundedCornerShape(ExtraLargerCornerRadius)
                                                 )
                                         )
                                     }
@@ -1087,12 +1109,12 @@ fun WidgetPage(
                                 )
                                 .background(
                                     colorScheme.primary.copy(alpha = 0.12f),
-                                    RoundedCornerShape(24.dp)
+                                    RoundedCornerShape(ExtraLargerCornerRadius)
                                 )
                                 .border(
                                     2.dp,
                                     colorScheme.primary.copy(alpha = 0.5f),
-                                    RoundedCornerShape(24.dp)
+                                    RoundedCornerShape(ExtraLargerCornerRadius)
                                 )
                         )
                     }
@@ -1261,13 +1283,13 @@ fun WidgetPage(
                                     scaleX = 1.06f
                                     scaleY = 1.06f
                                     alpha = 0.92f
-                                    shadowElevation = 16.dp.toPx()
-                                    shape = RoundedCornerShape(24.dp)
+                                    shadowElevation = LargestElevation.toPx()
+                                    shape = RoundedCornerShape(ExtraLargerCornerRadius)
                                     clip = true
                                 }
                                 .background(
                                     colorScheme.surfaceVariant.copy(alpha = 0.35f),
-                                    RoundedCornerShape(24.dp)
+                                    RoundedCornerShape(ExtraLargerCornerRadius)
                                 )
                         ) {
                             when {
@@ -1283,9 +1305,9 @@ fun WidgetPage(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .border(
-                                        2.dp,
+                                        SmallerStroke,
                                         colorScheme.primary,
-                                        RoundedCornerShape(24.dp)
+                                        RoundedCornerShape(ExtraLargerCornerRadius)
                                     )
                             )
                         }
@@ -1309,9 +1331,9 @@ fun WidgetPage(
                             containerColor = colorScheme.secondaryContainer,
                             contentColor = colorScheme.onSecondaryContainer
                         ),
-                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
-                        shape = RoundedCornerShape(20.dp),
-                        modifier = Modifier.padding(bottom = 8.dp)
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = MediumSmallElevation),
+                        shape = RoundedCornerShape(ExtraLargeCornerRadius),
+                        modifier = Modifier.padding(bottom = MediumPadding)
                     ) {
                         Text(stringResource(R.string.done), fontWeight = FontWeight.SemiBold)
                     }
@@ -1333,12 +1355,12 @@ fun WidgetPage(
                                 containerColor = colorScheme.errorContainer,
                                 contentColor = colorScheme.onErrorContainer
                             ),
-                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
-                            shape = RoundedCornerShape(20.dp),
-                            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
+                            elevation = ButtonDefaults.buttonElevation(defaultElevation = MediumSmallElevation),
+                            shape = RoundedCornerShape(ExtraLargeCornerRadius),
+                            contentPadding = PaddingValues(horizontal = ExtraLargerPadding, vertical = LargeMediumPadding)
                         ) {
-                            Icon(Icons.Rounded.Delete, null, modifier = Modifier.size(20.dp))
-                            Spacer(Modifier.width(8.dp))
+                            Icon(Icons.Rounded.Delete, null, modifier = Modifier.size(ExtraLargeSpacing))
+                            Spacer(Modifier.width(MediumSpacer))
                             Text(stringResource(R.string.remove), fontWeight = FontWeight.SemiBold)
                         }
                     }
@@ -1350,15 +1372,15 @@ fun WidgetPage(
                 Column(
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
-                        .padding(end = 6.dp)
-                        .padding(bottom = gridBottomOffset + 4.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                        .padding(end = MediumSmallPadding)
+                        .padding(bottom = gridBottomOffset + SmallPadding),
+                    verticalArrangement = Arrangement.spacedBy(MediumSpacer),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     repeat(pageCount) { iteration ->
                         val isSelected = pagerState.currentPage == iteration
                         val dotSize by animateDpAsState(
-                            if (isSelected) 8.dp else 6.dp,
+                            if (isSelected) MediumCornerRadius else MediumSmallerCornerRadius,
                             label = "dotSize"
                         )
                         val alpha by animateFloatAsState(
@@ -1469,16 +1491,16 @@ fun ShortcutWidgetContent(widget: WidgetItem) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(8.dp)
+            modifier = Modifier.padding(MediumPadding)
         ) {
             if (iconDrawable != null) {
                 Image(
                     bitmap = iconDrawable.toBitmap().asImageBitmap(),
                     contentDescription = null,
-                    modifier = Modifier.size(if (widget.width > 1) 56.dp else 40.dp)
+                    modifier = Modifier.size(if (widget.width > 1) HugeSpacing else ExtraBigSpacing)
                 )
             } else {
-                Icon(Icons.Rounded.Apps, null, modifier = Modifier.size(40.dp))
+                Icon(Icons.Rounded.Apps, null, modifier = Modifier.size(ExtraLargeIconSize))
             }
 
             Text(
@@ -1488,7 +1510,7 @@ fun ShortcutWidgetContent(widget: WidgetItem) {
                 fontWeight = FontWeight.Medium,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                modifier = Modifier.padding(top = 4.dp)
+                modifier = Modifier.padding(top = SmallPadding)
             )
         }
     }

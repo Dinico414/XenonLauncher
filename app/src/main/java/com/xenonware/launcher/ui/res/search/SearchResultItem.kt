@@ -53,6 +53,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import coil.compose.rememberAsyncImagePainter
+import com.xenon.mylibrary.values.BigSpacing
+import com.xenon.mylibrary.values.BiggestSpacing
+import com.xenon.mylibrary.values.ExtraBiggerSpacing
+import com.xenon.mylibrary.values.ExtraLargerSpacing
+import com.xenon.mylibrary.values.LargeMediumCornerRadius
+import com.xenon.mylibrary.values.LargeMediumPadding
+import com.xenon.mylibrary.values.LargestCornerRadius
+import com.xenon.mylibrary.values.LargestSpacer
+import com.xenon.mylibrary.values.SmallElevation
+import com.xenon.mylibrary.values.SmallPadding
 import com.xenonware.launcher.R
 import com.xenonware.launcher.model.SearchResult
 import com.xenonware.launcher.ui.res.ContactAvatar
@@ -71,7 +81,7 @@ fun SearchResultItem(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(LargestCornerRadius))
             .background(colorScheme.surfaceContainer.copy(alpha = 0.8f))
             .onGloballyPositioned { itemPos = it.positionInRoot() }
             .then(
@@ -92,9 +102,9 @@ fun SearchResultItem(
                     Modifier.clickable { onClick(result) }
                 }
             )
-            .padding(12.dp)
+            .padding(LargeMediumPadding)
     ) {
-        Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+        Box(modifier = Modifier.size(ExtraBiggerSpacing), contentAlignment = Alignment.Center) {
             when (result) {
                 is SearchResult.App -> {
                     result.appInfo.icon?.let { icon ->
@@ -104,7 +114,7 @@ fun SearchResultItem(
                             contentDescription = null, 
                             modifier = Modifier
                                 .fillMaxSize()
-                                .then(if (showShadow) Modifier.shadow(4.dp, shape) else Modifier)
+                                .then(if (showShadow) Modifier.shadow(SmallElevation, shape) else Modifier)
                                 .clip(shape)
                         )
                     }
@@ -136,8 +146,8 @@ fun SearchResultItem(
                     val (fileIcon, bgColor) = fileTypeInfo
 
                     Surface(
-                        modifier = Modifier.size(48.dp),
-                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.size(ExtraBiggerSpacing),
+                        shape = RoundedCornerShape(LargeMediumCornerRadius),
                         color = if (result.preview != null && !isTextFile) Color.Transparent else bgColor.copy(alpha = 0.8f)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
@@ -151,8 +161,8 @@ fun SearchResultItem(
                                 Box(
                                     modifier = Modifier
                                         .align(Alignment.BottomStart)
-                                        .padding(4.dp)
-                                        .size(24.dp)
+                                        .padding(SmallPadding)
+                                        .size(ExtraLargerSpacing)
                                         .background(
                                             Color.Black.copy(alpha = 0.4f),
                                             CircleShape
@@ -170,7 +180,7 @@ fun SearchResultItem(
                                 Icon(
                                     fileIcon,
                                     contentDescription = null,
-                                    modifier = Modifier.size(28.dp),
+                                    modifier = Modifier.size(BigSpacing),
                                     tint = if (bgColor == colorScheme.surfaceContainerHighest) colorScheme.onSurfaceVariant else Color.White
                                 )
                             }
@@ -178,11 +188,11 @@ fun SearchResultItem(
                     }
                 }
                 is SearchResult.Web -> {
-                    Icon(if (result.isUrl) Icons.Rounded.Language else Icons.Rounded.Search, null, modifier = Modifier.size(32.dp))
+                    Icon(if (result.isUrl) Icons.Rounded.Language else Icons.Rounded.Search, null, modifier = Modifier.size(BiggestSpacing))
                 }
             }
         }
-        Spacer(Modifier.width(16.dp))
+        Spacer(Modifier.width(LargestSpacer))
         Column {
             val title = when (result) {
                 is SearchResult.App -> result.appInfo.label

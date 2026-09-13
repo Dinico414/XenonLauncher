@@ -38,6 +38,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.xenon.mylibrary.res.XenonDialog
+import com.xenon.mylibrary.values.ExtraLargerSpacing
+import com.xenon.mylibrary.values.LargeMediumPadding
+import com.xenon.mylibrary.values.LargeMediumSpacing
+import com.xenon.mylibrary.values.LargestCornerRadius
+import com.xenon.mylibrary.values.MediumSpacer
+import com.xenon.mylibrary.values.MediumSpacing
 import com.xenonware.launcher.R
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.model.AppWidgetGroup
@@ -106,7 +112,7 @@ fun FabActionConfigDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(max = 500.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(MediumSpacing)
         ) {
             item {
                 Text(
@@ -114,7 +120,7 @@ fun FabActionConfigDialog(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(start = 12.dp, top = 8.dp, bottom = 8.dp)
+                    modifier = Modifier.padding(start = LargeMediumSpacing, top = MediumSpacing, bottom = MediumSpacing)
                 )
             }
 
@@ -127,7 +133,7 @@ fun FabActionConfigDialog(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(RoundedCornerShape(LargestCornerRadius))
                         .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceBright)
                 ) {
                     Row(
@@ -135,13 +141,13 @@ fun FabActionConfigDialog(
                         modifier = Modifier
                             .weight(1f)
                             .clickable { selectedAction = action }
-                            .padding(12.dp)
+                            .padding(LargeMediumPadding)
                     ) {
                         RadioButton(
                             selected = isSelected,
                             onClick = { selectedAction = action }
                         )
-                        Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(MediumSpacer))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = getActionName(action),
@@ -179,13 +185,13 @@ fun FabActionConfigDialog(
                                         FabAction.OPEN_SHORTCUT -> showShortcutPicker = true
                                     }
                                 }
-                                .padding(12.dp),
+                                .padding(LargeMediumPadding),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                                 contentDescription = null,
-                                modifier = Modifier.size(24.dp),
+                                modifier = Modifier.size(ExtraLargerSpacing),
                                 tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                             )
                         }

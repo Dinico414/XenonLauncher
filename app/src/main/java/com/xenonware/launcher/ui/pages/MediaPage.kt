@@ -95,11 +95,47 @@ import androidx.compose.ui.unit.sp
 import androidx.core.graphics.createBitmap
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import com.xenonware.launcher.ui.theme.mainFontFamily
+import com.xenon.mylibrary.values.BiggerElevation
+import com.xenon.mylibrary.values.BiggerSpacing
+import com.xenon.mylibrary.values.BiggestPadding
+import com.xenon.mylibrary.values.BiggestSpacer
+import com.xenon.mylibrary.values.ExtraBigSpacing
+import com.xenon.mylibrary.values.ExtraBiggerSpacing
+import com.xenon.mylibrary.values.ExtraLargeCornerRadius
+import com.xenon.mylibrary.values.ExtraLargeIconSize
+import com.xenon.mylibrary.values.ExtraLargeSpacing
+import com.xenon.mylibrary.values.ExtraLargerCornerRadius
+import com.xenon.mylibrary.values.ExtraLargerSpacer
+import com.xenon.mylibrary.values.ExtraLargerSpacing
+import com.xenon.mylibrary.values.HugeBiggerSpacing
+import com.xenon.mylibrary.values.HugerSpacing
+import com.xenon.mylibrary.values.IconSizeLarge
+import com.xenon.mylibrary.values.LargeIconSize
+import com.xenon.mylibrary.values.LargeMediumCornerRadius
+import com.xenon.mylibrary.values.LargeMediumElevation
+import com.xenon.mylibrary.values.LargeMediumIconSize
+import com.xenon.mylibrary.values.LargestCornerRadius
+import com.xenon.mylibrary.values.LargestPadding
+import com.xenon.mylibrary.values.LargestSpacer
+import com.xenon.mylibrary.values.LargestSpacing
+import com.xenon.mylibrary.values.MediumButtonHeight
+import com.xenon.mylibrary.values.MediumElevation
+import com.xenon.mylibrary.values.MediumIconSize
+import com.xenon.mylibrary.values.MediumLargeCornerRadius
+import com.xenon.mylibrary.values.MediumPadding
+import com.xenon.mylibrary.values.MediumSmallPadding
+import com.xenon.mylibrary.values.MediumSmallSpacer
+import com.xenon.mylibrary.values.MediumSpacer
+import com.xenon.mylibrary.values.MediumSpacing
+import com.xenon.mylibrary.values.NoPadding
+import com.xenon.mylibrary.values.SmallPadding
+import com.xenon.mylibrary.values.SmallSpacing
+import com.xenon.mylibrary.values.SmallerSpacer
 import com.xenonware.launcher.R
 import com.xenonware.launcher.media.MediaAction
 import com.xenonware.launcher.media.MediaState
 import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
+import com.xenonware.launcher.ui.theme.mainFontFamily
 import com.xenonware.launcher.util.blockHorizontalPagerSwipe
 import com.xenonware.launcher.util.isSmallScreenDevice
 import com.xenonware.launcher.util.shouldDisableLandscapeLayout
@@ -151,17 +187,17 @@ fun MediaPage(
     val note = rememberMusicNoteAnimation(mediaState.isPlaying)
 
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val topPadding = if (statusBarHeight < 16.dp) {
-        16.dp
+    val topPadding = if (statusBarHeight < LargestSpacing) {
+        LargestSpacing
     } else {
         statusBarHeight
     }
     val safeDrawingPadding = WindowInsets.safeDrawing.asPaddingValues()
     val layoutDirection = LocalLayoutDirection.current
-    val endPadding = safeDrawingPadding.calculateEndPadding(layoutDirection).coerceAtLeast(16.dp)
+    val endPadding = safeDrawingPadding.calculateEndPadding(layoutDirection).coerceAtLeast(LargestPadding)
     val navBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     // 72dp (dock) + 8dp (dock padding) + 8dp (gap) + 4dp (to match widget vertical padding)
-    val dockAreaHeight = if (isDockVisible) 72.dp + navBarHeight + 8.dp + 8.dp + 4.dp else navBarHeight + 16.dp
+    val dockAreaHeight = if (isDockVisible) HugeBiggerSpacing + navBarHeight + MediumSpacing + MediumSpacing + SmallSpacing else navBarHeight + LargestSpacing
 
     val appNameLabel = stringResource(R.string.media)
     val appName = remember(mediaState.packageName, appNameLabel) {
@@ -188,7 +224,7 @@ fun MediaPage(
     val rightAction = mediaState.actions.getOrNull(1)
 
     val isSmallDevice = isSmallScreenDevice(context)
-    val verticalSafeDrawHeight = (configuration.screenHeightDp.dp - topPadding - navBarHeight).coerceAtLeast(40.dp)
+    val verticalSafeDrawHeight = (configuration.screenHeightDp.dp - topPadding - navBarHeight).coerceAtLeast(ExtraBigSpacing)
     val maxSmallCoverSize = minOf(configuration.screenWidthDp.dp / 3, verticalSafeDrawHeight/3)
     val portraitAlbumArtSize = if (isSmallDevice) maxSmallCoverSize else 280.dp
 
@@ -198,7 +234,7 @@ fun MediaPage(
     // Progressive corner radius: 40.dp to 0.dp after 75% swipe
     val normalizedProgress = ((progress - 0.75f) * 4f).coerceIn(0f, 1f)
     val easedProgress = EaseInOut.transform(normalizedProgress)
-    val cornerRadius = (40 * (1f - easedProgress)).dp
+    val cornerRadius = ExtraBigSpacing * (1f - easedProgress)
     val baseBgAlpha = if (isDarkTheme) 0.6f else 0.4f
     val backgroundTint = colorScheme.inversePrimary.copy(alpha = baseBgAlpha)
 
@@ -224,7 +260,7 @@ fun MediaPage(
                     contentDescription = null,
                     modifier = Modifier
                         .fillMaxSize()
-                        .blur(30.dp),
+                        .blur(BiggerElevation),
                     contentScale = ContentScale.Crop,
                     colorFilter = ColorFilter.tint(
                         backgroundTint, blendMode = BlendMode.SrcAtop
@@ -247,7 +283,7 @@ fun MediaPage(
                     .padding(top = topPadding, bottom = dockAreaHeight)
                     .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(LargestSpacer)
             ) {
                 // Left Side: Album Art
                 Box(
@@ -261,9 +297,9 @@ fun MediaPage(
                             .sizeIn(maxWidth = 400.dp)
                             .aspectRatio(1f)
                             .fillMaxSize(0.9f)
-                            .clip(RoundedCornerShape(24.dp)),
+                            .clip(RoundedCornerShape(ExtraLargerCornerRadius)),
                         color = colorScheme.surfaceVariant.copy(alpha = surfaceAlpha),
-                        tonalElevation = 8.dp
+                        tonalElevation = MediumElevation
                     ) {
                         if (artModel != null) {
                             AsyncImage(
@@ -306,14 +342,14 @@ fun MediaPage(
                             style = MaterialTheme.typography.headlineSmall.copy(fontFamily = mainFontFamily),
                             textAlign = TextAlign.Center
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(MediumSpacer))
                         Text(
                             stringResource(R.string.media_access_description),
                             color = subContentColor,
                             style = MaterialTheme.typography.bodyMedium.copy(fontFamily = mainFontFamily),
                             textAlign = TextAlign.Center
                         )
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(ExtraLargerSpacer))
                         Button(onClick = onOpenSettings) {
                             Text(stringResource(R.string.grant), style = MaterialTheme.typography.labelLarge.copy(fontFamily = mainFontFamily))
                         }
@@ -322,21 +358,21 @@ fun MediaPage(
                         Surface(
                             onClick = onOpenSource,
                             color = contentColor.copy(alpha = 0.1f),
-                            shape = RoundedCornerShape(20.dp),
-                            modifier = Modifier.height(40.dp)
+                            shape = RoundedCornerShape(ExtraLargeCornerRadius),
+                            modifier = Modifier.height(ExtraBigSpacing)
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
+                                modifier = Modifier.padding(horizontal = MediumPadding, vertical = MediumPadding),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                horizontalArrangement = Arrangement.spacedBy(MediumSpacer)
                             ) {
                                 if (appIcon != null) {
                                     AsyncImage(
                                         model = appIcon,
                                         contentDescription = null,
                                         modifier = Modifier
-                                            .size(24.dp)
-                                            .clip(RoundedCornerShape(12.dp))
+                                            .size(ExtraLargerSpacing)
+                                            .clip(RoundedCornerShape(LargeMediumCornerRadius))
                                     )
                                 }
                                 Text(
@@ -345,7 +381,7 @@ fun MediaPage(
                                     style = MaterialTheme.typography.labelLarge.copy(fontFamily = mainFontFamily),
                                     fontWeight = FontWeight.Medium,
                                     modifier = Modifier.padding(
-                                        start = if (appName == appNameLabel) 4.dp else 0.dp, end = 4.dp
+                                        start = if (appName == appNameLabel) SmallPadding else NoPadding, end = SmallPadding
                                     )
                                 )
                             }
@@ -376,7 +412,7 @@ fun MediaPage(
 
                             if (titleNeedsMarquee) {
                                 LaunchedEffect(titleText, titleContainerWidth) {
-                                    val velocityPx = with(density) { 30.dp.toPx() }
+                                    val velocityPx = with(density) { BiggerSpacing.toPx() }
                                     val spacingPx = titleContainerWidth / 3f
                                     val scrollDistance = titleWidth + spacingPx
                                     val scrollDuration = (scrollDistance / velocityPx * 1000).toLong()
@@ -405,7 +441,7 @@ fun MediaPage(
                                     text = titleText,
                                     style = titleStyle,
                                     maxLines = 1,
-                                    modifier = Modifier.padding(horizontal = 16.dp)
+                                    modifier = Modifier.padding(horizontal = LargestPadding)
                                 )
                             }
                             
@@ -421,7 +457,7 @@ fun MediaPage(
                                     color = subContentColor,
                                     textAlign = TextAlign.Center,
                                     maxLines = 1,
-                                    modifier = Modifier.padding(horizontal = 16.dp)
+                                    modifier = Modifier.padding(horizontal = LargestPadding)
                                 )
                             }
                         }
@@ -439,7 +475,7 @@ fun MediaPage(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .blockHorizontalPagerSwipe()
-                                    .padding(horizontal = 16.dp)
+                                    .padding(horizontal = LargestPadding)
                             ) {
                                 Slider(
                                     value = currentPosition.coerceIn(0f, duration),
@@ -458,7 +494,7 @@ fun MediaPage(
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 4.dp),
+                                        .padding(horizontal = SmallPadding),
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
                                     Text(
@@ -478,19 +514,19 @@ fun MediaPage(
                         // Controls
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(24.dp)
+                            horizontalArrangement = Arrangement.spacedBy(ExtraLargerSpacer)
                         ) {
                             leftAction?.let { action ->
                                 MediaActionButton(action, contentColor)
                             }
 
                             IconButton(
-                                onClick = onSkipPrevious, modifier = Modifier.size(48.dp)
+                                onClick = onSkipPrevious, modifier = Modifier.size(MediumButtonHeight)
                             ) {
                                 ShadowedIcon(
                                     imageVector = Icons.Rounded.SkipPrevious,
                                     contentDescription = stringResource(R.string.previous),
-                                    modifier = Modifier.size(32.dp),
+                                    modifier = Modifier.size(IconSizeLarge),
                                     tint = contentColor
                                 )
                             }
@@ -498,8 +534,8 @@ fun MediaPage(
                             FilledIconButton(
                                 onClick = onTogglePlayPause,
                                 modifier = Modifier
-                                    .size(64.dp)
-                                    .shadow(elevation = 12.dp, shape = CircleShape),
+                                    .size(HugerSpacing)
+                                    .shadow(elevation = LargeMediumElevation, shape = CircleShape),
                                 colors = IconButtonDefaults.filledIconButtonColors(
                                     containerColor = iconButtonContainerColor,
                                     contentColor = iconButtonContentColor
@@ -508,18 +544,18 @@ fun MediaPage(
                                 ShadowedIcon(
                                     imageVector = if (mediaState.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                                     contentDescription = stringResource(R.string.play_pause),
-                                    modifier = Modifier.size(40.dp),
+                                    modifier = Modifier.size(ExtraLargeIconSize),
                                     tint = iconButtonContentColor
                                 )
                             }
 
                             IconButton(
-                                onClick = onSkipNext, modifier = Modifier.size(48.dp)
+                                onClick = onSkipNext, modifier = Modifier.size(MediumButtonHeight)
                             ) {
                                 ShadowedIcon(
                                     imageVector = Icons.Rounded.SkipNext,
                                     contentDescription = stringResource(R.string.next),
-                                    modifier = Modifier.size(32.dp),
+                                    modifier = Modifier.size(LargeIconSize),
                                     tint = contentColor
                                 )
                             }
@@ -538,7 +574,7 @@ fun MediaPage(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(top = topPadding, bottom = dockAreaHeight)
-                    .padding(horizontal = 32.dp)
+                    .padding(horizontal = BiggestPadding)
                     .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -550,14 +586,14 @@ fun MediaPage(
                         style = MaterialTheme.typography.headlineSmall.copy(fontFamily = mainFontFamily),
                         textAlign = TextAlign.Center
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(MediumSpacing))
                     Text(
                         stringResource(R.string.media_access_description),
                         color = subContentColor,
                         style = MaterialTheme.typography.bodyMedium.copy(fontFamily = mainFontFamily),
                         textAlign = TextAlign.Center
                     )
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(ExtraLargerSpacing))
                     Button(onClick = onOpenSettings) {
                         Text(stringResource(R.string.grant), style = MaterialTheme.typography.labelLarge.copy(fontFamily = mainFontFamily))
                     }
@@ -572,21 +608,21 @@ fun MediaPage(
                             Surface(
                                 onClick = onOpenSource,
                                 color = contentColor.copy(alpha = 0.1f),
-                                shape = RoundedCornerShape(20.dp),
-                                modifier = Modifier.height(40.dp)
+                                shape = RoundedCornerShape(ExtraLargeCornerRadius),
+                                modifier = Modifier.height(ExtraBigSpacing)
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
+                                    modifier = Modifier.padding(horizontal = MediumPadding, vertical = MediumPadding),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(MediumSpacer)
                                 ) {
                                     if (appIcon != null) {
                                         AsyncImage(
                                             model = appIcon,
                                             contentDescription = null,
                                             modifier = Modifier
-                                                .size(24.dp)
-                                                .clip(RoundedCornerShape(12.dp))
+                                                .size(ExtraLargerSpacing)
+                                                .clip(RoundedCornerShape(LargeMediumCornerRadius))
                                         )
                                     }
                                     Text(
@@ -595,7 +631,7 @@ fun MediaPage(
                                         style = MaterialTheme.typography.labelLarge.copy(fontFamily = mainFontFamily),
                                         fontWeight = FontWeight.Medium,
                                         modifier = Modifier.padding(
-                                            start = if (appName == appNameLabel) 4.dp else 0.dp, end = 4.dp
+                                            start = if (appName == appNameLabel) SmallPadding else NoPadding, end = SmallPadding
                                         )
                                     )
                                 }
@@ -609,11 +645,11 @@ fun MediaPage(
                         // Small Device Layout:
                         Row(
                             modifier = Modifier
-                                .padding(vertical = 8.dp)
+                                .padding(vertical = MediumPadding)
                                 .fillMaxWidth()
                                 .height(portraitAlbumArtSize),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            horizontalArrangement = Arrangement.spacedBy(LargestSpacer)
                         ) {
                             Column(
                                 modifier = Modifier
@@ -626,21 +662,21 @@ fun MediaPage(
                                 Surface(
                                     onClick = onOpenSource,
                                     color = contentColor.copy(alpha = 0.1f),
-                                    shape = RoundedCornerShape(20.dp),
+                                    shape = RoundedCornerShape(ExtraLargeCornerRadius),
                                     modifier = Modifier.height(36.dp)
                                 ) {
                                     Row(
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                        modifier = Modifier.padding(horizontal = MediumPadding, vertical = MediumSmallPadding),
                                         verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        horizontalArrangement = Arrangement.spacedBy(MediumSmallSpacer)
                                     ) {
                                         if (appIcon != null) {
                                             AsyncImage(
                                                 model = appIcon,
                                                 contentDescription = null,
                                                 modifier = Modifier
-                                                    .size(20.dp)
-                                                    .clip(RoundedCornerShape(10.dp))
+                                                    .size(ExtraLargeSpacing)
+                                                    .clip(RoundedCornerShape(MediumLargeCornerRadius))
                                             )
                                         }
                                         Text(
@@ -649,7 +685,7 @@ fun MediaPage(
                                             style = MaterialTheme.typography.labelMedium.copy(fontFamily = mainFontFamily),
                                             fontWeight = FontWeight.Medium,
                                             modifier = Modifier.padding(
-                                                start = if (appName == appNameLabel) 4.dp else 0.dp, end = 4.dp
+                                                start = if (appName == appNameLabel) SmallPadding else NoPadding, end = SmallPadding
                                             )
                                         )
                                     }
@@ -684,7 +720,7 @@ fun MediaPage(
 
                                         if (titleNeedsMarquee) {
                                             LaunchedEffect(titleText, titleContainerWidth) {
-                                                val velocityPx = with(density) { 30.dp.toPx() }
+                                                val velocityPx = with(density) { BiggerSpacing.toPx() }
                                                 val spacingPx = titleContainerWidth / 3f
                                                 val scrollDistance = titleWidth + spacingPx
                                                 val scrollDuration = (scrollDistance / velocityPx * 1000).toLong()
@@ -742,9 +778,9 @@ fun MediaPage(
                                 modifier = Modifier
                                     .size(portraitAlbumArtSize)
                                     .aspectRatio(1f)
-                                    .clip(RoundedCornerShape(16.dp)),
+                                    .clip(RoundedCornerShape(LargestCornerRadius)),
                                 color = colorScheme.surfaceVariant.copy(alpha = surfaceAlpha),
-                                tonalElevation = 8.dp
+                                tonalElevation = MediumElevation
                             ) {
                                 if (artModel != null) {
                                     AsyncImage(
@@ -763,7 +799,7 @@ fun MediaPage(
                                             null,
                                             tint = contentColor,
                                             modifier = Modifier
-                                                .size((portraitAlbumArtSize * 0.5f).coerceAtLeast(24.dp))
+                                                .size((portraitAlbumArtSize * 0.5f).coerceAtLeast(MediumIconSize))
                                                 .musicNote(note)
                                         )
                                     }
@@ -776,9 +812,9 @@ fun MediaPage(
                             modifier = Modifier
                                 .size(portraitAlbumArtSize)
                                 .aspectRatio(1f)
-                                .clip(RoundedCornerShape(24.dp)),
+                                .clip(RoundedCornerShape(ExtraLargerCornerRadius)),
                             color = colorScheme.surfaceVariant.copy(alpha = surfaceAlpha),
-                            tonalElevation = 8.dp
+                            tonalElevation = MediumElevation
                         ) {
                             if (artModel != null) {
                                 AsyncImage(
@@ -804,7 +840,7 @@ fun MediaPage(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(32.dp))
+                        Spacer(modifier = Modifier.height(BiggestSpacer))
 
                         Column(
                             modifier = Modifier.fillMaxWidth(),
@@ -828,7 +864,7 @@ fun MediaPage(
 
                             if (titleNeedsMarquee) {
                                 LaunchedEffect(titleText, titleContainerWidth) {
-                                    val velocityPx = with(density) { 30.dp.toPx() }
+                                    val velocityPx = with(density) { BiggerSpacing.toPx() }
                                     val spacingPx = titleContainerWidth / 3f
                                     val scrollDistance = titleWidth + spacingPx
                                     val scrollDuration = (scrollDistance / velocityPx * 1000).toLong()
@@ -857,7 +893,7 @@ fun MediaPage(
                                     text = titleText,
                                     style = titleStyle,
                                     maxLines = 1,
-                                    modifier = Modifier.padding(horizontal = 16.dp)
+                                    modifier = Modifier.padding(horizontal = LargestPadding)
                                 )
                             }
                             Box(
@@ -872,7 +908,7 @@ fun MediaPage(
                                     color = subContentColor,
                                     textAlign = TextAlign.Center,
                                     maxLines = 1,
-                                    modifier = Modifier.padding(horizontal = 16.dp)
+                                    modifier = Modifier.padding(horizontal = LargestPadding)
                                 )
                             }
                         }
@@ -908,7 +944,7 @@ fun MediaPage(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 4.dp),
+                                    .padding(horizontal = SmallPadding),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text(
@@ -925,24 +961,24 @@ fun MediaPage(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(MediumSpacer))
 
                     // Controls
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(24.dp)
+                        horizontalArrangement = Arrangement.spacedBy(ExtraLargerSpacer)
                     ) {
                         leftAction?.let { action ->
                             MediaActionButton(action, contentColor)
                         }
 
                         IconButton(
-                            onClick = onSkipPrevious, modifier = Modifier.size(48.dp)
+                            onClick = onSkipPrevious, modifier = Modifier.size(MediumButtonHeight)
                         ) {
                             ShadowedIcon(
                                 imageVector = Icons.Rounded.SkipPrevious,
                                 contentDescription = stringResource(R.string.previous),
-                                modifier = Modifier.size(32.dp),
+                                modifier = Modifier.size(IconSizeLarge),
                                 tint = contentColor
                             )
                         }
@@ -950,8 +986,8 @@ fun MediaPage(
                         FilledIconButton(
                             onClick = onTogglePlayPause,
                             modifier = Modifier
-                                .size(64.dp)
-                                .shadow(elevation = 12.dp, shape = CircleShape),
+                                .size(HugerSpacing)
+                                .shadow(elevation = LargeMediumElevation, shape = CircleShape),
                             colors = IconButtonDefaults.filledIconButtonColors(
                                 containerColor = iconButtonContainerColor,
                                 contentColor = iconButtonContentColor
@@ -960,18 +996,18 @@ fun MediaPage(
                             ShadowedIcon(
                                 imageVector = if (mediaState.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                                 contentDescription = stringResource(R.string.play_pause),
-                                modifier = Modifier.size(40.dp),
+                                modifier = Modifier.size(ExtraLargeIconSize),
                                 tint = iconButtonContentColor
                             )
                         }
 
                         IconButton(
-                            onClick = onSkipNext, modifier = Modifier.size(48.dp)
+                            onClick = onSkipNext, modifier = Modifier.size(MediumButtonHeight)
                         ) {
                             ShadowedIcon(
                                 imageVector = Icons.Rounded.SkipNext,
                                 contentDescription = stringResource(R.string.next),
-                                modifier = Modifier.size(32.dp),
+                                modifier = Modifier.size(LargeIconSize),
                                 tint = contentColor
                             )
                         }
@@ -994,7 +1030,7 @@ private fun Modifier.musicNote(note: MusicNoteAnimation) = graphicsLayer {
 }
 
 private fun Modifier.fadingEdges(
-    length: Dp = 16.dp,
+    length: Dp = LargestSpacing,
     startAlpha: Float = 1f,
     endAlpha: Float = 1f
 ) = this
@@ -1032,7 +1068,7 @@ private fun ShadowedIcon(
     modifier: Modifier = Modifier,
     tint: Color,
     shadowColor: Color = Color.Black.copy(alpha = 0.3f),
-    offset: Dp = 2.dp,
+    offset: Dp = SmallerSpacer,
 ) {
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         Icon(
@@ -1085,7 +1121,7 @@ private fun MediaActionButton(
                 e.printStackTrace()
             }
         },
-        modifier = modifier.size(48.dp)
+        modifier = modifier.size(ExtraBiggerSpacing)
     ) {
         if (action.icon != null) {
             val bitmap = remember(action.icon) {
@@ -1107,7 +1143,7 @@ private fun MediaActionButton(
                     bitmap = bitmap,
                     contentDescription = action.title,
                     tint = tint,
-                    modifier = Modifier.size(28.dp)
+                    modifier = Modifier.size(LargeMediumIconSize)
                 )
             } else {
                 Text(

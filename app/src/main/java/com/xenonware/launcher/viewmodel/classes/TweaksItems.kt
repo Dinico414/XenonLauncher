@@ -28,6 +28,7 @@ import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.FontDownload
 import androidx.compose.material.icons.rounded.KeyboardDoubleArrowDown
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.NotificationsPaused
@@ -36,7 +37,6 @@ import androidx.compose.material.icons.rounded.TableRows
 import androidx.compose.material.icons.rounded.TravelExplore
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material.icons.rounded.WatchLater
-import androidx.compose.material.icons.rounded.FontDownload
 import androidx.compose.material.icons.rounded.Widgets
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
@@ -65,8 +65,24 @@ import com.xenon.mylibrary.res.SettingsTile
 import com.xenon.mylibrary.res.SettingsTileContext
 import com.xenon.mylibrary.res.XenonSingleChoiceButtonGroup
 import com.xenon.mylibrary.theme.LayoutType
+import com.xenon.mylibrary.values.BiggestCornerRadius
+import com.xenon.mylibrary.values.ExtraLargeCornerRadius
 import com.xenon.mylibrary.values.ExtraLargeSpacing
+import com.xenon.mylibrary.values.ExtraLargerCornerRadius
+import com.xenon.mylibrary.values.HugerSpacing
+import com.xenon.mylibrary.values.LargeMediumPadding
+import com.xenon.mylibrary.values.LargeMediumSpacer
+import com.xenon.mylibrary.values.LargeMediumSpacing
+import com.xenon.mylibrary.values.LargestCornerRadius
+import com.xenon.mylibrary.values.LargestPadding
+import com.xenon.mylibrary.values.MediumIconSize
+import com.xenon.mylibrary.values.MediumSmallSpacing
+import com.xenon.mylibrary.values.MediumSmallerCornerRadius
+import com.xenon.mylibrary.values.MediumSpacer
 import com.xenon.mylibrary.values.NoCornerRadius
+import com.xenon.mylibrary.values.SmallCornerRadius
+import com.xenon.mylibrary.values.SmallerSpacer
+import com.xenon.mylibrary.values.SmallerStroke
 import com.xenonware.launcher.R
 import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
 import com.xenonware.launcher.viewmodel.SettingsViewModel
@@ -78,9 +94,9 @@ import kotlin.time.Duration.Companion.milliseconds
 fun TweaksItems(
     viewModel: SettingsViewModel,
     layoutType: LayoutType = LayoutType.COMPACT,
-    innerGroupRadius: Dp = 4.dp,
-    outerGroupRadius: Dp = 24.dp,
-    innerGroupSpacing: Dp = 2.dp,
+    innerGroupRadius: Dp = SmallCornerRadius,
+    outerGroupRadius: Dp = ExtraLargerCornerRadius,
+    innerGroupSpacing: Dp = SmallerSpacer,
     outerGroupSpacing: Dp = ExtraLargeSpacing,
     tileBackgroundColor: Color = MaterialTheme.colorScheme.surfaceBright,
     tileContentColor: Color = MaterialTheme.colorScheme.onSurface,
@@ -88,10 +104,10 @@ fun TweaksItems(
     tileShapeOverride: Shape? = null,
     useGroupStyling: Boolean = true,
 ) {
-    val actualInnerGroupRadius = if (useGroupStyling) innerGroupRadius else 0.dp
-    val actualOuterGroupRadius = if (useGroupStyling) outerGroupRadius else 0.dp
-    val actualInnerGroupSpacing = if (useGroupStyling) innerGroupSpacing else 0.dp
-    val actualOuterGroupSpacing = if (useGroupStyling) outerGroupSpacing else 0.dp
+    val actualInnerGroupRadius = if (useGroupStyling) innerGroupRadius else NoCornerRadius
+    val actualOuterGroupRadius = if (useGroupStyling) outerGroupRadius else NoCornerRadius
+    val actualInnerGroupSpacing = if (useGroupStyling) innerGroupSpacing else NoCornerRadius
+    val actualOuterGroupSpacing = if (useGroupStyling) outerGroupSpacing else NoCornerRadius
 
     val topShape = if (useGroupStyling) RoundedCornerShape(
         bottomStart = actualInnerGroupRadius,
@@ -176,7 +192,7 @@ fun TweaksItems(
                                 else -> stringResource(R.string.fahrenheit)
                             }
                         },
-                        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                        modifier = Modifier.fillMaxWidth().padding(start = LargestPadding, end = LargestPadding, bottom = LargestPadding)
                     )
                 }
             )
@@ -240,21 +256,21 @@ fun TweaksItems(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
-                            .clip(RoundedCornerShape(20.dp))
+                            .padding(start = LargestPadding, end = LargestPadding, bottom = LargestPadding)
+                            .clip(RoundedCornerShape(ExtraLargeCornerRadius))
                             .background(
                                 MaterialTheme.colorScheme.surfaceContainerLowest.copy(
                                     alpha = if (LocalIsDarkTheme.current) 0.5f else 1f
                                 )
                             )
-                            .padding(vertical = 12.dp)
+                            .padding(vertical = LargeMediumPadding)
                             .horizontalScroll(rememberScrollState())
                     ) {
                         Row(
                             modifier = Modifier
-                                .padding(horizontal = 12.dp)
-                                .height(64.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                .padding(horizontal = LargeMediumPadding)
+                                .height(HugerSpacing),
+                            horizontalArrangement = Arrangement.spacedBy(LargeMediumSpacer),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             entries.forEachIndexed { index, type ->
@@ -265,10 +281,10 @@ fun TweaksItems(
                                 val targetWidth = when {
                                     isPressed -> {
                                         val neighbors = if (index == 0 || index == entries.size - 1) 1 else 2
-                                        64.dp + (if (neighbors == 1) 6.dp else 12.dp)
+                                        HugerSpacing + (if (neighbors == 1) MediumSmallSpacing else LargeMediumSpacing)
                                     }
                                     isNeighborPressed -> 58.dp
-                                    else -> 64.dp
+                                    else -> HugerSpacing
                                 }
 
                                 val containerWidth by animateDpAsState(
@@ -279,9 +295,9 @@ fun TweaksItems(
 
                                 val containerRadius by animateDpAsState(
                                     targetValue = when {
-                                        isPressed -> 6.dp
-                                        isSelected -> 16.dp
-                                        else -> 32.dp
+                                        isPressed -> MediumSmallerCornerRadius
+                                        isSelected -> LargestCornerRadius
+                                        else -> BiggestCornerRadius
                                     }, label = "indicatorRadius", animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
                                 )
 
@@ -303,14 +319,14 @@ fun TweaksItems(
                                                 alpha = 0.5f
                                             )
                                         )
-                                        .border(width = 2.dp, color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent, shape = containerShape)
+                                        .border(width = SmallerStroke, color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent, shape = containerShape)
                                         .clickable(interactionSource = interactionSources[index], indication = null) { viewModel.setNotificationIndicatorType(type) },
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
                                         imageVector = icon,
                                         contentDescription = null,
-                                        modifier = Modifier.size(24.dp),
+                                        modifier = Modifier.size(MediumIconSize),
                                         tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
                                         else tileSubtitleColor
                                     )
@@ -344,7 +360,7 @@ fun TweaksItems(
                                 else -> stringResource(R.string.notification_message_up_to_date)
                             }
                         },
-                        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                        modifier = Modifier.fillMaxWidth().padding(start = LargestPadding, end = LargestPadding, bottom = LargestPadding)
                     )
                 }
             )
@@ -437,8 +453,8 @@ fun TweaksItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-            horizontalPadding = 16.dp,
-            verticalPadding = 16.dp
+            horizontalPadding = LargestPadding,
+            verticalPadding = LargestPadding
         )
 
         Spacer(Modifier.height(actualOuterGroupSpacing))
@@ -483,11 +499,11 @@ fun TweaksItems(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
-                            .clip(RoundedCornerShape(20.dp))
+                            .padding(start = LargestPadding, end = LargestPadding, bottom = LargestPadding)
+                            .clip(RoundedCornerShape(ExtraLargeCornerRadius))
                             .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = if (LocalIsDarkTheme.current) 0.5f else 1f))
                             .clickable { viewModel.setHideDockScrollingOnlySmall(!hideDockScrollingOnlySmall) }
-                            .padding(12.dp)
+                            .padding(LargeMediumPadding)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically
@@ -505,7 +521,7 @@ fun TweaksItems(
                                     fontSize = 14.sp
                                 )
                             }
-                            Spacer(Modifier.width(8.dp))
+                            Spacer(Modifier.width(MediumSpacer))
                             Checkbox(
                                 checked = hideDockScrollingOnlySmall,
                                 onCheckedChange = { viewModel.setHideDockScrollingOnlySmall(it) },
@@ -537,11 +553,11 @@ fun TweaksItems(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
-                            .clip(RoundedCornerShape(20.dp))
+                            .padding(start = LargestPadding, end = LargestPadding, bottom = LargestPadding)
+                            .clip(RoundedCornerShape(ExtraLargeCornerRadius))
                             .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = if (LocalIsDarkTheme.current) 0.5f else 1f))
                             .clickable { viewModel.setHideDockWidgetsLandscapeOnly(!hideDockWidgetsLandscapeOnly) }
-                            .padding(12.dp)
+                            .padding(LargeMediumPadding)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically
@@ -559,7 +575,7 @@ fun TweaksItems(
                                     fontSize = 14.sp
                                 )
                             }
-                            Spacer(Modifier.width(8.dp))
+                            Spacer(Modifier.width(MediumSpacer))
                             Checkbox(
                                 checked = hideDockWidgetsLandscapeOnly,
                                 onCheckedChange = { viewModel.setHideDockWidgetsLandscapeOnly(it) },
@@ -591,11 +607,11 @@ fun TweaksItems(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
-                            .clip(RoundedCornerShape(20.dp))
+                            .padding(start = LargestPadding, end = LargestPadding, bottom = LargestPadding)
+                            .clip(RoundedCornerShape(ExtraLargeCornerRadius))
                             .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = if (LocalIsDarkTheme.current) 0.5f else 1f))
                             .clickable { viewModel.setHideDockMediaLandscapeOnly(!hideDockMediaLandscapeOnly) }
-                            .padding(12.dp)
+                            .padding(LargeMediumPadding)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically
@@ -613,7 +629,7 @@ fun TweaksItems(
                                     fontSize = 14.sp
                                 )
                             }
-                            Spacer(Modifier.width(8.dp))
+                            Spacer(Modifier.width(MediumSpacer))
                             Checkbox(
                                 checked = hideDockMediaLandscapeOnly,
                                 onCheckedChange = { viewModel.setHideDockMediaLandscapeOnly(it) },

@@ -49,6 +49,19 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.xenon.mylibrary.res.XenonDialog
 import com.xenon.mylibrary.res.XenonSingleChoiceButtonGroup
+import com.xenon.mylibrary.values.ExtraLargerSpacing
+import com.xenon.mylibrary.values.LargeMediumCornerRadius
+import com.xenon.mylibrary.values.LargeMediumPadding
+import com.xenon.mylibrary.values.LargePadding
+import com.xenon.mylibrary.values.LargestCornerRadius
+import com.xenon.mylibrary.values.LargestSpacing
+import com.xenon.mylibrary.values.MediumLargeSpacer
+import com.xenon.mylibrary.values.MediumLargeSpacing
+import com.xenon.mylibrary.values.MediumPadding
+import com.xenon.mylibrary.values.MediumSmallSpacer
+import com.xenon.mylibrary.values.MediumSpacer
+import com.xenon.mylibrary.values.SmallSpacer
+import com.xenon.mylibrary.values.SmallestStroke
 import com.xenonware.launcher.R
 import com.xenonware.launcher.ui.theme.AxisDef
 import com.xenonware.launcher.ui.theme.FontAxes
@@ -161,7 +174,7 @@ fun FontConfigDialog(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 12.dp)
+                    .padding(bottom = LargeMediumPadding)
             )
 
             LazyColumn(
@@ -169,7 +182,7 @@ fun FontConfigDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(max = 380.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(MediumLargeSpacing)
             ) {
                 items(fontOptions) { item ->
                     val isSelected = currentSelectedType == item.type.id
@@ -178,7 +191,7 @@ fun FontConfigDialog(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
+                            .clip(RoundedCornerShape(LargestCornerRadius))
                             .background(
                                 if (isSelected) MaterialTheme.colorScheme.primaryContainer
                                 else MaterialTheme.colorScheme.surfaceBright
@@ -202,7 +215,7 @@ fun FontConfigDialog(
                                     else selectedSecondaryType = item.type.id
                                 }
                             )
-                            Spacer(Modifier.size(8.dp))
+                            Spacer(Modifier.size(MediumSpacer))
                             Text(
                                 text = item.label,
                                 fontFamily = item.fontFamily,
@@ -231,7 +244,7 @@ fun FontConfigDialog(
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                                     contentDescription = null,
-                                    modifier = Modifier.size(24.dp),
+                                    modifier = Modifier.size(ExtraLargerSpacing),
                                     tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                                     else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                                 )
@@ -297,14 +310,14 @@ private fun FontAxesAdjustmentDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 12.dp)
-                    .clip(RoundedCornerShape(16.dp))
+                    .padding(bottom = LargeMediumPadding)
+                    .clip(RoundedCornerShape(LargestCornerRadius))
                     .border(
-                        width = 1.dp,
+                        width = SmallestStroke,
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                        shape = RoundedCornerShape(16.dp)
+                        shape = RoundedCornerShape(LargestCornerRadius)
                     )
-                    .padding(14.dp),
+                    .padding(LargePadding),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
@@ -312,7 +325,7 @@ private fun FontAxesAdjustmentDialog(
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(MediumSmallSpacer))
                 Text(
                     text = "The quick brown fox jumps over the lazy dog",
                     fontFamily = previewFontFamily,
@@ -320,7 +333,7 @@ private fun FontAxesAdjustmentDialog(
                     color = MaterialTheme.colorScheme.onSurface,
                     lineHeight = 22.sp
                 )
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(SmallSpacer))
                 Text(
                     text = "0123456789 • 12:45 • Xenon Launcher",
                     fontFamily = previewFontFamily,
@@ -337,14 +350,14 @@ private fun FontAxesAdjustmentDialog(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 12.dp),
+                    .padding(bottom = LargeMediumPadding),
                 colors = ButtonDefaults.filledTonalButtonColors(
                     containerColor = MaterialTheme.colorScheme.errorContainer,
                     contentColor = MaterialTheme.colorScheme.onErrorContainer
                 ),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(LargeMediumCornerRadius)
             ) {
-                Icon(Icons.Rounded.Refresh, null, modifier = Modifier.padding(end = 8.dp).size(18.dp))
+                Icon(Icons.Rounded.Refresh, null, modifier = Modifier.padding(end = MediumPadding).size(18.dp))
                 Text(stringResource(R.string.reset_all), fontWeight = FontWeight.SemiBold)
             }
 
@@ -354,7 +367,7 @@ private fun FontAxesAdjustmentDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(max = 380.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(MediumLargeSpacer)
             ) {
                 items(axes) { axis ->
                     val currentValue = activeMap[axis.tag] ?: axis.default
@@ -382,9 +395,9 @@ private fun AxisSliderItem(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(LargeMediumCornerRadius))
             .background(MaterialTheme.colorScheme.surfaceBright)
-            .padding(12.dp)
+            .padding(LargeMediumPadding)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -422,7 +435,7 @@ private fun AxisSliderItem(
                         imageVector = Icons.Rounded.Refresh,
                         contentDescription = stringResource(R.string.reset),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(LargestSpacing)
                     )
                 }
             }

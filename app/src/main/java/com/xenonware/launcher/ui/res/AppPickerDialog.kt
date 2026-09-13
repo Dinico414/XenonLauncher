@@ -30,6 +30,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.xenon.mylibrary.res.XenonDialog
+import com.xenon.mylibrary.values.LargeIconSize
+import com.xenon.mylibrary.values.LargeMediumCornerRadius
+import com.xenon.mylibrary.values.LargeMediumPadding
+import com.xenon.mylibrary.values.MassiveCornerRadius
+import com.xenon.mylibrary.values.MediumPadding
+import com.xenon.mylibrary.values.MediumSpacer
+import com.xenon.mylibrary.values.SmallSpacer
 import com.xenonware.launcher.R
 import com.xenonware.launcher.model.AppInfo
 
@@ -69,7 +76,7 @@ fun AppPickerDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(max = 500.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalArrangement = Arrangement.spacedBy(SmallSpacer)
         ) {
             item {
                 OutlinedTextField(
@@ -79,7 +86,7 @@ fun AppPickerDialog(
                     modifier = Modifier
                         .fillMaxWidth(),
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(LargeMediumCornerRadius)
                 )
             }
             val filteredApps = apps.filter { it.label.contains(searchQuery, ignoreCase = true) }
@@ -89,13 +96,13 @@ fun AppPickerDialog(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(100.dp))
+                        .clip(RoundedCornerShape(MassiveCornerRadius))
                         .background(if (isAppSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
                         .clickable {
                             currentSelection = app.packageName
                         }
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        .padding(horizontal = LargeMediumPadding, vertical = MediumPadding),
+                    horizontalArrangement = Arrangement.spacedBy(MediumSpacer)
                 ) {
                     RadioButton(
                         selected = isAppSelected,
@@ -107,7 +114,7 @@ fun AppPickerDialog(
                         app = app,
                         iconShape = iconShape,
                         showShadow = showShadow,
-                        size = 32.dp
+                        size = LargeIconSize
                     )
                     Text(
                         text = app.label,

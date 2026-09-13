@@ -19,14 +19,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import com.xenon.mylibrary.values.ExtraBiggerSpacing
+import com.xenon.mylibrary.values.LargeSpacing
+import com.xenon.mylibrary.values.NoSpacing
 
 @Composable
 fun BoxScope.WidgetEditBorder(
     alignment: Alignment,
     onDrag: (Offset) -> Unit
 ) {
-    val handleThickness = 48.dp
-    val indicatorSize = 14.dp
+    val handleThickness = ExtraBiggerSpacing
+    val indicatorSize = LargeSpacing
     
     val touchAreaModifier = when (alignment) {
         Alignment.TopCenter, Alignment.BottomCenter -> {
@@ -61,12 +64,12 @@ fun BoxScope.WidgetEditBorder(
                     x = when (alignment) {
                         Alignment.CenterStart -> -indicatorSize / 2
                         Alignment.CenterEnd -> indicatorSize / 2
-                        else -> 0.dp
+                        else -> NoSpacing
                     },
                     y = when (alignment) {
                         Alignment.TopCenter -> -indicatorSize / 2
                         Alignment.BottomCenter -> indicatorSize / 2
-                        else -> 0.dp
+                        else -> NoSpacing
                     }
                 )
                 .size(indicatorSize)

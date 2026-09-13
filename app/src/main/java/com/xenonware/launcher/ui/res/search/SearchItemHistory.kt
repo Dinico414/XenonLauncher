@@ -33,9 +33,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
+import com.xenon.mylibrary.values.ExtraBigSpacing
+import com.xenon.mylibrary.values.ExtraLargerPadding
+import com.xenon.mylibrary.values.IconSizeMedium
+import com.xenon.mylibrary.values.LargeMediumPadding
+import com.xenon.mylibrary.values.LargestSpacer
+import com.xenon.mylibrary.values.MediumLargeCornerRadius
 import com.xenonware.launcher.model.SearchHistoryEntry
 import com.xenonware.launcher.model.SearchHistoryType
 import com.xenonware.launcher.ui.res.ContactAvatar
@@ -47,19 +52,19 @@ fun SearchHistoryItem(entry: SearchHistoryEntry, onClick: (SearchHistoryEntry) -
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick(entry) }
-            .padding(12.dp)
+            .padding(LargeMediumPadding)
     ) {
         Icon(
             Icons.Rounded.History,
             contentDescription = null,
             tint = colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-            modifier = Modifier.size(24.dp)
+            modifier = Modifier.size(ExtraLargerPadding)
         )
         
-        Spacer(Modifier.width(16.dp))
+        Spacer(Modifier.width(LargestSpacer))
 
         if (entry.type == SearchHistoryType.CONTACT || entry.type == SearchHistoryType.FILE) {
-            Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier.size(ExtraBigSpacing), contentAlignment = Alignment.Center) {
                 when (entry.type) {
                     SearchHistoryType.CONTACT -> {
                         if (!entry.iconUri.isNullOrEmpty()) {
@@ -87,15 +92,15 @@ fun SearchHistoryItem(entry: SearchHistoryEntry, onClick: (SearchHistoryEntry) -
                         val (fileIcon, bgColor) = fileTypeInfo
 
                         Surface(
-                            modifier = Modifier.size(40.dp),
-                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.size(ExtraBigSpacing),
+                            shape = RoundedCornerShape(MediumLargeCornerRadius),
                             color = bgColor.copy(alpha = 0.8f)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     fileIcon,
                                     contentDescription = null,
-                                    modifier = Modifier.size(24.dp),
+                                    modifier = Modifier.size(IconSizeMedium),
                                     tint = if (bgColor == colorScheme.surfaceContainerHighest) colorScheme.onSurfaceVariant else Color.White
                                 )
                             }
@@ -103,7 +108,7 @@ fun SearchHistoryItem(entry: SearchHistoryEntry, onClick: (SearchHistoryEntry) -
                     }
                 }
             }
-            Spacer(Modifier.width(16.dp))
+            Spacer(Modifier.width(LargestSpacer))
         }
 
         Column {

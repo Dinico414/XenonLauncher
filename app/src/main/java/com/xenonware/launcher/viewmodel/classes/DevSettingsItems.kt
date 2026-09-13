@@ -40,7 +40,10 @@ import com.xenon.mylibrary.res.SettingsTile
 import com.xenon.mylibrary.res.SettingsTileContext
 import com.xenon.mylibrary.res.XenonDialog
 import com.xenon.mylibrary.res.XenonIcon
+import com.xenon.mylibrary.values.LargeMediumPadding
 import com.xenon.mylibrary.values.LargestPadding
+import com.xenon.mylibrary.values.MediumPadding
+import com.xenon.mylibrary.values.SmallSpacing
 import com.xenonware.launcher.R
 import com.xenonware.launcher.viewmodel.DevSettingsViewModel
 import com.xenonware.launcher.viewmodel.SettingsViewModel
@@ -83,13 +86,13 @@ fun DevSettingsItems(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 8.dp)
-                        .padding(horizontal = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                        .padding(bottom = MediumPadding)
+                        .padding(horizontal = LargeMediumPadding),
+                    verticalArrangement = Arrangement.spacedBy(SmallSpacing)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        horizontalArrangement = Arrangement.spacedBy(SmallSpacing)
                     ) {
                         TextButton(
                             onClick = {
@@ -101,7 +104,7 @@ fun DevSettingsItems(
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                horizontalArrangement = Arrangement.spacedBy(SmallSpacing)
                             ) {
                                 XenonIcon(Icons.Rounded.Description).Render(Modifier)
                                 Text(stringResource(R.string.view))
@@ -115,7 +118,7 @@ fun DevSettingsItems(
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                horizontalArrangement = Arrangement.spacedBy(SmallSpacing)
                             ) {
                                 XenonIcon(Icons.Rounded.Share).Render(Modifier)
                                 Text(stringResource(R.string.share))
@@ -130,7 +133,7 @@ fun DevSettingsItems(
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                horizontalArrangement = Arrangement.spacedBy(SmallSpacing)
                             ) {
                                 XenonIcon(Icons.Rounded.Delete).Render(Modifier)
                                 Text(stringResource(R.string.clear))
@@ -145,7 +148,7 @@ fun DevSettingsItems(
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            horizontalArrangement = Arrangement.spacedBy(SmallSpacing)
                         ) {
                             Icon(Icons.Rounded.Email, null, modifier = Modifier.size(18.dp))
                             Text(stringResource(R.string.contact_developer))
@@ -165,7 +168,7 @@ fun DevSettingsItems(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 8.dp),
+                        .padding(bottom = MediumPadding),
                     horizontalArrangement = Arrangement.Center
                 ) {
                     TextButton(
@@ -206,7 +209,7 @@ fun DevSettingsItems(
                 Text(
                     text = currentCrashLog,
                     style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(8.dp)
+                    modifier = Modifier.padding(MediumPadding)
                 )
             }}
         }
@@ -227,7 +230,7 @@ fun DevSettingsItems(
                     Text(
                         text = currentMediaDump,
                         style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(8.dp)
+                        modifier = Modifier.padding(MediumPadding)
                     )
                 }
             }

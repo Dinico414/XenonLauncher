@@ -13,9 +13,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.xenon.mylibrary.res.XenonDialog
+import com.xenon.mylibrary.values.LargeMediumCornerRadius
 import com.xenonware.launcher.R
 
 @Composable
@@ -48,7 +48,7 @@ fun LinkInputDialog(
                 placeholder = { Text("https://...") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(LargeMediumCornerRadius)
             )
         }
     }

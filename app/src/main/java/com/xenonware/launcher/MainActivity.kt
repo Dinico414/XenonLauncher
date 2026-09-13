@@ -9,7 +9,6 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
-import android.provider.Settings
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -73,11 +72,9 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import com.xenon.mylibrary.res.AnimatedGradientBackground
-import com.xenonware.launcher.ui.theme.mainFontFamily
-import com.xenonware.launcher.accessibility.XenonAccessibilityService
+import com.xenon.mylibrary.values.NoSpacing
 import com.xenonware.launcher.data.SharedPreferenceManager
 import com.xenonware.launcher.model.FabAction
 import com.xenonware.launcher.ui.layouts.main.AppDrawer
@@ -91,6 +88,7 @@ import com.xenonware.launcher.ui.theme.FontAxes
 import com.xenonware.launcher.ui.theme.FontType
 import com.xenonware.launcher.ui.theme.ScreenEnvironment
 import com.xenonware.launcher.ui.theme.createCustomFontFamily
+import com.xenonware.launcher.ui.theme.mainFontFamily
 import com.xenonware.launcher.util.DragHandler
 import com.xenonware.launcher.util.WindowBlurBehind
 import com.xenonware.launcher.util.rememberBlurAvailable
@@ -590,7 +588,7 @@ fun LauncherScreen(
     val blurAvailable = rememberBlurAvailable() && blurSetting && !showBootWelcome
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
-    val isImeVisible = WindowInsets.ime.asPaddingValues().calculateBottomPadding() > 0.dp
+    val isImeVisible = WindowInsets.ime.asPaddingValues().calculateBottomPadding() > NoSpacing
 
     val iconShape by viewModel.drawerIconShape.collectAsState()
     val showShadow by viewModel.drawerIconShadow.collectAsState()

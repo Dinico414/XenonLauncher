@@ -107,6 +107,28 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
+import com.xenon.mylibrary.values.BiggestSpacing
+import com.xenon.mylibrary.values.ExtraBigSpacing
+import com.xenon.mylibrary.values.ExtraLargerCornerRadius
+import com.xenon.mylibrary.values.ExtraLargerSpacing
+import com.xenon.mylibrary.values.ExtraLargestSpacing
+import com.xenon.mylibrary.values.IconSizeSmallest
+import com.xenon.mylibrary.values.LargeMediumCornerRadius
+import com.xenon.mylibrary.values.LargeMediumPadding
+import com.xenon.mylibrary.values.LargeMediumSpacer
+import com.xenon.mylibrary.values.LargestCornerRadius
+import com.xenon.mylibrary.values.LargestPadding
+import com.xenon.mylibrary.values.LargestSpacing
+import com.xenon.mylibrary.values.MediumCornerRadius
+import com.xenon.mylibrary.values.MediumIconSize
+import com.xenon.mylibrary.values.MediumLargeSpacing
+import com.xenon.mylibrary.values.MediumPadding
+import com.xenon.mylibrary.values.MediumSmallerCornerRadius
+import com.xenon.mylibrary.values.MediumSpacer
+import com.xenon.mylibrary.values.MediumSpacing
+import com.xenon.mylibrary.values.SmallPadding
+import com.xenon.mylibrary.values.SmallSpacing
+import com.xenon.mylibrary.values.SmallerCornerRadius
 import com.xenonware.launcher.R
 import com.xenonware.launcher.notification.LauncherNotification
 import com.xenonware.launcher.notification.LauncherNotificationAction
@@ -185,8 +207,8 @@ fun NotificationItem(
         derivedStateOf { (abs(offsetX.value) / dismissThreshold).coerceIn(0f, 1f) }
     }
 
-    val largeRadius = 24.dp
-    val smallRadius = 6.dp
+    val largeRadius = ExtraLargerCornerRadius
+    val smallRadius = MediumSmallerCornerRadius
 
     val currentOffsetAbove by rememberUpdatedState(offsetAbove)
     val currentOffsetBelow by rememberUpdatedState(offsetBelow)
@@ -362,7 +384,7 @@ fun NotificationItem(
             onClick = onOpen,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = LargestPadding)
                 .offset { IntOffset(offsetX.value.roundToInt(), 0) }
                 .blockHorizontalPagerSwipe()
                 // Raw pointer handling instead of Modifier.draggable: the horizontal
@@ -403,10 +425,10 @@ fun NotificationItem(
             shape = mainShape,
             color = colorScheme.surfaceBright.copy(alpha = 0.8f),
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(LargestPadding)) {
                 Row(
                     verticalAlignment = Alignment.Top,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(LargeMediumSpacer),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     val iconToDraw = notification.icon
@@ -429,15 +451,15 @@ fun NotificationItem(
 
                             Box(
                                 modifier = Modifier
-                                    .size(40.dp)
-                                    .background(finalAppColor, RoundedCornerShape(12.dp)),
+                                    .size(ExtraBigSpacing)
+                                    .background(finalAppColor, RoundedCornerShape(LargeMediumCornerRadius)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 if (iconBitmap != null) {
                                     Image(
                                         bitmap = iconBitmap,
                                         contentDescription = null,
-                                        modifier = Modifier.size(24.dp),
+                                        modifier = Modifier.size(ExtraLargerSpacing),
                                         colorFilter = ColorFilter.tint(finalContrastColor)
                                     )
                                 }
@@ -448,7 +470,7 @@ fun NotificationItem(
                     Column(
                         modifier = Modifier
                             .weight(1f)
-                            .heightIn(min = 40.dp),
+                            .heightIn(min = ExtraBigSpacing),
                         verticalArrangement = Arrangement.Center
                     ) {
                         val hasTitle = !notification.title.isNullOrBlank()
@@ -485,7 +507,7 @@ fun NotificationItem(
                             Image(
                                 bitmap = senderBitmap,
                                 contentDescription = null,
-                                modifier = Modifier.size(40.dp),
+                                modifier = Modifier.size(ExtraBigSpacing),
                                 contentScale = ContentScale.Crop
                             )
                         }
@@ -505,8 +527,8 @@ fun NotificationItem(
                                 bitmap = thumbnailBitmap,
                                 contentDescription = null,
                                 modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(RoundedCornerShape(8.dp))
+                                    .size(ExtraBigSpacing)
+                                    .clip(RoundedCornerShape(MediumCornerRadius))
                                     .background(colorScheme.surfaceContainer),
                                 contentScale = ContentScale.Crop
                             )
@@ -517,7 +539,7 @@ fun NotificationItem(
                     Column(
                         horizontalAlignment = Alignment.End,
                         verticalArrangement = Arrangement.Center,
-                        modifier = Modifier.height(40.dp)
+                        modifier = Modifier.height(ExtraBigSpacing)
                     ) {
                         val hasTitle = !notification.title.isNullOrBlank()
                         val displayText = if (hasTitle) notification.text else null
@@ -532,13 +554,13 @@ fun NotificationItem(
                         if (canExpand) {
                             Surface(
                                 onClick = { expanded = !expanded },
-                                shape = RoundedCornerShape(8.dp),
+                                shape = RoundedCornerShape(MediumCornerRadius),
                                 color = colorScheme.surfaceContainerHighest,
-                                modifier = Modifier.height(26.dp)
+                                modifier = Modifier.height(ExtraLargestSpacing)
                             ) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(horizontal = 8.dp)
+                                    modifier = Modifier.padding(horizontal = MediumPadding)
                                 ) {
                                     Text(
                                         text = formatNotificationTime(notification.postTime, context),
@@ -550,7 +572,7 @@ fun NotificationItem(
                                         imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
                                         contentDescription = if (expanded) stringResource(R.string.collapse) else stringResource(R.string.expand),
                                         tint = colorScheme.onSurface.copy(alpha = 0.6f),
-                                        modifier = Modifier.size(16.dp)
+                                        modifier = Modifier.size(IconSizeSmallest)
                                     )
                                 }
                             }
@@ -576,7 +598,7 @@ fun NotificationItem(
                         fontSize = 13.sp,
                         maxLines = if (expanded) 10 else 2,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 4.dp) // Starts at the very beginning
+                        modifier = Modifier.padding(top = SmallPadding) // Starts at the very beginning
                     )
                 }
 
@@ -595,7 +617,7 @@ fun NotificationItem(
                     if (mediaBitmap != null) {
                         Box(
                             modifier = Modifier
-                                .padding(top = 12.dp)
+                                .padding(top = LargeMediumPadding)
                                 .fillMaxWidth(),
                             contentAlignment = Alignment.CenterStart
                         ) {
@@ -603,7 +625,7 @@ fun NotificationItem(
                                 bitmap = mediaBitmap,
                                 contentDescription = null,
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(12.dp))
+                                    .clip(RoundedCornerShape(LargeMediumCornerRadius))
                                     .background(colorScheme.surfaceContainer)
                                     .then(
                                         if (aspectRatio < 1f) {
@@ -626,7 +648,7 @@ fun NotificationItem(
                     enter = fadeIn() + expandVertically(animationSpec = spring(stiffness = 800f)),
                     exit = fadeOut() + shrinkVertically(animationSpec = spring(stiffness = 800f))
                 ) {
-                    Column(modifier = Modifier.padding(top = 16.dp)) {
+                    Column(modifier = Modifier.padding(top = LargestPadding)) {
 
                         AnimatedVisibility(
                             visible = selectedActionForReply != null,
@@ -650,10 +672,10 @@ fun NotificationItem(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(bottom = 12.dp)
+                                    .padding(bottom = LargeMediumPadding)
                                     .nestedScroll(keyboardScrollBlocker),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                horizontalArrangement = Arrangement.spacedBy(MediumSpacer)
                             ) {
                                 val replyScrollState = rememberScrollState()
                                 val replyInteractionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
@@ -664,8 +686,8 @@ fun NotificationItem(
                                     modifier = Modifier
                                         .weight(1f)
                                         .focusRequester(focusRequester)
-                                        .padding(vertical = 4.dp) // Small buffer so clip doesn't cut text
-                                        .clip(RoundedCornerShape(16.dp))
+                                        .padding(vertical = SmallPadding) // Small buffer so clip doesn't cut text
+                                        .clip(RoundedCornerShape(LargestCornerRadius))
                                         .drawTextFieldScrollbar(replyScrollState, colorScheme.primary),
                                     textStyle = MaterialTheme.typography.bodyMedium.copy(color = colorScheme.onSurface),
                                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
@@ -687,7 +709,7 @@ fun NotificationItem(
                                             focusedIndicatorColor = Color.Transparent,
                                             unfocusedIndicatorColor = Color.Transparent
                                         ),
-                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                                        contentPadding = PaddingValues(horizontal = LargeMediumPadding, vertical = MediumPadding),
                                         container = {
                                             TextFieldDefaults.Container(
                                                 enabled = true,
@@ -699,7 +721,7 @@ fun NotificationItem(
                                                     focusedIndicatorColor = Color.Transparent,
                                                     unfocusedIndicatorColor = Color.Transparent
                                                 ),
-                                                shape = RoundedCornerShape(16.dp)
+                                                shape = RoundedCornerShape(LargestCornerRadius)
                                             )
                                         }
                                     )
@@ -709,7 +731,7 @@ fun NotificationItem(
                                     onClick = { sendReply() },
                                     shape = CircleShape,
                                     color = finalAppColor,
-                                    modifier = Modifier.size(40.dp),
+                                    modifier = Modifier.size(ExtraBigSpacing),
                                     enabled = replyState.text.isNotEmpty()
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
@@ -717,7 +739,7 @@ fun NotificationItem(
                                             imageVector = Icons.AutoMirrored.Rounded.Send,
                                             contentDescription = stringResource(R.string.send),
                                             tint = finalContrastColor,
-                                            modifier = Modifier.size(24.dp).padding(start = 3.dp)
+                                            modifier = Modifier.size(MediumIconSize).padding(start = 3.dp)
                                         )
                                     }
                                 }
@@ -752,7 +774,7 @@ fun NotificationItem(
                                 .fillMaxWidth()
                                 .nestedScroll(blockPagerScrollActions)
                                 .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(MediumSpacer)
                         ) {
                             notification.actions.forEach { action ->
                                 Surface(
@@ -781,12 +803,12 @@ fun NotificationItem(
                                             }
                                         }
                                     },
-                                    shape = RoundedCornerShape(12.dp),
+                                    shape = RoundedCornerShape(LargeMediumCornerRadius),
                                     color = if (selectedActionForReply == action) finalAppColor else Color.Transparent,
-                                    modifier = Modifier.height(32.dp)
+                                    modifier = Modifier.height(BiggestSpacing)
                                 ) {
                                     Box(
-                                        modifier = Modifier.padding(horizontal = 12.dp),
+                                        modifier = Modifier.padding(horizontal = LargeMediumPadding),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Text(
@@ -819,9 +841,9 @@ fun Modifier.drawTextFieldScrollbar(
 
         drawRoundRect(
             color = color.copy(alpha = 0.5f),
-            topLeft = Offset(size.width - 10.dp.toPx(), scrollbarOffset + 4.dp.toPx()),
-            size = Size(4.dp.toPx(), (scrollbarHeight - 8.dp.toPx()).coerceAtLeast(16.dp.toPx())),
-            cornerRadius = CornerRadius(2.dp.toPx())
+            topLeft = Offset(size.width - MediumLargeSpacing.toPx(), scrollbarOffset + SmallSpacing.toPx()),
+            size = Size(SmallSpacing.toPx(), (scrollbarHeight - MediumSpacing.toPx()).coerceAtLeast(LargestSpacing.toPx())),
+            cornerRadius = CornerRadius(SmallerCornerRadius.toPx())
         )
     }
 }

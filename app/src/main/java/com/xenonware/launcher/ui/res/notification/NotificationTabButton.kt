@@ -57,11 +57,18 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
-import com.xenonware.launcher.ui.theme.mainFontFamily
+import com.xenon.mylibrary.values.ExtraBigSpacing
+import com.xenon.mylibrary.values.ExtraLargeCornerRadius
+import com.xenon.mylibrary.values.ExtraLargeSpacing
+import com.xenon.mylibrary.values.LargeMediumCornerRadius
+import com.xenon.mylibrary.values.MediumLargePadding
+import com.xenon.mylibrary.values.MediumSmallSpacer
+import com.xenon.mylibrary.values.SmallCornerRadius
+import com.xenon.mylibrary.values.SmallIconSize
 import com.xenonware.launcher.model.AppInfo
+import com.xenonware.launcher.ui.theme.mainFontFamily
 import com.xenonware.launcher.util.ColorUtils
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -113,9 +120,9 @@ fun NotificationTabButton(
 
     val cornerRadius by animateDpAsState(
         targetValue = when {
-            isDragging || isPressed -> 4.dp
-            isSelected -> 12.dp
-            else -> 20.dp
+            isDragging || isPressed -> SmallCornerRadius
+            isSelected -> LargeMediumCornerRadius
+            else -> ExtraLargeCornerRadius
         },
         label = "corner_radius"
     )
@@ -136,7 +143,7 @@ fun NotificationTabButton(
         shape = RoundedCornerShape(cornerRadius),
         color = if (isDragging) backgroundColor.copy(alpha = 0.9f) else backgroundColor,
         modifier = modifier
-            .height(40.dp)
+            .height(ExtraBigSpacing)
             .onGloballyPositioned { 
                 itemPos = it.positionInRoot()
                 itemSize = it.size
@@ -195,7 +202,7 @@ fun NotificationTabButton(
     ) {
         Row(
             modifier = Modifier
-                .padding(horizontal = 10.dp)
+                .padding(horizontal = MediumLargePadding)
                 .fillMaxHeight(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
@@ -211,7 +218,7 @@ fun NotificationTabButton(
                         imageVector = overrideIcon,
                         contentDescription = null,
                         modifier = Modifier
-                            .size(20.dp)
+                            .size(SmallIconSize)
                             .scale(iconScale.value),
                         tint = iconColor
                     )
@@ -228,7 +235,7 @@ fun NotificationTabButton(
                             bitmap = iconBitmap,
                             contentDescription = null,
                             modifier = Modifier
-                                .size(20.dp)
+                                .size(ExtraLargeSpacing)
                                 .scale(iconScale.value),
                             colorFilter = ColorFilter.tint(iconColor)
                         )
@@ -237,7 +244,7 @@ fun NotificationTabButton(
                             imageVector = Icons.Rounded.Apps,
                             contentDescription = null,
                             modifier = Modifier
-                                .size(20.dp)
+                                .size(SmallIconSize)
                                 .scale(iconScale.value),
                             tint = iconColor
                         )
@@ -251,7 +258,7 @@ fun NotificationTabButton(
                 exit = fadeOut() + shrinkHorizontally()
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Spacer(Modifier.width(6.dp))
+                    Spacer(Modifier.width(MediumSmallSpacer))
                     Text(
                         text = if (notificationCount > 99) "99+" else notificationCount.toString(),
                         color = iconColor,

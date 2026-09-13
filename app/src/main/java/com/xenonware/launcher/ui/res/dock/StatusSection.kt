@@ -80,9 +80,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.xenonware.launcher.ui.theme.mainFontFamily
+import com.xenon.mylibrary.values.ExtraLargeSpacing
+import com.xenon.mylibrary.values.LargeSpacing
+import com.xenon.mylibrary.values.MediumIconSize
+import com.xenon.mylibrary.values.MediumSpacer
+import com.xenon.mylibrary.values.SmallIconSize
+import com.xenon.mylibrary.values.SmallerStroke
+import com.xenon.mylibrary.values.SmallestStroke
 import com.xenonware.launcher.R
 import com.xenonware.launcher.ui.res.Glancly
+import com.xenonware.launcher.ui.theme.mainFontFamily
 import kotlinx.coroutines.delay
 import kotlin.math.PI
 import kotlin.math.cos
@@ -202,7 +209,7 @@ fun StatusSection(
     )
 
     val strokeWidth by animateDpAsState(
-        targetValue = if (isExpanded) 2.dp else 1.dp, label = "strokeWidth"
+        targetValue = if (isExpanded) SmallerStroke else SmallestStroke, label = "strokeWidth"
     )
 
     val chargingAlpha by animateFloatAsState(
@@ -271,7 +278,7 @@ fun StatusSection(
         shape = DockSectionShape,
         color = backgroundColor,
         contentColor = contentColor,
-        border = BorderStroke(1.dp, colorScheme.onSurface.copy(alpha = 0.15f))
+        border = BorderStroke(SmallestStroke, colorScheme.onSurface.copy(alpha = 0.15f))
     ) {
         Box(
             modifier = Modifier
@@ -443,7 +450,7 @@ fun StatusSection(
                                         Icons.Rounded.Notifications,
                                         null,
                                         modifier = Modifier
-                                            .size(20.dp)
+                                            .size(SmallIconSize)
                                             .graphicsLayer {
                                                 rotationZ = bellRotation
                                                 transformOrigin = TransformOrigin(0.5f, 0.25f)
@@ -456,7 +463,7 @@ fun StatusSection(
                                         Icons.Rounded.ElectricBolt,
                                         null,
                                         modifier = Modifier
-                                            .size(20.dp)
+                                            .size(SmallIconSize)
                                             .offset {
                                                 IntOffset(
                                                     flashOffset.dp.toPx().roundToInt(),
@@ -479,7 +486,7 @@ fun StatusSection(
                                     Icon(
                                         Icons.Rounded.Info,
                                         null,
-                                        modifier = Modifier.size(24.dp)
+                                        modifier = Modifier.size(MediumIconSize)
                                     )
                                 }
                             }
@@ -506,7 +513,7 @@ fun StatusCounters(
 ) {
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
+        verticalArrangement = Arrangement.spacedBy(MediumSpacer, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         if (weatherIcon != null) {
@@ -533,13 +540,13 @@ fun WeatherCounterIcon(
     Surface(
         color = colorScheme.secondaryContainer,
         shape = CircleShape,
-        modifier = modifier.requiredSize(20.dp)
+        modifier = modifier.requiredSize(ExtraLargeSpacing)
     ) {
         Box(contentAlignment = Alignment.Center) {
             Image(
                 painter = painterResource(id = iconRes),
                 contentDescription = null,
-                modifier = Modifier.size(14.dp)
+                modifier = Modifier.size(LargeSpacing)
             )
         }
     }
@@ -557,7 +564,7 @@ fun NotificationCounterBadge(
     Surface(
         color = color,
         shape = CircleShape,
-        modifier = modifier.requiredSize(20.dp)
+        modifier = modifier.requiredSize(ExtraLargeSpacing)
     ) {
         Box(contentAlignment = Alignment.Center) {
             Text(
@@ -595,7 +602,7 @@ fun CalendarCounterIcon(
 
     Canvas(
         modifier = modifier
-            .requiredSize(20.dp)
+            .requiredSize(ExtraLargeSpacing)
             .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
     ) {
         val w = size.width

@@ -140,7 +140,35 @@ import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import com.xenon.mylibrary.res.MenuItem
 import com.xenon.mylibrary.res.XenonDropDown
-import com.xenonware.launcher.ui.theme.mainFontFamily
+import com.xenon.mylibrary.values.BigSpacing
+import com.xenon.mylibrary.values.BiggerSpacing
+import com.xenon.mylibrary.values.BiggestSpacing
+import com.xenon.mylibrary.values.ExtraBigSpacing
+import com.xenon.mylibrary.values.ExtraBiggerSpacing
+import com.xenon.mylibrary.values.ExtraLargeSpacing
+import com.xenon.mylibrary.values.ExtraLargerPadding
+import com.xenon.mylibrary.values.ExtraLargerSpacing
+import com.xenon.mylibrary.values.ExtraLargestSpacing
+import com.xenon.mylibrary.values.HugeBiggerSpacing
+import com.xenon.mylibrary.values.HugerSpacing
+import com.xenon.mylibrary.values.HugestSpacing
+import com.xenon.mylibrary.values.LargeMediumCornerRadius
+import com.xenon.mylibrary.values.LargeMediumSpacer
+import com.xenon.mylibrary.values.LargeMediumSpacing
+import com.xenon.mylibrary.values.LargestPadding
+import com.xenon.mylibrary.values.LargestSpacing
+import com.xenon.mylibrary.values.MassiveCornerRadius
+import com.xenon.mylibrary.values.MediumSpacing
+import com.xenon.mylibrary.values.NoPadding
+import com.xenon.mylibrary.values.NoSpacing
+import com.xenon.mylibrary.values.SmallCornerRadius
+import com.xenon.mylibrary.values.SmallPadding
+import com.xenon.mylibrary.values.SmallSpacing
+import com.xenon.mylibrary.values.SmallerCornerRadius
+import com.xenon.mylibrary.values.SmallerElevation
+import com.xenon.mylibrary.values.SmallerPadding
+import com.xenon.mylibrary.values.SmallerSpacer
+import com.xenon.mylibrary.values.SmallestSpacing
 import com.xenonware.launcher.R
 import com.xenonware.launcher.accessibility.XenonAccessibilityService
 import com.xenonware.launcher.model.AppInfo
@@ -149,6 +177,7 @@ import com.xenonware.launcher.ui.res.dock.StatusCounters
 import com.xenonware.launcher.ui.res.notification.ChronoCluster
 import com.xenonware.launcher.ui.res.notification.NotificationItem
 import com.xenonware.launcher.ui.res.notification.NotificationTabButton
+import com.xenonware.launcher.ui.theme.mainFontFamily
 import com.xenonware.launcher.util.ColorUtils
 import com.xenonware.launcher.util.blockHorizontalPagerSwipe
 import com.xenonware.launcher.util.shouldDisableLandscapeLayout
@@ -312,10 +341,10 @@ fun NotificationPage(
     val disableLandscape = shouldDisableLandscapeLayout(context)
     val useLandscapeLayout = isLandscape && !disableLandscape
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val topPadding = if (statusBarHeight < 16.dp) {16.dp - statusBarHeight} else {0.dp}
+    val topPadding = if (statusBarHeight < LargestSpacing) {LargestPadding - statusBarHeight} else { NoPadding }
     val navBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     // 72dp (dock) + 8dp (dock padding) + 8dp (gap) + 4dp (to match widget vertical padding)
-    val dockAreaHeight = 72.dp + navBarHeight + 8.dp + 8.dp + 4.dp
+    val dockAreaHeight = HugeBiggerSpacing + navBarHeight + MediumSpacing + MediumSpacing + SmallSpacing
 
     // --- Keyboard-aware lift for the notification being replied to ---
 
@@ -326,7 +355,7 @@ fun NotificationPage(
     val hasHardwareKeyboard = configuration.keyboard != Configuration.KEYBOARD_NOKEYS &&
             configuration.hardKeyboardHidden == Configuration.HARDKEYBOARDHIDDEN_NO
 
-    val gapPx = with(density) { 16.dp.toPx() }
+    val gapPx = with(density) { LargestSpacing.toPx() }
     val minTopPx = with(density) { (statusBarHeight + topPadding).toPx() }
     val dockAreaPx = with(density) { dockAreaHeight.toPx() }
 
@@ -472,7 +501,7 @@ fun NotificationPage(
                             .weight(1f)
                             .fillMaxHeight()
                             .then(wholeScreenOffset)
-                            .padding(horizontal = 24.dp)
+                            .padding(horizontal = ExtraLargerPadding)
                             .onGloballyPositioned { atAGlanceSectionPos = it.positionInRoot() }
                             .combinedClickable(
                                 interactionSource = remember { MutableInteractionSource() },
@@ -551,14 +580,14 @@ fun NotificationPage(
                                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                     Column(
                                         horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                                        verticalArrangement = Arrangement.spacedBy(LargeMediumSpacer)
                                     ) {
                                         if (emptyIcon != null) {
                                             Icon(
                                                 imageVector = emptyIcon,
                                                 contentDescription = null,
                                                 tint = baseColor.copy(alpha = 0.8f),
-                                                modifier = Modifier.size(64.dp)
+                                                modifier = Modifier.size(HugerSpacing)
                                             )
                                         }
                                         if (emptyMessage.isNotEmpty()) {
@@ -579,13 +608,13 @@ fun NotificationPage(
                                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                     Column(
                                         horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                                        verticalArrangement = Arrangement.spacedBy(LargeMediumSpacer)
                                     ) {
                                         Icon(
                                             imageVector = if (allMuted) Icons.Rounded.NotificationsOff else Icons.Rounded.NotificationsActive,
                                             contentDescription = null,
                                             tint = baseColor.copy(alpha = 0.8f),
-                                            modifier = Modifier.size(64.dp)
+                                            modifier = Modifier.size(HugerSpacing)
                                         )
                                         Text(
                                             text = if (allMuted) stringResource(R.string.notification_message_no_notification) else pluralStringResource(R.plurals.notification_count, notificationCount, notificationCount),
@@ -607,7 +636,7 @@ fun NotificationPage(
                                         .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
                                         .drawWithContent {
                                             drawContent()
-                                            val fadeHeight = 16.dp.toPx()
+                                            val fadeHeight = LargestSpacing.toPx()
                                             drawRect(
                                                 brush = Brush.verticalGradient(
                                                     0f to Color.Transparent,
@@ -624,8 +653,8 @@ fun NotificationPage(
                                             )
                                         }
                                         .drawVerticalScrollbar(landscapeListState, MaterialTheme.colorScheme.primary),
-                                    verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.Bottom),
-                                    contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
+                                    verticalArrangement = Arrangement.spacedBy(SmallerSpacer, Alignment.Bottom),
+                                    contentPadding = PaddingValues(top = LargestPadding, bottom = LargestPadding)
                                 ) {
                                     itemsIndexed(mutedNotifications, key = { _, it -> it.key }) { index, notification ->
                                         val app = apps.find { it.packageName == notification.packageName }
@@ -676,7 +705,7 @@ fun NotificationPage(
                                         .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
                                         .drawWithContent {
                                             drawContent()
-                                            val fadeHeight = 16.dp.toPx()
+                                            val fadeHeight = LargestSpacing.toPx()
                                             drawRect(
                                                 brush = Brush.verticalGradient(
                                                     0f to Color.Transparent,
@@ -693,8 +722,8 @@ fun NotificationPage(
                                             )
                                         }
                                         .drawVerticalScrollbar(landscapeListState, MaterialTheme.colorScheme.primary),
-                                    verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.Bottom),
-                                    contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
+                                    verticalArrangement = Arrangement.spacedBy(SmallerSpacer, Alignment.Bottom),
+                                    contentPadding = PaddingValues(top = LargestPadding, bottom = LargestPadding)
                                 ) {
                                     itemsIndexed(permanentNotifications, key = { _, it -> it.key }) { index, notification ->
                                         val app = apps.find { it.packageName == notification.packageName }
@@ -754,7 +783,7 @@ fun NotificationPage(
                                         .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
                                         .drawWithContent {
                                             drawContent()
-                                            val fadeHeight = 16.dp.toPx()
+                                            val fadeHeight = LargestSpacing.toPx()
                                             drawRect(
                                                 brush = Brush.verticalGradient(
                                                     0f to Color.Transparent,
@@ -771,8 +800,8 @@ fun NotificationPage(
                                             )
                                         }
                                         .drawVerticalScrollbar(landscapeListState, MaterialTheme.colorScheme.primary),
-                                    verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.Bottom),
-                                    contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
+                                    verticalArrangement = Arrangement.spacedBy(SmallerSpacer, Alignment.Bottom),
+                                    contentPadding = PaddingValues(top = LargestPadding, bottom = LargestPadding)
                                 ) {
                                     groupedByApp.forEachIndexed { groupIndex, notificationsInGroup ->
                                         itemsIndexed(notificationsInGroup, key = { _, it -> it.key }) { indexInGroup, notification ->
@@ -805,7 +834,7 @@ fun NotificationPage(
                                                         fadeOutSpec = tween(durationMillis = 120)
                                                     )
                                                     .then(
-                                                        if (isLast && !isLastGroup) Modifier.padding(bottom = 2.dp) else Modifier
+                                                        if (isLast && !isLastGroup) Modifier.padding(bottom = SmallerPadding) else Modifier
                                                     ),
                                                 onOpen = {
                                                     try {
@@ -837,7 +866,7 @@ fun NotificationPage(
                                         .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
                                         .drawWithContent {
                                             drawContent()
-                                            val fadeHeight = 16.dp.toPx()
+                                            val fadeHeight = LargestSpacing.toPx()
                                             drawRect(
                                                 brush = Brush.verticalGradient(
                                                     0f to Color.Transparent,
@@ -854,8 +883,8 @@ fun NotificationPage(
                                             )
                                         }
                                         .drawVerticalScrollbar(landscapeListState, MaterialTheme.colorScheme.primary),
-                                    verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.Bottom),
-                                    contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
+                                    verticalArrangement = Arrangement.spacedBy(SmallerSpacer, Alignment.Bottom),
+                                    contentPadding = PaddingValues(top = LargestPadding, bottom = LargestPadding)
                                 ) {
                                     val notificationsInGroup = groupedNotifications[pkg]?.reversed() ?: emptyList()
                                     itemsIndexed(notificationsInGroup, key = { _, it -> it.key }) { index, notification ->
@@ -936,8 +965,8 @@ fun NotificationPage(
                             .fillMaxWidth()
                             .weight(0.28f)
                             .then(wholeScreenOffset)
-                            .padding(horizontal = 24.dp)
-                            .padding(top = 16.dp)
+                            .padding(horizontal = ExtraLargerPadding)
+                            .padding(top = LargestPadding)
                             .onGloballyPositioned { atAGlanceSectionPos = it.positionInRoot() }
                             .combinedClickable(
                                 interactionSource = remember { MutableInteractionSource() },
@@ -1017,14 +1046,14 @@ fun NotificationPage(
                                 ) {
                                     Column(
                                         horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                                        verticalArrangement = Arrangement.spacedBy(LargeMediumSpacer)
                                     ) {
                                         if (emptyIcon != null) {
                                             Icon(
                                                 imageVector = emptyIcon,
                                                 contentDescription = null,
                                                 tint = baseColor.copy(alpha = 0.8f),
-                                                modifier = Modifier.size(64.dp)
+                                                modifier = Modifier.size(HugerSpacing)
                                             )
                                         }
                                         if (emptyMessage.isNotEmpty()) {
@@ -1048,13 +1077,13 @@ fun NotificationPage(
                                 ) {
                                     Column(
                                         horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                                        verticalArrangement = Arrangement.spacedBy(LargeMediumSpacer)
                                     ) {
                                         Icon(
                                             imageVector = if (allMuted) Icons.Rounded.NotificationsOff else Icons.Rounded.NotificationsActive,
                                             contentDescription = null,
                                             tint = baseColor.copy(alpha = 0.8f),
-                                            modifier = Modifier.size(64.dp)
+                                            modifier = Modifier.size(HugerSpacing)
                                         )
                                         Text(
                                             text = if (allMuted) stringResource(R.string.notification_message_no_notification) else pluralStringResource(R.plurals.notification_count, notificationCount, notificationCount),
@@ -1076,7 +1105,7 @@ fun NotificationPage(
                                         .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
                                         .drawWithContent {
                                             drawContent()
-                                            val fadeHeight = 16.dp.toPx()
+                                            val fadeHeight = LargestSpacing.toPx()
                                             drawRect(
                                                 brush = Brush.verticalGradient(
                                                     0f to Color.Transparent,
@@ -1093,8 +1122,8 @@ fun NotificationPage(
                                             )
                                         }
                                         .drawVerticalScrollbar(portraitListState, MaterialTheme.colorScheme.primary),
-                                    verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.Bottom),
-                                    contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
+                                    verticalArrangement = Arrangement.spacedBy(SmallerSpacer, Alignment.Bottom),
+                                    contentPadding = PaddingValues(top = LargestPadding, bottom = LargestPadding)
                                 ) {
                                     itemsIndexed(mutedNotifications, key = { _, it -> it.key }) { index, notification ->
                                         val app = apps.find { it.packageName == notification.packageName }
@@ -1145,7 +1174,7 @@ fun NotificationPage(
                                         .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
                                         .drawWithContent {
                                             drawContent()
-                                            val fadeHeight = 16.dp.toPx()
+                                            val fadeHeight = LargestSpacing.toPx()
                                             drawRect(
                                                 brush = Brush.verticalGradient(
                                                     0f to Color.Transparent,
@@ -1162,8 +1191,8 @@ fun NotificationPage(
                                             )
                                         }
                                         .drawVerticalScrollbar(portraitListState, MaterialTheme.colorScheme.primary),
-                                    verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.Bottom),
-                                    contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
+                                    verticalArrangement = Arrangement.spacedBy(SmallerSpacer, Alignment.Bottom),
+                                    contentPadding = PaddingValues(top = LargestPadding, bottom = LargestPadding)
                                 ) {
                                     itemsIndexed(permanentNotifications, key = { _, it -> it.key }) { index, notification ->
                                         val app = apps.find { it.packageName == notification.packageName }
@@ -1223,7 +1252,7 @@ fun NotificationPage(
                                         .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
                                         .drawWithContent {
                                             drawContent()
-                                            val fadeHeight = 16.dp.toPx()
+                                            val fadeHeight = LargestSpacing.toPx()
                                             drawRect(
                                                 brush = Brush.verticalGradient(
                                                     0f to Color.Transparent,
@@ -1240,8 +1269,8 @@ fun NotificationPage(
                                             )
                                         }
                                         .drawVerticalScrollbar(portraitListState, MaterialTheme.colorScheme.primary),
-                                    verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.Bottom),
-                                    contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
+                                    verticalArrangement = Arrangement.spacedBy(SmallerSpacer, Alignment.Bottom),
+                                    contentPadding = PaddingValues(top = LargestPadding, bottom = LargestPadding)
                                 ) {
                                     groupedByApp.forEachIndexed { groupIndex, notificationsInGroup ->
                                         itemsIndexed(notificationsInGroup, key = { _, it -> it.key }) { indexInGroup, notification ->
@@ -1274,7 +1303,7 @@ fun NotificationPage(
                                                         fadeOutSpec = tween(durationMillis = 120)
                                                     )
                                                     .then(
-                                                        if (isLast && !isLastGroup) Modifier.padding(bottom = 2.dp) else Modifier
+                                                        if (isLast && !isLastGroup) Modifier.padding(bottom = SmallerPadding) else Modifier
                                                     ),
                                                 onOpen = {
                                                     try {
@@ -1306,7 +1335,7 @@ fun NotificationPage(
                                         .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
                                         .drawWithContent {
                                             drawContent()
-                                            val fadeHeight = 16.dp.toPx()
+                                            val fadeHeight = LargestPadding.toPx()
                                             drawRect(
                                                 brush = Brush.verticalGradient(
                                                     0f to Color.Transparent,
@@ -1323,8 +1352,8 @@ fun NotificationPage(
                                             )
                                         }
                                         .drawVerticalScrollbar(portraitListState, MaterialTheme.colorScheme.primary),
-                                    verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.Bottom),
-                                    contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
+                                    verticalArrangement = Arrangement.spacedBy(SmallerSpacer, Alignment.Bottom),
+                                    contentPadding = PaddingValues(top = LargestPadding, bottom = LargestPadding)
                                 ) {
                                     val notificationsInGroup = groupedNotifications[pkg]?.reversed() ?: emptyList()
                                     itemsIndexed(notificationsInGroup, key = { _, it -> it.key }) { index, notification ->
@@ -1479,9 +1508,9 @@ fun Modifier.drawVerticalScrollbar(
     if (scrollbarHeight < viewportHeight) {
         drawRoundRect(
             color = color.copy(alpha = 0.5f),
-            topLeft = Offset(size.width - 8.dp.toPx(), scrollbarOffset + 4.dp.toPx()),
-            size = Size(4.dp.toPx(), (scrollbarHeight - 8.dp.toPx()).coerceAtLeast(16.dp.toPx())),
-            cornerRadius = CornerRadius(2.dp.toPx())
+            topLeft = Offset(size.width - MediumSpacing.toPx(), scrollbarOffset + SmallSpacing.toPx()),
+            size = Size(SmallSpacing.toPx(), (scrollbarHeight - MediumSpacing.toPx()).coerceAtLeast(LargestPadding.toPx())),
+            cornerRadius = CornerRadius(SmallerCornerRadius.toPx())
         )
     }
 }
@@ -1508,7 +1537,7 @@ fun AtAGlance(
     val dateFontSize = if (isLandscape) 18.sp else 16.sp
     val eventTitleFontSize = if (isLandscape) 32.sp else 24.sp
     val subtitleFontSize = if (isLandscape) 16.sp else 14.sp
-    val spacing = if (isLandscape) 8.dp else 4.dp
+    val spacing = if (isLandscape) MediumSpacing else SmallSpacing
     val pageHeight = if (isLandscape) 80.dp else 60.dp
 
     val pagerState = rememberPagerState { calendarEvents.size + 1 }
@@ -1545,7 +1574,7 @@ fun AtAGlance(
 
     var totalDrag by remember { mutableFloatStateOf(0f) }
     var dragTriggered by remember { mutableStateOf(false) }
-    val swipeThreshold = with(LocalDensity.current) { 24.dp.toPx() }
+    val swipeThreshold = with(LocalDensity.current) { ExtraLargerSpacing.toPx() }
 
     Box(
         modifier = modifier
@@ -1654,7 +1683,7 @@ fun AtAGlance(
                             .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
                             .drawWithContent {
                                 drawContent()
-                                val fadeHeight = 8.dp.toPx()
+                                val fadeHeight = MediumSpacing.toPx()
                                 drawRect(
                                     brush = Brush.verticalGradient(
                                         0f to Color.Transparent,
@@ -1706,13 +1735,13 @@ fun AtAGlance(
                                         )
                                 ) {
                                     Box(
-                                        modifier = Modifier.size(28.dp),
+                                        modifier = Modifier.size(BigSpacing),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Image(
                                             painter = painterResource(id = iconRes),
                                             contentDescription = null,
-                                            modifier = Modifier.size(28.dp)
+                                            modifier = Modifier.size(BigSpacing)
                                         )
                                     }
 
@@ -1753,7 +1782,7 @@ fun AtAGlance(
                             val event = calendarEvents[index - 1]
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(LargeMediumSpacing),
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .combinedClickable(
@@ -1790,10 +1819,10 @@ fun AtAGlance(
 
                                 Box(
                                     modifier = Modifier
-                                        .width(8.dp)
-                                        .height(26.dp)
-                                        .shadow(elevation = 2.dp, shape = RoundedCornerShape(100.dp))
-                                        .background(pillColor, RoundedCornerShape(100.dp))
+                                        .width(MediumSpacing)
+                                        .height(ExtraLargestSpacing)
+                                        .shadow(elevation = SmallerElevation, shape = RoundedCornerShape(MassiveCornerRadius))
+                                        .background(pillColor, RoundedCornerShape(MassiveCornerRadius))
                                 )
 
                                 Column(
@@ -1817,7 +1846,7 @@ fun AtAGlance(
                                     if (needsMarquee) {
                                         val densityValue = LocalDensity.current
                                         LaunchedEffect(event.title, containerWidthPx) {
-                                            val velocityPx = with(densityValue) { 30.dp.toPx() }
+                                            val velocityPx = with(densityValue) { BiggerSpacing.toPx() }
                                             val spacingPx = containerWidthPx / 3f
                                             val scrollDistance = textWidth + spacingPx
                                             val scrollDuration = (scrollDistance / velocityPx * 1000).toLong()
@@ -1855,7 +1884,7 @@ fun AtAGlance(
                                             .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
                                             .drawWithContent {
                                                 drawContent()
-                                                val fadeWidth = 32.dp.toPx()
+                                                val fadeWidth = BiggestSpacing.toPx()
                                                 if (needsMarquee) {
                                                     // Start Fade (Left)
                                                     drawRect(
@@ -1927,15 +1956,15 @@ fun AtAGlance(
                     if (calendarEvents.isNotEmpty()) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
-                            modifier = Modifier.width(48.dp).height(84.dp)
+                            verticalArrangement = Arrangement.spacedBy(SmallSpacing, Alignment.CenterVertically),
+                            modifier = Modifier.width(ExtraBiggerSpacing).height(HugestSpacing + SmallSpacing)
                         ) {
                             Icon(
                                 imageVector = Icons.Rounded.KeyboardArrowUp,
                                 contentDescription = stringResource(R.string.scroll_up),
                                 tint = if (pagerState.currentPage > 0) baseColor.copy(alpha = 0.5f) else baseColor.copy(alpha = 0.15f),
                                 modifier = Modifier
-                                    .size(24.dp)
+                                    .size(ExtraLargerSpacing)
                                     .clickable(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = null,
@@ -1951,11 +1980,11 @@ fun AtAGlance(
                                     calendarEventCount = calendarEvents.size,
                                     calendarColor = baseColor.copy(alpha = 0.7f),
                                     calendarTextColor = if (isWallpaperDark) Color.White else Color.Black,
-                                    modifier = Modifier.padding(bottom = 4.dp)
+                                    modifier = Modifier.padding(bottom = SmallPadding)
                                 )
                             } else {
                                 Box(
-                                    modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp).height(20.dp),
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = SmallPadding).height(ExtraLargeSpacing),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
@@ -1973,7 +2002,7 @@ fun AtAGlance(
                                 contentDescription = stringResource(R.string.scroll_down),
                                 tint = if (pagerState.currentPage < calendarEvents.size) baseColor.copy(alpha = 0.5f) else baseColor.copy(alpha = 0.15f),
                                 modifier = Modifier
-                                    .size(24.dp)
+                                    .size(ExtraLargerSpacing)
                                     .clickable(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = null,
@@ -2023,11 +2052,11 @@ fun NotificationTabs(
         val context = LocalContext.current
         val notificationDeleteSinglePress by viewModel.notificationDeleteSinglePress.collectAsState()
         val containerWidth = maxWidth
-        val horizontalPadding = 16.dp
+        val horizontalPadding = LargestPadding
         val availableWidth = containerWidth - (horizontalPadding * 2)
 
         val tabCount = sortedAppPackages.size
-        val tabSpacing = 4.dp
+        val tabSpacing = SmallSpacing
         val maxVisible = 5
         val totalItems = tabCount + 1
 
@@ -2109,7 +2138,7 @@ fun NotificationTabs(
         val deleteInteractionSource = remember { MutableInteractionSource() }
         val isDeletePressed by deleteInteractionSource.collectIsPressedAsState()
         val deleteCornerRadius by animateDpAsState(
-            targetValue = if (isDeletePressed) 4.dp else 12.dp,
+            targetValue = if (isDeletePressed) SmallCornerRadius else LargeMediumCornerRadius,
             label = "delete_corner"
         )
 
@@ -2129,7 +2158,7 @@ fun NotificationTabs(
                             .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
                             .drawWithContent {
                                 drawContent()
-                                val fadeWidth = 16.dp.toPx()
+                                val fadeWidth = LargestSpacing.toPx()
                                 val contentRight = size.width - animatedItemWidth.toPx()
 
                                 if (scrollState.value > 0.5f) {
@@ -2173,7 +2202,7 @@ fun NotificationTabs(
                     val isVisible = !isLeaving
 
                     val tabWidth by animateDpAsState(
-                        targetValue = if (isVisible) animatedItemWidth + tabSpacing else 0.dp,
+                        targetValue = if (isVisible) animatedItemWidth + tabSpacing else NoSpacing,
                         animationSpec = spring(
                             dampingRatio = Spring.DampingRatioNoBouncy,
                             stiffness = Spring.StiffnessMediumLow
@@ -2193,7 +2222,7 @@ fun NotificationTabs(
                             modifier = Modifier
                                 .width(tabWidth)
                                 .graphicsLayer {
-                                    alpha = (tabWidth / (animatedItemWidth + tabSpacing).coerceAtLeast(1.dp)).coerceIn(0f, 1f)
+                                    alpha = (tabWidth / (animatedItemWidth + tabSpacing).coerceAtLeast(SmallestSpacing)).coerceIn(0f, 1f)
                                 },
                             contentAlignment = Alignment.Center
                         ) {
@@ -2297,53 +2326,53 @@ fun NotificationTabs(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(end = tabSpacing)
-                            )
+                                )
+                            }
                         }
                     }
                 }
+                Spacer(modifier = Modifier.width(animatedItemWidth))
             }
-            Spacer(modifier = Modifier.width(animatedItemWidth))
-        }
 
-        Surface(
-            shape = RoundedCornerShape(deleteCornerRadius),
-            color = MaterialTheme.colorScheme.error,
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .height(40.dp)
-                .width(animatedItemWidth)
-                .onGloballyPositioned { onDeleteButtonBoundsChanged(it.boundsInRoot()) }
-                .clip(RoundedCornerShape(deleteCornerRadius))
-                .combinedClickable(
-                    interactionSource = deleteInteractionSource,
-                    indication = LocalIndication.current,
-                    onLongClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onDismissAllNotifications()
-                    },
-                    onClick = {
-                        if (notificationDeleteSinglePress) {
+            Surface(
+                shape = RoundedCornerShape(deleteCornerRadius),
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .height(ExtraBigSpacing)
+                    .width(animatedItemWidth)
+                    .onGloballyPositioned { onDeleteButtonBoundsChanged(it.boundsInRoot()) }
+                    .clip(RoundedCornerShape(deleteCornerRadius))
+                    .combinedClickable(
+                        interactionSource = deleteInteractionSource,
+                        indication = LocalIndication.current,
+                        onLongClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             onDismissAllNotifications()
-                        } else {
-                            Toast.makeText(
-                                context,
-                                R.string.long_press_to_delete_all,
-                                Toast.LENGTH_SHORT
-                            ).show()
+                        },
+                        onClick = {
+                            if (notificationDeleteSinglePress) {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onDismissAllNotifications()
+                            } else {
+                                Toast.makeText(
+                                    context,
+                                    R.string.long_press_to_delete_all,
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
                         }
-                    }
-                )
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = Icons.Rounded.Delete,
-                    contentDescription = stringResource(R.string.clear_all),
-                    tint = MaterialTheme.colorScheme.onError,
-                    modifier = Modifier.size(20.dp)
-                )
+                    )
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Rounded.Delete,
+                        contentDescription = stringResource(R.string.clear_all),
+                        tint = MaterialTheme.colorScheme.onError,
+                        modifier = Modifier.size(ExtraLargeSpacing)
+                    )
+                }
             }
         }
     }
-}
 }

@@ -24,6 +24,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.xenon.mylibrary.res.XenonDialog
+import com.xenon.mylibrary.values.LargeMediumCornerRadius
+import com.xenon.mylibrary.values.LargestPadding
+import com.xenon.mylibrary.values.NoPadding
+import com.xenon.mylibrary.values.SmallSpacer
 import com.xenonware.launcher.R
 import com.xenonware.launcher.viewmodel.PermissionStatus
 
@@ -50,7 +54,7 @@ fun PermissionsDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(max = 400.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalArrangement = Arrangement.spacedBy(SmallSpacer)
         ) {
             items(permissions) { status ->
                 PermissionItem(
@@ -69,7 +73,7 @@ private fun PermissionItem(
 ) {
     ListItem(
         modifier = Modifier
-                .clip(RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(LargeMediumCornerRadius))
                 .clickable(onClick = onClick),
         leadingContent = null,
         trailingContent = {
@@ -83,7 +87,7 @@ private fun PermissionItem(
                         contentColor = if (status.isGranted) Color(0xFF4CAF50) else Color(0xFFF44336)
                     ),
                     shape = CircleShape,
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
+                    contentPadding = PaddingValues(horizontal = LargestPadding, vertical = NoPadding)
                 ) {
                     Text(
                         text = if (status.isGranted) stringResource(R.string.granted) else stringResource(R.string.denied),

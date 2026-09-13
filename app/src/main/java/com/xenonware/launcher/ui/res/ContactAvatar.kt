@@ -12,8 +12,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.xenon.mylibrary.values.ExtraBiggerSpacing
 import com.xenonware.launcher.ui.theme.mainFontFamily
 
 @Composable
@@ -36,7 +36,7 @@ fun ContactAvatar(name: String, modifier: Modifier = Modifier) {
 
     Box(
         modifier = modifier
-            .size(48.dp)
+            .size(ExtraBiggerSpacing)
             .clip(RoundedCornerShape(50))
             .background(pastelBackground),
         contentAlignment = Alignment.Center

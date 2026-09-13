@@ -27,11 +27,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.xenonware.launcher.ui.theme.mainFontFamily
+import androidx.compose.ui.unit.times
+import com.xenon.mylibrary.values.ExtraLargerSpacing
+import com.xenon.mylibrary.values.ExtraLargestSpacing
+import com.xenon.mylibrary.values.MassiveCornerRadius
+import com.xenon.mylibrary.values.MediumLargePadding
+import com.xenon.mylibrary.values.MediumSmallPadding
+import com.xenon.mylibrary.values.MediumSpacer
+import com.xenon.mylibrary.values.SmallSpacer
+import com.xenon.mylibrary.values.SmallerPadding
 import com.xenonware.launcher.R
 import com.xenonware.launcher.ui.res.dock.StatusCounters
+import com.xenonware.launcher.ui.theme.mainFontFamily
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Calendar
@@ -92,17 +100,17 @@ fun Glancly(
     }
 
     Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(MediumSpacer),
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .fillMaxHeight()
-            .padding(10.dp)
+            .padding(MediumLargePadding)
     ) {
         Column(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight(),
-            verticalArrangement = Arrangement.spacedBy((-8).dp, Alignment.CenterVertically)
+            verticalArrangement = Arrangement.spacedBy((-1 * MediumSpacer), Alignment.CenterVertically)
         ) {
             Text(
                 time,
@@ -112,7 +120,7 @@ fun Glancly(
                 color = contentColor,
                 fontFamily = mainFontFamily,
                 modifier = Modifier
-                    .clip(RoundedCornerShape(100.dp))
+                    .clip(RoundedCornerShape(MassiveCornerRadius))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -121,7 +129,7 @@ fun Glancly(
                             onTimeClick()
                         }
                     )
-                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                    .padding(horizontal = MediumSmallPadding, vertical = SmallerPadding)
             )
             Text(
                 date,
@@ -130,7 +138,7 @@ fun Glancly(
                 color = contentColor.copy(alpha = 0.7f),
                 fontFamily = mainFontFamily,
                 modifier = Modifier
-                    .clip(RoundedCornerShape(100.dp))
+                    .clip(RoundedCornerShape(MassiveCornerRadius))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -139,7 +147,7 @@ fun Glancly(
                             onDateClick()
                         }
                     )
-                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                    .padding(horizontal = MediumSmallPadding, vertical = SmallerPadding)
             )
         }
 
@@ -153,7 +161,7 @@ fun Glancly(
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
-                .clip(RoundedCornerShape(100.dp))
+                .clip(RoundedCornerShape(MassiveCornerRadius))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -162,7 +170,7 @@ fun Glancly(
                         onWeatherClick()
                     }
                 )
-                .padding(horizontal = 6.dp, vertical = 2.dp)
+                .padding(horizontal = MediumSmallPadding, vertical = SmallerPadding)
         ) {
             Box(contentAlignment = Alignment.Center) {
                 // Shadow
@@ -170,16 +178,16 @@ fun Glancly(
                     painter = painterResource(id = weatherRes),
                     contentDescription = null,
                     colorFilter = ColorFilter.tint(Color.Black.copy(alpha = 0.1f)),
-                    modifier = Modifier.size(26.dp)
+                    modifier = Modifier.size(ExtraLargestSpacing)
                 )
                 // Real icon
                 Image(
                     painter = painterResource(id = weatherRes),
                     contentDescription = condition,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(ExtraLargerSpacing)
                 )
             }
-            Spacer(Modifier.width(4.dp))
+            Spacer(Modifier.width(SmallSpacer))
             Text(temperature.replace("+", ""), color = contentColor, maxLines = 1, fontSize = 14.sp, fontFamily = mainFontFamily)
         }
     }

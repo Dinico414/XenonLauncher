@@ -63,6 +63,21 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.xenon.mylibrary.values.BigSpacing
+import com.xenon.mylibrary.values.BiggestSpacing
+import com.xenon.mylibrary.values.HugeBiggerSpacing
+import com.xenon.mylibrary.values.HugerSpacing
+import com.xenon.mylibrary.values.LargeMediumPadding
+import com.xenon.mylibrary.values.LargeMediumSpacer
+import com.xenon.mylibrary.values.LargestPadding
+import com.xenon.mylibrary.values.LargestSpacing
+import com.xenon.mylibrary.values.MassiveCornerRadius
+import com.xenon.mylibrary.values.MediumElevation
+import com.xenon.mylibrary.values.MediumSpacer
+import com.xenon.mylibrary.values.MediumSpacing
+import com.xenon.mylibrary.values.NoElevation
+import com.xenon.mylibrary.values.NoSpacing
+import com.xenon.mylibrary.values.SmallPadding
 import com.xenonware.launcher.R
 import com.xenonware.launcher.media.MediaState
 import com.xenonware.launcher.model.AppInfo
@@ -82,15 +97,15 @@ import kotlin.math.roundToInt
 /** Which of the three sections currently owns the free space inside the pill. */
 internal enum class DockPage { Status, Apps, Media }
 
-internal val DockHeight = 72.dp
-internal val DockFabSize = 64.dp
-internal val DockCollapsedSectionWidth = 32.dp
+internal val DockHeight = HugeBiggerSpacing
+internal val DockFabSize = HugerSpacing
+internal val DockCollapsedSectionWidth = BiggestSpacing
 
 /**
  * Single source of truth for the section shape. Anything that draws a border or
  * outline for a section uses this shape instead of re-deriving corner radii.
  */
-internal val DockSectionShape = RoundedCornerShape(100.dp)
+internal val DockSectionShape = RoundedCornerShape(MassiveCornerRadius)
 
 /** Sections are translucent on dark backgrounds, opaque on light ones. */
 @Composable
@@ -106,7 +121,7 @@ internal fun Modifier.dockSectionSize(
     collapsedWidth: Dp = DockCollapsedSectionWidth
 ): Modifier {
     val verticalPadding by animateDpAsState(
-        targetValue = if (isExpanded) 4.dp else 12.dp,
+        targetValue = if (isExpanded) SmallPadding else LargeMediumPadding,
         label = "dockSectionPadding"
     )
     return this
@@ -139,7 +154,7 @@ private fun rememberDockBottomPadding(
     }
 
     val safeDrawBottom = if (shouldMoveForIme) maxOf(navPadding, imePadding) else navPadding
-    val target = if (safeDrawBottom < 16.dp) 16.dp else safeDrawBottom + 8.dp
+    val target = if (safeDrawBottom < LargestSpacing) LargestSpacing else safeDrawBottom + MediumSpacing
 
     val animated by animateDpAsState(
         targetValue = target,
@@ -149,7 +164,7 @@ private fun rememberDockBottomPadding(
         ),
         label = "dockPaddingAnimation"
     )
-    return animated.coerceAtLeast(0.dp)
+    return animated.coerceAtLeast(NoSpacing)
 }
 
 /* ---------------------------------------------------------------------- */
@@ -217,7 +232,7 @@ fun DockPill(
     Row(
         modifier = modifier
             .width(finalMaxDockWidth)
-            .padding(bottom = bottomPadding, start = 16.dp, end = 16.dp)
+            .padding(bottom = bottomPadding, start = LargestPadding, end = LargestPadding)
             .pointerInput(isAppDrawerVisible, onFabClick) {
                 var totalVerticalDrag = 0f
                 detectVerticalDragGestures(
@@ -250,7 +265,7 @@ fun DockPill(
                 .height(DockHeight)
                 .weight(1f)
                 .graphicsLayer(clip = false)
-                .then(if (hazeState == null) Modifier.shadow(8.dp, CircleShape) else Modifier)
+                .then(if (hazeState == null) Modifier.shadow(MediumElevation, CircleShape) else Modifier)
                 .clip(CircleShape)
                 .then(
                     if (hazeState != null) {
@@ -262,16 +277,16 @@ fun DockPill(
             Row(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 4.dp),
+                    .padding(horizontal = SmallPadding),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(MediumSpacer)
             ) {
                 val statusStartPadding by animateDpAsState(
-                    targetValue = if (currentPage == DockPage.Status) 0.dp else 8.dp,
+                    targetValue = if (currentPage == DockPage.Status) NoSpacing else MediumSpacing,
                     label = "statusStartPadding"
                 )
                 val mediaEndPadding by animateDpAsState(
-                    targetValue = if (currentPage == DockPage.Media) 0.dp else 8.dp,
+                    targetValue = if (currentPage == DockPage.Media) NoSpacing else MediumSpacing,
                     label = "mediaEndPadding"
                 )
 
@@ -329,7 +344,7 @@ fun DockPill(
         }
 
         if (!hideActionButton) {
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(LargeMediumSpacer))
 
             DockFab(
                 isAppDrawerVisible = isAppDrawerVisible,
@@ -372,7 +387,7 @@ private fun DockFab(
     )
 
     val cornerRadius by animateDpAsState(
-        targetValue = if (isAppDrawerVisible) 16.dp else (DockFabSize / 2),
+        targetValue = if (isAppDrawerVisible) LargestSpacing else (DockFabSize / 2),
         label = "fabCornerRadius",
         animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
     )
@@ -382,12 +397,12 @@ private fun DockFab(
         shape = fabShape,
         color = colorScheme.primary.copy(alpha = alpha),
         contentColor = colorScheme.onPrimary,
-        tonalElevation = 0.dp,
+        tonalElevation = NoElevation,
         modifier = modifier
             .offset { IntOffset(0, animatedVerticalOffset.roundToInt()) }
             .size(DockFabSize)
             .graphicsLayer(clip = false)
-            .then(if (hazeState == null) Modifier.shadow(8.dp, fabShape) else Modifier)
+            .then(if (hazeState == null) Modifier.shadow(MediumElevation, fabShape) else Modifier)
             .clip(fabShape)
             .pointerInput(onClick) {
                 detectTapGestures(
@@ -439,7 +454,7 @@ private fun DockFab(
                 Icon(
                     imageVector = icon,
                     contentDescription = stringResource(R.string.toggle_apps),
-                    modifier = Modifier.size(28.dp)
+                    modifier = Modifier.size(BigSpacing)
                 )
             }
         }

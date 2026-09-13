@@ -62,6 +62,21 @@ import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.graphics.drawable.toDrawable
 import com.xenon.mylibrary.res.XenonDialog
+import com.xenon.mylibrary.values.BigCornerRadius
+import com.xenon.mylibrary.values.BiggestSpacing
+import com.xenon.mylibrary.values.HugeSpacing
+import com.xenon.mylibrary.values.HugerSpacing
+import com.xenon.mylibrary.values.IconSizeMedium
+import com.xenon.mylibrary.values.LargeMediumCornerRadius
+import com.xenon.mylibrary.values.LargeMediumPadding
+import com.xenon.mylibrary.values.LargeMediumSpacer
+import com.xenon.mylibrary.values.LargestCornerRadius
+import com.xenon.mylibrary.values.MediumCornerRadius
+import com.xenon.mylibrary.values.MediumPadding
+import com.xenon.mylibrary.values.NoCornerRadius
+import com.xenon.mylibrary.values.SmallPadding
+import com.xenon.mylibrary.values.SmallSpacer
+import com.xenon.mylibrary.values.SmallerPadding
 import com.xenonware.launcher.R
 import com.xenonware.launcher.model.AppWidgetGroup
 import com.xenonware.launcher.model.WidgetPickerItemData
@@ -129,7 +144,7 @@ fun WidgetSelectorDialog(
     ) {
         LazyColumn(
             state = listState,
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(SmallSpacer),
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(max = 600.dp)
@@ -212,14 +227,14 @@ fun ShortcutsGrid(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(horizontal = MediumPadding, vertical = MediumPadding),
+        verticalArrangement = Arrangement.spacedBy(LargeMediumSpacer)
     ) {
         var currentIndex = 0
         rowConfigs.forEach { rowCount ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(LargeMediumSpacer),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // To center the items while keeping their size consistent (1/3 of row width)
@@ -275,9 +290,9 @@ fun ShortcutPickerItem(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(LargeMediumCornerRadius))
             .clickable { onSelected(item) }
-            .padding(8.dp),
+            .padding(MediumPadding),
         horizontalAlignment = Alignment.CenterHorizontally) {
         if (bitmap != null) {
             Image(
@@ -293,7 +308,7 @@ fun ShortcutPickerItem(
                 Icon(
                     Icons.Rounded.Apps,
                     null,
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(IconSizeMedium),
                     tint = colorScheme.onSurfaceVariant
                 )
             }
@@ -304,7 +319,7 @@ fun ShortcutPickerItem(
             maxLines = 1,
             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            modifier = Modifier.padding(top = 4.dp)
+            modifier = Modifier.padding(top = SmallPadding)
         )
     }
 }
@@ -343,10 +358,10 @@ fun CategoryHeader(
     }
     val density = LocalDensity.current
     var rowHeightDp by remember { mutableStateOf(0.dp) }
-    val collapsedRadius = if (rowHeightDp > 0.dp) rowHeightDp / 2 else 28.dp
+    val collapsedRadius = if (rowHeightDp > 0.dp) rowHeightDp / 2 else BigCornerRadius
 
     val baseRadius by animateDpAsState(
-        targetValue = if (isExpanded) 16.dp else collapsedRadius,
+        targetValue = if (isExpanded) LargestCornerRadius else collapsedRadius,
         label = "baseRadius",
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
@@ -363,31 +378,31 @@ fun CategoryHeader(
         )
     )
 
-    val cornerRadius = lerp(baseRadius, 8.dp, pressFraction)
+    val cornerRadius = lerp(baseRadius, MediumCornerRadius, pressFraction)
 
     Surface(
         onClick = onToggle,
         interactionSource = interactionSource,
-        shape = RoundedCornerShape(cornerRadius.coerceAtLeast(0.dp)),
+        shape = RoundedCornerShape(cornerRadius.coerceAtLeast(NoCornerRadius)),
         color = if (isExpanded) colorScheme.primaryContainer else colorScheme.surfaceContainerHighest,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp)
+            .padding(vertical = SmallerPadding)
             .onSizeChanged { rowHeightDp = with(density) { it.height.toDp() } }
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.padding(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(LargeMediumSpacer),
+            modifier = Modifier.padding(LargeMediumPadding)
         ) {
             if (group.icon != null) {
                 Image(
                     bitmap = group.icon.toBitmap().asImageBitmap(),
                     contentDescription = null,
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(BiggestSpacing)
                 )
             } else {
-                Icon(Icons.Rounded.Apps, null, modifier = Modifier.size(32.dp))
+                Icon(Icons.Rounded.Apps, null, modifier = Modifier.size(BiggestSpacing))
             }
 
             Text(
@@ -507,7 +522,7 @@ fun WidgetPickerItem(
     Column(modifier = Modifier
         .fillMaxWidth()
         .clickable { onSelected(item) }
-        .padding(vertical = 8.dp),
+        .padding(vertical = MediumPadding),
         horizontalAlignment = Alignment.CenterHorizontally) {
         if (bitmap != null) {
             Image(
@@ -515,14 +530,14 @@ fun WidgetPickerItem(
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxWidth(0.7f)
-                    .then(if (item.isWidget) Modifier.aspectRatio(1.5f) else Modifier.size(56.dp))
-                    .clip(RoundedCornerShape(8.dp))
+                    .then(if (item.isWidget) Modifier.aspectRatio(1.5f) else Modifier.size(HugeSpacing))
+                    .clip(RoundedCornerShape(MediumCornerRadius))
             )
         } else {
             Box(
                 modifier = Modifier
-                    .size(64.dp)
-                    .background(colorScheme.surfaceVariant, RoundedCornerShape(8.dp)),
+                    .size(HugerSpacing)
+                    .background(colorScheme.surfaceVariant, RoundedCornerShape(MediumCornerRadius)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -536,7 +551,7 @@ fun WidgetPickerItem(
         Text(
             item.label,
             style = MaterialTheme.typography.labelMedium,
-            modifier = Modifier.padding(top = 4.dp)
+            modifier = Modifier.padding(top = SmallPadding)
         )
         if (item.isWidget && item.widgetInfo != null) {
             val info = item.widgetInfo

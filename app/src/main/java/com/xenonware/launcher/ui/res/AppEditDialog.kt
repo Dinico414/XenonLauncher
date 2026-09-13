@@ -49,6 +49,16 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.core.graphics.drawable.toBitmap
 import com.xenon.mylibrary.res.XenonColorPicker
 import com.xenon.mylibrary.res.XenonDialog
+import com.xenon.mylibrary.values.ExtraBigSpacing
+import com.xenon.mylibrary.values.ExtraLargeCornerRadius
+import com.xenon.mylibrary.values.ExtraLargeSpacing
+import com.xenon.mylibrary.values.HugeSpacing
+import com.xenon.mylibrary.values.LargeMediumCornerRadius
+import com.xenon.mylibrary.values.LargeMediumSpacer
+import com.xenon.mylibrary.values.LargestSpacer
+import com.xenon.mylibrary.values.MediumPadding
+import com.xenon.mylibrary.values.SmallCornerRadius
+import com.xenon.mylibrary.values.SmallerSpacer
 import com.xenonware.launcher.R
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.model.AppOverride
@@ -154,7 +164,7 @@ fun AppEditDialog(
                 // Icon Preview (56dp like drawer)
                 Box(
                     modifier = Modifier
-                        .size(56.dp)
+                        .size(HugeSpacing)
                         .clip(currentShape.getShape())
                         .background(MaterialTheme.colorScheme.surfaceContainerLowest),
                     contentAlignment = Alignment.Center
@@ -168,7 +178,7 @@ fun AppEditDialog(
                     }
                 }
 
-                Spacer(Modifier.width(12.dp))
+                Spacer(Modifier.width(LargeMediumSpacer))
 
                 OutlinedTextField(
                     value = name,
@@ -176,14 +186,14 @@ fun AppEditDialog(
                     label = { Text(stringResource(R.string.app_name_label)) },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(LargeMediumCornerRadius)
                 )
                 IconButton(onClick = { showIconPackPicker = true }) {
-                    Icon(Icons.Rounded.Collections, stringResource(R.string.icon_pack), modifier = Modifier.size(20.dp))
+                    Icon(Icons.Rounded.Collections, stringResource(R.string.icon_pack), modifier = Modifier.size(ExtraLargeSpacing))
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(LargestSpacer))
 
             // Tabs/Sections for Edit
             var selectedTab by remember { mutableIntStateOf(0) }
@@ -191,19 +201,19 @@ fun AppEditDialog(
                 selectedTabIndex = selectedTab, containerColor = Color.Transparent, divider = {}) {
                 Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }) {
                     Text(
-                        stringResource(R.string.style), Modifier.padding(8.dp), style = MaterialTheme.typography.bodyMedium
+                        stringResource(R.string.style), Modifier.padding(MediumPadding), style = MaterialTheme.typography.bodyMedium
                     )
                 }
                 Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }) {
                     Text(
                         stringResource(R.string.colors),
-                        Modifier.padding(8.dp),
+                        Modifier.padding(MediumPadding),
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(LargestSpacer))
 
             if (selectedTab == 0) {
                 Column {
@@ -257,21 +267,21 @@ fun ColorSelectionSection(
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(2.dp)
+            horizontalArrangement = Arrangement.spacedBy(SmallerSpacer)
         ) {
             val bgColorActive = !editingBorderColor
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .height(40.dp)
+                    .height(ExtraBigSpacing)
                     .clip(
                         RoundedCornerShape(
-                            topStart = 20.dp, bottomStart = 20.dp, topEnd = 4.dp, bottomEnd = 4.dp
+                            topStart = ExtraLargeCornerRadius, bottomStart = ExtraLargeCornerRadius, topEnd = SmallCornerRadius, bottomEnd = SmallCornerRadius
                         )
                     )
                     .background(if (bgColorActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest)
                     .clickable { editingBorderColor = false }
-                    .padding(vertical = 8.dp),
+                    .padding(vertical = MediumPadding),
                 contentAlignment = Alignment.Center) {
                 Text(
                     stringResource(R.string.background),
@@ -284,15 +294,15 @@ fun ColorSelectionSection(
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .height(40.dp)
+                    .height(ExtraBigSpacing)
                     .clip(
                         RoundedCornerShape(
-                            topEnd = 20.dp, bottomEnd = 20.dp, topStart = 4.dp, bottomStart = 4.dp
+                            topEnd = ExtraLargeCornerRadius, bottomEnd = ExtraLargeCornerRadius, topStart = SmallCornerRadius, bottomStart = SmallCornerRadius
                         )
                     )
                     .background(if (borderColorActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest)
                     .clickable { editingBorderColor = true }
-                    .padding(vertical = 8.dp),
+                    .padding(vertical = MediumPadding),
                 contentAlignment = Alignment.Center) {
                 Text(
                     stringResource(R.string.border),

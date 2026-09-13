@@ -57,6 +57,20 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
 import com.xenon.mylibrary.res.XenonDialog
+import com.xenon.mylibrary.values.ExtraBigSpacing
+import com.xenon.mylibrary.values.ExtraBiggerSpacing
+import com.xenon.mylibrary.values.ExtraLargeIconSize
+import com.xenon.mylibrary.values.ExtraLargerPadding
+import com.xenon.mylibrary.values.HugerSpacing
+import com.xenon.mylibrary.values.LargeMediumCornerRadius
+import com.xenon.mylibrary.values.LargeMediumPadding
+import com.xenon.mylibrary.values.LargestPadding
+import com.xenon.mylibrary.values.LargestSpacer
+import com.xenon.mylibrary.values.MediumSpacer
+import com.xenon.mylibrary.values.NoPadding
+import com.xenon.mylibrary.values.SmallPadding
+import com.xenon.mylibrary.values.SmallSpacer
+import com.xenon.mylibrary.values.SmallerStroke
 import com.xenonware.launcher.R
 import com.xenonware.launcher.util.getAllIconPackIcons
 import com.xenonware.launcher.util.loadIconFromPack
@@ -92,7 +106,7 @@ fun IconPackPicker(
                 }
             }
         },
-        contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = if (selectedPack == null) 12.dp else 0.dp),
+        contentPadding = PaddingValues(start = ExtraLargerPadding, end = ExtraLargerPadding, bottom = if (selectedPack == null) LargeMediumPadding else NoPadding),
         actionButton1Text = if (selectedPack != null) stringResource(R.string.back) else null,
         onActionButton1Click = {
             selectedPack = null
@@ -122,12 +136,12 @@ fun IconPackPicker(
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.heightIn(max = 400.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                        verticalArrangement = Arrangement.spacedBy(SmallSpacer)
                     ) {
                         items(iconPacks) { pack ->
                             ListItem(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(12.dp))
+                                    .clip(RoundedCornerShape(LargeMediumCornerRadius))
                                     .clickable { selectedPack = pack },
                                 leadingContent = {
                                     Image(
@@ -136,7 +150,7 @@ fun IconPackPicker(
                                             .toBitmap()
                                             .asImageBitmap(),
                                         contentDescription = null,
-                                        modifier = Modifier.size(40.dp)
+                                        modifier = Modifier.size(ExtraBigSpacing)
                                     )
                                 },
                                 trailingContent = null,
@@ -201,15 +215,15 @@ fun GlobalIconPackPicker(
         LazyColumn(
             state = listState,
             modifier = Modifier.heightIn(max = 400.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalArrangement = Arrangement.spacedBy(SmallSpacer)
         ) {
             item {
                 ListItem(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(LargeMediumCornerRadius))
                         .clickable { onPackSelect(null) },
                     leadingContent = {
-                        Icon(Icons.Rounded.Block, null, modifier = Modifier.size(40.dp))
+                        Icon(Icons.Rounded.Block, null, modifier = Modifier.size(ExtraLargeIconSize))
                     },
                     content = { Text(stringResource(R.string.system_default)) },
                     overlineContent = null,
@@ -224,7 +238,7 @@ fun GlobalIconPackPicker(
                     Text(
                         stringResource(R.string.no_icon_packs_installed),
                         modifier = Modifier
-                            .padding(16.dp)
+                            .padding(LargestPadding)
                             .fillMaxWidth(),
                         textAlign = TextAlign.Center,
                         style = MaterialTheme.typography.bodyMedium,
@@ -236,7 +250,7 @@ fun GlobalIconPackPicker(
                     val pkgName = pack.activityInfo.packageName
                     ListItem(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(LargeMediumCornerRadius))
                             .clickable { onPackSelect(pkgName) },
                         leadingContent = {
                             Image(
@@ -245,7 +259,7 @@ fun GlobalIconPackPicker(
                                     .toBitmap()
                                     .asImageBitmap(),
                                 contentDescription = null,
-                                modifier = Modifier.size(40.dp)
+                                modifier = Modifier.size(ExtraBigSpacing)
                             )
                         },
                         trailingContent = {
@@ -302,12 +316,12 @@ fun IconGrid(
     }
 
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(64.dp),
+        columns = GridCells.Adaptive(HugerSpacing),
         state = state,
         modifier = modifier.heightIn(max = 500.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(bottom = 16.dp)
+        horizontalArrangement = Arrangement.spacedBy(MediumSpacer),
+        verticalArrangement = Arrangement.spacedBy(MediumSpacer),
+        contentPadding = PaddingValues(bottom = LargestPadding)
     ) {
         item(span = { GridItemSpan(maxLineSpan) }) {
             Column {
@@ -317,10 +331,10 @@ fun IconGrid(
                     label = { Text(stringResource(R.string.search_icons)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(LargeMediumCornerRadius)
                 )
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(LargestSpacer))
             }
         }
 
@@ -334,7 +348,7 @@ fun IconGrid(
             item(span = { GridItemSpan(maxLineSpan) }) {
                 Text(
                     stringResource(if (searchQuery.isEmpty()) R.string.no_icons_found else R.string.no_results),
-                    modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                    modifier = Modifier.padding(LargestPadding).fillMaxWidth(),
                     textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.bodyMedium
                 )
@@ -348,22 +362,22 @@ fun IconGrid(
                     val isSelected = resName == selectedIconResName
                     Box(
                         modifier = Modifier
-                            .size(64.dp)
-                            .clip(RoundedCornerShape(12.dp))
+                            .size(HugerSpacing)
+                            .clip(RoundedCornerShape(LargeMediumCornerRadius))
                             .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
                             .border(
-                                width = 2.dp,
+                                width = SmallerStroke,
                                 color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(LargeMediumCornerRadius)
                             )
                             .clickable { onIconResNameSelect(resName) }
-                            .padding(4.dp),
+                            .padding(SmallPadding),
                         contentAlignment = Alignment.Center
                     ) {
                         Image(
                             bitmap = icon.toBitmap().asImageBitmap(),
                             contentDescription = resName,
-                            modifier = Modifier.size(48.dp)
+                            modifier = Modifier.size(ExtraBiggerSpacing)
                         )
                     }
                 }

@@ -8,8 +8,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
+import com.xenon.mylibrary.values.HugeSpacing
+import com.xenon.mylibrary.values.SmallSpacing
 import com.xenonware.launcher.model.AppInfo
 
 @Composable
@@ -18,7 +19,7 @@ fun AppIcon(
     iconShape: IconShape,
     showShadow: Boolean,
     modifier: Modifier = Modifier,
-    size: Dp = 56.dp
+    size: Dp = HugeSpacing
 ) {
     app.icon?.let { icon ->
         val shape = iconShape.getShape()
@@ -27,7 +28,7 @@ fun AppIcon(
             contentDescription = app.label,
             modifier = modifier
                 .size(size)
-                .then(if (showShadow) Modifier.shadow(4.dp, shape) else Modifier)
+                .then(if (showShadow) Modifier.shadow(SmallSpacing, shape) else Modifier)
                 .clip(shape)
         )
     }

@@ -24,8 +24,9 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
+import com.xenon.mylibrary.values.BigSpacer
+import com.xenon.mylibrary.values.HugeSpacing
 import com.xenonware.launcher.model.AppInfo
 import kotlin.math.roundToInt
 
@@ -83,11 +84,11 @@ fun DragHandler(
             Box(modifier = Modifier
                 .offset {
                     IntOffset(
-                        state.dragOffset.x.roundToInt() - with(density) { 28.dp.toPx() }.roundToInt(),
-                        state.dragOffset.y.roundToInt() - with(density) { 28.dp.toPx() }.roundToInt()
+                        state.dragOffset.x.roundToInt() - with(density) { BigSpacer.toPx() }.roundToInt(),
+                        state.dragOffset.y.roundToInt() - with(density) { BigSpacer.toPx() }.roundToInt()
                     )
                 }
-                .size(56.dp)
+                .size(HugeSpacing)
                 .scale(scale)
                 .alpha(0.9f)) {
                 app.icon?.let { icon ->

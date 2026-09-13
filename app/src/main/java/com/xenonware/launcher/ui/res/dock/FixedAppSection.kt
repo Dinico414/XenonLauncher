@@ -62,13 +62,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.times
 import androidx.compose.ui.unit.toSize
 import androidx.core.graphics.drawable.toBitmap
-import com.xenonware.launcher.ui.theme.mainFontFamily
+import com.xenon.mylibrary.values.ExtraBigSpacing
+import com.xenon.mylibrary.values.ExtraLargerSpacing
+import com.xenon.mylibrary.values.HugestSpacing
+import com.xenon.mylibrary.values.MediumIconSize
+import com.xenon.mylibrary.values.MediumLargePadding
+import com.xenon.mylibrary.values.MediumSpacer
+import com.xenon.mylibrary.values.SmallerSpacer
+import com.xenon.mylibrary.values.SmallestStroke
 import com.xenonware.launcher.R
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.notification.LauncherNotification
 import com.xenonware.launcher.ui.res.notification.NotificationBadge
+import com.xenonware.launcher.ui.theme.mainFontFamily
 import com.xenonware.launcher.util.LocalDragDropState
 import kotlinx.coroutines.delay
 import kotlin.math.abs
@@ -80,7 +89,7 @@ import kotlin.time.Duration.Companion.milliseconds
 private const val MAX_PINNED = 6
 
 private val ItemSize = 44.dp
-private val ItemSpacing = 8.dp
+private val ItemSpacing = MediumSpacer
 
 // ---------------------------------------------------------------------------
 // Motion tuning. Everything that moves is driven from here.
@@ -169,7 +178,7 @@ fun AppsSection(
         shape = DockSectionShape,
         color = colorScheme.surfaceContainerLowest.copy(alpha = dockButtonAlpha()),
         contentColor = colorScheme.onSurface,
-        border = BorderStroke(1.dp, colorScheme.onSurface.copy(alpha = 0.15f))
+        border = BorderStroke(SmallestStroke, colorScheme.onSurface.copy(alpha = 0.15f))
     ) {
         if (isExpanded) {
             FixedAppSection(
@@ -187,7 +196,7 @@ fun AppsSection(
                 Icon(
                     Icons.Rounded.MoreHoriz,
                     null,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(MediumIconSize)
                 )
             }
         }
@@ -225,11 +234,11 @@ fun FixedAppSection(
     val fallbackItemPx = with(density) { ItemSize.roundToPx().toFloat() }
     val pitchPx = fallbackItemPx + spacingPx
 
-    val edgePx = with(density) { 40.dp.toPx() }
+    val edgePx = with(density) { ExtraBigSpacing.toPx() }
     val maxScrollPx = with(density) { MaxAutoScroll.toPx() }
-    val fadeWidthPx = with(density) { 24.dp.toPx() }
-    val dragThresholdPx = with(density) { 24.dp.toPx() }
-    val unpinThresholdPx = with(density) { 80.dp.toPx() }
+    val fadeWidthPx = with(density) { ExtraLargerSpacing.toPx() }
+    val dragThresholdPx = with(density) { ExtraLargerSpacing.toPx() }
+    val unpinThresholdPx = with(density) { HugestSpacing.toPx() }
 
     // Live gap movement. A spring carries velocity through target changes, so a
     // fast sweep flows instead of restarting a tween per slot.
@@ -607,7 +616,7 @@ fun FixedAppSection(
                         ItemSpacing, Alignment.CenterHorizontally
                     ),
                     verticalAlignment = Alignment.CenterVertically,
-                    contentPadding = PaddingValues(horizontal = 10.dp)
+                    contentPadding = PaddingValues(horizontal = MediumLargePadding)
                 ) {
                     // `apps` is never reordered while dragging, so keys and indices
                     // stay put and LazyRow never scroll-corrects to keep its anchor
@@ -720,7 +729,7 @@ fun FixedAppSection(
                                         count = groupedNotifications[app.packageName]?.size ?: 0,
                                         badgeType = badgeType,
                                         appIcon = app.icon,
-                                        modifier = Modifier.offset(x = 2.dp, y = (-2).dp)
+                                        modifier = Modifier.offset(x = SmallerSpacer, y = (-1) * SmallerSpacer)
                                     )
                                 }
                             }

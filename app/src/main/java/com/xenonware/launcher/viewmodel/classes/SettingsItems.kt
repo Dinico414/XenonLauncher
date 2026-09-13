@@ -81,9 +81,27 @@ import com.xenon.mylibrary.res.SettingsTile
 import com.xenon.mylibrary.res.SettingsTileContext
 import com.xenon.mylibrary.res.XenonSingleChoiceButtonGroup
 import com.xenon.mylibrary.theme.LayoutType
+import com.xenon.mylibrary.values.BiggestCornerRadius
+import com.xenon.mylibrary.values.BiggestSpacing
+import com.xenon.mylibrary.values.ExtraLargeCornerRadius
 import com.xenon.mylibrary.values.ExtraLargeSpacing
-import com.xenon.mylibrary.values.LargerPadding
+import com.xenon.mylibrary.values.ExtraLargerCornerRadius
+import com.xenon.mylibrary.values.HugerSpacer
+import com.xenon.mylibrary.values.HugerSpacing
+import com.xenon.mylibrary.values.LargeMediumPadding
+import com.xenon.mylibrary.values.LargeMediumSpacer
+import com.xenon.mylibrary.values.LargeMediumSpacing
+import com.xenon.mylibrary.values.LargestCornerRadius
+import com.xenon.mylibrary.values.LargestPadding
+import com.xenon.mylibrary.values.MediumLargePadding
+import com.xenon.mylibrary.values.MediumSmallSpacing
+import com.xenon.mylibrary.values.MediumSmallerCornerRadius
+import com.xenon.mylibrary.values.MediumSpacer
 import com.xenon.mylibrary.values.NoCornerRadius
+import com.xenon.mylibrary.values.NoSpacing
+import com.xenon.mylibrary.values.SmallCornerRadius
+import com.xenon.mylibrary.values.SmallerSpacer
+import com.xenon.mylibrary.values.SmallerStroke
 import com.xenonware.launcher.R
 import com.xenonware.launcher.TweaksActivity
 import com.xenonware.launcher.model.AppInfo
@@ -107,16 +125,16 @@ fun SettingsItems(
     currentLanguage: String,
     appVersion: String,
     layoutType: LayoutType = LayoutType.COMPACT,
-    innerGroupRadius: Dp = 4.dp,
-    outerGroupRadius: Dp = 24.dp,
-    innerGroupSpacing: Dp = 2.dp,
+    innerGroupRadius: Dp = SmallCornerRadius,
+    outerGroupRadius: Dp = ExtraLargerCornerRadius,
+    innerGroupSpacing: Dp = SmallerSpacer,
     outerGroupSpacing: Dp = ExtraLargeSpacing,
     tileBackgroundColor: Color = MaterialTheme.colorScheme.surfaceBright,
     tileContentColor: Color = MaterialTheme.colorScheme.onSurface,
     tileSubtitleColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     tileShapeOverride: Shape? = null,
-    tileHorizontalPadding: Dp = LargerPadding,
-    tileVerticalPadding: Dp = LargerPadding,
+    tileHorizontalPadding: Dp = MediumLargePadding,
+    tileVerticalPadding: Dp = MediumLargePadding,
     switchColorsOverride: SwitchColors? = null,
     useGroupStyling: Boolean = true,
     state: SignInState,
@@ -173,10 +191,10 @@ fun SettingsItems(
     
     val userData = state.userData
 
-    val actualInnerGroupRadius = if (useGroupStyling) innerGroupRadius else 0.dp
-    val actualOuterGroupRadius = if (useGroupStyling) outerGroupRadius else 0.dp
-    val actualInnerGroupSpacing = if (useGroupStyling) innerGroupSpacing else 0.dp
-    val actualOuterGroupSpacing = if (useGroupStyling) outerGroupSpacing else 0.dp
+    val actualInnerGroupRadius = if (useGroupStyling) innerGroupRadius else NoSpacing
+    val actualOuterGroupRadius = if (useGroupStyling) outerGroupRadius else NoSpacing
+    val actualInnerGroupSpacing = if (useGroupStyling) innerGroupSpacing else NoSpacing
+    val actualOuterGroupSpacing = if (useGroupStyling) outerGroupSpacing else NoSpacing
 
     val defaultSwitchColors = SwitchDefaults.colors()
 
@@ -461,15 +479,15 @@ fun SettingsItems(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
-                        .clip(RoundedCornerShape(20.dp))
+                        .padding(start = LargestPadding, end = LargestPadding, bottom = LargestPadding)
+                        .clip(RoundedCornerShape(ExtraLargeCornerRadius))
                         .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = if (LocalIsDarkTheme.current)0.5f else 1f))
-                        .padding(vertical = 12.dp)
+                        .padding(vertical = LargeMediumPadding)
                         .horizontalScroll(rememberScrollState())
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 12.dp).height(64.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.padding(horizontal = LargeMediumPadding).height(HugerSpacing),
+                        horizontalArrangement = Arrangement.spacedBy(LargeMediumSpacer),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         entries.forEachIndexed { index, shape ->
@@ -480,10 +498,10 @@ fun SettingsItems(
                             val targetWidth = when {
                                 isPressed -> {
                                     val neighbors = if (index == 0 || index == entries.size - 1) 1 else 2
-                                    64.dp + (if (neighbors == 1) 6.dp else 12.dp)
+                                    HugerSpacer + (if (neighbors == 1) MediumSmallSpacing else LargeMediumSpacing)
                                 }
                                 isNeighborPressed -> 58.dp
-                                else -> 64.dp
+                                else -> HugerSpacer
                             }
 
                             val containerWidth by animateDpAsState(
@@ -494,9 +512,9 @@ fun SettingsItems(
 
                             val containerRadius by animateDpAsState(
                                 targetValue = when {
-                                    isPressed -> 6.dp
-                                    isSelected -> 16.dp
-                                    else -> 32.dp
+                                    isPressed -> MediumSmallerCornerRadius
+                                    isSelected -> LargestCornerRadius
+                                    else -> BiggestCornerRadius
                                 }, label = "containerRadius", animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
                         )
 
@@ -508,11 +526,11 @@ fun SettingsItems(
                                 .fillMaxHeight()
                                 .clip(containerShape)
                                 .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f))
-                                .border(width = 2.dp, color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent, shape = containerShape)
+                                .border(width = SmallerStroke, color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent, shape = containerShape)
                                 .clickable(interactionSource = interactionSources[index], indication = null) { viewModel.setDrawerIconShape(shape) }
-                                .padding(12.dp), contentAlignment = Alignment.Center) {
+                                .padding(LargeMediumPadding), contentAlignment = Alignment.Center) {
                             Box(
-                                modifier = Modifier.size(32.dp).clip(shape.getShape()).background(if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant)
+                                modifier = Modifier.size(BiggestSpacing).clip(shape.getShape()).background(if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant)
                             )
                         }
                     }
@@ -607,11 +625,11 @@ fun SettingsItems(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
-                        .clip(RoundedCornerShape(20.dp))
+                        .padding(start = LargestPadding, end = LargestPadding, bottom = LargestPadding)
+                        .clip(RoundedCornerShape(ExtraLargeCornerRadius))
                         .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = if (LocalIsDarkTheme.current) 0.5f else 1f))
                         .clickable { viewModel.setDockSafeDrawImePortraitOnly(!dockSafeDrawImePortraitOnly) }
-                        .padding(12.dp)
+                        .padding(LargeMediumPadding)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically
@@ -629,7 +647,7 @@ fun SettingsItems(
                                 fontSize = 14.sp
                             )
                         }
-                        Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(MediumSpacer))
                         Checkbox(
                             checked = dockSafeDrawImePortraitOnly,
                             onCheckedChange = { viewModel.setDockSafeDrawImePortraitOnly(it) },
@@ -662,11 +680,11 @@ fun SettingsItems(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
-                        .clip(RoundedCornerShape(20.dp))
+                        .padding(start = LargestPadding, end = LargestPadding, bottom = LargestPadding)
+                        .clip(RoundedCornerShape(ExtraLargeCornerRadius))
                         .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = if (LocalIsDarkTheme.current) 0.5f else 1f))
                         .clickable { viewModel.setOpenKeyboardPortraitOnly(!openKeyboardPortraitOnly) }
-                        .padding(12.dp)
+                        .padding(LargeMediumPadding)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically
@@ -684,7 +702,7 @@ fun SettingsItems(
                                 fontSize = 14.sp
                             )
                         }
-                        Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(MediumSpacer))
                         Checkbox(
                             checked = openKeyboardPortraitOnly,
                             onCheckedChange = { viewModel.setOpenKeyboardPortraitOnly(it) },
@@ -823,7 +841,7 @@ fun SettingsItems(
                             tint = tileSubtitleColor
                         )
                     },
-                    modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                    modifier = Modifier.fillMaxWidth().padding(start = LargestPadding, end = LargestPadding, bottom = LargestPadding)
                 )
             }
         )
