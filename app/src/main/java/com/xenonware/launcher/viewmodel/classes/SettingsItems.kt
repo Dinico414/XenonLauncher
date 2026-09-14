@@ -93,7 +93,6 @@ import com.xenon.mylibrary.values.LargeMediumSpacer
 import com.xenon.mylibrary.values.LargeMediumSpacing
 import com.xenon.mylibrary.values.LargestCornerRadius
 import com.xenon.mylibrary.values.LargestPadding
-import com.xenon.mylibrary.values.MediumLargePadding
 import com.xenon.mylibrary.values.MediumSmallSpacing
 import com.xenon.mylibrary.values.MediumSmallerCornerRadius
 import com.xenon.mylibrary.values.MediumSpacer
@@ -133,8 +132,6 @@ fun SettingsItems(
     tileContentColor: Color = MaterialTheme.colorScheme.onSurface,
     tileSubtitleColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     tileShapeOverride: Shape? = null,
-    tileHorizontalPadding: Dp = MediumLargePadding,
-    tileVerticalPadding: Dp = MediumLargePadding,
     switchColorsOverride: SwitchColors? = null,
     useGroupStyling: Boolean = true,
     state: SignInState,
@@ -241,8 +238,6 @@ fun SettingsItems(
         backgroundColor = Color.Transparent,
         contentColor = tileContentColor,
         subtitleColor = tileSubtitleColor,
-        horizontalPadding = tileHorizontalPadding,
-        verticalPadding = tileVerticalPadding,
         iconContentDescription = stringResource(id = R.string.profile_picture)
     )
     Spacer(Modifier.height(actualOuterGroupSpacing))
@@ -259,8 +254,7 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding
+
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsTile(
@@ -275,8 +269,7 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding
+
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsTile(
@@ -288,8 +281,7 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding
+
         )
         Spacer(Modifier.height(actualOuterGroupSpacing))
     } else {
@@ -305,8 +297,7 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding
+
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsTile(
@@ -318,8 +309,7 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding
+
         )
         Spacer(Modifier.height(actualOuterGroupSpacing))
     }
@@ -335,8 +325,7 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding
+
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsSwitchTile(
@@ -350,8 +339,6 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding,
             switchColors = switchColorsOverride ?: defaultSwitchColors
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
@@ -366,8 +353,6 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding,
             switchColors = switchColorsOverride ?: defaultSwitchColors
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
@@ -382,8 +367,6 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding,
             switchColors = switchColorsOverride ?: defaultSwitchColors
         )
     }
@@ -399,8 +382,8 @@ fun SettingsItems(
         backgroundColor = tileBackgroundColor,
         contentColor = tileContentColor,
         subtitleColor = tileSubtitleColor,
-        horizontalPadding = tileHorizontalPadding,
-        verticalPadding = tileVerticalPadding
+//        horizontalPadding = tileHorizontalPadding,
+//        verticalPadding = tileVerticalPadding
     )
     Spacer(Modifier.height(actualOuterGroupSpacing))
 
@@ -417,8 +400,6 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding,
             switchColors = switchColorsOverride ?: defaultSwitchColors
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
@@ -434,8 +415,7 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding
+
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
         // Icon Shape Selector
@@ -446,8 +426,6 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding,
             enableRipple = false,
             contextContent = {
                 val entries = IconShape.entries
@@ -549,8 +527,6 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding,
             switchColors = switchColorsOverride ?: defaultSwitchColors
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
@@ -565,8 +541,6 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding,
             switchColors = switchColorsOverride ?: defaultSwitchColors
         )
     }
@@ -585,8 +559,6 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding,
             switchColors = switchColorsOverride ?: defaultSwitchColors
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
@@ -601,8 +573,6 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding,
             switchColors = switchColorsOverride ?: defaultSwitchColors
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
@@ -617,8 +587,6 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding,
             switchColors = switchColorsOverride ?: defaultSwitchColors,
             showContext = dockSafeDrawIme && (layoutType == LayoutType.SMALL || layoutType == LayoutType.COMPACT),
             contextContent = {
@@ -672,8 +640,6 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding,
             switchColors = switchColorsOverride ?: defaultSwitchColors,
             showContext = openKeyboard && (layoutType == LayoutType.SMALL || layoutType == LayoutType.COMPACT),
             contextContent = {
@@ -730,8 +696,8 @@ fun SettingsItems(
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
                 subtitleColor = tileSubtitleColor,
-                horizontalPadding = tileHorizontalPadding,
-                verticalPadding = tileVerticalPadding
+//                horizontalPadding = tileHorizontalPadding,
+//                verticalPadding = tileVerticalPadding
             )
             Spacer(Modifier.height(actualInnerGroupSpacing))
             SettingsTile(
@@ -743,8 +709,8 @@ fun SettingsItems(
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
                 subtitleColor = tileSubtitleColor,
-                horizontalPadding = tileHorizontalPadding,
-                verticalPadding = tileVerticalPadding
+//                horizontalPadding = tileHorizontalPadding,
+//                verticalPadding = tileVerticalPadding
             )
             Spacer(Modifier.height(actualInnerGroupSpacing))
             SettingsTile(
@@ -756,8 +722,8 @@ fun SettingsItems(
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
                 subtitleColor = tileSubtitleColor,
-                horizontalPadding = tileHorizontalPadding,
-                verticalPadding = tileVerticalPadding
+//                horizontalPadding = tileHorizontalPadding,
+//                verticalPadding = tileVerticalPadding
             )
             val fabSwipeUpAction by viewModel.fabSwipeUpAction.collectAsState()
             val fabSwipeUpValue by viewModel.fabSwipeUpValue.collectAsState()
@@ -771,8 +737,8 @@ fun SettingsItems(
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
                 subtitleColor = tileSubtitleColor,
-                horizontalPadding = tileHorizontalPadding,
-                verticalPadding = tileVerticalPadding
+//                horizontalPadding = tileHorizontalPadding,
+//                verticalPadding = tileVerticalPadding
             )
         }
         Spacer(Modifier.height(actualOuterGroupSpacing))
@@ -789,8 +755,7 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding
+
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsTile(
@@ -802,8 +767,7 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding
+
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsTileContext(
@@ -813,8 +777,6 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding,
             enableRipple = false,
             contextContent = {
                 XenonSingleChoiceButtonGroup(
@@ -861,8 +823,8 @@ fun SettingsItems(
         backgroundColor = tileBackgroundColor,
         contentColor = tileContentColor,
         subtitleColor = tileSubtitleColor,
-        horizontalPadding = tileHorizontalPadding,
-        verticalPadding = tileVerticalPadding
+//        horizontalPadding = tileHorizontalPadding,
+//        verticalPadding = tileVerticalPadding
     )
     Spacer(Modifier.height(actualOuterGroupSpacing))
 
@@ -877,8 +839,7 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding
+
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsTile(
@@ -890,8 +851,7 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding
+
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsTile(
@@ -903,8 +863,7 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding
+
         )
     }
     Spacer(Modifier.height(actualOuterGroupSpacing))
@@ -920,8 +879,7 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding
+
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsTile(
@@ -933,8 +891,7 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding
+
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsTile(
@@ -946,8 +903,7 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding
+
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsTile(
@@ -960,8 +916,7 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding
+
         )
         Spacer(Modifier.height(actualOuterGroupSpacing))
         SettingsTile(
@@ -976,8 +931,7 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding
+
         )
     }
 
@@ -993,8 +947,7 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding
+
         )
     }
 }

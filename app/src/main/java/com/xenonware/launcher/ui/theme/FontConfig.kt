@@ -45,7 +45,7 @@ object FontAxes {
         AxisDef("wght", R.string.axis_weight, 100f, 500f, 1000f),
         AxisDef("wdth", R.string.axis_width, 25f, 100f, 151f),
         AxisDef("opsz", R.string.axis_optical_size, 8f, 14f, 144f),
-        AxisDef("slnt", R.string.axis_slant, -10f, 0f, 10f),
+        AxisDef("slnt", R.string.axis_slant, -10f, 0f, 0f),
         AxisDef("GRAD", R.string.axis_grade, -200f, 0f, 150f),
         AxisDef("XOPQ", R.string.axis_thick_stroke, 27f, 96f, 175f),
         AxisDef("YOPQ", R.string.axis_thin_stroke, 25f, 79f, 135f),

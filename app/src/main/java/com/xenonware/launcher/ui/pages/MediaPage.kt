@@ -2,6 +2,7 @@ package com.xenonware.launcher.ui.pages
 
 import android.content.res.Configuration
 import android.graphics.Canvas
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.EaseInOut
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -43,6 +44,7 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material3.Button
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -77,6 +79,7 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -93,8 +96,12 @@ import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.createBitmap
+import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import coil.imageLoader
+import coil.request.ImageRequest
+import coil.request.SuccessResult
 import com.xenon.mylibrary.values.BiggerElevation
 import com.xenon.mylibrary.values.BiggerSpacing
 import com.xenon.mylibrary.values.BiggestPadding
@@ -136,6 +143,7 @@ import com.xenonware.launcher.media.MediaAction
 import com.xenonware.launcher.media.MediaState
 import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
 import com.xenonware.launcher.ui.theme.mainFontFamily
+import com.xenonware.launcher.util.ColorUtils
 import com.xenonware.launcher.util.blockHorizontalPagerSwipe
 import com.xenonware.launcher.util.isSmallScreenDevice
 import com.xenonware.launcher.util.shouldDisableLandscapeLayout
@@ -167,14 +175,18 @@ fun MediaPage(
     val disableLandscape = shouldDisableLandscapeLayout(context)
     val useLandscapeLayout = isLandscape && !disableLandscape
 
-    val contentColor = colorScheme.onSurface
-    val subContentColor = contentColor.copy(alpha = 0.7f)
-    val overlayColor =
-        if (isDarkTheme) Color.Black.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.45f)
-    val iconButtonContainerColor = colorScheme.onSurface
-    val iconButtonContentColor = colorScheme.surface
+    val theme = rememberMediaTheme(mediaState)
+    val baseBgAlpha = if (isDarkTheme) 0.8f else 0.6f
 
-    val artModel = remember(mediaState.title, mediaState.artist) {
+    MaterialTheme(colorScheme = theme.scheme) {
+        val contentColor = colorScheme.onSurface
+        val subContentColor = contentColor.copy(alpha = 0.7f)
+        val overlayColor =
+            if (isDarkTheme) Color.Black.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.45f)
+        val iconButtonContainerColor = colorScheme.onSurface
+        val iconButtonContentColor = colorScheme.surface
+
+        val artModel = remember(mediaState.title, mediaState.artist) {
         mediaState.albumArt ?: mediaState.albumArtUri
     }
 
@@ -235,8 +247,8 @@ fun MediaPage(
     val normalizedProgress = ((progress - 0.75f) * 4f).coerceIn(0f, 1f)
     val easedProgress = EaseInOut.transform(normalizedProgress)
     val cornerRadius = ExtraBigSpacing * (1f - easedProgress)
-    val baseBgAlpha = if (isDarkTheme) 0.6f else 0.4f
-    val backgroundTint = colorScheme.inversePrimary.copy(alpha = baseBgAlpha)
+    val dynamicBackground = colorScheme.inversePrimary
+    val backgroundTint = dynamicBackground.copy(alpha = baseBgAlpha)
 
     val textShadow = Shadow(
         color = Color.Black.copy(alpha = 0.3f), offset = Offset(0f, 2f), blurRadius = 4f
@@ -263,7 +275,7 @@ fun MediaPage(
                         .blur(BiggerElevation),
                     contentScale = ContentScale.Crop,
                     colorFilter = ColorFilter.tint(
-                        backgroundTint, blendMode = BlendMode.SrcAtop
+                        dynamicBackground.copy(alpha = 0.4f), blendMode = BlendMode.SrcAtop
                     )
                 )
                 // Darken/Lighten the background for better readability
@@ -779,7 +791,7 @@ fun MediaPage(
                                     .size(portraitAlbumArtSize)
                                     .aspectRatio(1f)
                                     .clip(RoundedCornerShape(LargestCornerRadius)),
-                                color = colorScheme.surfaceVariant.copy(alpha = surfaceAlpha),
+                                color = theme.background.copy(alpha = surfaceAlpha),
                                 tonalElevation = MediumElevation
                             ) {
                                 if (artModel != null) {
@@ -813,7 +825,7 @@ fun MediaPage(
                                 .size(portraitAlbumArtSize)
                                 .aspectRatio(1f)
                                 .clip(RoundedCornerShape(ExtraLargerCornerRadius)),
-                            color = colorScheme.surfaceVariant.copy(alpha = surfaceAlpha),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = surfaceAlpha),
                             tonalElevation = MediumElevation
                         ) {
                             if (artModel != null) {
@@ -1022,6 +1034,7 @@ fun MediaPage(
         }
     }
 }
+}
 
 private fun Modifier.musicNote(note: MusicNoteAnimation) = graphicsLayer {
     rotationZ = note.rotation * note.playingFactor
@@ -1199,4 +1212,96 @@ private fun rememberMusicNoteAnimation(isPlaying: Boolean): MusicNoteAnimation {
     )
 
     return MusicNoteAnimation(rotation, scale, playingFactor)
+}
+
+@Immutable
+private data class MediaTheme(
+    val background: Color,
+    val content: Color,
+    val accent: Color,
+    val scheme: ColorScheme,
+)
+
+@Composable
+private fun rememberMediaTheme(mediaState: MediaState): MediaTheme {
+    val context = LocalContext.current
+    val isDark = LocalIsDarkTheme.current
+    val scheme = colorScheme
+    val surfaceContainerLowest = scheme.surfaceContainerLowest
+    val onSurface = scheme.onSurface
+
+    val albumArt = mediaState.albumArt
+    val albumArtUri = mediaState.albumArtUri
+
+    val defaultTheme = remember(scheme, surfaceContainerLowest, onSurface) {
+        Triple(surfaceContainerLowest, onSurface, scheme.primaryContainer)
+    }
+    var base by remember { mutableStateOf(defaultTheme) }
+
+    LaunchedEffect(albumArt, albumArtUri, isDark, scheme) {
+        val bitmap = when {
+            albumArt != null -> albumArt
+            albumArtUri != null -> {
+                val request = ImageRequest.Builder(context)
+                    .data(albumArtUri)
+                    .size(40, 40)
+                    .allowHardware(false)
+                    .build()
+                (context.imageLoader.execute(request) as? SuccessResult)
+                    ?.drawable?.toBitmap(40, 40)
+            }
+            else -> null
+        }
+
+        if (bitmap != null) {
+            base = try {
+                val seed = ColorUtils.getDominantColor(bitmap)
+
+                // More vibrant lerp for the page background
+                val bg = if (isDark) {
+                    lerp(seed, surfaceContainerLowest, 0.35f)
+                } else {
+                    lerp(seed, surfaceContainerLowest, 0.7f)
+                }
+                val text = if (isDark) {
+                    lerp(seed, onSurface, 0.85f)
+                } else {
+                    lerp(seed, onSurface, 0.7f)
+                }
+                val accent = if (isDark) {
+                    lerp(seed, Color.Black, 0.3f).copy(alpha = 0.6f)
+                } else {
+                    lerp(seed, Color.White, 0.15f).copy(alpha = 0.3f)
+                }
+
+                Triple(bg, text, accent)
+            } catch (_: Exception) {
+                defaultTheme
+            }
+        } else {
+            delay(500.milliseconds)
+            base = defaultTheme
+        }
+    }
+
+    val background by animateColorAsState(base.first, tween(500), label = "mediaBg")
+    val content by animateColorAsState(base.second, tween(500), label = "mediaText")
+    val accent by animateColorAsState(base.third, tween(500), label = "mediaPc")
+
+    return remember(background, content, accent, scheme) {
+        MediaTheme(
+            background = background,
+            content = content,
+            accent = accent,
+            scheme = scheme.copy(
+                primary = accent,
+                primaryContainer = accent,
+                onPrimaryContainer = content,
+                onSurface = content,
+                inversePrimary = background,
+                surface = background,
+                surfaceVariant = background
+            )
+        )
+    }
 }

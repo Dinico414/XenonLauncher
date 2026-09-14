@@ -11,6 +11,10 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -18,11 +22,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import com.xenon.mylibrary.activity.BasePermissionActivity
 import com.xenon.mylibrary.res.AnimatedGradientBackground
 import com.xenon.mylibrary.res.PermissionScreen
+import com.xenon.mylibrary.res.XenonIcon
 import com.xenon.mylibrary.theme.XenonTheme
 import com.xenon.mylibrary.utils.PermissionItem
 import com.xenonware.launcher.accessibility.XenonAccessibilityService
@@ -65,6 +71,13 @@ class PermissionActivity : BasePermissionActivity() {
                                 getString(R.string.set_as_home)
                             } else {
                                 getString(R.string.grant_permission)
+                            },
+                            skipIcon = XenonIcon { modifier ->
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                                    contentDescription = null,
+                                    modifier = modifier.size(24.dp)
+                                )
                             },
                             onFinish = { onPermissionsFinished() }
                         )

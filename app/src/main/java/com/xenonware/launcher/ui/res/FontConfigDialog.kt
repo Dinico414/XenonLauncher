@@ -55,7 +55,7 @@ import com.xenon.mylibrary.values.LargeMediumPadding
 import com.xenon.mylibrary.values.LargePadding
 import com.xenon.mylibrary.values.LargestCornerRadius
 import com.xenon.mylibrary.values.LargestSpacing
-import com.xenon.mylibrary.values.MediumLargeSpacer
+
 import com.xenon.mylibrary.values.MediumLargeSpacing
 import com.xenon.mylibrary.values.MediumPadding
 import com.xenon.mylibrary.values.MediumSmallSpacer
@@ -153,6 +153,8 @@ fun FontConfigDialog(
                 FontAxes.serializeSettings(googleSansMap.toMap())
             )
         },
+        actionButton1Text = stringResource(R.string.cancel),
+        onActionButton1Click = onDismiss,
         contentManagesScrolling = true,
         externalShowTopDivider = showTopDivider,
         externalShowBottomDivider = showBottomDivider
@@ -275,13 +277,20 @@ private fun FontAxesAdjustmentDialog(
     onDismiss: () -> Unit
 ) {
     val axes = if (fontType == FontType.ROBOTO_FLEX) FontAxes.ROBOTO_FLEX_AXES else FontAxes.GOOGLE_SANS_AXES
-    val activeMap = if (fontType == FontType.ROBOTO_FLEX) robotoMap else googleSansMap
+    val parentMap = if (fontType == FontType.ROBOTO_FLEX) robotoMap else googleSansMap
 
-    val previewFontFamily = remember(fontType, robotoMap.toMap(), googleSansMap.toMap()) {
+    // Work on a local copy so we can cancel changes
+    val localMap = remember {
+        mutableStateMapOf<String, Float>().apply {
+            putAll(parentMap)
+        }
+    }
+
+    val previewFontFamily = remember(fontType, localMap.toMap()) {
         createCustomFontFamily(
             fontType = fontType,
-            robotoSettings = robotoMap.toMap(),
-            googleSansSettings = googleSansMap.toMap()
+            robotoSettings = if (fontType == FontType.ROBOTO_FLEX) localMap.toMap() else emptyMap(),
+            googleSansSettings = if (fontType == FontType.GOOGLE_SANS_FLEX) localMap.toMap() else emptyMap()
         )
     }
 
@@ -298,7 +307,13 @@ private fun FontAxesAdjustmentDialog(
         properties = DialogProperties(usePlatformDefaultWidth = true),
         title = fontType.title,
         confirmButtonText = stringResource(R.string.done),
-        onConfirmButtonClick = onDismiss,
+        onConfirmButtonClick = {
+            parentMap.clear()
+            parentMap.putAll(localMap)
+            onDismiss()
+        },
+        actionButton1Text = stringResource(R.string.cancel),
+        onActionButton1Click = onDismiss,
         contentManagesScrolling = true,
         externalShowTopDivider = showTopDivider,
         externalShowBottomDivider = showBottomDivider
@@ -345,8 +360,8 @@ private fun FontAxesAdjustmentDialog(
             // Full-width tonal error reset button
             FilledTonalButton(
                 onClick = {
-                    activeMap.clear()
-                    activeMap.putAll(axes.associate { it.tag to it.default })
+                    localMap.clear()
+                    localMap.putAll(axes.associate { it.tag to it.default })
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -367,15 +382,15 @@ private fun FontAxesAdjustmentDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(max = 380.dp),
-                verticalArrangement = Arrangement.spacedBy(MediumLargeSpacer)
+                verticalArrangement = Arrangement.spacedBy(MediumLargeSpacing)
             ) {
                 items(axes) { axis ->
-                    val currentValue = activeMap[axis.tag] ?: axis.default
+                    val currentValue = localMap[axis.tag] ?: axis.default
                     AxisSliderItem(
                         axis = axis,
                         value = currentValue,
-                        onValueChange = { activeMap[axis.tag] = it },
-                        onReset = { activeMap[axis.tag] = axis.default }
+                        onValueChange = { localMap[axis.tag] = it },
+                        onReset = { localMap[axis.tag] = axis.default }
                     )
                 }
             }

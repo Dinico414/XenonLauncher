@@ -662,6 +662,7 @@ fun LauncherScreen(
                                     .graphicsLayer {
                                         if (mediaProgress > 0f) {
                                             translationX = -0.25f * size.width * mediaProgress
+                                            alpha = 1f - mediaProgress
                                         }
                                     }
                                     .then(

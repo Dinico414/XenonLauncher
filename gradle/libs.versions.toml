@@ -26,7 +26,7 @@ navigationCompose = "2.10.1"
 credentials = "1.6.0"
 credentialsPlayServicesAuth = "1.6.0"
 
-xenonCommons = "3.0.6"
+xenonCommons = "3.0.7"
 #noinspection UnusedVersionCatalogEntry
 xenonUi = "4.0"
 

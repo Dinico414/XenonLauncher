@@ -40,10 +40,10 @@ import com.xenon.mylibrary.res.DialogVersionNumber
 import com.xenon.mylibrary.res.ThemeSetting
 import com.xenon.mylibrary.theme.LayoutType
 import com.xenon.mylibrary.values.IconSizeMedium
+import com.xenon.mylibrary.values.MediumLargeCornerRadius
 import com.xenon.mylibrary.values.MediumPadding
 import com.xenon.mylibrary.values.NoCornerRadius
 import com.xenon.mylibrary.values.NoSpacing
-import com.xenon.mylibrary.values.SmallerCornerRadius
 import com.xenonware.launcher.BuildConfig
 import com.xenonware.launcher.R
 import com.xenonware.launcher.model.FabAction
@@ -213,9 +213,7 @@ fun CoverSettings(
                     tileBackgroundColor = coverScreenBackgroundColor,
                     tileContentColor = coverScreenContentColor,
                     tileSubtitleColor = coverScreenContentColor.copy(alpha = 0.7f),
-                    tileShapeOverride = RoundedCornerShape(SmallerCornerRadius),
-                    tileHorizontalPadding = MediumPadding,
-                    tileVerticalPadding = MediumPadding,
+                    tileShapeOverride = RoundedCornerShape(MediumLargeCornerRadius),
                     useGroupStyling = false,
                     state = state,
                     onNavigateToDeveloperOptions = onNavigateToDeveloperOptions,
