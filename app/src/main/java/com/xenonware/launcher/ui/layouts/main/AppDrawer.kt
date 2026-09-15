@@ -163,6 +163,7 @@ import com.xenon.mylibrary.values.LargestCornerRadius
 import com.xenon.mylibrary.values.LargestPadding
 import com.xenon.mylibrary.values.LargestSpacer
 import com.xenon.mylibrary.values.MediumPadding
+import com.xenon.mylibrary.values.MediumSmallerCornerRadius
 import com.xenon.mylibrary.values.MediumSpacer
 import com.xenon.mylibrary.values.NoCornerRadius
 import com.xenon.mylibrary.values.NoElevation
@@ -821,17 +822,11 @@ fun AppDrawer(
                                 val webResults = searchResults.filterIsInstance<SearchResult.Web>()
                                 if (webResults.isNotEmpty()) {
                                     item(span = { GridItemSpan(maxLineSpan) }) {
-                                        Column(
-                                            modifier = Modifier.padding(bottom = MediumPadding),
-                                            verticalArrangement = Arrangement.spacedBy(MediumSpacer)
-                                        ) {
-                                            webResults.forEach { result ->
-                                                SearchResultItem(
-                                                    result = result,
-                                                    onClick = { handleSearchResultClick(it) }
-                                                )
-                                            }
-                                        }
+                                        WebResultsGroup(
+                                            results = webResults,
+                                            onClick = { handleSearchResultClick(it) },
+                                            modifier = Modifier.padding(bottom = MediumPadding)
+                                        )
                                     }
                                 }
                             }
@@ -945,17 +940,11 @@ fun AppDrawer(
                                     val webResults = searchResults.filterIsInstance<SearchResult.Web>()
                                     if (webResults.isNotEmpty()) {
                                         item(span = { GridItemSpan(maxLineSpan) }) {
-                                            Column(
-                                                modifier = Modifier.padding(bottom = MediumPadding),
-                                                verticalArrangement = Arrangement.spacedBy(MediumSpacer)
-                                            ) {
-                                                webResults.forEach { result ->
-                                                    SearchResultItem(
-                                                        result = result,
-                                                        onClick = { handleSearchResultClick(it) }
-                                                    )
-                                                }
-                                            }
+                                            WebResultsGroup(
+                                                results = webResults,
+                                                onClick = { handleSearchResultClick(it) },
+                                                modifier = Modifier.padding(bottom = MediumPadding)
+                                            )
                                         }
                                     }
                                 }
@@ -1108,20 +1097,29 @@ fun AppDrawer(
                                 }
                             } else {
                                 if (searchQuery.isNotEmpty()) {
-                                    items(filteredResults) { result ->
-                                        SearchResultItem(
-                                            result = result,
-                                            onClick = { handleSearchResultClick(it) },
-                                            onLongClick = { it, offset ->
-                                                if (it is SearchResult.App) {
-                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                    searchResultPressOffset = offset
-                                                    searchResultMenuApp = it.appInfo
-                                                }
-                                            },
-                                            iconShape = iconShape,
-                                            showShadow = showShadow
-                                        )
+                                    if (selectedSearchType == SearchType.Web) {
+                                        item(span = { GridItemSpan(maxLineSpan) }) {
+                                            WebResultsGroup(
+                                                results = filteredResults.filterIsInstance<SearchResult.Web>(),
+                                                onClick = { handleSearchResultClick(it) }
+                                            )
+                                        }
+                                    } else {
+                                        items(filteredResults) { result ->
+                                            SearchResultItem(
+                                                result = result,
+                                                onClick = { handleSearchResultClick(it) },
+                                                onLongClick = { it, offset ->
+                                                    if (it is SearchResult.App) {
+                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                        searchResultPressOffset = offset
+                                                        searchResultMenuApp = it.appInfo
+                                                    }
+                                                },
+                                                iconShape = iconShape,
+                                                showShadow = showShadow
+                                            )
+                                        }
                                     }
                                 }
 
@@ -1440,6 +1438,38 @@ fun AppDrawer(
             safeArea = discSafeArea,
             hazeState = if (blurEnabled) hazeState else null
         )
+    }
+}
+
+/**
+ * The web results — "search the web" first, "open website" below it — as one stacked group:
+ * big outer corners at the top of the first and the bottom of the last row, small corners
+ * where the rows meet, and only a small gap between them.
+ */
+@Composable
+private fun WebResultsGroup(
+    results: List<SearchResult.Web>,
+    onClick: (SearchResult) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(SmallSpacer)
+    ) {
+        results.forEachIndexed { index, result ->
+            val top = if (index == 0) LargestCornerRadius else MediumSmallerCornerRadius
+            val bottom = if (index == results.lastIndex) LargestCornerRadius else MediumSmallerCornerRadius
+            SearchResultItem(
+                result = result,
+                onClick = onClick,
+                shape = RoundedCornerShape(
+                    topStart = top,
+                    topEnd = top,
+                    bottomStart = bottom,
+                    bottomEnd = bottom
+                )
+            )
+        }
     }
 }
 

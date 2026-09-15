@@ -41,6 +41,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -73,7 +74,9 @@ fun SearchResultItem(
     onClick: (SearchResult) -> Unit,
     onLongClick: ((SearchResult, Offset) -> Unit)? = null,
     iconShape: com.xenonware.launcher.ui.res.IconShape = com.xenonware.launcher.ui.res.IconShape.Circle,
-    showShadow: Boolean = false
+    showShadow: Boolean = false,
+    /** Outline of the row. Callers stacking rows into a group pass asymmetric corners. */
+    shape: Shape = RoundedCornerShape(LargestCornerRadius)
 ) {
     var itemPos by remember { mutableStateOf(Offset.Zero) }
 
@@ -81,7 +84,7 @@ fun SearchResultItem(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(LargestCornerRadius))
+            .clip(shape)
             .background(colorScheme.surfaceContainer.copy(alpha = 0.8f))
             .onGloballyPositioned { itemPos = it.positionInRoot() }
             .then(
@@ -110,8 +113,8 @@ fun SearchResultItem(
                     result.appInfo.icon?.let { icon ->
                         val shape = iconShape.getShape()
                         Image(
-                            bitmap = icon.toBitmap().asImageBitmap(), 
-                            contentDescription = null, 
+                            bitmap = icon.toBitmap().asImageBitmap(),
+                            contentDescription = null,
                             modifier = Modifier
                                 .fillMaxSize()
                                 .then(if (showShadow) Modifier.shadow(SmallElevation, shape) else Modifier)
@@ -188,7 +191,7 @@ fun SearchResultItem(
                     }
                 }
                 is SearchResult.Web -> {
-                    Icon(if (result.isUrl) Icons.Rounded.Language else Icons.Rounded.Search, null, modifier = Modifier.size(BiggestSpacing))
+                    Icon(if (result.isUrl) Icons.Rounded.Language else Icons.Rounded.Search, null, modifier = Modifier.size(BiggestSpacing), tint = colorScheme.onSurface)
                 }
             }
         }
