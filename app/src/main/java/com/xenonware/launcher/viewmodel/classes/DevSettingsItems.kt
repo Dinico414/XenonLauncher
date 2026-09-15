@@ -41,6 +41,7 @@ import com.xenon.mylibrary.res.SettingsTileContext
 import com.xenon.mylibrary.res.XenonDialog
 import com.xenon.mylibrary.res.XenonIcon
 import com.xenon.mylibrary.values.LargeMediumPadding
+import com.xenon.mylibrary.values.LargestBiggerSpacing
 import com.xenon.mylibrary.values.LargestPadding
 import com.xenon.mylibrary.values.MediumPadding
 import com.xenon.mylibrary.values.SmallSpacing
@@ -150,7 +151,7 @@ fun DevSettingsItems(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(SmallSpacing)
                         ) {
-                            Icon(Icons.Rounded.Email, null, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Rounded.Email, null, modifier = Modifier.size(LargestBiggerSpacing))
                             Text(stringResource(R.string.contact_developer))
                         }
                     }

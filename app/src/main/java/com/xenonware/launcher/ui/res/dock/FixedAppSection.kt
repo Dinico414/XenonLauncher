@@ -65,6 +65,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
 import androidx.compose.ui.unit.toSize
 import androidx.core.graphics.drawable.toBitmap
+import com.xenon.mylibrary.values.ExtraBigBiggerSpacing
 import com.xenon.mylibrary.values.ExtraBigSpacing
 import com.xenon.mylibrary.values.ExtraLargerSpacing
 import com.xenon.mylibrary.values.HugestSpacing
@@ -88,7 +89,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 private const val MAX_PINNED = 6
 
-private val ItemSize = 44.dp
+private val ItemSize = ExtraBigBiggerSpacing
 private val ItemSpacing = MediumSpacer
 
 // ---------------------------------------------------------------------------

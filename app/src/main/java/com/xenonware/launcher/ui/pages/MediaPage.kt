@@ -104,6 +104,7 @@ import coil.request.ImageRequest
 import coil.request.SuccessResult
 import com.xenon.mylibrary.values.BiggerElevation
 import com.xenon.mylibrary.values.BiggerSpacing
+import com.xenon.mylibrary.values.BiggestBiggerSpacing
 import com.xenon.mylibrary.values.BiggestPadding
 import com.xenon.mylibrary.values.BiggestSpacer
 import com.xenon.mylibrary.values.ExtraBigSpacing
@@ -675,7 +676,7 @@ fun MediaPage(
                                     onClick = onOpenSource,
                                     color = contentColor.copy(alpha = 0.1f),
                                     shape = RoundedCornerShape(ExtraLargeCornerRadius),
-                                    modifier = Modifier.height(36.dp)
+                                    modifier = Modifier.height(BiggestBiggerSpacing)
                                 ) {
                                     Row(
                                         modifier = Modifier.padding(horizontal = MediumPadding, vertical = MediumSmallPadding),

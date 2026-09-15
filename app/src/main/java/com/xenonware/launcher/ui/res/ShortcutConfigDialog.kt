@@ -33,9 +33,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.xenon.mylibrary.res.XenonDialog
+import com.xenon.mylibrary.values.BiggestBiggerSpacing
 import com.xenon.mylibrary.values.ExtraLargerSpacing
 import com.xenon.mylibrary.values.LargeMediumPadding
 import com.xenon.mylibrary.values.LargestCornerRadius
@@ -157,7 +157,7 @@ fun ShortcutConfigDialog(
                 }
                 VerticalDivider(
                     modifier = Modifier
-                        .height(36.dp),
+                        .height(BiggestBiggerSpacing),
                     color = if (isLinkSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
                 )
                 Box(
@@ -215,7 +215,7 @@ fun ShortcutConfigDialog(
                 }
                 VerticalDivider(
                     modifier = Modifier
-                        .height(36.dp),
+                        .height(BiggestBiggerSpacing),
                     color = if (isAppSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
                 )
                 Box(

@@ -80,7 +80,9 @@ import coil.request.ImageRequest
 import coil.request.SuccessResult
 import com.xenon.mylibrary.values.BigSpacing
 import com.xenon.mylibrary.values.BiggerSpacing
+import com.xenon.mylibrary.values.BiggestBiggerSpacing
 import com.xenon.mylibrary.values.BiggestSpacing
+import com.xenon.mylibrary.values.ExtraBigBiggerSpacing
 import com.xenon.mylibrary.values.ExtraBigSpacing
 import com.xenon.mylibrary.values.IconSizeSmall
 import com.xenon.mylibrary.values.IconSizeSmaller
@@ -368,7 +370,7 @@ private fun MediaSectionContent(
                 (mediaState.position.toFloat() / mediaState.duration.toFloat()).coerceIn(0f, 1f)
             } else 0f
 
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(44.dp)) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(ExtraBigBiggerSpacing)) {
                 CircularProgressIndicator(
                     progress = { progress },
                     modifier = Modifier.fillMaxSize().alpha(if(mediaState.title != null) 1f else 0f),
@@ -382,7 +384,7 @@ private fun MediaSectionContent(
                         contentDescription = stringResource(R.string.album_art),
                         modifier = Modifier
                             .padding(if(mediaState.title != null) SmallerPadding else NoPadding)
-                            .size(if(mediaState.title != null) 36.dp else 44.dp)
+                            .size(if(mediaState.title != null) BiggestBiggerSpacing else ExtraBigBiggerSpacing)
                             .clip(CircleShape),
                         contentScale = ContentScale.Crop
                     )
@@ -503,7 +505,7 @@ private fun MediaSectionContent(
                     shape = RoundedCornerShape(playRadius),
                     color = colorScheme.primaryContainer,
                     contentColor = colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(width = BigSpacing, height = 36.dp)
+                    modifier = Modifier.size(width = BigSpacing, height = BiggestBiggerSpacing)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
@@ -518,7 +520,7 @@ private fun MediaSectionContent(
 
                 IconButton(
                     onClick = onSkipNext,
-                    modifier = Modifier.size(width = LargeMediumIconSize, height = 36.dp)
+                    modifier = Modifier.size(width = LargeMediumIconSize, height = BiggestBiggerSpacing)
                 ) {
                     Icon(
                         Icons.Rounded.SkipNext,

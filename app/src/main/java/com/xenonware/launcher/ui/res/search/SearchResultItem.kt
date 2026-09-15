@@ -49,7 +49,6 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import coil.compose.rememberAsyncImagePainter
@@ -59,6 +58,7 @@ import com.xenon.mylibrary.values.ExtraBiggerSpacing
 import com.xenon.mylibrary.values.ExtraLargerSpacing
 import com.xenon.mylibrary.values.LargeMediumCornerRadius
 import com.xenon.mylibrary.values.LargeMediumPadding
+import com.xenon.mylibrary.values.LargestBiggerSpacing
 import com.xenon.mylibrary.values.LargestCornerRadius
 import com.xenon.mylibrary.values.LargestSpacer
 import com.xenon.mylibrary.values.SmallElevation
@@ -172,7 +172,7 @@ fun SearchResultItem(
                                     Icon(
                                         fileIcon,
                                         contentDescription = null,
-                                        modifier = Modifier.size(18.dp),
+                                        modifier = Modifier.size(LargestBiggerSpacing),
                                         tint = bgColor
                                     )
                                 }

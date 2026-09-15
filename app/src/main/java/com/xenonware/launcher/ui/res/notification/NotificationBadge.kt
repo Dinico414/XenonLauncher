@@ -18,9 +18,9 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.xenon.mylibrary.values.ExtraLargerSpacing
+import com.xenon.mylibrary.values.LargestBiggerSpacing
 import com.xenon.mylibrary.values.NoPadding
 import com.xenonware.launcher.R
 import com.xenonware.launcher.ui.theme.mainFontFamily
@@ -53,7 +53,7 @@ fun NotificationBadge(
 
     Box(
         modifier = modifier
-            .size(if (badgeType == 2) ExtraLargerSpacing else 18.dp)
+            .size(if (badgeType == 2) ExtraLargerSpacing else LargestBiggerSpacing)
             .background(badgeColor, CircleShape)
             .padding(if (badgeType == 2) NoPadding else NoPadding),
         contentAlignment = Alignment.Center

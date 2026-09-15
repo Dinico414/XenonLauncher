@@ -38,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.xenon.mylibrary.res.XenonDialog
+import com.xenon.mylibrary.values.BiggestBiggerSpacing
 import com.xenon.mylibrary.values.ExtraLargerSpacing
 import com.xenon.mylibrary.values.LargeMediumPadding
 import com.xenon.mylibrary.values.LargeMediumSpacing
@@ -173,7 +174,7 @@ fun FabActionConfigDialog(
                     if (isSubmenuAction) {
                         VerticalDivider(
                             modifier = Modifier
-                                .height(36.dp),
+                                .height(BiggestBiggerSpacing),
                             color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
                         )
                         Box(

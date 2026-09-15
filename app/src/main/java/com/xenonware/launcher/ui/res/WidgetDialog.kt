@@ -64,6 +64,7 @@ import androidx.core.graphics.drawable.toDrawable
 import com.xenon.mylibrary.res.XenonDialog
 import com.xenon.mylibrary.values.BigCornerRadius
 import com.xenon.mylibrary.values.BiggestSpacing
+import com.xenon.mylibrary.values.ExtraBigBiggerSpacing
 import com.xenon.mylibrary.values.HugeSpacing
 import com.xenon.mylibrary.values.HugerSpacing
 import com.xenon.mylibrary.values.IconSizeMedium
@@ -296,12 +297,12 @@ fun ShortcutPickerItem(
         horizontalAlignment = Alignment.CenterHorizontally) {
         if (bitmap != null) {
             Image(
-                bitmap = bitmap!!, contentDescription = null, modifier = Modifier.size(44.dp)
+                bitmap = bitmap!!, contentDescription = null, modifier = Modifier.size(ExtraBigBiggerSpacing)
             )
         } else {
             Box(
                 modifier = Modifier
-                    .size(44.dp)
+                    .size(ExtraBigBiggerSpacing)
                     .background(colorScheme.surfaceVariant, CircleShape),
                 contentAlignment = Alignment.Center
             ) {

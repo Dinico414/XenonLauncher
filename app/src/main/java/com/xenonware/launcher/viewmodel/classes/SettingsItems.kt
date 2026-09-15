@@ -91,6 +91,7 @@ import com.xenon.mylibrary.values.HugerSpacing
 import com.xenon.mylibrary.values.LargeMediumPadding
 import com.xenon.mylibrary.values.LargeMediumSpacer
 import com.xenon.mylibrary.values.LargeMediumSpacing
+import com.xenon.mylibrary.values.LargestBiggerSpacing
 import com.xenon.mylibrary.values.LargestCornerRadius
 import com.xenon.mylibrary.values.LargestPadding
 import com.xenon.mylibrary.values.MediumSmallSpacing
@@ -799,7 +800,7 @@ fun SettingsItems(
                                 else -> Icons.Rounded.Numbers
                             },
                             contentDescription = null,
-                            modifier = Modifier.size(18.dp),
+                            modifier = Modifier.size(LargestBiggerSpacing),
                             tint = tileSubtitleColor
                         )
                     },

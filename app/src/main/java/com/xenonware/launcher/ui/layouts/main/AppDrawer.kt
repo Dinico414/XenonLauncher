@@ -129,6 +129,7 @@ import com.xenon.mylibrary.res.MenuItem
 import com.xenon.mylibrary.res.XenonDropDown
 import com.xenon.mylibrary.res.XenonSingleChoiceButtonGroup
 import com.xenon.mylibrary.values.BiggerCornerRadius
+import com.xenon.mylibrary.values.BiggestBiggerSpacing
 import com.xenon.mylibrary.values.BiggestCornerRadius
 import com.xenon.mylibrary.values.DefaultFABSize
 import com.xenon.mylibrary.values.ExtraBiggerSpacing
@@ -1186,7 +1187,7 @@ fun AppDrawer(
                                         }
                                     },
                                     icon = { _, _ -> },
-                                    buttonHeight = 36.dp,
+                                    buttonHeight = BiggestBiggerSpacing,
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(top = MediumPadding)

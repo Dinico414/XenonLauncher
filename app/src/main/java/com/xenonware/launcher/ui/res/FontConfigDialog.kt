@@ -49,10 +49,12 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.xenon.mylibrary.res.XenonDialog
 import com.xenon.mylibrary.res.XenonSingleChoiceButtonGroup
+import com.xenon.mylibrary.values.BiggestBiggerSpacing
 import com.xenon.mylibrary.values.ExtraLargerSpacing
 import com.xenon.mylibrary.values.LargeMediumCornerRadius
 import com.xenon.mylibrary.values.LargeMediumPadding
 import com.xenon.mylibrary.values.LargePadding
+import com.xenon.mylibrary.values.LargestBiggerSpacing
 import com.xenon.mylibrary.values.LargestCornerRadius
 import com.xenon.mylibrary.values.LargestSpacing
 
@@ -231,7 +233,7 @@ fun FontConfigDialog(
                         // Divider and Arrow Button for modifiable fonts
                         if (item.isConfigurable) {
                             VerticalDivider(
-                                modifier = Modifier.height(36.dp),
+                                modifier = Modifier.height(BiggestBiggerSpacing),
                                 color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f)
                                 else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
                             )
@@ -372,7 +374,7 @@ private fun FontAxesAdjustmentDialog(
                 ),
                 shape = RoundedCornerShape(LargeMediumCornerRadius)
             ) {
-                Icon(Icons.Rounded.Refresh, null, modifier = Modifier.padding(end = MediumPadding).size(18.dp))
+                Icon(Icons.Rounded.Refresh, null, modifier = Modifier.padding(end = MediumPadding).size(LargestBiggerSpacing))
                 Text(stringResource(R.string.reset_all), fontWeight = FontWeight.SemiBold)
             }
 
