@@ -74,6 +74,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -86,6 +87,7 @@ import java.util.Locale
 import java.util.TimeZone
 import kotlin.coroutines.resume
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 
 data class WeatherState(
     val temperature: String,
@@ -124,6 +126,11 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
 
         const val DAY_MILLIS = 24 * 60 * 60 * 1000L
+
+        /** A location fix younger than this is reused for weather instead of asking for a new one. */
+        const val LOCATION_MAX_AGE_MS = 30L * 60 * 1000
+        /** Hard cap on waiting for a fresh fix; the old request could wait forever. */
+        const val LOCATION_FIX_TIMEOUT_MS = 10_000L
     }
 
     private val prefManager = SharedPreferenceManager(application)
@@ -473,6 +480,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val fusedLocationClient: FusedLocationProviderClient =
         LocationServices.getFusedLocationProviderClient(application)
 
+    /** Last position a weather lookup used; the fallback when no fix is available right now. */
+    private var lastWeatherLocation: Location? = null
+
     val notificationCount = NotificationManager.notificationCount
     val notifications = NotificationManager.notifications
 
@@ -609,7 +619,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     init {
         prefManager.registerListener(preferenceListener)
-        
+
         // Initialize NotificationManager with persistent settings
         NotificationManager.showMuteNotifications = prefManager.showMuteNotifications
         NotificationManager.showPermanentNotifications = prefManager.showPermanentNotifications
@@ -617,7 +627,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
         // Delay everything except basic time updates if booting
         startTimeUpdates()
-        
+
         if (!_isBooting.value) {
             finishInitialization()
         }
@@ -695,84 +705,104 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private fun startWeatherUpdates() {
         viewModelScope.launch {
+            var failures = 0
             while (true) {
                 val gotReading = updateWeatherOnce()
-                // If we couldn't get a fix/reading yet, retry soon; otherwise refresh every 15 min.
-                delay((if (gotReading) 900_000L else 60_000L).milliseconds)
+                failures = if (gotReading) 0 else failures + 1
+                // A good reading refreshes every 15 min. Failures back off 1 → 2 → 4 → 8 → 15
+                // min so a flaky wttr.in isn't hammered; the last good reading stays on screen.
+                val waitMinutes = if (gotReading) 15 else minOf(15, 1 shl (failures - 1).coerceAtMost(4))
+                delay(waitMinutes.minutes)
             }
         }
     }
 
+    /**
+     * One attempt at a reading; true on success. On failure the previous reading is kept — a
+     * timeout or a wttr.in 503 must not blank the widget until the next success.
+     */
     private suspend fun updateWeatherOnce(): Boolean {
         val location = getDeviceLocation()
         return withContext(Dispatchers.IO) {
+            var connection: HttpURLConnection? = null
             try {
-                // With coordinates wttr.in reports your exact location, like Google Weather.
-                // Without them, it falls back to IP-based geolocation (less accurate).
+                // With coordinates wttr.in reports the exact location; without them it falls
+                // back to IP-based geolocation (less accurate).
                 val locationPath = location?.let { "/${it.latitude},${it.longitude}" } ?: ""
                 val lang = Locale.getDefault().language
-                // Using format=j1 for detailed forecast including daily high/low
+                // format=j1: detailed forecast including daily high/low
                 val url = URL("https://wttr.in$locationPath?format=j1&lang=$lang")
-                val connection = url.openConnection() as HttpURLConnection
-                connection.connectTimeout = 5000
-                connection.readTimeout = 5000
+                connection = (url.openConnection() as HttpURLConnection).apply {
+                    // wttr.in regularly needs several seconds; the old 5 s budget timed out constantly
+                    connectTimeout = 15_000
+                    readTimeout = 20_000
+                    setRequestProperty("User-Agent", "XenonLauncher")
+                    setRequestProperty("Accept", "application/json")
+                }
+
+                val code = connection.responseCode
+                if (code != HttpURLConnection.HTTP_OK) {
+                    Log.w(TAG, "Weather: wttr.in answered HTTP $code")
+                    return@withContext false
+                }
 
                 val text = connection.inputStream.bufferedReader().use { it.readText() }.trim()
-                if (text.isNotEmpty()) {
-                    val json = JSONObject(text)
-                    val currentCondition = json.getJSONArray("current_condition").getJSONObject(0)
-                    val weather = json.getJSONArray("weather").getJSONObject(0)
-
-                    val tempUnitSetting = prefManager.tempUnit
-                    val isMetric = when (tempUnitSetting) {
-                        1 -> true
-                        2 -> false
-                        else -> Locale.getDefault().country != "US"
-                    }
-                    val unit = if (isMetric) "C" else "F"
-                    
-                    val currentTemp = if (isMetric) currentCondition.getString("temp_C") + "°$unit" else currentCondition.getString("temp_F") + "°$unit"
-                    
-                    val lang = Locale.getDefault().language
-                    val descField = if (lang != "en") "lang_$lang" else "weatherDesc"
-                    
-                    val rawDesc = currentCondition.getJSONArray("weatherDesc").getJSONObject(0).getString("value")
-                    val currentDesc = if (currentCondition.has(descField)) {
-                        currentCondition.getJSONArray(descField).getJSONObject(0).getString("value")
-                    } else {
-                        translateWeatherCondition(rawDesc)
-                    }
-                    
-                    val maxTemp = if (isMetric) weather.getString("maxtempC") + "°$unit" else weather.getString("maxtempF") + "°$unit"
-                    val minTemp = if (isMetric) weather.getString("mintempC") + "°$unit" else weather.getString("mintempF") + "°$unit"
-                    
-                    val hourly = weather.getJSONArray("hourly")
-                    val noonForecast = if (hourly.length() > 4) hourly.getJSONObject(4) else hourly.getJSONObject(0)
-                    
-                    val dailyDescRaw = noonForecast.getJSONArray("weatherDesc").getJSONObject(0).getString("value")
-                    val dailyDesc = if (noonForecast.has(descField)) {
-                        noonForecast.getJSONArray(descField).getJSONObject(0).getString("value")
-                    } else {
-                        translateWeatherCondition(dailyDescRaw)
-                    }
-
-                    _weatherState.value = WeatherState(
-                        temperature = currentTemp,
-                        condition = currentDesc,
-                        maxTemp = maxTemp,
-                        minTemp = minTemp,
-                        dailyCondition = dailyDesc
-                    )
-                    return@withContext true
+                // On overload wttr.in returns an HTML page with a 200; don't try to parse that
+                if (text.isEmpty() || !text.startsWith("{")) {
+                    Log.w(TAG, "Weather: wttr.in returned a non-JSON body")
+                    return@withContext false
                 }
-                false
-            } catch (e: Exception) {
-                Log.e("LauncherViewModel", "Weather update failed", e)
+
+                val json = JSONObject(text)
+                val currentCondition = json.getJSONArray("current_condition").getJSONObject(0)
+                val weather = json.getJSONArray("weather").getJSONObject(0)
+
+                val tempUnitSetting = prefManager.tempUnit
+                val isMetric = when (tempUnitSetting) {
+                    1 -> true
+                    2 -> false
+                    else -> Locale.getDefault().country != "US"
+                }
+                val unit = if (isMetric) "C" else "F"
+
+                val currentTemp = if (isMetric) currentCondition.getString("temp_C") + "°$unit" else currentCondition.getString("temp_F") + "°$unit"
+
+                val descField = if (lang != "en") "lang_$lang" else "weatherDesc"
+
+                val rawDesc = currentCondition.getJSONArray("weatherDesc").getJSONObject(0).getString("value")
+                val currentDesc = if (currentCondition.has(descField)) {
+                    currentCondition.getJSONArray(descField).getJSONObject(0).getString("value")
+                } else {
+                    translateWeatherCondition(rawDesc)
+                }
+
+                val maxTemp = if (isMetric) weather.getString("maxtempC") + "°$unit" else weather.getString("maxtempF") + "°$unit"
+                val minTemp = if (isMetric) weather.getString("mintempC") + "°$unit" else weather.getString("mintempF") + "°$unit"
+
+                val hourly = weather.getJSONArray("hourly")
+                val noonForecast = if (hourly.length() > 4) hourly.getJSONObject(4) else hourly.getJSONObject(0)
+
+                val dailyDescRaw = noonForecast.getJSONArray("weatherDesc").getJSONObject(0).getString("value")
+                val dailyDesc = if (noonForecast.has(descField)) {
+                    noonForecast.getJSONArray(descField).getJSONObject(0).getString("value")
+                } else {
+                    translateWeatherCondition(dailyDescRaw)
+                }
+
                 _weatherState.value = WeatherState(
-                    temperature = getApplication<Application>().getString(R.string.no_weather_data),
-                    condition = ""
+                    temperature = currentTemp,
+                    condition = currentDesc,
+                    maxTemp = maxTemp,
+                    minTemp = minTemp,
+                    dailyCondition = dailyDesc
                 )
+                true
+            } catch (e: Exception) {
+                // Keep whatever is showing; the loop retries with back-off
+                Log.w(TAG, "Weather update failed: ${e.javaClass.simpleName}: ${e.message}")
                 false
+            } finally {
+                connection?.disconnect()
             }
         }
     }
@@ -808,6 +838,13 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    /**
+     * Where to ask wttr.in about. Weather only needs a rough position, so the last known fix is
+     * used whenever it is recent enough — it's instant. A fresh fix is requested only when there
+     * is none, at balanced accuracy so it works indoors, and with a hard timeout: the old
+     * high-accuracy request could wait forever for GPS and stalled the whole update loop.
+     * Falls back to the last position this ever saw, then to wttr.in's IP lookup.
+     */
     @SuppressLint("MissingPermission")
     private suspend fun getDeviceLocation(): Location? {
         val context = getApplication<Application>()
@@ -819,28 +856,32 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         ) == PackageManager.PERMISSION_GRANTED
         if (!hasFine && !hasCoarse) return null // no permission -> wttr.in uses IP fallback
 
-        val priority = if (hasFine) {
-            Priority.PRIORITY_HIGH_ACCURACY
-        } else {
-            Priority.PRIORITY_BALANCED_POWER_ACCURACY
+        val last = withTimeoutOrNull(3_000L) {
+            suspendCancellableCoroutine<Location?> { cont ->
+                fusedLocationClient.lastLocation
+                    .addOnSuccessListener { if (cont.isActive) cont.resume(it) }
+                    .addOnFailureListener { if (cont.isActive) cont.resume(null) }
+            }
+        }
+        if (last != null && System.currentTimeMillis() - last.time < LOCATION_MAX_AGE_MS) {
+            lastWeatherLocation = last
+            return last
         }
 
-        return suspendCancellableCoroutine { cont ->
-            val cts = CancellationTokenSource()
-            fusedLocationClient.getCurrentLocation(priority, cts.token)
-                .addOnSuccessListener { location ->
-                    if (location != null) {
-                        if (cont.isActive) cont.resume(location)
-                    } else {
-                        // Fresh fix unavailable (e.g. just booted) -> fall back to last known.
-                        fusedLocationClient.lastLocation
-                            .addOnSuccessListener { last -> if (cont.isActive) cont.resume(last) }
-                            .addOnFailureListener { if (cont.isActive) cont.resume(null) }
-                    }
-                }
-                .addOnFailureListener { if (cont.isActive) cont.resume(null) }
-            cont.invokeOnCancellation { cts.cancel() }
+        val fresh = withTimeoutOrNull(LOCATION_FIX_TIMEOUT_MS) {
+            suspendCancellableCoroutine<Location?> { cont ->
+                val cts = CancellationTokenSource()
+                fusedLocationClient
+                    .getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, cts.token)
+                    .addOnSuccessListener { if (cont.isActive) cont.resume(it) }
+                    .addOnFailureListener { if (cont.isActive) cont.resume(null) }
+                cont.invokeOnCancellation { cts.cancel() }
+            }
         }
+
+        val result = fresh ?: last ?: lastWeatherLocation
+        if (result != null) lastWeatherLocation = result
+        return result
     }
 
     private fun startTimeUpdates() {
@@ -1633,7 +1674,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         val start = localStart(tz)
         val end = localEnd(tz)
         if (start > bounds.endOfTomorrow) return false
-        
+
         return if (isAllDay) {
             end > bounds.startOfToday
         } else {
@@ -1897,7 +1938,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
             if (selection != null && events.isEmpty()) {
                 val unfiltered = readEvents(context, uri, projection, null, null, sortOrder, bounds, tz)
-                
+
                 // Keep the original safety net: if the filter matched nothing at all, show everything.
                 if (events.isEmpty() && unfiltered.isNotEmpty()) {
                     Log.w(TAG, "Filtered query returned 0 events; falling back to unfiltered results")
@@ -1948,7 +1989,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                     val syncEvents = syncIdx < 0 || cursor.getInt(syncIdx) != 0
                     val visible = visibleIdx < 0 || cursor.getInt(visibleIdx) != 0
                     val accountType = if (typeIdx >= 0) cursor.getString(typeIdx) ?: "" else ""
-                    
+
                     calendars.add(
                         CalendarInfo(id, name, color, accountName, syncEvents, visible, accountType)
                     )

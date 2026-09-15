@@ -488,9 +488,9 @@ fun rememberWallpaperDarkIcons(): Boolean {
 @Composable
 fun LauncherScreen(
     viewModel: LauncherViewModel,
-    apps: List<com.xenonware.launcher.model.AppInfo>,
-    pinnedApps: List<com.xenonware.launcher.model.AppInfo>,
-    recentlyOpened: List<com.xenonware.launcher.model.AppInfo>,
+    apps: List<AppInfo>,
+    pinnedApps: List<AppInfo>,
+    recentlyOpened: List<AppInfo>,
     isGridLayout: Boolean,
     currentTime: String,
     currentDate: String,
@@ -595,14 +595,8 @@ fun LauncherScreen(
 
     val blurAvailable = rememberBlurAvailable() && blurSetting && !showBootWelcome
 
-    // While the edit dialog is open the live content fades out and only its blurred capture
-    // stays on screen. hazeEffect only draws a blurred copy on top; it never hides what is
-    // underneath, and that capture is translucent almost everywhere (the sheet, the search
-    // bar, the dock), so without this every icon edge shows straight through it. The capture
-    // itself is unaffected: the alpha layer sits outside the hazeSource.
     val liveContentAlpha by animateFloatAsState(
         targetValue = if (appToEdit != null && blurAvailable) 0f else 1f,
-        // Cross-fade in; snap back so nothing blinks when the dialog closes
         animationSpec = if (appToEdit != null) tween(durationMillis = 250) else snap(),
         label = "liveContentAlpha"
     )
@@ -633,9 +627,6 @@ fun LauncherScreen(
 
     DragHandler {
         Box(modifier = Modifier.fillMaxSize()) {
-            // Everything below — pages, drawer, dock — is one hazeSource, attached only
-            // while the edit dialog is open so it costs nothing otherwise. The alpha layer
-            // must stay outside it: it hides the live content, not the capture.
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -844,8 +835,6 @@ fun LauncherScreen(
                 )
             }
 
-            // EDIT APP DIALOG — a sibling of the screen source (never inside it), above the
-            // dock, so its backdrop is the whole screen blurred as one image
             appToEdit?.let { app ->
                 Box(
                     modifier = Modifier

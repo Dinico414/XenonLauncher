@@ -75,7 +75,6 @@ fun SearchResultItem(
     onLongClick: ((SearchResult, Offset) -> Unit)? = null,
     iconShape: com.xenonware.launcher.ui.res.IconShape = com.xenonware.launcher.ui.res.IconShape.Circle,
     showShadow: Boolean = false,
-    /** Outline of the row. Callers stacking rows into a group pass asymmetric corners. */
     shape: Shape = RoundedCornerShape(LargestCornerRadius)
 ) {
     var itemPos by remember { mutableStateOf(Offset.Zero) }

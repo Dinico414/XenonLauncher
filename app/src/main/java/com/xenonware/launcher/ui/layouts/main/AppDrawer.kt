@@ -226,11 +226,6 @@ fun AppDrawer(
     hideDockScrolling: Boolean = false,
     onDockVisibilityChange: (Boolean) -> Unit = {},
     moveWebSearch: Boolean = false,
-    /**
-     * Called when the user picks "Edit" for an app. The caller renders the edit dialog above
-     * the launcher's full-screen hazeSource, so its backdrop blurs the whole screen as one
-     * image — the drawer can't do that from inside the very content being blurred.
-     */
     onEditApp: (AppInfo) -> Unit
 ) {
     val dragDropState = LocalDragDropState.current
@@ -324,11 +319,6 @@ fun AppDrawer(
     var searchResultMenuApp by remember { mutableStateOf<AppInfo?>(null) }
     var appMenuInfo by remember { mutableStateOf<Pair<AppInfo, Offset>?>(null) }
 
-    // Where the open context menu's card was laid out, in this drawer's coordinates, keyed by
-    // the app it belongs to so a late measurement from a closing menu can never position the
-    // disc for the next one. XenonDropDown is a Popup sized to its card, so the popup's root
-    // coordinates are the card's final bounds: untouched by the scale-in animation (that lives
-    // on the Column inside) and re-reported by Compose whenever the popup window moves.
     var drawerOrigin by remember { mutableStateOf(Offset.Zero) }
     var drawerInWindow by remember { mutableStateOf(Offset.Zero) }
     var menuCard by remember { mutableStateOf<Pair<AppInfo, Rect>?>(null) }
@@ -341,8 +331,6 @@ fun AppDrawer(
         menuCard = app to Rect(root.positionOnScreen() - drawerOrigin, root.size.toSize())
     }
 
-    // The area the disc may occupy: clear of the system bars and any cutout, in drawer
-    // coordinates
     val safeDrawing = WindowInsets.safeDrawing.asPaddingValues()
     val layoutDirection = LocalLayoutDirection.current
     val windowView = LocalView.current
@@ -373,7 +361,6 @@ fun AppDrawer(
         }
     }
 
-    // Autofocus search when scrolled to top
     val shouldOpenKeyboard = remember(openKeyboard, openKeyboardPortraitOnly, configuration.orientation) {
         if (openKeyboardPortraitOnly) {
             openKeyboard && configuration.orientation != android.content.res.Configuration.ORIENTATION_LANDSCAPE
@@ -390,7 +377,6 @@ fun AppDrawer(
         }
     }
 
-    // Unfocus and hide keyboard when scrolling down if search is empty
     LaunchedEffect(isAtTop) {
         if (!isAtTop && searchQuery.isEmpty()) {
             focusManager.clearFocus()
@@ -513,25 +499,20 @@ fun AppDrawer(
     )
     val iconMorphProgress = max(searchActiveProgress, searchBackProgress.value)
 
-    // 1. Search Back Handler: Handles dismissing search/categories
     PredictiveBackHandler(enabled = isVisible && isSearchUIActive) { progress ->
         try {
             progress.collect { backEvent ->
                 val eased = FastOutSlowInEasing.transform(backEvent.progress)
                 searchBackProgress.snapTo(eased)
             }
-            // Committed: Close search
             scope.launch {
-                // Simultaneously start the layout shrink and finish the fade
                 isSearchActiveInternal = false
                 searchQuery = ""
                 selectedSearchType = SearchType.Apps
                 focusManager.clearFocus()
                 keyboardController?.hide()
 
-                // Animate to 1.0 (fully dismissed) to sync with the current gesture progress
                 searchBackProgress.animateTo(1f, tween(300))
-                // Reset for next time
                 searchBackProgress.snapTo(0f)
             }
         } catch (_: CancellationException) {
@@ -539,14 +520,12 @@ fun AppDrawer(
         }
     }
 
-    // 2. Drawer Back Handler: Handles dismissing the whole drawer
     PredictiveBackHandler(enabled = isVisible && !isSearchUIActive) { progress ->
         try {
             progress.collect { backEvent ->
                 val eased = FastOutSlowInEasing.transform(backEvent.progress)
                 backProgress.snapTo(eased)
             }
-            // Committed: Close drawer
             currentOnDismiss()
         } catch (_: CancellationException) {
             scope.launch { backProgress.animateTo(0f, tween(220)) }
@@ -570,7 +549,6 @@ fun AppDrawer(
 
     var lastScrollTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
-    // Observer scroll for dock hiding
     val activeState = if (isGridLayout) gridState else listState
 
     val isScrolledToEnd by remember {
@@ -609,11 +587,11 @@ fun AppDrawer(
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 if (hideDockScrolling && source == NestedScrollSource.UserInput) {
-                    if (available.y < -5f) { // Scrolling down
+                    if (available.y < -5f) {
                         if (!isScrolledToEnd) {
                             onDockVisibilityChange(false)
                         }
-                    } else if (available.y > 5f) { // Scrolling up
+                    } else if (available.y > 5f) {
                         onDockVisibilityChange(true)
                     }
                 }
@@ -715,7 +693,6 @@ fun AppDrawer(
             ) {
                 Spacer(Modifier.height(LargestSpacer))
 
-                // Drag handle
                 Box(
                     modifier = Modifier
                         .width(40.dp)
@@ -728,7 +705,6 @@ fun AppDrawer(
 
                 Spacer(Modifier.height(LargestSpacer))
 
-                // Bar floats over the scrolling list; the list is hazed where it passes behind it.
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -1431,7 +1407,6 @@ fun AppDrawer(
             )
         }
 
-        // The pressed app's icon, floated over whichever context menu is open
         MenuAppBadge(
             app = menuApp,
             card = menuCard?.takeIf { it.first == menuApp }?.second,
@@ -1441,11 +1416,6 @@ fun AppDrawer(
     }
 }
 
-/**
- * The web results — "search the web" first, "open website" below it — as one stacked group:
- * big outer corners at the top of the first and the bottom of the last row, small corners
- * where the rows meet, and only a small gap between them.
- */
 @Composable
 private fun WebResultsGroup(
     results: List<SearchResult.Web>,
@@ -1533,24 +1503,11 @@ private fun SearchHistoryBlock(
     }
 }
 
-/** Size of the icon in [MenuAppDisc]. */
 private val MenuBadgeSize = HugeSpacing
-
-/** How far the glass disc extends past the icon on each side. */
 private val MenuBadgeRing = 4.dp
 private val MenuAppDiscSize = MenuBadgeSize + MenuBadgeRing * 2
-
-/** Gap between the disc and the menu card. */
 private val MenuBadgeGap = MediumSpacer
 
-/**
- * The long-pressed app's icon on a circular glass disc, floated over its context menu so it's
- * obvious which app the menu belongs to. Always a circle, whatever the drawer icon shape is.
- * The disc is [MenuBadgeRing] wider than the icon on every side and wears the same material as
- * the menu card: [HazeMaterials.ultraThin] over surfaceContainer at 0.4 alpha while a
- * [hazeState] is given, opaque surfaceContainer otherwise, same shadow as the card.
- * Placement and animation are [MenuAppBadge]'s job.
- */
 @OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
 private fun MenuAppDisc(app: AppInfo, hazeState: HazeState?) {
@@ -1587,18 +1544,12 @@ private fun MenuAppDisc(app: AppInfo, hazeState: HazeState?) {
     }
 }
 
-/**
- * Where the disc goes: centred over the menu card and floated [MenuBadgeGap] above it. If that
- * would run into the status bar or a cutout it goes below the card instead, and it never leaves
- * [safeArea].
- */
 private fun discTopLeft(card: Rect, safeArea: Rect, size: Float, gap: Float): Offset {
     val above = card.top - gap - size
     val below = card.bottom + gap
     val top = when {
         above >= safeArea.top -> above
         below + size <= safeArea.bottom -> below
-        // No clean spot either side (tiny window): at least stay inside the safe area
         else -> above.coerceAtMost(safeArea.bottom - size).coerceAtLeast(safeArea.top)
     }
     val left = (card.center.x - size / 2f)
@@ -1607,15 +1558,6 @@ private fun discTopLeft(card: Rect, safeArea: Rect, size: Float, gap: Float): Of
     return Offset(left, top)
 }
 
-/**
- * [MenuAppDisc] floated over the open context menu, placed by [discTopLeft] and animated with
- * XenonDropDown's own timings so the two read as one popup.
- *
- * The popup positions itself from an estimated size first and moves once measured, and that
- * move lands one frame before it can be re-reported here, so the disc waits a frame for the
- * card to settle before it shows; it therefore can't flash at a stale position when a new
- * menu opens. The last app and position are kept alive through the exit animation.
- */
 @Composable
 private fun MenuAppBadge(app: AppInfo?, card: Rect?, safeArea: Rect, hazeState: HazeState?) {
     var settledCard by remember { mutableStateOf<Rect?>(null) }
