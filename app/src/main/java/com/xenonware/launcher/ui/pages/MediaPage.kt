@@ -156,7 +156,11 @@ import kotlin.time.Duration.Companion.milliseconds
 @Composable
 fun MediaPage(
     mediaState: MediaState,
-    progress: Float,
+    /**
+     * Pager progress towards this page, 0..1, read lazily in the draw phase. It changes on
+     * every frame of a swipe; taking it as a plain value recomposed the whole page per frame.
+     */
+    progress: () -> Float,
     isPermissionGranted: Boolean,
     isDarkTheme: Boolean = LocalIsDarkTheme.current,
     onOpenSettings: () -> Unit,
@@ -188,163 +192,423 @@ fun MediaPage(
         val iconButtonContentColor = colorScheme.surface
 
         val artModel = remember(mediaState.title, mediaState.artist) {
-        mediaState.albumArt ?: mediaState.albumArtUri
-    }
-
-    val surfaceAlpha = if (artModel != null) {
-        if (isDarkTheme) 0.5f else 0.8f
-    } else {
-        if (isDarkTheme) 0.15f else 0.3f
-    }
-
-    val note = rememberMusicNoteAnimation(mediaState.isPlaying)
-
-    val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val topPadding = if (statusBarHeight < LargestSpacing) {
-        LargestSpacing
-    } else {
-        statusBarHeight
-    }
-    val safeDrawingPadding = WindowInsets.safeDrawing.asPaddingValues()
-    val layoutDirection = LocalLayoutDirection.current
-    val endPadding = safeDrawingPadding.calculateEndPadding(layoutDirection).coerceAtLeast(LargestPadding)
-    val navBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    // 72dp (dock) + 8dp (dock padding) + 8dp (gap) + 4dp (to match widget vertical padding)
-    val dockAreaHeight = if (isDockVisible) HugeBiggerSpacing + navBarHeight + MediumSpacing + MediumSpacing + SmallSpacing else navBarHeight + LargestSpacing
-
-    val appNameLabel = stringResource(R.string.media)
-    val appName = remember(mediaState.packageName, appNameLabel) {
-        mediaState.packageName?.let {
-            try {
-                pm.getApplicationLabel(pm.getApplicationInfo(it, 0)).toString()
-            } catch (_: Exception) {
-                null
-            }
-        } ?: appNameLabel
-    }
-
-    val appIcon = remember(mediaState.packageName) {
-        mediaState.packageName?.let {
-            try {
-                pm.getApplicationIcon(it)
-            } catch (_: Exception) {
-                null
-            }
+            mediaState.albumArt ?: mediaState.albumArtUri
         }
-    }
 
-    val leftAction = mediaState.actions.getOrNull(0)
-    val rightAction = mediaState.actions.getOrNull(1)
+        val surfaceAlpha = if (artModel != null) {
+            if (isDarkTheme) 0.5f else 0.8f
+        } else {
+            if (isDarkTheme) 0.15f else 0.3f
+        }
 
-    val isSmallDevice = isSmallScreenDevice(context)
-    val verticalSafeDrawHeight = (configuration.screenHeightDp.dp - topPadding - navBarHeight).coerceAtLeast(ExtraBigSpacing)
-    val maxSmallCoverSize = minOf(configuration.screenWidthDp.dp / 3, verticalSafeDrawHeight/3)
-    val portraitAlbumArtSize = if (isSmallDevice) maxSmallCoverSize else 280.dp
+        val note = rememberMusicNoteAnimation(mediaState.isPlaying)
 
-    // Constant background effects (no animation)
-    val bgProgress = 1f
-    
-    // Progressive corner radius: 40.dp to 0.dp after 75% swipe
-    val normalizedProgress = ((progress - 0.75f) * 4f).coerceIn(0f, 1f)
-    val easedProgress = EaseInOut.transform(normalizedProgress)
-    val cornerRadius = ExtraBigSpacing * (1f - easedProgress)
-    val dynamicBackground = colorScheme.inversePrimary
-    val backgroundTint = dynamicBackground.copy(alpha = baseBgAlpha)
+        val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+        val topPadding = if (statusBarHeight < LargestSpacing) {
+            LargestSpacing
+        } else {
+            statusBarHeight
+        }
+        val safeDrawingPadding = WindowInsets.safeDrawing.asPaddingValues()
+        val layoutDirection = LocalLayoutDirection.current
+        val endPadding = safeDrawingPadding.calculateEndPadding(layoutDirection).coerceAtLeast(LargestPadding)
+        val navBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+        // 72dp (dock) + 8dp (dock padding) + 8dp (gap) + 4dp (to match widget vertical padding)
+        val dockAreaHeight = if (isDockVisible) HugeBiggerSpacing + navBarHeight + MediumSpacing + MediumSpacing + SmallSpacing else navBarHeight + LargestSpacing
 
-    val textShadow = Shadow(
-        color = Color.Black.copy(alpha = 0.3f), offset = Offset(0f, 2f), blurRadius = 4f
-    )
+        val appNameLabel = stringResource(R.string.media)
+        val appName = remember(mediaState.packageName, appNameLabel) {
+            mediaState.packageName?.let {
+                try {
+                    pm.getApplicationLabel(pm.getApplicationInfo(it, 0)).toString()
+                } catch (_: Exception) {
+                    null
+                }
+            } ?: appNameLabel
+        }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .clip(RoundedCornerShape(cornerRadius))
-            .background(backgroundTint.copy(alpha = baseBgAlpha * bgProgress))
-    ) {
-        // Background Album Art
-        artModel?.let { model ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .alpha(bgProgress)
-            ) {
-                AsyncImage(
-                    model = model,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .blur(BiggerElevation),
-                    contentScale = ContentScale.Crop,
-                    colorFilter = ColorFilter.tint(
-                        dynamicBackground.copy(alpha = 0.4f), blendMode = BlendMode.SrcAtop
-                    )
-                )
-                // Darken/Lighten the background for better readability
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(overlayColor)
-                )
+        val appIcon = remember(mediaState.packageName) {
+            mediaState.packageName?.let {
+                try {
+                    pm.getApplicationIcon(it)
+                } catch (_: Exception) {
+                    null
+                }
             }
         }
 
-        if (useLandscapeLayout) {
-            // Landscape Side-by-Side Layout
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(top = topPadding, bottom = dockAreaHeight)
-                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(LargestSpacer)
-            ) {
-                // Left Side: Album Art
+        val leftAction = mediaState.actions.getOrNull(0)
+        val rightAction = mediaState.actions.getOrNull(1)
+
+        val isSmallDevice = isSmallScreenDevice(context)
+        val verticalSafeDrawHeight = (configuration.screenHeightDp.dp - topPadding - navBarHeight).coerceAtLeast(ExtraBigSpacing)
+        val maxSmallCoverSize = minOf(configuration.screenWidthDp.dp / 3, verticalSafeDrawHeight/3)
+        val portraitAlbumArtSize = if (isSmallDevice) maxSmallCoverSize else 280.dp
+
+        // Constant background effects (no animation)
+        val bgProgress = 1f
+
+        val dynamicBackground = colorScheme.inversePrimary
+        val backgroundTint = dynamicBackground.copy(alpha = baseBgAlpha)
+
+        val textShadow = Shadow(
+            color = Color.Black.copy(alpha = 0.3f), offset = Offset(0f, 2f), blurRadius = 4f
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                // Progressive corner radius, 40.dp to 0.dp over the last 25% of the swipe. Applied
+                // in the draw phase so the per-frame pager offset never recomposes this page.
+                .graphicsLayer {
+                    val normalized = ((progress() - 0.75f) * 4f).coerceIn(0f, 1f)
+                    val eased = EaseInOut.transform(normalized)
+                    // Clip only while a corner is actually rounded. eased == 1f means radius 0 —
+                    // the page is either flat on screen or fully off it — and clipping a
+                    // full-screen, content-filled layer every settle frame (and every at-rest
+                    // frame) was the close hitch. No rounded corner, no clip, identical result.
+                    if (eased < 1f) {
+                        shape = RoundedCornerShape(ExtraBigSpacing * (1f - eased))
+                        clip = true
+                    }
+                }
+                .background(backgroundTint.copy(alpha = baseBgAlpha * bgProgress))
+        ) {
+            // Background Album Art
+            artModel?.let { model ->
                 Box(
                     modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight(),
-                    contentAlignment = Alignment.Center
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            alpha = bgProgress
+                            compositingStrategy = if (progress() > 0.01f) {
+                                CompositingStrategy.Offscreen
+                            } else {
+                                CompositingStrategy.Auto
+                            }
+                        }
                 ) {
-                    Surface(
+                    AsyncImage(
+                        model = model,
+                        contentDescription = null,
                         modifier = Modifier
-                            .sizeIn(maxWidth = 400.dp)
-                            .aspectRatio(1f)
-                            .fillMaxSize(0.9f)
-                            .clip(RoundedCornerShape(ExtraLargerCornerRadius)),
-                        color = colorScheme.surfaceVariant.copy(alpha = surfaceAlpha),
-                        tonalElevation = MediumElevation
+                            .fillMaxSize()
+                            .blur(BiggerElevation),
+                        contentScale = ContentScale.Crop,
+                        colorFilter = ColorFilter.tint(
+                            dynamicBackground.copy(alpha = 0.4f), blendMode = BlendMode.SrcAtop
+                        )
+                    )
+                    // Darken/Lighten the background for better readability
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(overlayColor)
+                    )
+                }
+            }
+
+            if (useLandscapeLayout) {
+                // Landscape Side-by-Side Layout
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = topPadding, bottom = dockAreaHeight)
+                        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(LargestSpacer)
+                ) {
+                    // Left Side: Album Art
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight(),
+                        contentAlignment = Alignment.Center
                     ) {
-                        if (artModel != null) {
-                            AsyncImage(
-                                model = artModel,
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        } else {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    Icons.Rounded.MusicNote,
-                                    null,
-                                    tint = contentColor,
-                                    modifier = Modifier
-                                        .size(120.dp)
-                                        .musicNote(note)
+                        Surface(
+                            modifier = Modifier
+                                .sizeIn(maxWidth = 400.dp)
+                                .aspectRatio(1f)
+                                .fillMaxSize(0.9f)
+                                .clip(RoundedCornerShape(ExtraLargerCornerRadius)),
+                            color = colorScheme.surfaceVariant.copy(alpha = surfaceAlpha),
+                            tonalElevation = MediumElevation
+                        ) {
+                            if (artModel != null) {
+                                AsyncImage(
+                                    model = artModel,
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
                                 )
+                            } else {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Rounded.MusicNote,
+                                        null,
+                                        tint = contentColor,
+                                        modifier = Modifier
+                                            .size(120.dp)
+                                            .musicNote(note)
+                                    )
+                                }
                             }
                         }
                     }
-                }
 
-                // Right Side: Info and Controls
+                    // Right Side: Info and Controls
+                    Column(
+                        modifier = Modifier
+                            .weight(1.2f)
+                            .fillMaxHeight()
+                            .padding(end = endPadding),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        if (!isPermissionGranted) {
+                            Text(
+                                stringResource(R.string.media_access_required),
+                                color = contentColor,
+                                style = MaterialTheme.typography.headlineSmall.copy(fontFamily = mainFontFamily),
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(MediumSpacer))
+                            Text(
+                                stringResource(R.string.media_access_description),
+                                color = subContentColor,
+                                style = MaterialTheme.typography.bodyMedium.copy(fontFamily = mainFontFamily),
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(ExtraLargerSpacer))
+                            Button(onClick = onOpenSettings) {
+                                Text(stringResource(R.string.grant), style = MaterialTheme.typography.labelLarge.copy(fontFamily = mainFontFamily))
+                            }
+                        } else {
+                            // App Name
+                            Surface(
+                                onClick = onOpenSource,
+                                color = contentColor.copy(alpha = 0.1f),
+                                shape = RoundedCornerShape(ExtraLargeCornerRadius),
+                                modifier = Modifier.height(ExtraBigSpacing)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = MediumPadding, vertical = MediumPadding),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(MediumSpacer)
+                                ) {
+                                    if (appIcon != null) {
+                                        AsyncImage(
+                                            model = appIcon,
+                                            contentDescription = null,
+                                            modifier = Modifier
+                                                .size(ExtraLargerSpacing)
+                                                .clip(RoundedCornerShape(LargeMediumCornerRadius))
+                                        )
+                                    }
+                                    Text(
+                                        text = appName,
+                                        color = contentColor,
+                                        style = MaterialTheme.typography.labelLarge.copy(fontFamily = mainFontFamily),
+                                        fontWeight = FontWeight.Medium,
+                                        modifier = Modifier.padding(
+                                            start = if (appName == appNameLabel) SmallPadding else NoPadding, end = SmallPadding
+                                        )
+                                    )
+                                }
+                            }
+
+                            Spacer(Modifier.weight(1f))
+
+                            // Info
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                val textMeasurer = rememberTextMeasurer()
+                                val titleStyle = MaterialTheme.typography.headlineMedium.copy(
+                                    shadow = textShadow,
+                                    fontFamily = mainFontFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    color = contentColor,
+                                    textAlign = TextAlign.Center
+                                )
+                                val titleText = mediaState.title ?: stringResource(R.string.no_media)
+                                val titleWidth = remember(titleText, titleStyle) {
+                                    textMeasurer.measure(titleText, titleStyle).size.width
+                                }
+                                var titleContainerWidth by remember { mutableIntStateOf(0) }
+                                val titleNeedsMarquee = titleContainerWidth in 1..<titleWidth
+                                var titleIsScrolling by remember { mutableStateOf(false) }
+
+                                if (titleNeedsMarquee) {
+                                    LaunchedEffect(titleText, titleContainerWidth) {
+                                        val velocityPx = with(density) { BiggerSpacing.toPx() }
+                                        val spacingPx = titleContainerWidth / 3f
+                                        val scrollDistance = titleWidth + spacingPx
+                                        val scrollDuration = (scrollDistance / velocityPx * 1000).toLong()
+
+                                        while (true) {
+                                            titleIsScrolling = false
+                                            delay(1200.milliseconds)
+                                            titleIsScrolling = true
+                                            delay(scrollDuration.milliseconds)
+                                        }
+                                    }
+                                }
+
+                                val startFadeAlpha by animateFloatAsState(if (titleIsScrolling) 1f else 0f, tween(150), label = "titleStartFade")
+
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .onGloballyPositioned { titleContainerWidth = it.size.width }
+                                        .fadingEdges(startAlpha = startFadeAlpha, endAlpha = if (titleNeedsMarquee) 1f else 0f)
+                                        .basicMarquee(iterations = Int.MAX_VALUE, repeatDelayMillis = 1200),
+                                    contentAlignment = Alignment.Center
+                                )
+                                {
+                                    Text(
+                                        text = titleText,
+                                        style = titleStyle,
+                                        maxLines = 1,
+                                        modifier = Modifier.padding(horizontal = LargestPadding)
+                                    )
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .basicMarquee(iterations = Int.MAX_VALUE, repeatDelayMillis = 3000),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = mediaState.artist ?: "",
+                                        style = MaterialTheme.typography.bodyLarge.copy(shadow = textShadow),
+                                        color = subContentColor,
+                                        textAlign = TextAlign.Center,
+                                        maxLines = 1,
+                                        modifier = Modifier.padding(horizontal = LargestPadding)
+                                    )
+                                }
+                            }
+
+                            Spacer(Modifier.weight(1f))
+
+                            // Progress Bar
+                            var sliderPosition by remember { mutableStateOf<Float?>(null) }
+                            val currentPosition = sliderPosition ?: mediaState.position.toFloat()
+                            val duration = mediaState.duration.toFloat().coerceAtLeast(1f)
+
+
+                            if (mediaState.title != null) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .blockHorizontalPagerSwipe()
+                                        .padding(horizontal = LargestPadding)
+                                ) {
+                                    Slider(
+                                        value = currentPosition.coerceIn(0f, duration),
+                                        onValueChange = { sliderPosition = it },
+                                        onValueChangeFinished = {
+                                            sliderPosition?.let { onSeek(it.toLong()) }
+                                            sliderPosition = null
+                                        },
+                                        valueRange = 0f..duration,
+                                        colors = SliderDefaults.colors(
+                                            thumbColor = contentColor,
+                                            activeTrackColor = contentColor,
+                                            inactiveTrackColor = contentColor.copy(alpha = 0.3f)
+                                        )
+                                    )
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = SmallPadding),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            formatTime(currentPosition.toLong()),
+                                            color = contentColor.copy(alpha = 0.6f),
+                                            style = MaterialTheme.typography.labelSmall.copy(fontFamily = mainFontFamily)
+                                        )
+                                        Text(
+                                            formatTime(mediaState.duration),
+                                            color = contentColor.copy(alpha = 0.6f),
+                                            style = MaterialTheme.typography.labelSmall.copy(fontFamily = mainFontFamily)
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Controls
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(ExtraLargerSpacer)
+                            ) {
+                                leftAction?.let { action ->
+                                    MediaActionButton(action, contentColor)
+                                }
+
+                                IconButton(
+                                    onClick = onSkipPrevious, modifier = Modifier.size(MediumButtonHeight)
+                                ) {
+                                    ShadowedIcon(
+                                        imageVector = Icons.Rounded.SkipPrevious,
+                                        contentDescription = stringResource(R.string.previous),
+                                        modifier = Modifier.size(IconSizeLarge),
+                                        tint = contentColor
+                                    )
+                                }
+
+                                FilledIconButton(
+                                    onClick = onTogglePlayPause,
+                                    modifier = Modifier
+                                        .size(HugerSpacing)
+                                        .shadow(elevation = LargeMediumElevation, shape = CircleShape),
+                                    colors = IconButtonDefaults.filledIconButtonColors(
+                                        containerColor = iconButtonContainerColor,
+                                        contentColor = iconButtonContentColor
+                                    )
+                                ) {
+                                    ShadowedIcon(
+                                        imageVector = if (mediaState.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                                        contentDescription = stringResource(R.string.play_pause),
+                                        modifier = Modifier.size(ExtraLargeIconSize),
+                                        tint = iconButtonContentColor
+                                    )
+                                }
+
+                                IconButton(
+                                    onClick = onSkipNext, modifier = Modifier.size(MediumButtonHeight)
+                                ) {
+                                    ShadowedIcon(
+                                        imageVector = Icons.Rounded.SkipNext,
+                                        contentDescription = stringResource(R.string.next),
+                                        modifier = Modifier.size(LargeIconSize),
+                                        tint = contentColor
+                                    )
+                                }
+
+                                rightAction?.let { action ->
+                                    MediaActionButton(action, contentColor)
+                                }
+                            }
+                            Spacer(Modifier.weight(0.5f))
+                        }
+                    }
+                }
+            } else {
+                // Portrait
                 Column(
                     modifier = Modifier
-                        .weight(1.2f)
-                        .fillMaxHeight()
-                        .padding(end = endPadding),
+                        .fillMaxSize()
+                        .padding(top = topPadding, bottom = dockAreaHeight)
+                        .padding(horizontal = BiggestPadding)
+                        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -355,140 +619,346 @@ fun MediaPage(
                             style = MaterialTheme.typography.headlineSmall.copy(fontFamily = mainFontFamily),
                             textAlign = TextAlign.Center
                         )
-                        Spacer(modifier = Modifier.height(MediumSpacer))
+                        Spacer(modifier = Modifier.height(MediumSpacing))
                         Text(
                             stringResource(R.string.media_access_description),
                             color = subContentColor,
                             style = MaterialTheme.typography.bodyMedium.copy(fontFamily = mainFontFamily),
                             textAlign = TextAlign.Center
                         )
-                        Spacer(modifier = Modifier.height(ExtraLargerSpacer))
+                        Spacer(modifier = Modifier.height(ExtraLargerSpacing))
                         Button(onClick = onOpenSettings) {
                             Text(stringResource(R.string.grant), style = MaterialTheme.typography.labelLarge.copy(fontFamily = mainFontFamily))
                         }
                     } else {
-                        // App Name
-                        Surface(
-                            onClick = onOpenSource,
-                            color = contentColor.copy(alpha = 0.1f),
-                            shape = RoundedCornerShape(ExtraLargeCornerRadius),
-                            modifier = Modifier.height(ExtraBigSpacing)
-                        ) {
+                        if (!isSmallDevice) {
+                            // Top App Info / Open Source Button (Only shown in normal layout)
                             Row(
-                                modifier = Modifier.padding(horizontal = MediumPadding, vertical = MediumPadding),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(MediumSpacer)
+                                modifier = Modifier
+                                    .fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Start
                             ) {
-                                if (appIcon != null) {
-                                    AsyncImage(
-                                        model = appIcon,
-                                        contentDescription = null,
-                                        modifier = Modifier
-                                            .size(ExtraLargerSpacing)
-                                            .clip(RoundedCornerShape(LargeMediumCornerRadius))
-                                    )
-                                }
-                                Text(
-                                    text = appName,
-                                    color = contentColor,
-                                    style = MaterialTheme.typography.labelLarge.copy(fontFamily = mainFontFamily),
-                                    fontWeight = FontWeight.Medium,
-                                    modifier = Modifier.padding(
-                                        start = if (appName == appNameLabel) SmallPadding else NoPadding, end = SmallPadding
-                                    )
-                                )
-                            }
-                        }
-
-                        Spacer(Modifier.weight(1f))
-
-                        // Info
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            val textMeasurer = rememberTextMeasurer()
-                            val titleStyle = MaterialTheme.typography.headlineMedium.copy(
-                                shadow = textShadow,
-                                fontFamily = mainFontFamily,
-                                fontWeight = FontWeight.Bold,
-                                color = contentColor,
-                                textAlign = TextAlign.Center
-                            )
-                            val titleText = mediaState.title ?: stringResource(R.string.no_media)
-                            val titleWidth = remember(titleText, titleStyle) {
-                                textMeasurer.measure(titleText, titleStyle).size.width
-                            }
-                            var titleContainerWidth by remember { mutableIntStateOf(0) }
-                            val titleNeedsMarquee = titleContainerWidth in 1..<titleWidth
-                            var titleIsScrolling by remember { mutableStateOf(false) }
-
-                            if (titleNeedsMarquee) {
-                                LaunchedEffect(titleText, titleContainerWidth) {
-                                    val velocityPx = with(density) { BiggerSpacing.toPx() }
-                                    val spacingPx = titleContainerWidth / 3f
-                                    val scrollDistance = titleWidth + spacingPx
-                                    val scrollDuration = (scrollDistance / velocityPx * 1000).toLong()
-                                    
-                                    while (true) {
-                                        titleIsScrolling = false
-                                        delay(1200.milliseconds)
-                                        titleIsScrolling = true
-                                        delay(scrollDuration.milliseconds)
+                                Surface(
+                                    onClick = onOpenSource,
+                                    color = contentColor.copy(alpha = 0.1f),
+                                    shape = RoundedCornerShape(ExtraLargeCornerRadius),
+                                    modifier = Modifier.height(ExtraBigSpacing)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = MediumPadding, vertical = MediumPadding),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(MediumSpacer)
+                                    ) {
+                                        if (appIcon != null) {
+                                            AsyncImage(
+                                                model = appIcon,
+                                                contentDescription = null,
+                                                modifier = Modifier
+                                                    .size(ExtraLargerSpacing)
+                                                    .clip(RoundedCornerShape(LargeMediumCornerRadius))
+                                            )
+                                        }
+                                        Text(
+                                            text = appName,
+                                            color = contentColor,
+                                            style = MaterialTheme.typography.labelLarge.copy(fontFamily = mainFontFamily),
+                                            fontWeight = FontWeight.Medium,
+                                            modifier = Modifier.padding(
+                                                start = if (appName == appNameLabel) SmallPadding else NoPadding, end = SmallPadding
+                                            )
+                                        )
                                     }
                                 }
                             }
-                            
-                            val startFadeAlpha by animateFloatAsState(if (titleIsScrolling) 1f else 0f, tween(150), label = "titleStartFade")
+                        }
 
-                            Box(
+                        Spacer(modifier = Modifier.weight(1f))
+
+                        if (isSmallDevice) {
+                            // Small Device Layout:
+                            Row(
                                 modifier = Modifier
+                                    .padding(vertical = MediumPadding)
                                     .fillMaxWidth()
-                                    .onGloballyPositioned { titleContainerWidth = it.size.width }
-                                    .fadingEdges(startAlpha = startFadeAlpha, endAlpha = if (titleNeedsMarquee) 1f else 0f)
-                                    .basicMarquee(iterations = Int.MAX_VALUE, repeatDelayMillis = 1200),
-                                contentAlignment = Alignment.Center
-                            )
-{
-                                Text(
-                                    text = titleText,
-                                    style = titleStyle,
-                                    maxLines = 1,
-                                    modifier = Modifier.padding(horizontal = LargestPadding)
-                                )
-                            }
-                            
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .basicMarquee(iterations = Int.MAX_VALUE, repeatDelayMillis = 3000),
-                                contentAlignment = Alignment.Center
+                                    .height(portraitAlbumArtSize),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(LargestSpacer)
                             ) {
-                                Text(
-                                    text = mediaState.artist ?: "",
-                                    style = MaterialTheme.typography.bodyLarge.copy(shadow = textShadow),
-                                    color = subContentColor,
-                                    textAlign = TextAlign.Center,
-                                    maxLines = 1,
-                                    modifier = Modifier.padding(horizontal = LargestPadding)
+                                Column(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxHeight(),
+                                    verticalArrangement = Arrangement.Top,
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    // Media Source / App Info (Aligned to TOP of Album Cover)
+                                    Surface(
+                                        onClick = onOpenSource,
+                                        color = contentColor.copy(alpha = 0.1f),
+                                        shape = RoundedCornerShape(ExtraLargeCornerRadius),
+                                        modifier = Modifier.height(BiggestBiggerSpacing)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = MediumPadding, vertical = MediumSmallPadding),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(MediumSmallSpacer)
+                                        ) {
+                                            if (appIcon != null) {
+                                                AsyncImage(
+                                                    model = appIcon,
+                                                    contentDescription = null,
+                                                    modifier = Modifier
+                                                        .size(ExtraLargeSpacing)
+                                                        .clip(RoundedCornerShape(MediumLargeCornerRadius))
+                                                )
+                                            }
+                                            Text(
+                                                text = appName,
+                                                color = contentColor,
+                                                style = MaterialTheme.typography.labelMedium.copy(fontFamily = mainFontFamily),
+                                                fontWeight = FontWeight.Medium,
+                                                modifier = Modifier.padding(
+                                                    start = if (appName == appNameLabel) SmallPadding else NoPadding, end = SmallPadding
+                                                )
+                                            )
+                                        }
+                                    }
+
+                                    // Track Title & Artist (Centered between Media Source and bottom of Album Cover)
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .weight(1f),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalAlignment = Alignment.CenterHorizontally
+                                        ) {
+                                            val textMeasurer = rememberTextMeasurer()
+                                            val titleStyle = MaterialTheme.typography.headlineSmall.copy(
+                                                shadow = textShadow,
+                                                fontFamily = mainFontFamily,
+                                                fontWeight = FontWeight.Bold,
+                                                color = contentColor,
+                                                textAlign = TextAlign.Center
+                                            )
+                                            val titleText = mediaState.title ?: stringResource(R.string.no_media)
+                                            val titleWidth = remember(titleText, titleStyle) {
+                                                textMeasurer.measure(titleText, titleStyle).size.width
+                                            }
+                                            var titleContainerWidth by remember { mutableIntStateOf(0) }
+                                            val titleNeedsMarquee = titleContainerWidth in 1..<titleWidth
+                                            var titleIsScrolling by remember { mutableStateOf(false) }
+
+                                            if (titleNeedsMarquee) {
+                                                LaunchedEffect(titleText, titleContainerWidth) {
+                                                    val velocityPx = with(density) { BiggerSpacing.toPx() }
+                                                    val spacingPx = titleContainerWidth / 3f
+                                                    val scrollDistance = titleWidth + spacingPx
+                                                    val scrollDuration = (scrollDistance / velocityPx * 1000).toLong()
+
+                                                    while (true) {
+                                                        titleIsScrolling = false
+                                                        delay(1200.milliseconds)
+                                                        titleIsScrolling = true
+                                                        delay(scrollDuration.milliseconds)
+                                                    }
+                                                }
+                                            }
+
+                                            val startFadeAlpha by animateFloatAsState(if (titleIsScrolling) 1f else 0f, tween(150), label = "titleStartFadePortrait")
+
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .onGloballyPositioned { titleContainerWidth = it.size.width }
+                                                    .fadingEdges(startAlpha = startFadeAlpha, endAlpha = if (titleNeedsMarquee) 1f else 0f)
+                                                    .basicMarquee(iterations = Int.MAX_VALUE, repeatDelayMillis = 1200),
+                                                contentAlignment = Alignment.Center
+                                            )
+                                            {
+                                                Text(
+                                                    text = titleText,
+                                                    style = titleStyle,
+                                                    maxLines = 1
+                                                )
+                                            }
+                                            if (mediaState.artist != "") {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .basicMarquee(
+                                                            iterations = Int.MAX_VALUE,
+                                                            repeatDelayMillis = 3000
+                                                        ),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Text(
+                                                        text = mediaState.artist ?: "",
+                                                        style = MaterialTheme.typography.bodyMedium.copy(shadow = textShadow),
+                                                        color = subContentColor,
+                                                        textAlign = TextAlign.Center,
+                                                        maxLines = 1
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Surface(
+                                    modifier = Modifier
+                                        .size(portraitAlbumArtSize)
+                                        .aspectRatio(1f)
+                                        .clip(RoundedCornerShape(LargestCornerRadius)),
+                                    color = theme.background.copy(alpha = surfaceAlpha),
+                                    tonalElevation = MediumElevation
+                                ) {
+                                    if (artModel != null) {
+                                        AsyncImage(
+                                            model = artModel,
+                                            contentDescription = null,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    } else {
+                                        Box(
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                Icons.Rounded.MusicNote,
+                                                null,
+                                                tint = contentColor,
+                                                modifier = Modifier
+                                                    .size((portraitAlbumArtSize * 0.5f).coerceAtLeast(MediumIconSize))
+                                                    .musicNote(note)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            // Normal Device Layout: Album Art centered above Info Column
+                            Surface(
+                                modifier = Modifier
+                                    .size(portraitAlbumArtSize)
+                                    .aspectRatio(1f)
+                                    .clip(RoundedCornerShape(ExtraLargerCornerRadius)),
+                                color = colorScheme.surfaceVariant.copy(alpha = surfaceAlpha),
+                                tonalElevation = MediumElevation
+                            ) {
+                                if (artModel != null) {
+                                    AsyncImage(
+                                        model = artModel,
+                                        contentDescription = null,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                } else {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            Icons.Rounded.MusicNote,
+                                            null,
+                                            tint = contentColor,
+                                            modifier = Modifier
+                                                .size(120.dp)
+                                                .musicNote(note)
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(BiggestSpacer))
+
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                val textMeasurer = rememberTextMeasurer()
+                                val titleStyle = MaterialTheme.typography.headlineMedium.copy(
+                                    shadow = textShadow,
+                                    fontFamily = mainFontFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    color = contentColor,
+                                    textAlign = TextAlign.Center
                                 )
+                                val titleText = mediaState.title ?: stringResource(R.string.no_media)
+                                val titleWidth = remember(titleText, titleStyle) {
+                                    textMeasurer.measure(titleText, titleStyle).size.width
+                                }
+                                var titleContainerWidth by remember { mutableIntStateOf(0) }
+                                val titleNeedsMarquee = titleContainerWidth in 1..<titleWidth
+                                var titleIsScrolling by remember { mutableStateOf(false) }
+
+                                if (titleNeedsMarquee) {
+                                    LaunchedEffect(titleText, titleContainerWidth) {
+                                        val velocityPx = with(density) { BiggerSpacing.toPx() }
+                                        val spacingPx = titleContainerWidth / 3f
+                                        val scrollDistance = titleWidth + spacingPx
+                                        val scrollDuration = (scrollDistance / velocityPx * 1000).toLong()
+
+                                        while (true) {
+                                            titleIsScrolling = false
+                                            delay(1200.milliseconds)
+                                            titleIsScrolling = true
+                                            delay(scrollDuration.milliseconds)
+                                        }
+                                    }
+                                }
+
+                                val startFadeAlpha by animateFloatAsState(if (titleIsScrolling) 1f else 0f, tween(200), label = "titleStartFadeNormal")
+
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .onGloballyPositioned { titleContainerWidth = it.size.width }
+                                        .fadingEdges(startAlpha = startFadeAlpha, endAlpha = if (titleNeedsMarquee) 1f else 0f)
+                                        .basicMarquee(iterations = Int.MAX_VALUE, repeatDelayMillis = 1200),
+                                    contentAlignment = Alignment.Center
+                                )
+                                {
+                                    Text(
+                                        text = titleText,
+                                        style = titleStyle,
+                                        maxLines = 1,
+                                        modifier = Modifier.padding(horizontal = LargestPadding)
+                                    )
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .basicMarquee(iterations = Int.MAX_VALUE, repeatDelayMillis = 3000),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = mediaState.artist ?: "",
+                                        style = MaterialTheme.typography.bodyLarge.copy(shadow = textShadow),
+                                        color = subContentColor,
+                                        textAlign = TextAlign.Center,
+                                        maxLines = 1,
+                                        modifier = Modifier.padding(horizontal = LargestPadding)
+                                    )
+                                }
                             }
                         }
 
-                        Spacer(Modifier.weight(1f))
+                        Spacer(modifier = Modifier.weight(1.2f))
 
                         // Progress Bar
                         var sliderPosition by remember { mutableStateOf<Float?>(null) }
                         val currentPosition = sliderPosition ?: mediaState.position.toFloat()
                         val duration = mediaState.duration.toFloat().coerceAtLeast(1f)
 
-
                         if (mediaState.title != null) {
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .blockHorizontalPagerSwipe()
-                                    .padding(horizontal = LargestPadding)
                             ) {
                                 Slider(
                                     value = currentPosition.coerceIn(0f, duration),
@@ -523,6 +993,8 @@ fun MediaPage(
                                 }
                             }
                         }
+
+                        Spacer(modifier = Modifier.height(MediumSpacer))
 
                         // Controls
                         Row(
@@ -577,464 +1049,12 @@ fun MediaPage(
                                 MediaActionButton(action, contentColor)
                             }
                         }
-                        Spacer(Modifier.weight(0.5f))
+                        Spacer(modifier = Modifier.weight(1f))
                     }
-                }
-            }
-        } else {
-            // Portrait
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(top = topPadding, bottom = dockAreaHeight)
-                    .padding(horizontal = BiggestPadding)
-                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                if (!isPermissionGranted) {
-                    Text(
-                        stringResource(R.string.media_access_required),
-                        color = contentColor,
-                        style = MaterialTheme.typography.headlineSmall.copy(fontFamily = mainFontFamily),
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(modifier = Modifier.height(MediumSpacing))
-                    Text(
-                        stringResource(R.string.media_access_description),
-                        color = subContentColor,
-                        style = MaterialTheme.typography.bodyMedium.copy(fontFamily = mainFontFamily),
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(modifier = Modifier.height(ExtraLargerSpacing))
-                    Button(onClick = onOpenSettings) {
-                        Text(stringResource(R.string.grant), style = MaterialTheme.typography.labelLarge.copy(fontFamily = mainFontFamily))
-                    }
-                } else {
-                    if (!isSmallDevice) {
-                        // Top App Info / Open Source Button (Only shown in normal layout)
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Start
-                        ) {
-                            Surface(
-                                onClick = onOpenSource,
-                                color = contentColor.copy(alpha = 0.1f),
-                                shape = RoundedCornerShape(ExtraLargeCornerRadius),
-                                modifier = Modifier.height(ExtraBigSpacing)
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = MediumPadding, vertical = MediumPadding),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(MediumSpacer)
-                                ) {
-                                    if (appIcon != null) {
-                                        AsyncImage(
-                                            model = appIcon,
-                                            contentDescription = null,
-                                            modifier = Modifier
-                                                .size(ExtraLargerSpacing)
-                                                .clip(RoundedCornerShape(LargeMediumCornerRadius))
-                                        )
-                                    }
-                                    Text(
-                                        text = appName,
-                                        color = contentColor,
-                                        style = MaterialTheme.typography.labelLarge.copy(fontFamily = mainFontFamily),
-                                        fontWeight = FontWeight.Medium,
-                                        modifier = Modifier.padding(
-                                            start = if (appName == appNameLabel) SmallPadding else NoPadding, end = SmallPadding
-                                        )
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.weight(1f))
-
-                    if (isSmallDevice) {
-                        // Small Device Layout:
-                        Row(
-                            modifier = Modifier
-                                .padding(vertical = MediumPadding)
-                                .fillMaxWidth()
-                                .height(portraitAlbumArtSize),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(LargestSpacer)
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxHeight(),
-                                verticalArrangement = Arrangement.Top,
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                // Media Source / App Info (Aligned to TOP of Album Cover)
-                                Surface(
-                                    onClick = onOpenSource,
-                                    color = contentColor.copy(alpha = 0.1f),
-                                    shape = RoundedCornerShape(ExtraLargeCornerRadius),
-                                    modifier = Modifier.height(BiggestBiggerSpacing)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = MediumPadding, vertical = MediumSmallPadding),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(MediumSmallSpacer)
-                                    ) {
-                                        if (appIcon != null) {
-                                            AsyncImage(
-                                                model = appIcon,
-                                                contentDescription = null,
-                                                modifier = Modifier
-                                                    .size(ExtraLargeSpacing)
-                                                    .clip(RoundedCornerShape(MediumLargeCornerRadius))
-                                            )
-                                        }
-                                        Text(
-                                            text = appName,
-                                            color = contentColor,
-                                            style = MaterialTheme.typography.labelMedium.copy(fontFamily = mainFontFamily),
-                                            fontWeight = FontWeight.Medium,
-                                            modifier = Modifier.padding(
-                                                start = if (appName == appNameLabel) SmallPadding else NoPadding, end = SmallPadding
-                                            )
-                                        )
-                                    }
-                                }
-
-                                // Track Title & Artist (Centered between Media Source and bottom of Album Cover)
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .weight(1f),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Column(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        val textMeasurer = rememberTextMeasurer()
-                                        val titleStyle = MaterialTheme.typography.headlineSmall.copy(
-                                            shadow = textShadow,
-                                            fontFamily = mainFontFamily,
-                                            fontWeight = FontWeight.Bold,
-                                            color = contentColor,
-                                            textAlign = TextAlign.Center
-                                        )
-                                        val titleText = mediaState.title ?: stringResource(R.string.no_media)
-                                        val titleWidth = remember(titleText, titleStyle) {
-                                            textMeasurer.measure(titleText, titleStyle).size.width
-                                        }
-                                        var titleContainerWidth by remember { mutableIntStateOf(0) }
-                                        val titleNeedsMarquee = titleContainerWidth in 1..<titleWidth
-                                        var titleIsScrolling by remember { mutableStateOf(false) }
-
-                                        if (titleNeedsMarquee) {
-                                            LaunchedEffect(titleText, titleContainerWidth) {
-                                                val velocityPx = with(density) { BiggerSpacing.toPx() }
-                                                val spacingPx = titleContainerWidth / 3f
-                                                val scrollDistance = titleWidth + spacingPx
-                                                val scrollDuration = (scrollDistance / velocityPx * 1000).toLong()
-                                                
-                                                while (true) {
-                                                    titleIsScrolling = false
-                                                    delay(1200.milliseconds)
-                                                    titleIsScrolling = true
-                                                    delay(scrollDuration.milliseconds)
-                                                }
-                                            }
-                                        }
-                                        
-                                        val startFadeAlpha by animateFloatAsState(if (titleIsScrolling) 1f else 0f, tween(150), label = "titleStartFadePortrait")
-
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .onGloballyPositioned { titleContainerWidth = it.size.width }
-                                                .fadingEdges(startAlpha = startFadeAlpha, endAlpha = if (titleNeedsMarquee) 1f else 0f)
-                                                .basicMarquee(iterations = Int.MAX_VALUE, repeatDelayMillis = 1200),
-                                            contentAlignment = Alignment.Center
-                                        )
-{
-                                            Text(
-                                                text = titleText,
-                                                style = titleStyle,
-                                                maxLines = 1
-                                            )
-                                        }
-                                        if (mediaState.artist != "") {
-                                            Box(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .basicMarquee(
-                                                        iterations = Int.MAX_VALUE,
-                                                        repeatDelayMillis = 3000
-                                                    ),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Text(
-                                                    text = mediaState.artist ?: "",
-                                                    style = MaterialTheme.typography.bodyMedium.copy(shadow = textShadow),
-                                                    color = subContentColor,
-                                                    textAlign = TextAlign.Center,
-                                                    maxLines = 1
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            Surface(
-                                modifier = Modifier
-                                    .size(portraitAlbumArtSize)
-                                    .aspectRatio(1f)
-                                    .clip(RoundedCornerShape(LargestCornerRadius)),
-                                color = theme.background.copy(alpha = surfaceAlpha),
-                                tonalElevation = MediumElevation
-                            ) {
-                                if (artModel != null) {
-                                    AsyncImage(
-                                        model = artModel,
-                                        contentDescription = null,
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier.fillMaxSize()
-                                    )
-                                } else {
-                                    Box(
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            Icons.Rounded.MusicNote,
-                                            null,
-                                            tint = contentColor,
-                                            modifier = Modifier
-                                                .size((portraitAlbumArtSize * 0.5f).coerceAtLeast(MediumIconSize))
-                                                .musicNote(note)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    } else {
-                        // Normal Device Layout: Album Art centered above Info Column
-                        Surface(
-                            modifier = Modifier
-                                .size(portraitAlbumArtSize)
-                                .aspectRatio(1f)
-                                .clip(RoundedCornerShape(ExtraLargerCornerRadius)),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = surfaceAlpha),
-                            tonalElevation = MediumElevation
-                        ) {
-                            if (artModel != null) {
-                                AsyncImage(
-                                    model = artModel,
-                                    contentDescription = null,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                            } else {
-                                Box(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        Icons.Rounded.MusicNote,
-                                        null,
-                                        tint = contentColor,
-                                        modifier = Modifier
-                                            .size(120.dp)
-                                            .musicNote(note)
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(BiggestSpacer))
-
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            val textMeasurer = rememberTextMeasurer()
-                            val titleStyle = MaterialTheme.typography.headlineMedium.copy(
-                                shadow = textShadow,
-                                fontFamily = mainFontFamily,
-                                fontWeight = FontWeight.Bold,
-                                color = contentColor,
-                                textAlign = TextAlign.Center
-                            )
-                            val titleText = mediaState.title ?: stringResource(R.string.no_media)
-                            val titleWidth = remember(titleText, titleStyle) {
-                                textMeasurer.measure(titleText, titleStyle).size.width
-                            }
-                            var titleContainerWidth by remember { mutableIntStateOf(0) }
-                            val titleNeedsMarquee = titleContainerWidth in 1..<titleWidth
-                            var titleIsScrolling by remember { mutableStateOf(false) }
-
-                            if (titleNeedsMarquee) {
-                                LaunchedEffect(titleText, titleContainerWidth) {
-                                    val velocityPx = with(density) { BiggerSpacing.toPx() }
-                                    val spacingPx = titleContainerWidth / 3f
-                                    val scrollDistance = titleWidth + spacingPx
-                                    val scrollDuration = (scrollDistance / velocityPx * 1000).toLong()
-                                    
-                                    while (true) {
-                                        titleIsScrolling = false
-                                        delay(1200.milliseconds)
-                                        titleIsScrolling = true
-                                        delay(scrollDuration.milliseconds)
-                                    }
-                                }
-                            }
-                            
-                            val startFadeAlpha by animateFloatAsState(if (titleIsScrolling) 1f else 0f, tween(200), label = "titleStartFadeNormal")
-
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .onGloballyPositioned { titleContainerWidth = it.size.width }
-                                    .fadingEdges(startAlpha = startFadeAlpha, endAlpha = if (titleNeedsMarquee) 1f else 0f)
-                                    .basicMarquee(iterations = Int.MAX_VALUE, repeatDelayMillis = 1200),
-                                contentAlignment = Alignment.Center
-                            )
-{
-                                Text(
-                                    text = titleText,
-                                    style = titleStyle,
-                                    maxLines = 1,
-                                    modifier = Modifier.padding(horizontal = LargestPadding)
-                                )
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .basicMarquee(iterations = Int.MAX_VALUE, repeatDelayMillis = 3000),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = mediaState.artist ?: "",
-                                    style = MaterialTheme.typography.bodyLarge.copy(shadow = textShadow),
-                                    color = subContentColor,
-                                    textAlign = TextAlign.Center,
-                                    maxLines = 1,
-                                    modifier = Modifier.padding(horizontal = LargestPadding)
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.weight(1.2f))
-
-                    // Progress Bar
-                    var sliderPosition by remember { mutableStateOf<Float?>(null) }
-                    val currentPosition = sliderPosition ?: mediaState.position.toFloat()
-                    val duration = mediaState.duration.toFloat().coerceAtLeast(1f)
-
-                    if (mediaState.title != null) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .blockHorizontalPagerSwipe()
-                        ) {
-                            Slider(
-                                value = currentPosition.coerceIn(0f, duration),
-                                onValueChange = { sliderPosition = it },
-                                onValueChangeFinished = {
-                                    sliderPosition?.let { onSeek(it.toLong()) }
-                                    sliderPosition = null
-                                },
-                                valueRange = 0f..duration,
-                                colors = SliderDefaults.colors(
-                                    thumbColor = contentColor,
-                                    activeTrackColor = contentColor,
-                                    inactiveTrackColor = contentColor.copy(alpha = 0.3f)
-                                )
-                            )
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = SmallPadding),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    formatTime(currentPosition.toLong()),
-                                    color = contentColor.copy(alpha = 0.6f),
-                                    style = MaterialTheme.typography.labelSmall.copy(fontFamily = mainFontFamily)
-                                )
-                                Text(
-                                    formatTime(mediaState.duration),
-                                    color = contentColor.copy(alpha = 0.6f),
-                                    style = MaterialTheme.typography.labelSmall.copy(fontFamily = mainFontFamily)
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(MediumSpacer))
-
-                    // Controls
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(ExtraLargerSpacer)
-                    ) {
-                        leftAction?.let { action ->
-                            MediaActionButton(action, contentColor)
-                        }
-
-                        IconButton(
-                            onClick = onSkipPrevious, modifier = Modifier.size(MediumButtonHeight)
-                        ) {
-                            ShadowedIcon(
-                                imageVector = Icons.Rounded.SkipPrevious,
-                                contentDescription = stringResource(R.string.previous),
-                                modifier = Modifier.size(IconSizeLarge),
-                                tint = contentColor
-                            )
-                        }
-
-                        FilledIconButton(
-                            onClick = onTogglePlayPause,
-                            modifier = Modifier
-                                .size(HugerSpacing)
-                                .shadow(elevation = LargeMediumElevation, shape = CircleShape),
-                            colors = IconButtonDefaults.filledIconButtonColors(
-                                containerColor = iconButtonContainerColor,
-                                contentColor = iconButtonContentColor
-                              )
-                        ) {
-                            ShadowedIcon(
-                                imageVector = if (mediaState.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                                contentDescription = stringResource(R.string.play_pause),
-                                modifier = Modifier.size(ExtraLargeIconSize),
-                                tint = iconButtonContentColor
-                            )
-                        }
-
-                        IconButton(
-                            onClick = onSkipNext, modifier = Modifier.size(MediumButtonHeight)
-                        ) {
-                            ShadowedIcon(
-                                imageVector = Icons.Rounded.SkipNext,
-                                contentDescription = stringResource(R.string.next),
-                                modifier = Modifier.size(LargeIconSize),
-                                tint = contentColor
-                            )
-                        }
-
-                        rightAction?.let { action ->
-                            MediaActionButton(action, contentColor)
-                        }
-                    }
-                    Spacer(modifier = Modifier.weight(1f))
                 }
             }
         }
     }
-}
 }
 
 private fun Modifier.musicNote(note: MusicNoteAnimation) = graphicsLayer {

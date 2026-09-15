@@ -86,6 +86,7 @@ import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
 import kotlin.coroutines.resume
+import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 
@@ -717,94 +718,98 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    /**
-     * One attempt at a reading; true on success. On failure the previous reading is kept — a
-     * timeout or a wttr.in 503 must not blank the widget until the next success.
-     */
     private suspend fun updateWeatherOnce(): Boolean {
         val location = getDeviceLocation()
+
+        val lat = location?.latitude ?: return false
+        val lon = location.longitude ?: return false
+
         return withContext(Dispatchers.IO) {
             var connection: HttpURLConnection? = null
             try {
-                // With coordinates wttr.in reports the exact location; without them it falls
-                // back to IP-based geolocation (less accurate).
-                val locationPath = location?.let { "/${it.latitude},${it.longitude}" } ?: ""
-                val lang = Locale.getDefault().language
-                // format=j1: detailed forecast including daily high/low
-                val url = URL("https://wttr.in$locationPath?format=j1&lang=$lang")
-                connection = (url.openConnection() as HttpURLConnection).apply {
-                    // wttr.in regularly needs several seconds; the old 5 s budget timed out constantly
-                    connectTimeout = 15_000
-                    readTimeout = 20_000
-                    setRequestProperty("User-Agent", "XenonLauncher")
-                    setRequestProperty("Accept", "application/json")
-                }
-
-                val code = connection.responseCode
-                if (code != HttpURLConnection.HTTP_OK) {
-                    Log.w(TAG, "Weather: wttr.in answered HTTP $code")
-                    return@withContext false
-                }
-
-                val text = connection.inputStream.bufferedReader().use { it.readText() }.trim()
-                // On overload wttr.in returns an HTML page with a 200; don't try to parse that
-                if (text.isEmpty() || !text.startsWith("{")) {
-                    Log.w(TAG, "Weather: wttr.in returned a non-JSON body")
-                    return@withContext false
-                }
-
-                val json = JSONObject(text)
-                val currentCondition = json.getJSONArray("current_condition").getJSONObject(0)
-                val weather = json.getJSONArray("weather").getJSONObject(0)
-
-                val tempUnitSetting = prefManager.tempUnit
-                val isMetric = when (tempUnitSetting) {
+                val isMetric = when (prefManager.tempUnit) {
                     1 -> true
                     2 -> false
                     else -> Locale.getDefault().country != "US"
                 }
+                val tempParam = if (isMetric) "celsius" else "fahrenheit"
                 val unit = if (isMetric) "C" else "F"
 
-                val currentTemp = if (isMetric) currentCondition.getString("temp_C") + "°$unit" else currentCondition.getString("temp_F") + "°$unit"
-
-                val descField = if (lang != "en") "lang_$lang" else "weatherDesc"
-
-                val rawDesc = currentCondition.getJSONArray("weatherDesc").getJSONObject(0).getString("value")
-                val currentDesc = if (currentCondition.has(descField)) {
-                    currentCondition.getJSONArray(descField).getJSONObject(0).getString("value")
-                } else {
-                    translateWeatherCondition(rawDesc)
+                val url = URL(
+                    "https://api.open-meteo.com/v1/forecast" +
+                            "?latitude=$lat&longitude=$lon" +
+                            "&current=temperature_2m,weather_code" +
+                            "&daily=weather_code,temperature_2m_max,temperature_2m_min" +
+                            "&hourly=weather_code" +
+                            "&temperature_unit=$tempParam" +
+                            "&timezone=auto&forecast_days=1"
+                )
+                connection = (url.openConnection() as HttpURLConnection).apply {
+                    connectTimeout = 15_000
+                    readTimeout = 20_000
+                    setRequestProperty("Accept", "application/json")
                 }
 
-                val maxTemp = if (isMetric) weather.getString("maxtempC") + "°$unit" else weather.getString("maxtempF") + "°$unit"
-                val minTemp = if (isMetric) weather.getString("mintempC") + "°$unit" else weather.getString("mintempF") + "°$unit"
-
-                val hourly = weather.getJSONArray("hourly")
-                val noonForecast = if (hourly.length() > 4) hourly.getJSONObject(4) else hourly.getJSONObject(0)
-
-                val dailyDescRaw = noonForecast.getJSONArray("weatherDesc").getJSONObject(0).getString("value")
-                val dailyDesc = if (noonForecast.has(descField)) {
-                    noonForecast.getJSONArray(descField).getJSONObject(0).getString("value")
-                } else {
-                    translateWeatherCondition(dailyDescRaw)
+                val status = connection.responseCode
+                if (status != HttpURLConnection.HTTP_OK) {
+                    Log.w(TAG, "Weather: open-meteo answered HTTP $status")
+                    return@withContext false
                 }
+
+                val text = connection.inputStream.bufferedReader().use { it.readText() }.trim()
+                if (text.isEmpty() || !text.startsWith("{")) {
+                    Log.w(TAG, "Weather: open-meteo returned a non-JSON body")
+                    return@withContext false
+                }
+
+                val json = JSONObject(text)
+                val current = json.getJSONObject("current")
+                val daily = json.getJSONObject("daily")
+
+                val currentTempValue = current.getDouble("temperature_2m").roundToInt()
+                val currentCode = current.getInt("weather_code")
+
+                val maxTempValue = daily.getJSONArray("temperature_2m_max").getDouble(0).roundToInt()
+                val minTempValue = daily.getJSONArray("temperature_2m_min").getDouble(0).roundToInt()
+                val dailyCode = daily.getJSONArray("weather_code").getInt(0)
+
+                // Midday code for the "today" summary when hourly is present, else the daily code
+                val middayCode = json.optJSONObject("hourly")
+                    ?.optJSONArray("weather_code")
+                    ?.let { if (it.length() > 12) it.optInt(12, dailyCode) else dailyCode }
+                    ?: dailyCode
 
                 _weatherState.value = WeatherState(
-                    temperature = currentTemp,
-                    condition = currentDesc,
-                    maxTemp = maxTemp,
-                    minTemp = minTemp,
-                    dailyCondition = dailyDesc
+                    temperature = "$currentTempValue°$unit",
+                    condition = weatherCodeToCondition(currentCode),
+                    maxTemp = "$maxTempValue°$unit",
+                    minTemp = "$minTempValue°$unit",
+                    dailyCondition = weatherCodeToCondition(middayCode)
                 )
                 true
             } catch (e: Exception) {
-                // Keep whatever is showing; the loop retries with back-off
                 Log.w(TAG, "Weather update failed: ${e.javaClass.simpleName}: ${e.message}")
                 false
             } finally {
                 connection?.disconnect()
             }
         }
+    }
+
+    private fun weatherCodeToCondition(code: Int): String {
+        val english = when (code) {
+            0 -> "Clear"
+            1, 2 -> "Partly cloudy"
+            3 -> "Overcast"
+            45, 48 -> "Fog"
+            51, 53, 55, 56, 57 -> "Drizzle"
+            61, 63, 80, 81, 82 -> "Rain"
+            65, 66, 67 -> "Heavy rain"
+            71, 73, 75, 77, 85, 86 -> "Snow"
+            95, 96, 99 -> "Thunder"
+            else -> "Clear"
+        }
+        return translateWeatherCondition(english)
     }
 
     private fun translateWeatherCondition(condition: String): String {
@@ -838,13 +843,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    /**
-     * Where to ask wttr.in about. Weather only needs a rough position, so the last known fix is
-     * used whenever it is recent enough — it's instant. A fresh fix is requested only when there
-     * is none, at balanced accuracy so it works indoors, and with a hard timeout: the old
-     * high-accuracy request could wait forever for GPS and stalled the whole update loop.
-     * Falls back to the last position this ever saw, then to wttr.in's IP lookup.
-     */
     @SuppressLint("MissingPermission")
     private suspend fun getDeviceLocation(): Location? {
         val context = getApplication<Application>()
@@ -856,8 +854,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         ) == PackageManager.PERMISSION_GRANTED
         if (!hasFine && !hasCoarse) return null // no permission -> wttr.in uses IP fallback
 
-        val last = withTimeoutOrNull(3_000L) {
-            suspendCancellableCoroutine<Location?> { cont ->
+        val last = withTimeoutOrNull(3_000L.milliseconds) {
+            suspendCancellableCoroutine { cont ->
                 fusedLocationClient.lastLocation
                     .addOnSuccessListener { if (cont.isActive) cont.resume(it) }
                     .addOnFailureListener { if (cont.isActive) cont.resume(null) }
@@ -868,8 +866,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             return last
         }
 
-        val fresh = withTimeoutOrNull(LOCATION_FIX_TIMEOUT_MS) {
-            suspendCancellableCoroutine<Location?> { cont ->
+        val fresh = withTimeoutOrNull(LOCATION_FIX_TIMEOUT_MS.milliseconds) {
+            suspendCancellableCoroutine { cont ->
                 val cts = CancellationTokenSource()
                 fusedLocationClient
                     .getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, cts.token)

@@ -90,6 +90,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -136,8 +137,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -248,7 +249,11 @@ fun NotificationPage(
 
     val haptic = LocalHapticFeedback.current
     val offsets = remember { mutableStateMapOf<String, Float>() }
-    var deleteButtonBounds by remember { mutableStateOf(Rect.Zero) }
+    // Kept as a State object, not a value: the delete button reports its root bounds from
+    // onGloballyPositioned, which fires on every frame the pager moves. Passing the value down
+    // as a parameter recomposed this page and the whole tab strip once per swipe frame; the
+    // only consumer (the drag-over-delete check) reads it at gesture time instead.
+    val deleteButtonBounds = remember { mutableStateOf(Rect.Zero) }
 
     // Owned by the ViewModel so LauncherScreen can close the reply when the app
     // drawer opens, and so the dock can freeze its IME padding while one is open.
@@ -969,7 +974,7 @@ fun NotificationPage(
                             onDismissAllNotifications = onDismissAllNotifications,
                             onPackageSelected = { selectedPackage = it },
                             deleteButtonBounds = deleteButtonBounds,
-                            onDeleteButtonBoundsChanged = { deleteButtonBounds = it },
+                            onDeleteButtonBoundsChanged = { deleteButtonBounds.value = it },
                             modifier = wholeScreenOffset
                         )
                     }
@@ -1445,7 +1450,7 @@ fun NotificationPage(
                             onDismissAllNotifications = onDismissAllNotifications,
                             onPackageSelected = { selectedPackage = it },
                             deleteButtonBounds = deleteButtonBounds,
-                            onDeleteButtonBoundsChanged = { deleteButtonBounds = it },
+                            onDeleteButtonBoundsChanged = { deleteButtonBounds.value = it },
                             modifier = wholeScreenOffset
                         )
                     }
@@ -1562,6 +1567,7 @@ fun AtAGlance(
     weatherState: WeatherState,
     isWallpaperDark: Boolean = false,
     onLongClick: (() -> Unit)? = null,
+    /** True while the full event list is shown instead of the pager. */
     expanded: Boolean = false,
     onExpandedChange: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
@@ -1996,6 +2002,9 @@ fun AtAGlance(
                                     modifier = Modifier
                                         .width(ExtraBiggerSpacing)
                                         .height(HugestSpacing + SmallSpacing)
+                                        // The children above have already seen this press; marking it
+                                        // consumed here keeps the At a Glance column's own long press
+                                        // (the menu) from firing on top of the expand.
                                         .pointerInput(Unit) {
                                             awaitEachGesture {
                                                 awaitFirstDown(requireUnconsumed = false).consume()
@@ -2098,7 +2107,7 @@ fun NotificationTabs(
     viewModel: LauncherViewModel,
     onDismissAllNotifications: () -> Unit,
     onPackageSelected: (String?) -> Unit,
-    deleteButtonBounds: Rect,
+    deleteButtonBounds: State<Rect>,
     onDeleteButtonBoundsChanged: (Rect) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -2373,12 +2382,13 @@ fun NotificationTabs(
                                         }
                                     },
                                     isOverDelete = { tabRect ->
-                                        if (deleteButtonBounds.isEmpty) return@NotificationTabButton false
-                                        val intersection = deleteButtonBounds.intersect(tabRect)
+                                        val bounds = deleteButtonBounds.value
+                                        if (bounds.isEmpty) return@NotificationTabButton false
+                                        val intersection = bounds.intersect(tabRect)
                                         val overlapRatio = if (intersection.isEmpty) 0f else {
-                                            (intersection.width * intersection.height) / (deleteButtonBounds.width * deleteButtonBounds.height)
+                                            (intersection.width * intersection.height) / (bounds.width * bounds.height)
                                         }
-                                        overlapRatio >= 0.5f || tabRect.center.x >= deleteButtonBounds.left
+                                        overlapRatio >= 0.5f || tabRect.center.x >= bounds.left
                                     },
                                     iconKey = iconKeyToUse,
                                     modifier = Modifier
@@ -2435,6 +2445,10 @@ fun NotificationTabs(
     }
 }
 
+/**
+ * "Today 14:00 - 15:00", "Tomorrow All day", "Mon, 3 Mar 09:00 - 10:00". Shared by the At a
+ * Glance pager and the expanded list.
+ */
 private fun eventTimeText(
     event: CalendarEvent,
     timeFormatter: SimpleDateFormat,

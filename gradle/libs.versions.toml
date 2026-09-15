@@ -29,6 +29,7 @@ credentialsPlayServicesAuth = "1.6.0"
 xenonCommons = "3.0.7"
 #noinspection UnusedVersionCatalogEntry
 xenonUi = "4.0"
+leakcanary = "1.0.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -70,6 +71,7 @@ androidx-credentials-play-services-auth = { group = "androidx.credentials", name
 googleid = { group = "com.google.android.libraries.identity.googleid", name = "googleid", version.ref = "googleid" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 xenon-commons = { module = "com.github.Dinico414:Xenon-Commons", version.ref = "xenonCommons" }
+leakcanary = { group = "com.android.tools.studio.leakcanary", name = "leakcanary", version.ref = "leakcanary" }
 
 
 [plugins]

@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
@@ -426,7 +427,11 @@ fun StatusSection(
                         onTimeClick = onTimeClick,
                         onDateClick = onDateClick,
                         onWeatherClick = onWeatherClick,
-                        pillInteractionSource = pillInteractionSource
+                        pillInteractionSource = pillInteractionSource,
+                        // Bound the row to the pill: animateContentSize measures its children
+                        // with unbounded width mid-animation, which let the weather row and
+                        // counters define the width and pushed the clock/date off-screen.
+                        modifier = Modifier.fillMaxWidth()
                     )
                 } else {
                     Box(contentAlignment = Alignment.Center) {

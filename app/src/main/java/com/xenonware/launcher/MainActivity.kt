@@ -58,7 +58,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
@@ -488,9 +490,9 @@ fun rememberWallpaperDarkIcons(): Boolean {
 @Composable
 fun LauncherScreen(
     viewModel: LauncherViewModel,
-    apps: List<AppInfo>,
-    pinnedApps: List<AppInfo>,
-    recentlyOpened: List<AppInfo>,
+    apps: List<com.xenonware.launcher.model.AppInfo>,
+    pinnedApps: List<com.xenonware.launcher.model.AppInfo>,
+    recentlyOpened: List<com.xenonware.launcher.model.AppInfo>,
     isGridLayout: Boolean,
     currentTime: String,
     currentDate: String,
@@ -589,14 +591,34 @@ fun LauncherScreen(
         label = "blurProgress"
     )
 
-    val mediaProgress = if (showBootWelcome) 0f else 1f - (pagerState.currentPage + pagerState.currentPageOffsetFraction).coerceIn(0f, 1f)
-    val mediaBlurProgress = if (showBootWelcome) 0f else (2f * mediaProgress).coerceIn(0f, 1f)
-    val blurProgress = appDrawerBlurProgress.coerceAtLeast(mediaBlurProgress)
+    // How far the pager is towards the media page, 0..1. Read only inside draw-phase lambdas:
+    // the offset changes on every frame of a swipe, and reading it here recomposed the whole
+    // LauncherScreen — and both pages with it — for each of those frames.
+    val mediaProgress: () -> Float = {
+        if (showBootWelcome) 0f
+        else 1f - (pagerState.currentPage + pagerState.currentPageOffsetFraction).coerceIn(0f, 1f)
+    }
 
     val blurAvailable = rememberBlurAvailable() && blurSetting && !showBootWelcome
 
+    // The window blur behind the launcher needs a value at composition time, so it is derived
+    // in steps of 6 px: a swipe updates the window a handful of times instead of every frame.
+    val windowBlurRadiusPx by remember(showBootWelcome) {
+        derivedStateOf {
+            val mediaBlur = (2f * mediaProgress()).coerceIn(0f, 1f)
+            val p = appDrawerBlurProgress.coerceAtLeast(mediaBlur)
+            ((30 * p).toInt() / 6) * 6
+        }
+    }
+
+    // While the edit dialog is open the live content fades out and only its blurred capture
+    // stays on screen. hazeEffect only draws a blurred copy on top; it never hides what is
+    // underneath, and that capture is translucent almost everywhere (the sheet, the search
+    // bar, the dock), so without this every icon edge shows straight through it. The capture
+    // itself is unaffected: the alpha layer sits outside the hazeSource.
     val liveContentAlpha by animateFloatAsState(
         targetValue = if (appToEdit != null && blurAvailable) 0f else 1f,
+        // Cross-fade in; snap back so nothing blinks when the dialog closes
         animationSpec = if (appToEdit != null) tween(durationMillis = 250) else snap(),
         label = "liveContentAlpha"
     )
@@ -623,10 +645,13 @@ fun LauncherScreen(
         }
     }
 
-    WindowBlurBehind(radiusPx = if (blurSetting && !showBootWelcome) (30 * blurProgress).toInt() else 0)
+    WindowBlurBehind(radiusPx = if (blurSetting && !showBootWelcome) windowBlurRadiusPx else 0)
 
     DragHandler {
         Box(modifier = Modifier.fillMaxSize()) {
+            // Everything below — pages, drawer, dock — is one hazeSource, attached only
+            // while the edit dialog is open so it costs nothing otherwise. The alpha layer
+            // must stay outside it: it hides the live content, not the capture.
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -683,19 +708,28 @@ fun LauncherScreen(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .zIndex(0f)
+                                        // The parallax slides this page under the translucent
+                                        // media page; clipping to the slot keeps that strip from
+                                        // showing through it
+                                        .clipToBounds()
                                         .graphicsLayer {
-                                            if (mediaProgress > 0f) {
-                                                translationX = -0.25f * size.width * mediaProgress
-                                                alpha = 1f - mediaProgress
+                                            val p = mediaProgress()
+                                            if (p > 0f) {
+                                                translationX = -0.25f * size.width * p
+                                                alpha = 1f - p
+                                                // Depth cue in place of the old blur. A screen-sized
+                                                // gaussian costs several ms each time it is
+                                                // recomputed, and any animation on this page (a
+                                                // marquee, the timer tick) forced that every frame;
+                                                // scaling a cached layer costs nothing.
+                                                scaleX = 1f - 0.06f * p
+                                                scaleY = 1f - 0.06f * p
+                                                // While it slides out the page is composited from
+                                                // a cached texture; the group alpha comes for free
+                                                // instead of a saveLayer per frame
+                                                compositingStrategy = CompositingStrategy.Offscreen
                                             }
                                         }
-                                        .then(
-                                            if (blurAvailable && mediaProgress > 0f) {
-                                                Modifier.blur(radius = (20 * mediaProgress).dp)
-                                            } else {
-                                                Modifier
-                                            }
-                                        )
                                 ) {
                                     NotificationPage(
                                         viewModel = viewModel,
@@ -835,6 +869,8 @@ fun LauncherScreen(
                 )
             }
 
+            // EDIT APP DIALOG — a sibling of the screen source (never inside it), above the
+            // dock, so its backdrop is the whole screen blurred as one image
             appToEdit?.let { app ->
                 Box(
                     modifier = Modifier
