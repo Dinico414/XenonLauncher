@@ -174,7 +174,6 @@ import com.xenonware.launcher.model.SearchHistoryEntry
 import com.xenonware.launcher.model.SearchHistoryType
 import com.xenonware.launcher.model.SearchResult
 import com.xenonware.launcher.ui.res.AllAppsDivider
-import com.xenonware.launcher.ui.res.AppEditDialog
 import com.xenonware.launcher.ui.res.MorphingBackCloseIcon
 import com.xenonware.launcher.ui.res.notification.NotificationBadge
 import com.xenonware.launcher.ui.res.search.SearchHistoryItem
@@ -222,7 +221,13 @@ fun AppDrawer(
     showLabels: Boolean = true,
     hideDockScrolling: Boolean = false,
     onDockVisibilityChange: (Boolean) -> Unit = {},
-    moveWebSearch: Boolean = false
+    moveWebSearch: Boolean = false,
+    /**
+     * Called when the user picks "Edit" for an app. The caller renders the edit dialog above
+     * the launcher's full-screen hazeSource, so its backdrop blurs the whole screen as one
+     * image — the drawer can't do that from inside the very content being blurred.
+     */
+    onEditApp: (AppInfo) -> Unit
 ) {
     val dragDropState = LocalDragDropState.current
     val context = LocalContext.current
@@ -254,7 +259,6 @@ fun AppDrawer(
         notifications.groupBy { it.packageName }
     }
 
-    var appToEdit by remember { mutableStateOf<AppInfo?>(null) }
     val advancedSearchEnabled by viewModel.advancedSearchEnabled.collectAsState()
     val showHiddenAppsInSearch by viewModel.showHiddenAppsInSearch.collectAsState()
     val hiddenApps by viewModel.hiddenApps.collectAsState()
@@ -1169,7 +1173,7 @@ fun AppDrawer(
                                 ),
                                 MenuItem(
                                     text = stringResource(R.string.edit),
-                                    onClick = { appToEdit = app },
+                                    onClick = { onEditApp(app) },
                                     leadingIcon = { Icon(Icons.Rounded.Edit, null) }
                                 ),
                                 MenuItem(
@@ -1401,7 +1405,7 @@ fun AppDrawer(
                     ),
                     MenuItem(
                         text = stringResource(R.string.edit),
-                        onClick = { appToEdit = app },
+                        onClick = { onEditApp(app) },
                         leadingIcon = { Icon(Icons.Rounded.Edit, null) }
                     ),
                     MenuItem(
@@ -1433,20 +1437,6 @@ fun AppDrawer(
             rows = menuRows?.takeIf { it.app == menuApp },
             safeArea = badgeSafeArea
         )
-
-        appToEdit?.let { app ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .hazeEffect(hazeState)
-            ) {
-                AppEditDialog(
-                    app = app,
-                    viewModel = viewModel,
-                    onDismiss = { appToEdit = null }
-                )
-            }
-        }
     }
 }
 

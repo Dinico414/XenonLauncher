@@ -76,11 +76,13 @@ import androidx.core.view.WindowCompat
 import com.xenon.mylibrary.res.AnimatedGradientBackground
 import com.xenon.mylibrary.values.NoSpacing
 import com.xenonware.launcher.data.SharedPreferenceManager
+import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.model.FabAction
 import com.xenonware.launcher.ui.layouts.main.AppDrawer
 import com.xenonware.launcher.ui.pages.MediaPage
 import com.xenonware.launcher.ui.pages.NotificationPage
 import com.xenonware.launcher.ui.pages.WidgetPage
+import com.xenonware.launcher.ui.res.AppEditDialog
 import com.xenonware.launcher.ui.res.CalendarSelectionDialog
 import com.xenonware.launcher.ui.res.ShortcutConfigDialog
 import com.xenonware.launcher.ui.res.dock.DockPill
@@ -93,6 +95,7 @@ import com.xenonware.launcher.util.DragHandler
 import com.xenonware.launcher.util.WindowBlurBehind
 import com.xenonware.launcher.util.rememberBlurAvailable
 import com.xenonware.launcher.viewmodel.LauncherViewModel
+import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.delay
@@ -185,7 +188,7 @@ class MainActivity : ComponentActivity() {
                     } else {
                         val pageOffset = pagerState.currentPage + pagerState.currentPageOffsetFraction
                         val mediaDarkIcons = !appIsDarkTheme // Light theme -> Dark icons
-                        
+
                         if (pageOffset < 1f) {
                             // Interpolate between mediaDarkIcons and wallpaperDarkIcons
                             if (mediaDarkIcons == wallpaperDarkIcons) {
@@ -378,7 +381,7 @@ class MainActivity : ComponentActivity() {
                         viewModel.executeFabAction(fabSwipeUpAction, fabSwipeUpValue)
                     },
                     showBootWelcome = isBooting,
-                    onBootWelcomeFinished = { 
+                    onBootWelcomeFinished = {
                         viewModel.setBooting(false)
                         window.clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
                         if (sharedPreferenceManager.isFirstLaunch) {
@@ -424,9 +427,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        val isHomeIntent = intent.hasCategory(Intent.CATEGORY_HOME) || 
-                          (intent.action == Intent.ACTION_MAIN && intent.categories == null)
-        
+        val isHomeIntent = intent.hasCategory(Intent.CATEGORY_HOME) ||
+                (intent.action == Intent.ACTION_MAIN && intent.categories == null)
+
         if (isHomeIntent) {
             viewModel.onHomePressed()
         }
@@ -538,8 +541,13 @@ fun LauncherScreen(
 ) {
     val density = LocalDensity.current
     val hazeState = rememberHazeState()
+    // Everything on screen — pages, drawer, dock — captured as one image for the edit
+    // dialog's backdrop. Separate from hazeState because the dock consumes that one, and a
+    // hazeEffect can't sit inside the source it reads.
+    val screenHazeState = rememberHazeState()
+    var appToEdit by remember { mutableStateOf<AppInfo?>(null) }
     val scope = rememberCoroutineScope()
-    
+
     BackHandler(enabled = true) {
         if (isAppDrawerVisible) {
             onAppDrawerVisibilityChange(false)
@@ -549,7 +557,7 @@ fun LauncherScreen(
             }
         }
     }
-    
+
     var drawerInteractiveProgress by remember { mutableFloatStateOf(1f) }
 
     var isSearchActiveInDrawer by remember { mutableStateOf(false) }
@@ -586,6 +594,18 @@ fun LauncherScreen(
     val blurProgress = appDrawerBlurProgress.coerceAtLeast(mediaBlurProgress)
 
     val blurAvailable = rememberBlurAvailable() && blurSetting && !showBootWelcome
+
+    // While the edit dialog is open the live content fades out and only its blurred capture
+    // stays on screen. hazeEffect only draws a blurred copy on top; it never hides what is
+    // underneath, and that capture is translucent almost everywhere (the sheet, the search
+    // bar, the dock), so without this every icon edge shows straight through it. The capture
+    // itself is unaffected: the alpha layer sits outside the hazeSource.
+    val liveContentAlpha by animateFloatAsState(
+        targetValue = if (appToEdit != null && blurAvailable) 0f else 1f,
+        // Cross-fade in; snap back so nothing blinks when the dialog closes
+        animationSpec = if (appToEdit != null) tween(durationMillis = 250) else snap(),
+        label = "liveContentAlpha"
+    )
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
     val isImeVisible = WindowInsets.ime.asPaddingValues().calculateBottomPadding() > NoSpacing
@@ -605,6 +625,7 @@ fun LauncherScreen(
             drawerInteractiveProgress = 1f
             isSearchActiveInDrawer = false
             closeSearchTrigger = 0
+            appToEdit = null
         }
     }
 
@@ -612,202 +633,232 @@ fun LauncherScreen(
 
     DragHandler {
         Box(modifier = Modifier.fillMaxSize()) {
+            // Everything below — pages, drawer, dock — is one hazeSource, attached only
+            // while the edit dialog is open so it costs nothing otherwise. The alpha layer
+            // must stay outside it: it hides the live content, not the capture.
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .then(if (blurSetting && !showBootWelcome) Modifier.hazeSource(state = hazeState) else Modifier)
+                    .graphicsLayer { alpha = liveContentAlpha }
+                    .then(
+                        if (appToEdit != null && blurAvailable) Modifier.hazeSource(screenHazeState)
+                        else Modifier
+                    )
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .then(
-                            if (blurAvailable) {
-                                Modifier.blur(radius = (20 * appDrawerBlurProgress).dp)
-                            } else {
-                                Modifier
-                            }
-                        )
+                        .then(if (blurSetting && !showBootWelcome) Modifier.hazeSource(state = hazeState) else Modifier)
                 ) {
-                    val dragDropState = com.xenonware.launcher.util.LocalDragDropState.current
-                    HorizontalPager(
-                        state = pagerState,
-                        modifier = Modifier.fillMaxSize(),
-                        beyondViewportPageCount = 1,
-                        userScrollEnabled = !dragDropState.isDragging
-                    ) { page ->
-                        when (page) {
-                            0 -> Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .zIndex(1f)
-                            ) {
-                                MediaPage(
-                                    mediaState = viewModel.mediaState,
-                                    progress = mediaProgress,
-                                    isPermissionGranted = viewModel.isMediaPermissionGranted,
-                                    isDarkTheme = isDarkTheme,
-                                    isDockVisible = !isDockHiddenByMediaPage,
-                                    onOpenSettings = { viewModel.openNotificationAccessSettings() },
-                                    onTogglePlayPause = { viewModel.togglePlayPause() },
-                                    onSkipNext = { viewModel.skipNext() },
-                                    onSkipPrevious = { viewModel.skipPrevious() },
-                                    onSeek = { viewModel.seekTo(it) },
-                                    onOpenSource = { viewModel.openMediaApp() }
-                                )
-                            }
-                            1 -> Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .zIndex(0f)
-                                    .graphicsLayer {
-                                        if (mediaProgress > 0f) {
-                                            translationX = -0.25f * size.width * mediaProgress
-                                            alpha = 1f - mediaProgress
-                                        }
-                                    }
-                                    .then(
-                                        if (blurAvailable && mediaProgress > 0f) {
-                                            Modifier.blur(radius = (20 * mediaProgress).dp)
-                                        } else {
-                                            Modifier
-                                        }
-                                    )
-                            ) {
-                                NotificationPage(
-                                    viewModel = viewModel,
-                                    notificationCount = notificationCount,
-                                    currentTime = currentTime,
-                                    currentDate = currentDate,
-                                    showClock = showClockAtAGlance,
-                                    hideAtAGlance = hideAtAGlance,
-                                    indicatorType = notificationIndicatorType,
-                                    messageType = notificationMessageType,
-                                    notifications = notifications,
-                                    apps = apps,
-                                    calendarEvents = calendarEvents,
-                                    hazeState = hazeState,
-                                    blurSetting = blurSetting,
-                                    wallpaperDarkIcons = wallpaperDarkIcons,
-                                    onDismissNotification = { viewModel.dismissNotification(it) },
-                                    onDismissAllNotifications = { viewModel.dismissAllNotifications() },
-                                    onOpenSettings = onOpenSettings,
-                                    onContentShiftChanged = { notificationShift = it }
-                                )
-                            }
-                            2 -> WidgetPage(
-                                viewModel = viewModel,
-                                isDockVisible = !isDockHiddenByWidgetPage,
-                                onOpenSettings = onOpenSettings
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .then(
+                                if (blurAvailable) {
+                                    Modifier.blur(radius = (20 * appDrawerBlurProgress).dp)
+                                } else {
+                                    Modifier
+                                }
                             )
+                    ) {
+                        val dragDropState = com.xenonware.launcher.util.LocalDragDropState.current
+                        HorizontalPager(
+                            state = pagerState,
+                            modifier = Modifier.fillMaxSize(),
+                            beyondViewportPageCount = 1,
+                            userScrollEnabled = !dragDropState.isDragging
+                        ) { page ->
+                            when (page) {
+                                0 -> Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .zIndex(1f)
+                                ) {
+                                    MediaPage(
+                                        mediaState = viewModel.mediaState,
+                                        progress = mediaProgress,
+                                        isPermissionGranted = viewModel.isMediaPermissionGranted,
+                                        isDarkTheme = isDarkTheme,
+                                        isDockVisible = !isDockHiddenByMediaPage,
+                                        onOpenSettings = { viewModel.openNotificationAccessSettings() },
+                                        onTogglePlayPause = { viewModel.togglePlayPause() },
+                                        onSkipNext = { viewModel.skipNext() },
+                                        onSkipPrevious = { viewModel.skipPrevious() },
+                                        onSeek = { viewModel.seekTo(it) },
+                                        onOpenSource = { viewModel.openMediaApp() }
+                                    )
+                                }
+                                1 -> Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .zIndex(0f)
+                                        .graphicsLayer {
+                                            if (mediaProgress > 0f) {
+                                                translationX = -0.25f * size.width * mediaProgress
+                                                alpha = 1f - mediaProgress
+                                            }
+                                        }
+                                        .then(
+                                            if (blurAvailable && mediaProgress > 0f) {
+                                                Modifier.blur(radius = (20 * mediaProgress).dp)
+                                            } else {
+                                                Modifier
+                                            }
+                                        )
+                                ) {
+                                    NotificationPage(
+                                        viewModel = viewModel,
+                                        notificationCount = notificationCount,
+                                        currentTime = currentTime,
+                                        currentDate = currentDate,
+                                        showClock = showClockAtAGlance,
+                                        hideAtAGlance = hideAtAGlance,
+                                        indicatorType = notificationIndicatorType,
+                                        messageType = notificationMessageType,
+                                        notifications = notifications,
+                                        apps = apps,
+                                        calendarEvents = calendarEvents,
+                                        hazeState = hazeState,
+                                        blurSetting = blurSetting,
+                                        wallpaperDarkIcons = wallpaperDarkIcons,
+                                        onDismissNotification = { viewModel.dismissNotification(it) },
+                                        onDismissAllNotifications = { viewModel.dismissAllNotifications() },
+                                        onOpenSettings = onOpenSettings,
+                                        onContentShiftChanged = { notificationShift = it }
+                                    )
+                                }
+                                2 -> WidgetPage(
+                                    viewModel = viewModel,
+                                    isDockVisible = !isDockHiddenByWidgetPage,
+                                    onOpenSettings = onOpenSettings
+                                )
+                            }
                         }
+                    }
+
+                    // APP LIST
+                    AnimatedVisibility(
+                        visible = isAppDrawerVisible,
+                        enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        AppDrawer(
+                            viewModel = viewModel,
+                            apps = apps,
+                            recentlyOpened = recentlyOpened,
+                            containerColor = if (blurAvailable) {
+                                val lerp = if (isDarkTheme) 0.5f else 0.15f
+                                lerp(MaterialTheme.colorScheme.surface.copy(alpha = 0.65f), Color.Black.copy(alpha = 0.2f), lerp)
+                            } else {
+                                MaterialTheme.colorScheme.surfaceContainerHighest
+                            },
+                            onAppClick = onAppClick,
+                            onSettingsClick = onOpenSettings,
+                            onDismiss = { onAppDrawerVisibilityChange(false) },
+                            isVisible = isAppDrawerVisible,
+                            onPinApp = { pkg, index -> viewModel.pinApp(pkg, index) },
+                            isGridLayout = isGridLayout,
+                            onToggleLayout = { viewModel.setGridLayout(!isGridLayout) },
+                            onProgress = { drawerInteractiveProgress = it },
+                            blurEnabled = blurSetting,
+                            onSearchActiveChange = { isSearchActiveInDrawer = it },
+                            closeSearchTrigger = closeSearchTrigger,
+                            showLabels = appLabelsEnabled,
+                            hideDockScrolling = hideDockScrolling,
+                            onDockVisibilityChange = { isDockVisibleByScroll = it },
+                            moveWebSearch = moveWebSearch,
+                            onEditApp = { appToEdit = it }
+                        )
                     }
                 }
 
-                // APP LIST
-                AnimatedVisibility(
-                    visible = isAppDrawerVisible,
-                    enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                    exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    AppDrawer(
-                        viewModel = viewModel,
-                        apps = apps,
-                        recentlyOpened = recentlyOpened,
-                        containerColor = if (blurAvailable) {
-                            val lerp = if (isDarkTheme) 0.5f else 0.15f
-                            lerp(MaterialTheme.colorScheme.surface.copy(alpha = 0.65f), Color.Black.copy(alpha = 0.2f), lerp)
+                // DOCK LAYER
+                val configuration = LocalConfiguration.current
+                val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+                val isSmallDevice = configuration.screenWidthDp < 400
+
+                val shouldAnimateDockOff = if (hideDockScrollingOnlySmall) {
+                    isLandscape || isSmallDevice
+                } else {
+                    true
+                }
+
+                val isOnWidgetPage = pagerState.currentPage == 2
+                val isOnMediaPage = pagerState.currentPage == 0
+
+                val isDockHiddenByPage = (isOnWidgetPage && isDockHiddenByWidgetPage) || (isOnMediaPage && isDockHiddenByMediaPage)
+
+                val dockYOffset by animateDpAsState(
+                    targetValue = if (isDockVisibleByScroll && !isDockHiddenByPage || !isAppDrawerVisible && !isDockHiddenByPage || !shouldAnimateDockOff && !isDockHiddenByPage) 0.dp else 120.dp,
+                    animationSpec = spring(stiffness = Spring.StiffnessLow),
+                    label = "dockYOffset"
+                )
+
+                DockPill(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .offset { IntOffset(0, -notificationShift.roundToInt() + density.run { dockYOffset.roundToPx() }) },
+                    apps = pinnedApps,
+                    notifications = notifications,
+                    badgeType = badgeType,
+                    mediaState = viewModel.mediaState,
+                    isMediaPermissionGranted = viewModel.isMediaPermissionGranted,
+                    notificationCount = notificationCount,
+                    calendarEventCount = calendarEvents.size,
+                    currentTime = currentTime,
+                    currentDate = currentDate,
+                    weatherTemp = weatherTemp,
+                    weatherCondition = weatherCondition,
+                    onAppClick = onAppClick,
+                    onFabClick = {
+                        if (isImeVisible) {
+                            focusManager.clearFocus()
+                            keyboardController?.hide()
+                        } else if (isAppDrawerVisible && isSearchActiveInDrawer && drawerInteractiveProgress > 0.99f) {
+                            closeSearchTrigger++
                         } else {
-                            MaterialTheme.colorScheme.surfaceContainerHighest
-                        },
-                        onAppClick = onAppClick,
-                        onSettingsClick = onOpenSettings,
-                        onDismiss = { onAppDrawerVisibilityChange(false) },
-                        isVisible = isAppDrawerVisible,
-                        onPinApp = { pkg, index -> viewModel.pinApp(pkg, index) },
-                        isGridLayout = isGridLayout,
-                        onToggleLayout = { viewModel.setGridLayout(!isGridLayout) },
-                        onProgress = { drawerInteractiveProgress = it },
-                        blurEnabled = blurSetting,
-                        onSearchActiveChange = { isSearchActiveInDrawer = it },
-                        closeSearchTrigger = closeSearchTrigger,
-                        showLabels = appLabelsEnabled,
-                        hideDockScrolling = hideDockScrolling,
-                        onDockVisibilityChange = { isDockVisibleByScroll = it },
-                        moveWebSearch = moveWebSearch
+                            onFabSingleTap()
+                        }
+                    },
+                    onMediaPlayPause = { viewModel.togglePlayPause() },
+                    onMediaSkipNext = { viewModel.skipNext() },
+                    onOpenMediaPermission = { viewModel.openNotificationAccessSettings() },
+                    onTimeClick = { viewModel.handleShortcutClick(LauncherViewModel.ShortcutType.TIME) },
+                    onDateClick = { viewModel.handleShortcutClick(LauncherViewModel.ShortcutType.DATE) },
+                    onWeatherClick = { viewModel.handleShortcutClick(LauncherViewModel.ShortcutType.WEATHER) },
+                    onFabDoubleTap = onFabDoubleTap,
+                    onFabLongPress = onFabLongPress,
+                    onFabSwipeUp = onFabSwipeUp,
+                    isAppDrawerVisible = isAppDrawerVisible,
+                    hazeState = if (blurSetting) hazeState else null,
+                    progress = batteryLevel,
+                    isCharging = isCharging,
+                    hideActionButton = hideActionButton,
+                    fabSingleTapAction = fabSingleTapAction,
+                    dockSafeDrawIme = dockSafeDrawIme && !isReplyingToNotification,
+                    dockSafeDrawImePortraitOnly = dockSafeDrawImePortraitOnly,
+                    onUnpinApp = { viewModel.unpinApp(it) },
+                    onPinApp = { pkg, index -> viewModel.pinApp(pkg, index) },
+                    onReorderApp = { from, to -> viewModel.reorderPinnedApp(from, to) }
+                )
+            }
+
+            // EDIT APP DIALOG — a sibling of the screen source (never inside it), above the
+            // dock, so its backdrop is the whole screen blurred as one image
+            appToEdit?.let { app ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .hazeEffect(screenHazeState)
+                ) {
+                    AppEditDialog(
+                        app = app,
+                        viewModel = viewModel,
+                        onDismiss = { appToEdit = null }
                     )
                 }
             }
-
-            // DOCK LAYER
-            val configuration = LocalConfiguration.current
-            val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-            val isSmallDevice = configuration.screenWidthDp < 400
-            
-            val shouldAnimateDockOff = if (hideDockScrollingOnlySmall) {
-                isLandscape || isSmallDevice
-            } else {
-                true
-            }
-
-            val isOnWidgetPage = pagerState.currentPage == 2
-            val isOnMediaPage = pagerState.currentPage == 0
-            
-            val isDockHiddenByPage = (isOnWidgetPage && isDockHiddenByWidgetPage) || (isOnMediaPage && isDockHiddenByMediaPage)
-
-            val dockYOffset by animateDpAsState(
-                targetValue = if (isDockVisibleByScroll && !isDockHiddenByPage || !isAppDrawerVisible && !isDockHiddenByPage || !shouldAnimateDockOff && !isDockHiddenByPage) 0.dp else 120.dp,
-                animationSpec = spring(stiffness = Spring.StiffnessLow),
-                label = "dockYOffset"
-            )
-
-            DockPill(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .offset { IntOffset(0, -notificationShift.roundToInt() + density.run { dockYOffset.roundToPx() }) },
-                apps = pinnedApps,
-                notifications = notifications,
-                badgeType = badgeType,
-                mediaState = viewModel.mediaState,
-                isMediaPermissionGranted = viewModel.isMediaPermissionGranted,
-                notificationCount = notificationCount,
-                calendarEventCount = calendarEvents.size,
-                currentTime = currentTime,
-                currentDate = currentDate,
-                weatherTemp = weatherTemp,
-                weatherCondition = weatherCondition,
-                onAppClick = onAppClick,
-                onFabClick = {
-                    if (isImeVisible) {
-                        focusManager.clearFocus()
-                        keyboardController?.hide()
-                    } else if (isAppDrawerVisible && isSearchActiveInDrawer && drawerInteractiveProgress > 0.99f) {
-                        closeSearchTrigger++
-                    } else {
-                        onFabSingleTap()
-                    }
-                },
-                onMediaPlayPause = { viewModel.togglePlayPause() },
-                onMediaSkipNext = { viewModel.skipNext() },
-                onOpenMediaPermission = { viewModel.openNotificationAccessSettings() },
-                onTimeClick = { viewModel.handleShortcutClick(LauncherViewModel.ShortcutType.TIME) },
-                onDateClick = { viewModel.handleShortcutClick(LauncherViewModel.ShortcutType.DATE) },
-                onWeatherClick = { viewModel.handleShortcutClick(LauncherViewModel.ShortcutType.WEATHER) },
-                onFabDoubleTap = onFabDoubleTap,
-                onFabLongPress = onFabLongPress,
-                onFabSwipeUp = onFabSwipeUp,
-                isAppDrawerVisible = isAppDrawerVisible,
-                hazeState = if (blurSetting) hazeState else null,
-                progress = batteryLevel,
-                isCharging = isCharging,
-                hideActionButton = hideActionButton,
-                fabSingleTapAction = fabSingleTapAction,
-                dockSafeDrawIme = dockSafeDrawIme && !isReplyingToNotification,
-                dockSafeDrawImePortraitOnly = dockSafeDrawImePortraitOnly,
-                onUnpinApp = { viewModel.unpinApp(it) },
-                onPinApp = { pkg, index -> viewModel.pinApp(pkg, index) },
-                onReorderApp = { from, to -> viewModel.reorderPinnedApp(from, to) }
-            )
 
             configShortcutType?.let { type ->
                 val context = LocalContext.current
