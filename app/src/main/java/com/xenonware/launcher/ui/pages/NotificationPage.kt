@@ -137,8 +137,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -356,7 +356,10 @@ fun NotificationPage(
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val disableLandscape = shouldDisableLandscapeLayout(context)
     val useLandscapeLayout = isLandscape && !disableLandscape
-    val isWideScreen = configuration.screenWidthDp >= 600
+    val windowInfoForWidth = LocalWindowInfo.current
+    val densityForWidth = LocalDensity.current
+    val windowWidthDp = with(densityForWidth) { windowInfoForWidth.containerSize.width.toDp() }
+    val isWideScreen = windowWidthDp >= 600.dp
     val glanceHidesNotifications = !useLandscapeLayout && !isWideScreen
     // 0 = default layout, 1 = the event list owns the whole column
     val glanceExpandProgress by animateFloatAsState(
@@ -709,14 +712,7 @@ fun NotificationPage(
                                                 fadeOutSpec = tween(durationMillis = 120)
                                             ),
                                             onOpen = {
-                                                try {
-                                                    val options = ActivityOptions.makeBasic()
-                                                    options.pendingIntentBackgroundActivityStartMode =
-                                                        ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
-                                                    notification.contentIntent?.send(context, 0, null, null, null, null, options.toBundle())
-                                                } catch (_: Exception) {
-                                                    try { notification.contentIntent?.send() } catch (_: Exception) {}
-                                                }
+                                                sendContentIntent(context, notification)
                                             },
                                             onDismiss = { onDismissNotification(notification.key) },
                                             forceRounded = true
@@ -778,14 +774,7 @@ fun NotificationPage(
                                                 fadeOutSpec = tween(durationMillis = 120)
                                             ),
                                             onOpen = {
-                                                try {
-                                                    val options = ActivityOptions.makeBasic()
-                                                    options.pendingIntentBackgroundActivityStartMode =
-                                                        ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
-                                                    notification.contentIntent?.send(context, 0, null, null, null, null, options.toBundle())
-                                                } catch (_: Exception) {
-                                                    try { notification.contentIntent?.send() } catch (_: Exception) {}
-                                                }
+                                                sendContentIntent(context, notification)
                                             },
                                             onDismiss = { onDismissNotification(notification.key) },
                                             forceRounded = true
@@ -866,14 +855,7 @@ fun NotificationPage(
                                                         if (isLast && !isLastGroup) Modifier.padding(bottom = SmallerPadding) else Modifier
                                                     ),
                                                 onOpen = {
-                                                    try {
-                                                        val options = ActivityOptions.makeBasic()
-                                                        options.pendingIntentBackgroundActivityStartMode =
-                                                            ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
-                                                        notification.contentIntent?.send(context, 0, null, null, null, null, options.toBundle())
-                                                    } catch (_: Exception) {
-                                                        try { notification.contentIntent?.send() } catch (_: Exception) {}
-                                                    }
+                                                    sendContentIntent(context, notification)
                                                 },
                                                 onDismiss = { onDismissNotification(notification.key) }
                                             )
@@ -940,14 +922,7 @@ fun NotificationPage(
                                                 fadeOutSpec = tween(durationMillis = 120)
                                             ),
                                             onOpen = {
-                                                try {
-                                                    val options = ActivityOptions.makeBasic()
-                                                    options.pendingIntentBackgroundActivityStartMode =
-                                                        ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
-                                                    notification.contentIntent?.send(context, 0, null, null, null, null, options.toBundle())
-                                                } catch (_: Exception) {
-                                                    try { notification.contentIntent?.send() } catch (_: Exception) {}
-                                                }
+                                                sendContentIntent(context, notification)
                                             },
                                             onDismiss = { onDismissNotification(notification.key) }
                                         )
@@ -1185,14 +1160,7 @@ fun NotificationPage(
                                                 fadeOutSpec = tween(durationMillis = 120)
                                             ),
                                             onOpen = {
-                                                try {
-                                                    val options = ActivityOptions.makeBasic()
-                                                    options.pendingIntentBackgroundActivityStartMode =
-                                                        ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
-                                                    notification.contentIntent?.send(context, 0, null, null, null, null, options.toBundle())
-                                                } catch (_: Exception) {
-                                                    try { notification.contentIntent?.send() } catch (_: Exception) {}
-                                                }
+                                                sendContentIntent(context, notification)
                                             },
                                             onDismiss = { onDismissNotification(notification.key) },
                                             forceRounded = true
@@ -1254,14 +1222,7 @@ fun NotificationPage(
                                                 fadeOutSpec = tween(durationMillis = 120)
                                             ),
                                             onOpen = {
-                                                try {
-                                                    val options = ActivityOptions.makeBasic()
-                                                    options.pendingIntentBackgroundActivityStartMode =
-                                                        ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
-                                                    notification.contentIntent?.send(context, 0, null, null, null, null, options.toBundle())
-                                                } catch (_: Exception) {
-                                                    try { notification.contentIntent?.send() } catch (_: Exception) {}
-                                                }
+                                                sendContentIntent(context, notification)
                                             },
                                             onDismiss = { onDismissNotification(notification.key) },
                                             forceRounded = true
@@ -1342,14 +1303,7 @@ fun NotificationPage(
                                                         if (isLast && !isLastGroup) Modifier.padding(bottom = SmallerPadding) else Modifier
                                                     ),
                                                 onOpen = {
-                                                    try {
-                                                        val options = ActivityOptions.makeBasic()
-                                                        options.pendingIntentBackgroundActivityStartMode =
-                                                            ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
-                                                        notification.contentIntent?.send(context, 0, null, null, null, null, options.toBundle())
-                                                    } catch (_: Exception) {
-                                                        try { notification.contentIntent?.send() } catch (_: Exception) {}
-                                                    }
+                                                    sendContentIntent(context, notification)
                                                 },
                                                 onDismiss = { onDismissNotification(notification.key) }
                                             )
@@ -1416,14 +1370,7 @@ fun NotificationPage(
                                                 fadeOutSpec = tween(durationMillis = 120)
                                             ),
                                             onOpen = {
-                                                try {
-                                                    val options = ActivityOptions.makeBasic()
-                                                    options.pendingIntentBackgroundActivityStartMode =
-                                                        ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
-                                                    notification.contentIntent?.send(context, 0, null, null, null, null, options.toBundle())
-                                                } catch (_: Exception) {
-                                                    try { notification.contentIntent?.send() } catch (_: Exception) {}
-                                                }
+                                                sendContentIntent(context, notification)
                                             },
                                             onDismiss = { onDismissNotification(notification.key) }
                                         )
@@ -1520,6 +1467,23 @@ fun NotificationPage(
                 alignment = Alignment.Center
             )
         }
+    }
+}
+
+private fun sendContentIntent(
+    context: android.content.Context,
+    notification: LauncherNotification
+) {
+    val intent = notification.contentIntent ?: return
+    try {
+        @Suppress("DEPRECATION")
+        val options = ActivityOptions.makeBasic().apply {
+            pendingIntentBackgroundActivityStartMode =
+                ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+        }
+        intent.send(context, 0, null, null, null, null, options.toBundle())
+    } catch (_: Exception) {
+        try { intent.send() } catch (_: Exception) {}
     }
 }
 
@@ -2002,9 +1966,6 @@ fun AtAGlance(
                                     modifier = Modifier
                                         .width(ExtraBiggerSpacing)
                                         .height(HugestSpacing + SmallSpacing)
-                                        // The children above have already seen this press; marking it
-                                        // consumed here keeps the At a Glance column's own long press
-                                        // (the menu) from firing on top of the expand.
                                         .pointerInput(Unit) {
                                             awaitEachGesture {
                                                 awaitFirstDown(requireUnconsumed = false).consume()
@@ -2444,11 +2405,6 @@ fun NotificationTabs(
         }
     }
 }
-
-/**
- * "Today 14:00 - 15:00", "Tomorrow All day", "Mon, 3 Mar 09:00 - 10:00". Shared by the At a
- * Glance pager and the expanded list.
- */
 private fun eventTimeText(
     event: CalendarEvent,
     timeFormatter: SimpleDateFormat,

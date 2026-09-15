@@ -18,7 +18,7 @@
     <string name="enable_glass_haze">Enable frosted glass effect.</string>
     <string name="theme">Theme</string>
     <string name="blacked_out">Blacked out</string>
-    <string name="blacked_out_description">Make Darkmode even darker.</string>
+    <string name="blacked_out_description">Make Dark mode even darker.</string>
     <string name="current">Current:</string>
     <string name="icon_shape">Icon Shape</string>
     <string name="icon_shadows">Icon Shadows</string>
@@ -130,7 +130,7 @@
     <string name="accessibility_access">Accessibility Access</string>
     <string name="accessibility_access_description">Used to enable locking via gestures.</string>
     <string name="accessibility_restricted_description">Settings are restricted. Please go to App Info and \"Allow restricted settings\" in the top right menu first.</string>
-    <string name="accessibility_guide">If \"Restricted settings\" appears: Click info button again to open App Info -> 3-dot menu -> \"Allow restricted settings\" -> Come back.</string>
+    <string name="accessibility_guide">If \"Restricted settings\" appears: Click info button again to open App Info → 3-dot menu → \"Allow restricted settings\" → Come back.</string>
     <string name="location_access">Location Access</string>
     <string name="location_access_description">Used to provide local weather information.</string>
     <string name="calendar_access">Calendar Access</string>

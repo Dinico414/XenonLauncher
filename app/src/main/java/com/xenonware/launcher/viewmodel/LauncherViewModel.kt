@@ -687,7 +687,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     }
 
     override fun onCleared() {
-        super.onCleared()
         prefManager.unregisterListener(preferenceListener)
         getApplication<Application>().unregisterReceiver(packageReceiver)
         getApplication<Application>().unregisterReceiver(batteryReceiver)
@@ -718,11 +717,16 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    /**
+     * One attempt at a reading; true on success. On failure the previous reading is kept — a
+     * timeout or a 5xx from the weather API must not blank the widget until the next success.
+     */
     private suspend fun updateWeatherOnce(): Boolean {
-        val location = getDeviceLocation()
-
-        val lat = location?.latitude ?: return false
-        val lon = location.longitude ?: return false
+        // Open-Meteo needs coordinates; without a fix there is nothing to ask about (the old
+        // source had an IP fallback, this one does not). Keep whatever is already showing.
+        val location = getDeviceLocation() ?: return false
+        val lat = location.latitude
+        val lon = location.longitude
 
         return withContext(Dispatchers.IO) {
             var connection: HttpURLConnection? = null
@@ -735,6 +739,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 val tempParam = if (isMetric) "celsius" else "fahrenheit"
                 val unit = if (isMetric) "C" else "F"
 
+                // Keyless, stable JSON: current weather plus today's high/low and midday code.
                 val url = URL(
                     "https://api.open-meteo.com/v1/forecast" +
                             "?latitude=$lat&longitude=$lon" +
@@ -796,6 +801,11 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    /**
+     * Maps a WMO weather code (what Open-Meteo returns) to one of the English phrases the icon
+     * lookups in Glancly and AtAGlance already match on. [translateWeatherCondition] then produces
+     * the German display string, exactly as with the old text-based source.
+     */
     private fun weatherCodeToCondition(code: Int): String {
         val english = when (code) {
             0 -> "Clear"
@@ -1706,10 +1716,11 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         projection: Array<String>,
         selection: String?,
         selectionArgs: Array<String>?,
-        sortOrder: String,
         bounds: DayBounds,
         tz: TimeZone
     ): List<CalendarEvent> {
+        // Instances are always read in ascending start order.
+        val sortOrder = "${CalendarContract.Instances.BEGIN} ASC"
         val events = mutableListOf<CalendarEvent>()
         try {
             context.contentResolver.query(uri, projection, selection, selectionArgs, sortOrder)?.use { cursor ->
@@ -1922,9 +1933,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 selectionArgs = visibleCalendars.toTypedArray()
             }
 
-            val sortOrder = "${CalendarContract.Instances.BEGIN} ASC"
-
-            var events = readEvents(context, uri, projection, selection, selectionArgs, sortOrder, bounds, tz)
+            var events = readEvents(context, uri, projection, selection, selectionArgs, bounds, tz)
 
             // Also check Events table directly for any non-recurring events that Instances might have missed
             val directEvents = readNonRecurringEvents(context, selection, selectionArgs, bounds, tz)
@@ -1935,7 +1944,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             }
 
             if (selection != null && events.isEmpty()) {
-                val unfiltered = readEvents(context, uri, projection, null, null, sortOrder, bounds, tz)
+                val unfiltered = readEvents(context, uri, projection, null, null, bounds, tz)
 
                 // Keep the original safety net: if the filter matched nothing at all, show everything.
                 if (events.isEmpty() && unfiltered.isNotEmpty()) {
@@ -2038,7 +2047,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 val bundle = Bundle().apply {
                     putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, true)
                     putBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, true)
-                    putBoolean(ContentResolver.SYNC_EXTRAS_FORCE, true)
                 }
                 ContentResolver.requestSync(account, CalendarContract.AUTHORITY, bundle)
                 Log.d(TAG, "Force requested calendar sync for account: $accountName")

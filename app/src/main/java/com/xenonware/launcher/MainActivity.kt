@@ -490,9 +490,9 @@ fun rememberWallpaperDarkIcons(): Boolean {
 @Composable
 fun LauncherScreen(
     viewModel: LauncherViewModel,
-    apps: List<com.xenonware.launcher.model.AppInfo>,
-    pinnedApps: List<com.xenonware.launcher.model.AppInfo>,
-    recentlyOpened: List<com.xenonware.launcher.model.AppInfo>,
+    apps: List<AppInfo>,
+    pinnedApps: List<AppInfo>,
+    recentlyOpened: List<AppInfo>,
     isGridLayout: Boolean,
     currentTime: String,
     currentDate: String,
@@ -542,6 +542,10 @@ fun LauncherScreen(
     onBootWelcomeFinished: () -> Unit = {}
 ) {
     val density = LocalDensity.current
+    // containerSize is the true window size in px; Configuration.screenWidthDp can lag
+    // multi-window / foldable resizes. Convert to dp for the breakpoint below.
+    val windowInfo = LocalWindowInfo.current
+    val windowWidthDp = with(density) { windowInfo.containerSize.width.toDp() }
     val hazeState = rememberHazeState()
     // Everything on screen — pages, drawer, dock — captured as one image for the edit
     // dialog's backdrop. Separate from hazeState because the dock consumes that one, and a
@@ -801,7 +805,7 @@ fun LauncherScreen(
                 // DOCK LAYER
                 val configuration = LocalConfiguration.current
                 val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-                val isSmallDevice = configuration.screenWidthDp < 400
+                val isSmallDevice = windowWidthDp < 400.dp
 
                 val shouldAnimateDockOff = if (hideDockScrollingOnlySmall) {
                     isLandscape || isSmallDevice

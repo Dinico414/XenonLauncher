@@ -241,8 +241,12 @@ fun MediaPage(
         val rightAction = mediaState.actions.getOrNull(1)
 
         val isSmallDevice = isSmallScreenDevice(context)
-        val verticalSafeDrawHeight = (configuration.screenHeightDp.dp - topPadding - navBarHeight).coerceAtLeast(ExtraBigSpacing)
-        val maxSmallCoverSize = minOf(configuration.screenWidthDp.dp / 3, verticalSafeDrawHeight/3)
+        // True window size in px (Configuration.screenSizeDp can lag resizes), converted to dp.
+        val windowInfo = androidx.compose.ui.platform.LocalWindowInfo.current
+        val windowWidthDp = with(density) { windowInfo.containerSize.width.toDp() }
+        val windowHeightDp = with(density) { windowInfo.containerSize.height.toDp() }
+        val verticalSafeDrawHeight = (windowHeightDp - topPadding - navBarHeight).coerceAtLeast(ExtraBigSpacing)
+        val maxSmallCoverSize = minOf(windowWidthDp / 3, verticalSafeDrawHeight/3)
         val portraitAlbumArtSize = if (isSmallDevice) maxSmallCoverSize else 280.dp
 
         // Constant background effects (no animation)
@@ -510,6 +514,8 @@ fun MediaPage(
                                         .blockHorizontalPagerSwipe()
                                         .padding(horizontal = LargestPadding)
                                 ) {
+                                    @Suppress("DEPRECATION")  // kept on the value-based overload; the newer
+                                    // state-based Slider constructor varies across Material3 versions.
                                     Slider(
                                         value = currentPosition.coerceIn(0f, duration),
                                         onValueChange = { sliderPosition = it },
@@ -960,6 +966,8 @@ fun MediaPage(
                                     .fillMaxWidth()
                                     .blockHorizontalPagerSwipe()
                             ) {
+                                @Suppress("DEPRECATION")  // kept on the value-based overload; the newer
+                                // state-based Slider constructor varies across Material3 versions.
                                 Slider(
                                     value = currentPosition.coerceIn(0f, duration),
                                     onValueChange = { sliderPosition = it },
