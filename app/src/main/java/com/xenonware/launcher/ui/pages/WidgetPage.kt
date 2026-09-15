@@ -47,6 +47,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -77,20 +78,24 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.withSaveLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
@@ -100,6 +105,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -381,6 +387,17 @@ fun WidgetPage(
 
     val pagerState = rememberPagerState(initialPage = 0) { pageCount }
 
+    // Keep every page composed once the first frame is on screen. There are at most five
+    // pages, so the memory cost is trivial, and it means a swipe never has to create a widget
+    // host view (RemoteViews inflation + binder calls) or tear one down mid-gesture — that was
+    // the hitch at the start of every page turn. Deferred by one frame so cold start still
+    // paints the current page before the others are built.
+    var keepAllPages by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        withFrameNanos { }
+        keepAllPages = true
+    }
+
     // Auto-advance pages while the ghost is held against the top or bottom edge.
     // The gesture lives above the pager, so scrolling here never interrupts it.
     LaunchedEffect(edgeScrollDir, isDraggingBody) {
@@ -613,35 +630,14 @@ fun WidgetPage(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                    .drawWithContent {
-                        drawContent()
-                        val topFadeHeight = gridTopOffset.toPx()
-                        val bottomFadeHeight = gridBottomOffset.toPx()
-                        val totalHeight = size.height
-
-                        if (totalHeight > 0) {
-                            drawRect(
-                                brush = Brush.verticalGradient(
-                                    0f to Color.Transparent,
-                                    (topFadeHeight / totalHeight).coerceIn(0f, 1f) to Color.Black,
-                                    ((totalHeight - bottomFadeHeight) / totalHeight).coerceIn(
-                                        0f,
-                                        1f
-                                    ) to Color.Black,
-                                    1f to Color.Transparent
-                                ),
-                                blendMode = BlendMode.DstIn
-                            )
-                        }
-                    }
+                    .fadeEdges(top = gridTopOffset, bottom = gridBottomOffset)
             ) {
                 VerticalPager(
                     state = pagerState,
                     modifier = Modifier.fillMaxSize(),
-                    // Keep neighbors composed so host views aren't torn down and rebuilt on
-                    // every page turn during a drag
-                    beyondViewportPageCount = if (isEditing) 1 else 0,
+                    // All pages stay composed (see keepAllPages) so a page turn never builds
+                    // or tears down widget host views
+                    beyondViewportPageCount = if (keepAllPages) pageCount - 1 else 0,
                     userScrollEnabled = !isEditing
                 ) { pageIndex ->
                     Box(
@@ -1369,32 +1365,14 @@ fun WidgetPage(
 
             // Vertical Page Indicator
             if (pageCount > 1) {
-                Column(
+                PageIndicator(
+                    pagerState = pagerState,
+                    pageCount = pageCount,
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
                         .padding(end = MediumSmallPadding)
-                        .padding(bottom = gridBottomOffset + SmallPadding),
-                    verticalArrangement = Arrangement.spacedBy(MediumSpacer),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    repeat(pageCount) { iteration ->
-                        val isSelected = pagerState.currentPage == iteration
-                        val dotSize by animateDpAsState(
-                            if (isSelected) MediumCornerRadius else MediumSmallerCornerRadius,
-                            label = "dotSize"
-                        )
-                        val alpha by animateFloatAsState(
-                            if (isSelected) 1f else 0.4f,
-                            label = "dotAlpha"
-                        )
-
-                        Box(
-                            modifier = Modifier
-                                .size(dotSize)
-                                .background(Color.White.copy(alpha = alpha), CircleShape)
-                        )
-                    }
-                }
+                        .padding(bottom = gridBottomOffset + SmallPadding)
+                )
             }
         }
     }
@@ -1512,6 +1490,102 @@ fun ShortcutWidgetContent(widget: WidgetItem) {
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 modifier = Modifier.padding(top = SmallPadding)
             )
+        }
+    }
+}
+
+/**
+ * Reads [PagerState.currentPage] in its own composable so a page change only recomposes these
+ * dots. Read directly inside [WidgetPage] (through inline Box/Column scopes) it invalidated the
+ * whole screen, so every widget's composition re-ran in the middle of the swipe.
+ */
+@Composable
+private fun PageIndicator(
+    pagerState: PagerState,
+    pageCount: Int,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(MediumSpacer),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        repeat(pageCount) { iteration ->
+            val isSelected = pagerState.currentPage == iteration
+            val dotSize by animateDpAsState(
+                if (isSelected) MediumCornerRadius else MediumSmallerCornerRadius,
+                label = "dotSize"
+            )
+            val alpha by animateFloatAsState(
+                if (isSelected) 1f else 0.4f,
+                label = "dotAlpha"
+            )
+
+            Box(
+                modifier = Modifier
+                    .size(dotSize)
+                    .background(Color.White.copy(alpha = alpha), CircleShape)
+            )
+        }
+    }
+}
+
+/**
+ * Fades content out over the top [top] and bottom [bottom] of the layout.
+ *
+ * The previous version composited the whole pager offscreen (CompositingStrategy.Offscreen) and
+ * masked it with a full-height DstIn gradient, so every frame of a swipe re-rendered a
+ * screen-sized layer and built a fresh gradient shader. Here the middle band is drawn straight
+ * to the screen and only the two edge strips go through a small, bounded offscreen layer each.
+ * Rects, brushes and the layer paint are created once per size, not once per frame.
+ */
+private fun Modifier.fadeEdges(top: Dp, bottom: Dp): Modifier = drawWithCache {
+    val topPx = top.roundToPx().toFloat().coerceIn(0f, size.height)
+    val bottomPx = bottom.roundToPx().toFloat().coerceIn(0f, size.height - topPx)
+
+    val topStrip = Rect(0f, 0f, size.width, topPx)
+    val bottomStrip = Rect(0f, size.height - bottomPx, size.width, size.height)
+    val topFade = Brush.verticalGradient(
+        colors = listOf(Color.Transparent, Color.Black),
+        startY = topStrip.top,
+        endY = topStrip.bottom
+    )
+    val bottomFade = Brush.verticalGradient(
+        colors = listOf(Color.Black, Color.Transparent),
+        startY = bottomStrip.top,
+        endY = bottomStrip.bottom
+    )
+    val layerPaint = Paint()
+
+    onDrawWithContent {
+        // Middle band: no layer at all
+        clipRect(top = topPx, bottom = size.height - bottomPx) {
+            this@onDrawWithContent.drawContent()
+        }
+
+        // Edge strips: a bounded offscreen layer each, so DstIn only masks the content and
+        // never the wallpaper behind the window
+        if (topPx > 0f) {
+            drawContext.canvas.withSaveLayer(topStrip, layerPaint) {
+                drawContent()
+                drawRect(
+                    brush = topFade,
+                    topLeft = topStrip.topLeft,
+                    size = topStrip.size,
+                    blendMode = BlendMode.DstIn
+                )
+            }
+        }
+        if (bottomPx > 0f) {
+            drawContext.canvas.withSaveLayer(bottomStrip, layerPaint) {
+                drawContent()
+                drawRect(
+                    brush = bottomFade,
+                    topLeft = bottomStrip.topLeft,
+                    size = bottomStrip.size,
+                    blendMode = BlendMode.DstIn
+                )
+            }
         }
     }
 }
