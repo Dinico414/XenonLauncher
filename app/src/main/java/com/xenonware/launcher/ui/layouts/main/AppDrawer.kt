@@ -16,6 +16,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -40,6 +42,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -75,6 +78,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -94,6 +98,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
@@ -104,24 +109,32 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.layout.positionOnScreen
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.platform.ViewConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.zIndex
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
@@ -139,6 +152,7 @@ import com.xenon.mylibrary.values.ExtraLargePadding
 import com.xenon.mylibrary.values.ExtraLargeSpacing
 import com.xenon.mylibrary.values.ExtraLargerSpacer
 import com.xenon.mylibrary.values.ExtraLargerSpacing
+import com.xenon.mylibrary.values.HugeSpacing
 import com.xenon.mylibrary.values.HugestSpacing
 import com.xenon.mylibrary.values.IconSizeMedium
 import com.xenon.mylibrary.values.LargeMediumElevation
@@ -178,6 +192,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.max
+import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
@@ -252,7 +267,7 @@ fun AppDrawer(
             val permissions = mutableListOf<String>()
             permissions.add(Manifest.permission.READ_MEDIA_AUDIO)
             permissions.add(Manifest.permission.READ_CONTACTS)
-            
+
             if (!Environment.isExternalStorageManager()) {
                 try {
                     val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
@@ -300,6 +315,39 @@ fun AppDrawer(
     var showMenu by remember { mutableStateOf(false) }
     var searchResultMenuApp by remember { mutableStateOf<AppInfo?>(null) }
     var appMenuInfo by remember { mutableStateOf<Pair<AppInfo, Offset>?>(null) }
+
+    // Where the open context menu's first and last rows were laid out, in this drawer's
+    // coordinates, keyed by the app it belongs to so a late measurement from a closing menu can
+    // never position the badge for the next one. Feeds MenuAppBadge, the circle floated over
+    // the menu.
+    var drawerOrigin by remember { mutableStateOf(Offset.Zero) }
+    var drawerInWindow by remember { mutableStateOf(Offset.Zero) }
+    var menuRows by remember { mutableStateOf<MenuRows?>(null) }
+    val menuApp = appMenuInfo?.first ?: searchResultMenuApp
+    LaunchedEffect(menuApp) {
+        if (menuApp == null) menuRows = null
+    }
+    fun menuRowReporter(app: AppInfo, last: Boolean = false): Modifier =
+        Modifier.reportMenuRow(origin = { drawerOrigin }) { rect ->
+            val rows = menuRows?.takeIf { it.app == app } ?: MenuRows(app)
+            menuRows = if (last) rows.copy(last = rect) else rows.copy(first = rect)
+        }
+
+    // The area the badge may occupy: clear of the system bars and any cutout, in drawer
+    // coordinates
+    val safeDrawing = WindowInsets.safeDrawing.asPaddingValues()
+    val layoutDirection = LocalLayoutDirection.current
+    val windowView = LocalView.current
+    val badgeSafeArea = with(density) {
+        Rect(
+            left = safeDrawing.calculateLeftPadding(layoutDirection).toPx() - drawerInWindow.x,
+            top = safeDrawing.calculateTopPadding().toPx() - drawerInWindow.y,
+            right = windowView.width - safeDrawing.calculateRightPadding(layoutDirection).toPx() -
+                    drawerInWindow.x,
+            bottom = windowView.height - safeDrawing.calculateBottomPadding().toPx() -
+                    drawerInWindow.y
+        )
+    }
     var barHeightPx by remember { mutableIntStateOf(0) }
     var searchBarHeightPx by remember { mutableIntStateOf(0) }
     var searchBarAnchor by remember { mutableStateOf(Offset.Zero) }
@@ -513,10 +561,10 @@ fun AppDrawer(
     val flingDismissVelocity = 1200f
 
     var lastScrollTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    
+
     // Observer scroll for dock hiding
     val activeState = if (isGridLayout) gridState else listState
-    
+
     val isScrolledToEnd by remember {
         derivedStateOf {
             val layoutInfo = activeState.layoutInfo
@@ -608,6 +656,10 @@ fun AppDrawer(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .onGloballyPositioned {
+                drawerOrigin = it.positionOnScreen()
+                drawerInWindow = it.positionInWindow()
+            }
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -731,19 +783,19 @@ fun AppDrawer(
                                                             modifier = Modifier.weight(1f),
                                                             contentAlignment = Alignment.Center
                                                         ) {
-                                                                AppDrawerGridLayout(
-                                                                    app = app,
-                                                                    notificationCount = groupedNotifications[app.packageName]?.size ?: 0,
-                                                                    badgeType = badgeType,
-                                                                    onAppClick = onAppClick,
-                                                                    onDismiss = onDismiss,
-                                                                    onPinApp = onPinApp,
-                                                                    dragDropState = dragDropState,
-                                                                    onLongPress = { appMenuInfo = app to it },
-                                                                    iconShape = iconShape,
-                                                                    showShadow = showShadow,
-                                                                    showLabels = showLabels
-                                                                )
+                                                            AppDrawerGridLayout(
+                                                                app = app,
+                                                                notificationCount = groupedNotifications[app.packageName]?.size ?: 0,
+                                                                badgeType = badgeType,
+                                                                onAppClick = onAppClick,
+                                                                onDismiss = onDismiss,
+                                                                onPinApp = onPinApp,
+                                                                dragDropState = dragDropState,
+                                                                onLongPress = { appMenuInfo = app to it },
+                                                                iconShape = iconShape,
+                                                                showShadow = showShadow,
+                                                                showLabels = showLabels
+                                                            )
                                                         }
                                                     }
                                                     repeat(recentCount - recentApps.size) {
@@ -1096,7 +1148,7 @@ fun AppDrawer(
                         )
                     }
 
-                        searchResultMenuApp?.let { app ->
+                    searchResultMenuApp?.let { app ->
                         val isHidden = app.packageName in hiddenApps
 
                         XenonDropDown(
@@ -1106,7 +1158,7 @@ fun AppDrawer(
                                 MenuItem(
                                     text = stringResource(R.string.uninstall),
                                     onClick = { onUninstallApp(app.packageName) },
-                                    leadingIcon = { Icon(Icons.Rounded.Delete, null) },
+                                    leadingIcon = { Icon(Icons.Rounded.Delete, null, menuRowReporter(app)) },
                                     textColor = colorScheme.error,
                                     containerColor = colorScheme.error.copy(alpha = 0.15f)
                                 ),
@@ -1126,7 +1178,7 @@ fun AppDrawer(
                                         if (isHidden) onUnhideApp(app.packageName)
                                         else onHideApp(app.packageName)
                                     },
-                                    leadingIcon = { Icon(if (isHidden) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff, null) }
+                                    leadingIcon = { Icon(if (isHidden) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff, null, menuRowReporter(app, last = true)) }
                                 )
                             ),
                             hazeState = if (blurEnabled) hazeState else null,
@@ -1329,7 +1381,7 @@ fun AppDrawer(
                 }
             }
         }
-        
+
         appMenuInfo?.let { (app, offset) ->
             XenonDropDown(
                 expanded = true,
@@ -1338,7 +1390,7 @@ fun AppDrawer(
                     MenuItem(
                         text = stringResource(R.string.uninstall),
                         onClick = { onUninstallApp(app.packageName) },
-                        leadingIcon = { Icon(Icons.Rounded.Delete, null) },
+                        leadingIcon = { Icon(Icons.Rounded.Delete, null, menuRowReporter(app)) },
                         textColor = colorScheme.error,
                         containerColor = colorScheme.error.copy(alpha = 0.25f)
                     ),
@@ -1361,7 +1413,8 @@ fun AppDrawer(
                         leadingIcon = {
                             Icon(
                                 if (app.packageName in hiddenApps) Icons.Rounded.Visibility
-                                else Icons.Rounded.VisibilityOff, null
+                                else Icons.Rounded.VisibilityOff, null,
+                                menuRowReporter(app, last = true)
                             )
                         }
                     )
@@ -1373,6 +1426,13 @@ fun AppDrawer(
                 alignment = Alignment.Center
             )
         }
+
+        // The pressed app's icon, floated over whichever context menu is open
+        MenuAppBadge(
+            app = menuApp,
+            rows = menuRows?.takeIf { it.app == menuApp },
+            safeArea = badgeSafeArea
+        )
 
         appToEdit?.let { app ->
             Box(
@@ -1450,3 +1510,114 @@ private fun SearchHistoryBlock(
     }
 }
 
+/**
+ * XenonDropDown's own padding around its rows. The badge floats [MenuBadgeGap] clear of the card,
+ * so if it ever sits too close to or too far from the menu, this is the number to adjust.
+ */
+private val DropDownInset = MediumPadding
+private val MenuBadgeGap = MediumSpacer
+private val MenuBadgeSize = HugeSpacing
+
+/** Where an open context menu's first and last rows were laid out, in drawer coordinates. */
+private data class MenuRows(val app: AppInfo, val first: Rect? = null, val last: Rect? = null)
+
+/**
+ * Reports the bounds of the menu row containing this leading icon, in the coordinate space whose
+ * screen position [origin] returns.
+ *
+ * XenonDropDown decides the menu's final position itself (edge clamping, enter animation, popup or
+ * inline) and exposes no hook for it, so [MenuAppBadge] reads the position back from the rows:
+ * walk up from the glyph to the first ancestor as wide as a row, then on to that row's outermost
+ * container.
+ */
+private fun Modifier.reportMenuRow(origin: () -> Offset, onRow: (Rect) -> Unit): Modifier =
+    onGloballyPositioned { glyph ->
+        var row: LayoutCoordinates = glyph
+        while (row.size.width < glyph.size.width * 3) {
+            row = row.parentLayoutCoordinates ?: break
+        }
+        while (true) {
+            val parent = row.parentLayoutCoordinates ?: break
+            if (parent.size.height > row.size.height * 1.5f) break
+            row = parent
+        }
+        onRow(Rect(row.positionOnScreen() - origin(), row.size.toSize()))
+    }
+
+/**
+ * Where the badge goes: centred over the menu and floated above it. If that would run into the
+ * status bar or a cutout it goes below the menu instead, and it never leaves [safeArea].
+ * Null until both rows have been measured.
+ */
+private fun badgeTopLeft(rows: MenuRows, safeArea: Rect, size: Float, clearance: Float): Offset? {
+    val first = rows.first ?: return null
+    val last = rows.last ?: return null
+
+    val above = first.top - clearance - size
+    val below = last.bottom + clearance
+    val top = when {
+        above >= safeArea.top -> above
+        below + size <= safeArea.bottom -> below
+        // No clean spot either side (tiny window): at least stay inside the safe area
+        else -> above.coerceAtMost(safeArea.bottom - size).coerceAtLeast(safeArea.top)
+    }
+    val left = (first.center.x - size / 2f)
+        .coerceAtMost(safeArea.right - size)
+        .coerceAtLeast(safeArea.left)
+    return Offset(left, top)
+}
+
+/**
+ * The long-pressed app's icon, floated over its context menu and centred on it, so it's obvious
+ * which app the menu belongs to. Always a circle, whatever the drawer icon shape is, and never
+ * under the status bar, navigation bar or a cutout — see [badgeTopLeft].
+ *
+ * Shown only once the menu rows have been measured, so it can't flash at a stale position when a
+ * new menu opens; the last app and position are kept alive through the exit animation.
+ */
+@Composable
+private fun MenuAppBadge(app: AppInfo?, rows: MenuRows?, safeArea: Rect) {
+    val density = LocalDensity.current
+    val current = if (app != null && rows != null) {
+        val topLeft = with(density) {
+            badgeTopLeft(
+                rows = rows,
+                safeArea = safeArea,
+                size = MenuBadgeSize.toPx(),
+                clearance = (DropDownInset + MenuBadgeGap).toPx()
+            )
+        }
+        topLeft?.let { app to it }
+    } else null
+    val lastShown = remember { mutableStateOf(current) }
+    SideEffect { if (current != null) lastShown.value = current }
+    val (badgeApp, position) = current ?: lastShown.value ?: return
+
+    val icon = remember(badgeApp) { badgeApp.icon?.toBitmap()?.asImageBitmap() }
+
+    AnimatedVisibility(
+        visible = current != null,
+        enter = fadeIn(tween(150)) + scaleIn(tween(200), initialScale = 0.6f),
+        exit = fadeOut(tween(120)) + scaleOut(tween(120), targetScale = 0.6f),
+        modifier = Modifier.offset {
+            IntOffset(position.x.roundToInt(), position.y.roundToInt())
+        }
+    ) {
+        Box(
+            modifier = Modifier
+                .size(MenuBadgeSize)
+                .shadow(LargeMediumElevation, CircleShape)
+                .clip(CircleShape)
+                .background(colorScheme.surfaceContainerHigh)
+        ) {
+            if (icon != null) {
+                Image(
+                    bitmap = icon,
+                    contentDescription = badgeApp.label,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
+    }
+}
