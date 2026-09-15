@@ -9,7 +9,9 @@ import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -90,6 +92,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -110,7 +113,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.findRootCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInRoot
@@ -320,29 +323,29 @@ fun AppDrawer(
     var searchResultMenuApp by remember { mutableStateOf<AppInfo?>(null) }
     var appMenuInfo by remember { mutableStateOf<Pair<AppInfo, Offset>?>(null) }
 
-    // Where the open context menu's first and last rows were laid out, in this drawer's
-    // coordinates, keyed by the app it belongs to so a late measurement from a closing menu can
-    // never position the badge for the next one. Feeds MenuAppBadge, the circle floated over
-    // the menu.
+    // Where the open context menu's card was laid out, in this drawer's coordinates, keyed by
+    // the app it belongs to so a late measurement from a closing menu can never position the
+    // disc for the next one. XenonDropDown is a Popup sized to its card, so the popup's root
+    // coordinates are the card's final bounds: untouched by the scale-in animation (that lives
+    // on the Column inside) and re-reported by Compose whenever the popup window moves.
     var drawerOrigin by remember { mutableStateOf(Offset.Zero) }
     var drawerInWindow by remember { mutableStateOf(Offset.Zero) }
-    var menuRows by remember { mutableStateOf<MenuRows?>(null) }
+    var menuCard by remember { mutableStateOf<Pair<AppInfo, Rect>?>(null) }
     val menuApp = appMenuInfo?.first ?: searchResultMenuApp
     LaunchedEffect(menuApp) {
-        if (menuApp == null) menuRows = null
+        if (menuApp == null) menuCard = null
     }
-    fun menuRowReporter(app: AppInfo, last: Boolean = false): Modifier =
-        Modifier.reportMenuRow(origin = { drawerOrigin }) { rect ->
-            val rows = menuRows?.takeIf { it.app == app } ?: MenuRows(app)
-            menuRows = if (last) rows.copy(last = rect) else rows.copy(first = rect)
-        }
+    fun menuCardReporter(app: AppInfo): Modifier = Modifier.onGloballyPositioned { slot ->
+        val root = slot.findRootCoordinates()
+        menuCard = app to Rect(root.positionOnScreen() - drawerOrigin, root.size.toSize())
+    }
 
-    // The area the badge may occupy: clear of the system bars and any cutout, in drawer
+    // The area the disc may occupy: clear of the system bars and any cutout, in drawer
     // coordinates
     val safeDrawing = WindowInsets.safeDrawing.asPaddingValues()
     val layoutDirection = LocalLayoutDirection.current
     val windowView = LocalView.current
-    val badgeSafeArea = with(density) {
+    val discSafeArea = with(density) {
         Rect(
             left = safeDrawing.calculateLeftPadding(layoutDirection).toPx() - drawerInWindow.x,
             top = safeDrawing.calculateTopPadding().toPx() - drawerInWindow.y,
@@ -1162,7 +1165,7 @@ fun AppDrawer(
                                 MenuItem(
                                     text = stringResource(R.string.uninstall),
                                     onClick = { onUninstallApp(app.packageName) },
-                                    leadingIcon = { Icon(Icons.Rounded.Delete, null, menuRowReporter(app)) },
+                                    leadingIcon = { Icon(Icons.Rounded.Delete, null, menuCardReporter(app)) },
                                     textColor = colorScheme.error,
                                     containerColor = colorScheme.error.copy(alpha = 0.15f)
                                 ),
@@ -1182,7 +1185,7 @@ fun AppDrawer(
                                         if (isHidden) onUnhideApp(app.packageName)
                                         else onHideApp(app.packageName)
                                     },
-                                    leadingIcon = { Icon(if (isHidden) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff, null, menuRowReporter(app, last = true)) }
+                                    leadingIcon = { Icon(if (isHidden) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff, null) }
                                 )
                             ),
                             hazeState = if (blurEnabled) hazeState else null,
@@ -1394,7 +1397,7 @@ fun AppDrawer(
                     MenuItem(
                         text = stringResource(R.string.uninstall),
                         onClick = { onUninstallApp(app.packageName) },
-                        leadingIcon = { Icon(Icons.Rounded.Delete, null, menuRowReporter(app)) },
+                        leadingIcon = { Icon(Icons.Rounded.Delete, null, menuCardReporter(app)) },
                         textColor = colorScheme.error,
                         containerColor = colorScheme.error.copy(alpha = 0.25f)
                     ),
@@ -1417,8 +1420,7 @@ fun AppDrawer(
                         leadingIcon = {
                             Icon(
                                 if (app.packageName in hiddenApps) Icons.Rounded.Visibility
-                                else Icons.Rounded.VisibilityOff, null,
-                                menuRowReporter(app, last = true)
+                                else Icons.Rounded.VisibilityOff, null
                             )
                         }
                     )
@@ -1434,8 +1436,9 @@ fun AppDrawer(
         // The pressed app's icon, floated over whichever context menu is open
         MenuAppBadge(
             app = menuApp,
-            rows = menuRows?.takeIf { it.app == menuApp },
-            safeArea = badgeSafeArea
+            card = menuCard?.takeIf { it.first == menuApp }?.second,
+            safeArea = discSafeArea,
+            hazeState = if (blurEnabled) hazeState else null
         )
     }
 }
@@ -1500,114 +1503,122 @@ private fun SearchHistoryBlock(
     }
 }
 
-/**
- * XenonDropDown's own padding around its rows. The badge floats [MenuBadgeGap] clear of the card,
- * so if it ever sits too close to or too far from the menu, this is the number to adjust.
- */
-private val DropDownInset = MediumPadding
-private val MenuBadgeGap = MediumSpacer
+/** Size of the icon in [MenuAppDisc]. */
 private val MenuBadgeSize = HugeSpacing
 
-/** Where an open context menu's first and last rows were laid out, in drawer coordinates. */
-private data class MenuRows(val app: AppInfo, val first: Rect? = null, val last: Rect? = null)
+/** How far the glass disc extends past the icon on each side. */
+private val MenuBadgeRing = 4.dp
+private val MenuAppDiscSize = MenuBadgeSize + MenuBadgeRing * 2
+
+/** Gap between the disc and the menu card. */
+private val MenuBadgeGap = MediumSpacer
 
 /**
- * Reports the bounds of the menu row containing this leading icon, in the coordinate space whose
- * screen position [origin] returns.
- *
- * XenonDropDown decides the menu's final position itself (edge clamping, enter animation, popup or
- * inline) and exposes no hook for it, so [MenuAppBadge] reads the position back from the rows:
- * walk up from the glyph to the first ancestor as wide as a row, then on to that row's outermost
- * container.
+ * The long-pressed app's icon on a circular glass disc, floated over its context menu so it's
+ * obvious which app the menu belongs to. Always a circle, whatever the drawer icon shape is.
+ * The disc is [MenuBadgeRing] wider than the icon on every side and wears the same material as
+ * the menu card: [HazeMaterials.ultraThin] over surfaceContainer at 0.4 alpha while a
+ * [hazeState] is given, opaque surfaceContainer otherwise, same shadow as the card.
+ * Placement and animation are [MenuAppBadge]'s job.
  */
-private fun Modifier.reportMenuRow(origin: () -> Offset, onRow: (Rect) -> Unit): Modifier =
-    onGloballyPositioned { glyph ->
-        var row: LayoutCoordinates = glyph
-        while (row.size.width < glyph.size.width * 3) {
-            row = row.parentLayoutCoordinates ?: break
-        }
-        while (true) {
-            val parent = row.parentLayoutCoordinates ?: break
-            if (parent.size.height > row.size.height * 1.5f) break
-            row = parent
-        }
-        onRow(Rect(row.positionOnScreen() - origin(), row.size.toSize()))
-    }
-
-/**
- * Where the badge goes: centred over the menu and floated above it. If that would run into the
- * status bar or a cutout it goes below the menu instead, and it never leaves [safeArea].
- * Null until both rows have been measured.
- */
-private fun badgeTopLeft(rows: MenuRows, safeArea: Rect, size: Float, clearance: Float): Offset? {
-    val first = rows.first ?: return null
-    val last = rows.last ?: return null
-
-    val above = first.top - clearance - size
-    val below = last.bottom + clearance
-    val top = when {
-        above >= safeArea.top -> above
-        below + size <= safeArea.bottom -> below
-        // No clean spot either side (tiny window): at least stay inside the safe area
-        else -> above.coerceAtMost(safeArea.bottom - size).coerceAtLeast(safeArea.top)
-    }
-    val left = (first.center.x - size / 2f)
-        .coerceAtMost(safeArea.right - size)
-        .coerceAtLeast(safeArea.left)
-    return Offset(left, top)
-}
-
-/**
- * The long-pressed app's icon, floated over its context menu and centred on it, so it's obvious
- * which app the menu belongs to. Always a circle, whatever the drawer icon shape is, and never
- * under the status bar, navigation bar or a cutout — see [badgeTopLeft].
- *
- * Shown only once the menu rows have been measured, so it can't flash at a stale position when a
- * new menu opens; the last app and position are kept alive through the exit animation.
- */
+@OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
-private fun MenuAppBadge(app: AppInfo?, rows: MenuRows?, safeArea: Rect) {
-    val density = LocalDensity.current
-    val current = if (app != null && rows != null) {
-        val topLeft = with(density) {
-            badgeTopLeft(
-                rows = rows,
-                safeArea = safeArea,
-                size = MenuBadgeSize.toPx(),
-                clearance = (DropDownInset + MenuBadgeGap).toPx()
+private fun MenuAppDisc(app: AppInfo, hazeState: HazeState?) {
+    val icon = remember(app) { app.icon?.toBitmap()?.asImageBitmap() }
+
+    Box(
+        modifier = Modifier
+            .size(MenuBadgeSize + MenuBadgeRing * 2)
+            .shadow(SmallElevation, CircleShape)
+            .clip(CircleShape)
+            .then(
+                if (hazeState != null) {
+                    Modifier.hazeEffect(state = hazeState, style = HazeMaterials.ultraThin())
+                } else Modifier
             )
-        }
-        topLeft?.let { app to it }
-    } else null
-    val lastShown = remember { mutableStateOf(current) }
-    SideEffect { if (current != null) lastShown.value = current }
-    val (badgeApp, position) = current ?: lastShown.value ?: return
-
-    val icon = remember(badgeApp) { badgeApp.icon?.toBitmap()?.asImageBitmap() }
-
-    AnimatedVisibility(
-        visible = current != null,
-        enter = fadeIn(tween(150)) + scaleIn(tween(200), initialScale = 0.6f),
-        exit = fadeOut(tween(120)) + scaleOut(tween(120), targetScale = 0.6f),
-        modifier = Modifier.offset {
-            IntOffset(position.x.roundToInt(), position.y.roundToInt())
-        }
+            .background(colorScheme.surfaceContainer.copy(alpha = if (hazeState != null) 0.4f else 1f)),
+        contentAlignment = Alignment.Center
     ) {
         Box(
             modifier = Modifier
                 .size(MenuBadgeSize)
-                .shadow(LargeMediumElevation, CircleShape)
                 .clip(CircleShape)
                 .background(colorScheme.surfaceContainerHigh)
         ) {
             if (icon != null) {
                 Image(
                     bitmap = icon,
-                    contentDescription = badgeApp.label,
+                    contentDescription = app.label,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
                 )
             }
         }
+    }
+}
+
+/**
+ * Where the disc goes: centred over the menu card and floated [MenuBadgeGap] above it. If that
+ * would run into the status bar or a cutout it goes below the card instead, and it never leaves
+ * [safeArea].
+ */
+private fun discTopLeft(card: Rect, safeArea: Rect, size: Float, gap: Float): Offset {
+    val above = card.top - gap - size
+    val below = card.bottom + gap
+    val top = when {
+        above >= safeArea.top -> above
+        below + size <= safeArea.bottom -> below
+        // No clean spot either side (tiny window): at least stay inside the safe area
+        else -> above.coerceAtMost(safeArea.bottom - size).coerceAtLeast(safeArea.top)
+    }
+    val left = (card.center.x - size / 2f)
+        .coerceAtMost(safeArea.right - size)
+        .coerceAtLeast(safeArea.left)
+    return Offset(left, top)
+}
+
+/**
+ * [MenuAppDisc] floated over the open context menu, placed by [discTopLeft] and animated with
+ * XenonDropDown's own timings so the two read as one popup.
+ *
+ * The popup positions itself from an estimated size first and moves once measured, and that
+ * move lands one frame before it can be re-reported here, so the disc waits a frame for the
+ * card to settle before it shows; it therefore can't flash at a stale position when a new
+ * menu opens. The last app and position are kept alive through the exit animation.
+ */
+@Composable
+private fun MenuAppBadge(app: AppInfo?, card: Rect?, safeArea: Rect, hazeState: HazeState?) {
+    var settledCard by remember { mutableStateOf<Rect?>(null) }
+    LaunchedEffect(card) {
+        if (card == null) {
+            settledCard = null
+        } else {
+            withFrameNanos { }
+            settledCard = card
+        }
+    }
+
+    val density = LocalDensity.current
+    val settled = settledCard
+    val current = if (app != null && settled != null) {
+        app to with(density) {
+            discTopLeft(settled, safeArea, MenuAppDiscSize.toPx(), MenuBadgeGap.toPx())
+        }
+    } else null
+    val lastShown = remember { mutableStateOf(current) }
+    SideEffect { if (current != null) lastShown.value = current }
+    val (shownApp, position) = current ?: lastShown.value ?: return
+
+    AnimatedVisibility(
+        visible = current != null,
+        enter = fadeIn(tween(30, easing = LinearOutSlowInEasing)) +
+                scaleIn(tween(120, easing = LinearOutSlowInEasing), initialScale = 0.8f),
+        exit = fadeOut(tween(75, easing = FastOutLinearInEasing)) +
+                scaleOut(tween(75, easing = FastOutLinearInEasing), targetScale = 0.8f),
+        modifier = Modifier.offset {
+            IntOffset(position.x.roundToInt(), position.y.roundToInt())
+        }
+    ) {
+        MenuAppDisc(app = shownApp, hazeState = hazeState)
     }
 }
