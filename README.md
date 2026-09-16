@@ -9,11 +9,6 @@
 [![Kotlin](https://img.shields.io/badge/Language-Kotlin-purple.svg)](https://kotlinlang.org)
 [![Compose](https://img.shields.io/badge/UI-Jetpack%20Compose-4285F4.svg)](https://developer.android.com/jetpack/compose)
 
----
-
-### 🛡️ [Read our Privacy Policy](PRIVACY_POLICY.md)
-
----
 
 **Xenon Launcher** is a high-performance, minimalist home screen replacement built from the ground up with Jetpack Compose. It bridges the gap between extreme customization and clean aesthetics, offering a fluid experience that adapts to your digital life in real-time.
 
@@ -101,6 +96,9 @@ Never lose your setup again. Xenon includes a built-in **Backup & Restore** syst
 *   **Local First:** Your app usage data, hidden apps, and search history never leave your device unless you manually trigger a cloud backup.
 *   **No Tracking:** Xenon Launcher contains no analytics or tracking SDKs.
 *   **Transparent Permissions:** Each permission (Calendar, Contacts, Storage) is optional and only used to power the specific feature you enable.
+---
+
+### 🛡️ [Read our Privacy Policy](PRIVACY_POLICY.md)
 
 ---
 
