@@ -84,14 +84,6 @@ Never lose your setup again. Xenon includes a built-in **Backup & Restore** syst
 
 ---
 
-## 📥 Installation
-
-1. **Sideload the APK** from the [Downloads](#-downloads) section.
-2. **Enable Accessibility (Optional):** If you wish to use the double-tap to lock feature, enable the Xenon Accessibility Service in your system settings.
-3. **Cloud Sync:** Sign in with Google within the launcher settings to enable backups.
-
----
-
 ## 🛡 Privacy & Security
 *   **Local First:** Your app usage data, hidden apps, and search history never leave your device unless you manually trigger a cloud backup.
 *   **No Tracking:** Xenon Launcher contains no analytics or tracking SDKs.
