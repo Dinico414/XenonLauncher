@@ -92,44 +92,22 @@ private const val MAX_PINNED = 6
 private val ItemSize = ExtraBigBiggerSpacing
 private val ItemSpacing = MediumSpacer
 
-// ---------------------------------------------------------------------------
-// Motion tuning. Everything that moves is driven from here.
-//
-// Deliberately absent: any easing on the drop itself, and any use of
-// Modifier.animateItem. Layout changes land instantly; the only thing that
-// animates is the gap following your finger during a drag.
-// ---------------------------------------------------------------------------
-
-/** Gap glide while dragging. Lower stiffness = softer; damping 1f = no overshoot. */
 private const val GapStiffness = 600f
 private const val GapDamping = 1f
 
-/** Peak auto-scroll speed, in dp per second. */
 private val MaxAutoScroll = 1000.dp
 
-/** Auto-scroll ease in/out time constant, in seconds. Higher = lazier. */
 private const val ScrollRampSeconds = 0.11f
 
-/** How far past a slot boundary the finger must travel before the gap moves. */
 private const val TargetHysteresis = 0.18f
 
 private const val IconFadeMs = 170
 private const val EdgeFadeMs = 280
 private const val EmptyStateFadeMs = 260
 
-/** Give up on a commit that never arrives and snap back to the real order. */
 private const val CommitTimeoutMs = 600L
 
-/**
- * The visual state of a finished drop, held from the moment the finger lifts
- * until the reordered [AppInfo] list actually arrives from upstream.
- *
- * Without this, releasing runs two animations back to back: the gap unwinds to
- * the OLD layout, then the layout walks everything to the NEW one. Freezing the
- * picture until the data catches up means the release is instant.
- */
 private data class DropCommit(
-    /** Order at the instant of the drop; the commit goes inert once it changes. */
     val orderKey: String,
     val packageName: String,
     val source: Int,
@@ -138,15 +116,9 @@ private data class DropCommit(
     val app: AppInfo? = null,
 )
 
-/** Slot of [index] in the list *without* the dragged item. */
 private fun slotOf(index: Int, sourceIndex: Int): Int =
     if (sourceIndex != -1 && index > sourceIndex) index - 1 else index
 
-/**
- * Visual offset for a non-dragged item while a gap sits open at [target].
- * A [target] of -1 means no gap at all: the row closes up completely, which is
- * the preview for "this app is about to be unpinned".
- */
 private fun gapShift(index: Int, source: Int, target: Int, pitchPx: Float): Float {
     val slot = slotOf(index, source)
     if (target == -1) return (slot - index) * pitchPx
@@ -154,10 +126,6 @@ private fun gapShift(index: Int, source: Int, target: Int, pitchPx: Float): Floa
     return (finalSlot - index) * pitchPx
 }
 
-/**
- * The middle dock section: pinned apps when expanded, a "more" affordance when
- * collapsed. Tapping it while expanded opens the app drawer.
- */
 @Composable
 fun AppsSection(
     isExpanded: Boolean,
@@ -229,8 +197,6 @@ fun FixedAppSection(
         notifications.groupBy { it.packageName }
     }
 
-    // roundToPx, not toPx: the slot pitch must match what the layout actually
-    // produced, or the gap drifts by a fraction of a pixel per item.
     val spacingPx = with(density) { ItemSpacing.roundToPx().toFloat() }
     val fallbackItemPx = with(density) { ItemSize.roundToPx().toFloat() }
     val pitchPx = fallbackItemPx + spacingPx
@@ -241,8 +207,6 @@ fun FixedAppSection(
     val dragThresholdPx = with(density) { ExtraLargerSpacing.toPx() }
     val unpinThresholdPx = with(density) { HugestSpacing.toPx() }
 
-    // Live gap movement. A spring carries velocity through target changes, so a
-    // fast sweep flows instead of restarting a tween per slot.
     val gapSpring = remember {
         spring<Float>(dampingRatio = GapDamping, stiffness = GapStiffness)
     }
@@ -254,20 +218,12 @@ fun FixedAppSection(
     val orderKey = remember(apps) { apps.joinToString("|") { it.packageName } }
     var commit by remember { mutableStateOf<DropCommit?>(null) }
 
-    // The commit stops applying in the very same composition that first sees the
-    // new order -- shifts drop to zero and the layout moves in one atomic step,
-    // so there is no frame where both are applied.
     val activeCommit = commit?.takeIf { it.orderKey == orderKey }
 
     var rowPos by remember { mutableStateOf(Offset.Zero) }
-    // Scroll offset in absolute pixels, captured at the drop. LazyList re-anchors
-    // its scroll to the first visible KEY when the order changes, which shunts the
-    // viewport sideways by an item; this puts the pixels back where they were.
-    // Left at -1 when the row cannot scroll, so no needless remeasure is forced.
+
     var restoreScrollPx by remember { mutableFloatStateOf(-1f) }
-    // True from the long press until the finger lifts. While set, LazyRow's own
-    // scroll gesture is disabled so it cannot consume -- and thereby cancel -- the
-    // drag. Programmatic scrollBy (the auto-scroll) is unaffected.
+
     var gestureActive by remember { mutableStateOf(false) }
 
     LaunchedEffect(orderKey) {
@@ -277,20 +233,16 @@ fun FixedAppSection(
             restoreScrollPx = -1f
             val idx = (px / pitchPx).toInt().coerceAtLeast(0)
             val off = (px - idx * pitchPx).roundToInt().coerceAtLeast(0)
-            // On Foundation 1.8+, listState.requestScrollToItem(idx, off) applies
-            // this during the next measure instead, removing even the one-frame
-            // window where the re-anchored position could be visible.
             listState.scrollToItem(idx, off)
         }
     }
     LaunchedEffect(commit) {
         if (commit != null) {
             delay(CommitTimeoutMs.milliseconds)
-            commit = null // upstream never applied the change; fall back to truth
+            commit = null
         }
     }
 
-    // How many slots the final layout will differ by, versus what is laid out now.
     val slotDelta = when {
         isDragging && dragDropState.sourceIndex == -1 ->
             if (dragDropState.targetIndex != -1) 1 else 0
@@ -301,10 +253,6 @@ fun FixedAppSection(
         activeCommit != null && activeCommit.unpinned -> -1
         else -> 0
     }
-    // Arrangement.CenterHorizontally re-centres when the item count changes: one
-    // more item puts the row's left edge half a pitch further LEFT, one fewer puts
-    // it half a pitch RIGHT. Preview that, so the commit is a no-op visually.
-    // Only applies while the content actually fits -- once it scrolls, nothing centres.
     val contentFits = !listState.canScrollForward && !listState.canScrollBackward
     val centerTarget = if (contentFits) -slotDelta * pitchPx / 2f else 0f
     val centerAnim = animateFloatAsState(
@@ -313,7 +261,6 @@ fun FixedAppSection(
         label = "dockCenterShift"
     )
 
-    // One frame loop drives both target index and auto-scroll.
     LaunchedEffect(isDragging) {
         if (!isDragging) {
             dragDropState.targetIndex = -1
@@ -328,7 +275,6 @@ fun FixedAppSection(
         }
         val maxTarget = if (incomingFromDrawer) apps.size else (apps.size - 1).coerceAtLeast(0)
 
-        // Start with the item in its own slot so nothing twitches on pick-up.
         dragDropState.targetIndex = if (incomingFromDrawer) -1 else source
 
         var armedStart = false
@@ -338,8 +284,6 @@ fun FixedAppSection(
 
         while (true) {
             val now = withFrameNanos { it }
-            // Time-based, so scrolling runs at the same speed on 60/90/120Hz
-            // panels. Capped so a dropped frame can't produce a huge jump.
             val dt = if (lastFrame == 0L) 0f
             else ((now - lastFrame) / 1_000_000_000f).coerceIn(0f, 0.05f)
             lastFrame = now
@@ -369,17 +313,13 @@ fun FixedAppSection(
                 } else {
                     val itemPx = anchor.size.toFloat().takeIf { it > 0f } ?: fallbackItemPx
                     val pitch = itemPx + spacingPx
-                    // + center shift, because that is a draw-time translation the
-                    // layout knows nothing about: without it the slot grid drifts
-                    // half a pitch away from the icons the user can actually see.
+
                     val gridStart = anchor.offset - anchor.index * pitch + centerAnim.value
-                    // Continuous slot position: target == ceil(raw).
                     val raw = (x - gridStart - itemPx / 2f) / pitch
 
                     val current = dragDropState.targetIndex
                     val candidate = ceil(raw).toInt().coerceIn(0, maxTarget)
-                    // Hysteresis: hovering exactly on a boundary no longer makes
-                    // the gap flicker between two slots.
+
                     val target = when {
                         current == -1 -> candidate
                         candidate > current && raw > current + TargetHysteresis -> candidate
@@ -390,10 +330,6 @@ fun FixedAppSection(
                     if (current != target) dragDropState.targetIndex = target
                 }
             }
-
-            // Quadratic ramp, then a low-pass filter toward it. The filter is what
-            // makes the scroll glide up from rest and coast to a stop when you
-            // leave the edge zone, instead of switching on and off.
             val desired = when {
                 pulledOut -> 0f
 
@@ -411,7 +347,6 @@ fun FixedAppSection(
             }
 
             if (dt > 0f) {
-                // Frame-rate independent exponential smoothing.
                 scrollSpeed += (desired - scrollSpeed) * (1f - exp(-dt / ScrollRampSeconds))
                 if (abs(scrollSpeed) > 1f) listState.scrollBy(scrollSpeed * dt)
             }
@@ -427,8 +362,7 @@ fun FixedAppSection(
             },
         contentAlignment = Alignment.Center
     ) {
-        // `commit == null` matters: pinning the first app leaves `apps` empty for a
-        // moment after release, and without this the hint flashes in and back out.
+
         val showEmptyHint = apps.isEmpty() && !isDragging && commit == null
 
         Crossfade(
@@ -447,8 +381,7 @@ fun FixedAppSection(
                     )
                 }
             } else {
-                // No `by`: these are read inside the draw block so the edge fades
-                // animate on the draw phase only, without recomposing the row.
+
                 val startFade = animateFloatAsState(
                     targetValue = if (listState.canScrollBackward) 1f else 0f,
                     animationSpec = fadeEdgeSpec,
@@ -462,11 +395,7 @@ fun FixedAppSection(
 
                 LazyRow(
                     state = listState,
-                    // The gesture below lives OUTSIDE LazyRow's internal scrollable,
-                    // and Compose delivers the Main pass innermost-first -- so while
-                    // a drag is live, scrollable would consume the movement and the
-                    // detector would read that as a cancellation. Switching user
-                    // scrolling off for the gesture is what keeps the drag alive.
+
                     userScrollEnabled = !gestureActive,
                     modifier = Modifier
                         .fillMaxSize()
@@ -501,8 +430,7 @@ fun FixedAppSection(
                                     val app = draggedApp
                                         ?: return@detectDragGesturesAfterLongPress
                                     moved += dragAmount
-                                    // Net displacement, not path length -- jiggling
-                                    // in place won't start a drag.
+
                                     if (!isActualDrag && moved.getDistance() > dragThresholdPx) {
                                         isActualDrag = true
                                         dragDropState.startDrag(
@@ -535,9 +463,7 @@ fun FixedAppSection(
                                                         listState.firstVisibleItemScrollOffset
                                             } else -1f
 
-                                        // Freeze the picture BEFORE stopping the drag,
-                                        // so the release frame is continuous with the
-                                        // last drag frame.
+
                                         commit = DropCommit(
                                             orderKey = orderKey,
                                             packageName = app.packageName,
@@ -586,9 +512,7 @@ fun FixedAppSection(
                                 }
                             )
                         }
-                        // Offscreen layer + mask stay OUTSIDE the center shift, so the
-                        // edge fades stay pinned to the viewport instead of sliding
-                        // with the content.
+
                         .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
                         .drawWithContent {
                             drawContent()
@@ -606,10 +530,6 @@ fun FixedAppSection(
                                 )
                             }
                         }
-                        // Animated value ONLY while dragging. animateFloatAsState
-                        // delivers through a channel and lands on the next frame, so
-                        // reading it at commit time would leave the row half a pitch
-                        // out for exactly one frame.
                         .graphicsLayer {
                             translationX = if (isDragging) centerAnim.value else centerTarget
                         },
@@ -619,19 +539,7 @@ fun FixedAppSection(
                     verticalAlignment = Alignment.CenterVertically,
                     contentPadding = PaddingValues(horizontal = MediumLargePadding)
                 ) {
-                    // `apps` is never reordered while dragging, so keys and indices
-                    // stay put and LazyRow never scroll-corrects to keep its anchor
-                    // key in place. The gap is drawn, not laid out.
-                    //
-                    // Note the absence of Modifier.animateItem. Every layout change
-                    // here is one we have already drawn ahead of time, and toggling
-                    // its specs on and off around a commit can make the whole row
-                    // re-run its appearance animation at once.
                     itemsIndexed(apps, key = { _, app -> app.packageName }) { index, app ->
-                        // Memorised: Drawable.toBitmap() allocates and rasterises for
-                        // adaptive icons, and this composable recomposes on every gap
-                        // change and again on release. Doing it inline was rebuilding
-                        // every icon in the row on the same frame as the drop.
                         val iconBitmap = remember(app.packageName, app.icon) {
                             app.icon?.toBitmap()?.asImageBitmap()
                         }
@@ -652,9 +560,6 @@ fun FixedAppSection(
                                     pitchPx
                                 )
                             }
-                            // Held after release: keep the exact picture the drag
-                            // ended on until the real list catches up. For an unpin
-                            // that means the CLOSED row the drag was already showing.
                             activeCommit != null && activeCommit.unpinned -> {
                                 targetAlpha = if (app.packageName == activeCommit.packageName) 0f else 1f
                                 targetShift = gapShift(index, activeCommit.source, -1, pitchPx)
@@ -699,9 +604,6 @@ fun FixedAppSection(
                             Box(
                                 modifier = Modifier
                                     .size(ItemSize)
-                                    // Animated while dragging, raw otherwise. The raw
-                                    // value applies in the SAME frame as the layout
-                                    // change; the animated one is a frame behind.
                                     .graphicsLayer {
                                         translationX = if (isDragging) shift.value else targetShift
                                         alpha = if (isDragging) itemAlpha.value else targetAlpha
@@ -720,9 +622,6 @@ fun FixedAppSection(
                                                         onTap = { onAppClick(app.packageName) }
                                                     )
                                                 },
-                                            // Drag lives on the LazyRow container: an
-                                            // item-level detector gets disposed when the
-                                            // item recycles mid-scroll, killing the drag.
                                             contentScale = ContentScale.Fit
                                         )
                                     }
@@ -738,9 +637,6 @@ fun FixedAppSection(
                     }
                 }
 
-                // Stand-in for a freshly pinned app: it is not in `apps` yet, but the
-                // drag ghost has already gone, so without this the icon blinks out of
-                // existence until upstream delivers the new list.
                 val pinCommit = activeCommit?.takeIf { it.source == -1 && it.app != null }
                 if (pinCommit != null) {
                     val phantomIcon = remember(pinCommit.packageName) {

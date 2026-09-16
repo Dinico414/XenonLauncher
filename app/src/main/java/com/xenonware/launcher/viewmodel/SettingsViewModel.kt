@@ -136,7 +136,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             try {
                 val pInfo = packageManager.getPermissionInfo(permission, 0)
                 // Filter for runtime permissions or common special ones
-                val isRuntime = (pInfo.protectionLevel and 0xf) == 1 // PROTECTION_DANGEROUS
+                val isRuntime = pInfo.protection == android.content.pm.PermissionInfo.PROTECTION_DANGEROUS
                 val isSpecial = permission == Manifest.permission.MANAGE_EXTERNAL_STORAGE ||
                                 permission == Manifest.permission.BIND_NOTIFICATION_LISTENER_SERVICE ||
                                 permission == Manifest.permission.BIND_ACCESSIBILITY_SERVICE
@@ -1361,7 +1361,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     override fun onCleared() {
-        super.onCleared()
         sharedPreferenceManager.unregisterListener(preferenceListener)
     }
 }

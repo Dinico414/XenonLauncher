@@ -8,36 +8,30 @@ import android.graphics.Rect
 import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
+import androidx.core.content.res.ResourcesCompat
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toDrawable
 import com.xenonware.launcher.model.AppOverride
 import com.xenonware.launcher.ui.res.IconShape
 
-/**
- * Normalizes an app icon by ensuring its square and has a background if needed.
- * For Adaptive Icons, it zooms into the "safe zone" (the central 72dp of the 108dp asset)
- * to make the icon appear normal-sized while remaining square.
- * 
- * High quality flags are used to prevent pixelation.
- */
 fun normalizeIcon(context: Context, drawable: Drawable?): Drawable? {
     if (drawable == null) return null
-    
+
     // Get the device's standard launcher icon size for the best quality/memory balance
     val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
     val size = activityManager.launcherLargeIconSize
-    
+
     val bitmap = createBitmap(size, size)
     val canvas = Canvas(bitmap)
-    
+
     // Draw filter for high quality scaling
     canvas.drawFilter = PaintFlagsDrawFilter(0, Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
-    
+
     if (drawable is AdaptiveIconDrawable) {
         val scale = 1.5f
         val offset = (size * (scale - 1f) / 2f).toInt()
         val bounds = Rect(-offset, -offset, size + offset, size + offset)
-        
+
         drawable.background?.let {
             it.bounds = bounds
             if (it is BitmapDrawable) it.isFilterBitmap = true
@@ -54,7 +48,7 @@ fun normalizeIcon(context: Context, drawable: Drawable?): Drawable? {
         if (drawable is BitmapDrawable) drawable.isFilterBitmap = true
         drawable.draw(canvas)
     }
-    
+
     return bitmap.toDrawable(context.resources)
 }
 
@@ -80,14 +74,14 @@ fun generateCustomIcon(
     val borderOffset = override.borderWidth * (size / 100f) // scale border width relative to icon size
     val availableSize = size - (borderOffset * 2)
     val scaledSize = availableSize * zoom
-    
+
     val left = (size - scaledSize) / 2f
     val top = (size - scaledSize) / 2f
     val right = left + scaledSize
     val bottom = top + scaledSize
-    
+
     val bounds = Rect(left.toInt(), top.toInt(), right.toInt(), bottom.toInt())
-    
+
     if (baseDrawable is AdaptiveIconDrawable) {
         val adaptiveScale = 1.5f // standard adaptive icon scale factor
         val adaptiveOffset = (scaledSize * (adaptiveScale - 1f) / 2f).toInt()
@@ -97,14 +91,14 @@ fun generateCustomIcon(
             bounds.right + adaptiveOffset,
             bounds.bottom + adaptiveOffset
         )
-        
+
         // Draw original background layer if it exists
         baseDrawable.background?.let {
             it.bounds = adaptiveBounds
             if (it is BitmapDrawable) it.isFilterBitmap = true
             it.draw(canvas)
         }
-        
+
         baseDrawable.foreground?.let {
             it.bounds = adaptiveBounds
             if (it is BitmapDrawable) it.isFilterBitmap = true
@@ -140,8 +134,13 @@ fun generateCustomIcon(
 fun loadIconFromPack(context: Context, packageName: String, resourceName: String): Drawable? {
     return try {
         val res = context.packageManager.getResourcesForApplication(packageName)
+        // The icon pack is a separate app, so its R class is not on our classpath: a drawable can
+        // only be resolved by name via getIdentifier. There is no R.foo.bar alternative for a
+        // foreign package, which is why DiscouragedApi is suppressed on just this call. The
+        // drawable load itself uses the non-deprecated ResourcesCompat.
+        @Suppress("DiscouragedApi")
         val id = res.getIdentifier(resourceName, "drawable", packageName)
-        if (id != 0) res.getDrawable(id, null) else null
+        if (id != 0) ResourcesCompat.getDrawable(res, id, null) else null
     } catch (_: Exception) {
         null
     }
@@ -151,14 +150,13 @@ fun getAllIconPackIcons(context: Context, packageName: String): List<String> {
     val icons = mutableListOf<String>()
     try {
         val res = context.packageManager.getResourcesForApplication(packageName)
-        
-        // Try drawable.xml first (standard for pickers)
-        var resourceId = res.getIdentifier("drawable", "xml", packageName)
-        if (resourceId == 0) {
-            // Try appfilter.xml as fallback
-            resourceId = res.getIdentifier("appfilter", "xml", packageName)
-        }
-        
+
+        // Try drawable.xml first (standard for pickers), then appfilter.xml. Both are foreign
+        // resources looked up by name, so getIdentifier is the only option (no R class here).
+        @Suppress("DiscouragedApi")
+        val resourceId = res.getIdentifier("drawable", "xml", packageName).takeIf { it != 0 }
+            ?: res.getIdentifier("appfilter", "xml", packageName)
+
         if (resourceId != 0) {
             val parser = res.getXml(resourceId)
             var eventType = parser.eventType
@@ -185,6 +183,7 @@ fun getIconPackMap(context: Context, packageName: String): Map<String, String> {
     val map = mutableMapOf<String, String>()
     try {
         val res = context.packageManager.getResourcesForApplication(packageName)
+        @Suppress("DiscouragedApi")
         val resourceId = res.getIdentifier("appfilter", "xml", packageName)
         if (resourceId != 0) {
             val parser = res.getXml(resourceId)

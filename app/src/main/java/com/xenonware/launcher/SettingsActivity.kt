@@ -172,7 +172,6 @@ class SettingsActivity : ComponentActivity() {
                         context.startActivity(intent)
                     },
                     state = state,
-                    googleAuthUiClient = googleAuthUiClient,
                     onSignInClick = {
                         lifecycleScope.launch {
                             val signInResult = googleAuthUiClient.signIn()

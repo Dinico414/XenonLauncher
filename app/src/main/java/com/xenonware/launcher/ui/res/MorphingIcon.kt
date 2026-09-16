@@ -13,14 +13,6 @@ import androidx.compose.ui.util.lerp
 import com.xenon.mylibrary.values.ExtraLargerSpacing
 import com.xenon.mylibrary.values.SmallerStroke
 
-/**
- * A composable that draws an icon that can morph between a Back arrow and a Close (X) icon.
- *
- * @param progress 0.0 for Close icon, 1.0 for Back arrow.
- * @param color The color of the icon.
- * @param modifier Modifier for the icon.
- * @param size The size of the icon.
- */
 @Composable
 fun MorphingBackCloseIcon(
     progress: Float,

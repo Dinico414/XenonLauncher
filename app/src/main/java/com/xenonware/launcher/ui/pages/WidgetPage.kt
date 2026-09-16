@@ -1,11 +1,15 @@
 package com.xenonware.launcher.ui.pages
 
+import android.app.Activity
 import android.appwidget.AppWidgetHostView
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
+import android.content.ComponentName
 import android.content.Intent
+import android.content.res.Configuration
+import android.content.res.Resources
 import android.graphics.Bitmap
-import android.graphics.drawable.BitmapDrawable
+import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.util.SizeF
 import android.view.View
@@ -25,7 +29,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -63,6 +66,7 @@ import androidx.compose.material.icons.rounded.Wallpaper
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -102,15 +106,22 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
+import androidx.core.content.res.ResourcesCompat
 import androidx.core.graphics.drawable.toBitmap
+import androidx.core.graphics.drawable.toDrawable
 import androidx.core.view.drawToBitmap
 import com.xenon.mylibrary.res.MenuItem
 import com.xenon.mylibrary.res.XenonDropDown
@@ -151,30 +162,18 @@ import kotlin.math.ceil
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 
-/**
- * Tells an AppWidgetHostView how large it actually is.
- *
- * Without this, the host view keeps the provider's declared minWidth/minHeight, so responsive
- * widgets (Calendar's event list, Maps' shortcut row, Chrome's search bar) inflate their smallest
- * RemoteViews variant no matter how big the cell is on screen.
- */
 private fun AppWidgetHostView.applyGridSize(widthDp: Int, heightDp: Int) {
     if (widthDp <= 0 || heightDp <= 0) return
     updateAppWidgetSize(Bundle(), listOf(SizeF(widthDp.toFloat(), heightDp.toFloat())))
 }
 
-/** AppWidgetProviderInfo dimensions are in pixels, not dp. Convert before comparing to cell sizes. */
 private fun Int.pxToDp(density: Density): Float = with(density) { this@pxToDp.toDp().value }
 
-/** Live state for a widget being dragged. Lives above the pager so page turns don't cancel it. */
 private data class WidgetDrag(
     val widgetId: Int,
-    /** Top-left of the ghost in root coordinates, px. Follows the finger 1:1. */
     val topLeft: Offset,
-    /** Where inside the widget the finger grabbed, px. */
     val grab: Offset,
     val ghost: ImageBitmap?,
-    /** Snapped drop target on the currently visible page, or null if no vacant cell. */
     val dropX: Int = -1,
     val dropY: Int = -1
 )
@@ -191,52 +190,45 @@ fun WidgetPage(
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
     val isLandscape =
-        configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val windowInfo = LocalWindowInfo.current
+    val windowWidthDp = with(density) { windowInfo.containerSize.width.toDp() }
+    val windowHeightDp = with(density) { windowInfo.containerSize.height.toDp() }
 
-    // Grid layout constants
     val horizontalPadding = LargestPadding
     val topGridPadding = MediumPadding
     val bottomGridPadding = MediumPadding
 
-    // Inner padding applied to each widget cell — subtracted before reporting size to the provider
     val cellInsetHorizontal = SmallerPadding
     val cellInsetVertical = SmallPadding
 
-    // Drag tuning. Trigger zones are derived from the grid further down so they line up exactly
-    // with the gradient indicators drawn during a drag — what you see is what triggers.
     val edgeTurnInitialDelayMs = 140L
     val edgeTurnIntervalMs = 420L
-    // How far into the first/last row the trigger zone reaches, as a fraction of one cell.
-    // Lower this if page turns fire while you're trying to place a widget in the edge rows.
     val edgeTurnRowBite = 0.5f
 
     val horizontalSafePadding = WindowInsets.safeDrawing.asPaddingValues().run {
-        calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr) + calculateRightPadding(
-            androidx.compose.ui.unit.LayoutDirection.Ltr
+        calculateLeftPadding(LayoutDirection.Ltr) + calculateRightPadding(
+            LayoutDirection.Ltr
         )
     }
 
     val screenWidth =
-        configuration.screenWidthDp.dp - (horizontalPadding * 2) - horizontalSafePadding
+        windowWidthDp - (horizontalPadding * 2) - horizontalSafePadding
 
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val navBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
-    // Dock area implementation: safe draw (nav bar) + base dock area
-    // Dock top is at: navBarHeight + 8.dp (dock bottom padding) + 72.dp (dock height)
     val totalDockAreaHeight = if (isDockVisible) navBarHeight + HugeBiggerSpacing + MediumPadding else navBarHeight + LargestPadding
 
     val widgetColumns by viewModel.widgetColumns.collectAsState()
     val widgets by viewModel.widgets.collectAsState()
     val blurSetting by viewModel.blurEnabled.collectAsState()
 
-    // Grid area boundaries
     val gridTopOffset = statusBarHeight + topGridPadding
     val gridBottomOffset = totalDockAreaHeight + bottomGridPadding
 
-    val gridAreaHeight = configuration.screenHeightDp.dp - gridTopOffset - gridBottomOffset
+    val gridAreaHeight = windowHeightDp - gridTopOffset - gridBottomOffset
 
-    // Dynamic Grid Calculation Helper
     val getRowCountForColumns = remember(gridAreaHeight, screenWidth) {
         { cols: Int ->
             val cellWidth = screenWidth / cols
@@ -247,21 +239,15 @@ fun WidgetPage(
 
     val rowCount = getRowCountForColumns(widgetColumns)
 
-    // Cell width is strictly determined by horizontal padding and columns
     val cellWidthDp = screenWidth / widgetColumns
 
-    // Actual cell height to fill the available space exactly
     val cellHeightDp = gridAreaHeight / rowCount
 
-    // The grid starts exactly at the calculated gridTopOffset
-    val firstRowTopOffset = gridTopOffset
+    val firstRowTopOffset: Dp = gridTopOffset
 
-    // Page-turn trigger zones. These are the single source of truth for both the gradient
-    // indicators and the drag's edge detection, so they can never drift apart again.
     val edgeTurnTopZone = gridTopOffset + (cellHeightDp * edgeTurnRowBite)
     val edgeTurnBottomZone = gridBottomOffset + (cellHeightDp * edgeTurnRowBite)
 
-    // Pixel geometry, used by the root-level drag layer for hit testing and snapping
     val cellWidthPx = with(density) { cellWidthDp.toPx() }
     val cellHeightPx = with(density) { cellHeightDp.toPx() }
     val gridOriginXPx = with(density) { horizontalPadding.toPx() }
@@ -271,8 +257,6 @@ fun WidgetPage(
 
     val appWidgetManager = remember { AppWidgetManager.getInstance(context) }
     val appWidgetHost = remember { InteractiveAppWidgetHost(context, 1024) }
-
-    // Live host views, kept so a drag can snapshot the real widget for its ghost
     val hostViews = remember { mutableMapOf<Int, View>() }
 
     var showDropDown by remember { mutableStateOf(false) }
@@ -283,7 +267,6 @@ fun WidgetPage(
     var drag by remember { mutableStateOf<WidgetDrag?>(null) }
     var edgeScrollDir by remember { mutableIntStateOf(0) }
 
-    // Tracks an allocated-but-not-yet-bound widget id so it can be released if the user cancels
     var pendingWidgetId by remember { mutableIntStateOf(-1) }
 
     val hazeState = rememberHazeState()
@@ -291,11 +274,6 @@ fun WidgetPage(
     val isEditing = selectedWidgetId != -1
     val isDraggingBody = drag != null
 
-    /**
-     * Picks a sensible default span for a newly added widget.
-     * Prefers the provider's declared target cell span (API 31+), otherwise derives it from
-     * minWidth/minHeight converted from px to dp.
-     */
     val defaultSpanFor = remember(cellWidthDp, cellHeightDp, widgetColumns, rowCount, density) {
         { info: AppWidgetProviderInfo? ->
             if (info == null) {
@@ -316,7 +294,6 @@ fun WidgetPage(
         }
     }
 
-    // Helper to check for collisions and boundaries
     val isAreaVacant = remember(widgets, widgetColumns, rowCount) {
         { widgetId: Int, page: Int, x: Int, y: Int, width: Int, height: Int ->
             if (x < 0 || y < 0 || x + width > widgetColumns || y + height > rowCount) false
@@ -331,7 +308,6 @@ fun WidgetPage(
         }
     }
 
-    // Helper to find first available space
     val findFirstAvailableSpace = remember(widgets, widgetColumns, rowCount, isAreaVacant) {
         { width: Int, height: Int, startPage: Int ->
             var found: Triple<Int, Int, Int>? = null
@@ -365,7 +341,6 @@ fun WidgetPage(
         }
     }
 
-    /** Which widget sits under a root-space point on the given page, if any. */
     val widgetAtPoint = remember(widgets, cellWidthPx, cellHeightPx, gridOriginXPx, gridOriginYPx) {
         { point: Offset, page: Int ->
             widgets.firstOrNull { w ->
@@ -378,7 +353,6 @@ fun WidgetPage(
         }
     }
 
-    // Pages only exist if they have content, plus one extra if in edit mode
     val pageCount = remember(widgets, isEditing) {
         val maxWidgetPage = widgets.maxOfOrNull { it.page } ?: 0
         if (isEditing) (maxWidgetPage + 2).coerceAtMost(5)
@@ -387,23 +361,14 @@ fun WidgetPage(
 
     val pagerState = rememberPagerState(initialPage = 0) { pageCount }
 
-    // Keep every page composed once the first frame is on screen. There are at most five
-    // pages, so the memory cost is trivial, and it means a swipe never has to create a widget
-    // host view (RemoteViews inflation + binder calls) or tear one down mid-gesture — that was
-    // the hitch at the start of every page turn. Deferred by one frame so cold start still
-    // paints the current page before the others are built.
     var keepAllPages by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         withFrameNanos { }
         keepAllPages = true
     }
 
-    // Auto-advance pages while the ghost is held against the top or bottom edge.
-    // The gesture lives above the pager, so scrolling here never interrupts it.
     LaunchedEffect(edgeScrollDir, isDraggingBody) {
         if (edgeScrollDir == 0 || !isDraggingBody) return@LaunchedEffect
-        // Short guard delay only — long enough to ignore a quick pass through the zone,
-        // then the first turn fires straight away rather than after a full interval.
         delay(edgeTurnInitialDelayMs.milliseconds)
         while (true) {
             val target = pagerState.currentPage + edgeScrollDir
@@ -417,7 +382,7 @@ fun WidgetPage(
     val pickWidgetLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        if (result.resultCode == android.app.Activity.RESULT_OK) {
+        if (result.resultCode == Activity.RESULT_OK) {
             val data = result.data
             val appWidgetId = data?.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1) ?: -1
             if (appWidgetId != -1) {
@@ -435,7 +400,6 @@ fun WidgetPage(
                 pendingWidgetId = -1
             }
         } else {
-            // Bind was canceled or denied — release the id instead of leaking it
             if (pendingWidgetId != -1) {
                 runCatching { appWidgetHost.deleteAppWidgetId(pendingWidgetId) }
                 pendingWidgetId = -1
@@ -446,17 +410,17 @@ fun WidgetPage(
     val shortcutLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        if (result.resultCode == android.app.Activity.RESULT_OK) {
+        if (result.resultCode == Activity.RESULT_OK) {
             val data = result.data ?: return@rememberLauncherForActivityResult
             val intent = data.getParcelableExtra(
-                Intent.EXTRA_SHORTCUT_INTENT, Intent::class.java
+                "android.intent.extra.shortcut.INTENT", Intent::class.java
             )
-            val name = data.getStringExtra(Intent.EXTRA_SHORTCUT_NAME)
+            val name = data.getStringExtra("android.intent.extra.shortcut.NAME")
             val iconRes = data.getParcelableExtra(
-                Intent.EXTRA_SHORTCUT_ICON_RESOURCE, Intent.ShortcutIconResource::class.java
+                "android.intent.extra.shortcut.ICON_RESOURCE", Intent.ShortcutIconResource::class.java
             )
             val iconBitmap = data.getParcelableExtra(
-                Intent.EXTRA_SHORTCUT_ICON, Bitmap::class.java
+                "android.intent.extra.shortcut.ICON", Bitmap::class.java
             )
 
             if (intent != null && name != null) {
@@ -494,36 +458,26 @@ fun WidgetPage(
             .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
             .then(if (blurSetting) Modifier.hazeSource(hazeState) else Modifier)
             .pointerInput(Unit) {
-                detectTapGestures(onTap = { selectedWidgetId = -1 })
-            }
-            .pointerInput(Unit) {
-                var tempOffset = Offset.Zero
-                detectDragGesturesAfterLongPress(
-                    onDragStart = { offset ->
+                detectTapGestures(
+                    onTap = { selectedWidgetId = -1 },
+                    onLongPress = { pos ->
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        tempOffset = offset
-                    },
-                    onDrag = { change, _ -> change.consume() },
-                    onDragEnd = {
-                        dropDownOffset = tempOffset
+                        dropDownOffset = pos
                         showDropDown = true
                         selectedWidgetId = -1
                     }
                 )
             }
     ) {
-        // Page Transition Zones (Visible while dragging)
         AnimatedVisibility(
             visible = isDraggingBody,
             enter = fadeIn(),
             exit = fadeOut(),
             modifier = Modifier.fillMaxSize()
         ) {
-            // Same zones the drag uses, so the gradient is an honest hit target
-            val topIndicatorHeight = edgeTurnTopZone
+            val topIndicatorHeight:Dp = edgeTurnTopZone
             val primaryColor = colorScheme.primary
 
-            // Brighten the moment the turn is armed — immediate feedback that you're deep enough
             val topArmed by animateFloatAsState(
                 if (edgeScrollDir == -1) 1f else 0f, label = "topArmed"
             )
@@ -602,9 +556,7 @@ fun WidgetPage(
             }
         }
 
-        // Main Content Layer
         Box(modifier = Modifier.fillMaxSize()) {
-            // Pixel-style Dot Grid
             Canvas(modifier = Modifier.fillMaxSize()) {
                 if (gridAlpha > 0f) {
                     val startXPx = horizontalPadding.toPx()
@@ -635,8 +587,6 @@ fun WidgetPage(
                 VerticalPager(
                     state = pagerState,
                     modifier = Modifier.fillMaxSize(),
-                    // All pages stay composed (see keepAllPages) so a page turn never builds
-                    // or tears down widget host views
                     beyondViewportPageCount = if (keepAllPages) pageCount - 1 else 0,
                     userScrollEnabled = !isEditing
                 ) { pageIndex ->
@@ -671,7 +621,7 @@ fun WidgetPage(
                                 Spacer(Modifier.height(16.dp))
                                 Text(
                                     stringResource(R.string.add_first_widget),
-                                    style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                                    style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.SemiBold,
                                     color = Color.White.copy(alpha = 0.8f)
                                 )
@@ -715,9 +665,6 @@ fun WidgetPage(
                                     label = "restScale"
                                 )
 
-                                // Size reported to the widget provider, in dp, minus cell insets.
-                                // Derived from grid spans (not the animated dp) so the provider is
-                                // only notified once per resize instead of on every frame.
                                 val reportedWidthDp = remember(
                                     widget.width, cellWidthDp, cellInsetHorizontal
                                 ) {
@@ -735,17 +682,18 @@ fun WidgetPage(
 
                                 Box(
                                     modifier = Modifier
-                                        .offset(
-                                            x = animX + horizontalPadding,
-                                            y = animY + firstRowTopOffset
-                                        )
+                                        .offset {
+                                            IntOffset(
+                                                (animX + horizontalPadding).roundToPx(),
+                                                (animY + firstRowTopOffset).roundToPx()
+                                            )
+                                        }
                                         .size(width = animW, height = animH)
                                         .padding(
                                             horizontal = cellInsetHorizontal,
                                             vertical = cellInsetVertical
                                         )
                                         .graphicsLayer {
-                                            // The ghost stands in for this widget mid-drag
                                             alpha = if (isBeingDragged) 0f else 1f
                                             scaleX = restScale
                                             scaleY = restScale
@@ -753,7 +701,6 @@ fun WidgetPage(
                                         .zIndex(if (isSelected) 1f else 0f)
 
                                 ) {
-                                    // Widget Content Box
                                     Box(
                                         modifier = Modifier
                                             .fillMaxSize()
@@ -770,8 +717,6 @@ fun WidgetPage(
                                                         widgetInfo
                                                     )
                                                     hostView.setPadding(0, 0, 0, 0)
-                                                    // Long press enters edit mode; taps, scrolls
-                                                    // and pinches still reach the widget itself.
                                                     (hostView as? InteractiveAppWidgetHostView)
                                                         ?.onWidgetLongPress = {
                                                         haptic.performHapticFeedback(
@@ -811,8 +756,6 @@ fun WidgetPage(
                                         )
                                     }
 
-                                    // Outside edit mode, shortcuts still need tap-to-launch and
-                                    // long-press-to-edit. Real widgets handle both themselves.
                                     if (!isEditing && widget.type == "shortcut") {
                                         Box(
                                             modifier = Modifier
@@ -925,9 +868,6 @@ fun WidgetPage(
                 }
             }
 
-            // ---- Edit layer -------------------------------------------------------------
-            // Sits above the pager and outside its fade mask, so a drag survives page turns
-            // and the ghost stays fully opaque at the screen edges.
             if (isEditing) {
                 val selected = widgets.firstOrNull { it.id == selectedWidgetId }
 
@@ -937,7 +877,6 @@ fun WidgetPage(
 
                 Box(modifier = Modifier.fillMaxSize()) {
 
-                    // Tap: select a widget, or clear the selection on empty space
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -947,7 +886,6 @@ fun WidgetPage(
                                     selectedWidgetId = hit?.id ?: -1
                                 })
                             }
-                            // Drag: only starts inside the currently selected widget
                             .pointerInput(
                                 selectedWidgetId, widgets, cellWidthPx, cellHeightPx,
                                 edgeTurnTopZonePx, edgeTurnBottomZonePx
@@ -992,10 +930,8 @@ fun WidgetPage(
                                         val active = drag ?: return@detectDragGestures
                                         change.consume()
 
-                                        // 1:1 with the finger — no cell quantization, no springs
                                         val moved = active.topLeft + dragAmount
 
-                                        // Snap target on whichever page is currently showing
                                         val rawX = ((moved.x - gridOriginXPx) / cellWidthPx)
                                             .roundToInt()
                                             .coerceIn(0, (currentWidgetColumns - sel.width).coerceAtLeast(0))
@@ -1019,12 +955,6 @@ fun WidgetPage(
                                             dropY = if (vacant) rawY else -1
                                         )
 
-                                        // Edge hold turns the page; the LaunchedEffect above
-                                        // keeps advancing while the finger stays there.
-                                        // Whichever reaches the zone first: the finger, or the
-                                        // leading edge of the ghost itself. Dragging a widget
-                                        // downward arms the turn as soon as its bottom edge
-                                        // enters the zone, without having to bury the finger.
                                         val fingerY = moved.y + active.grab.y
                                         val ghostTop = moved.y
                                         val ghostBottom = moved.y + sel.height * cellHeightPx
@@ -1053,9 +983,7 @@ fun WidgetPage(
                                                     sel.width, sel.height
                                                 )
                                             } else if (page != sel.page) {
-                                                // Dropped on a new page but the exact cell is
-                                                // taken — fall back to the first free slot there
-                                                val space = findFirstAvailableSpace(
+                                               val space = findFirstAvailableSpace(
                                                     sel.width, sel.height, page
                                                 )
                                                 if (space != null && space.first == page) {
@@ -1080,7 +1008,6 @@ fun WidgetPage(
                             }
                     )
 
-                    // Snap target preview
                     val activeDrag = drag
                     val dragged = activeDrag?.let { d -> widgets.firstOrNull { it.id == d.widgetId } }
                     if (activeDrag != null && dragged != null && activeDrag.dropX >= 0) {
@@ -1094,7 +1021,7 @@ fun WidgetPage(
                         )
                         Box(
                             modifier = Modifier
-                                .offset(x = previewX, y = previewY)
+                                .offset { IntOffset(previewX.roundToPx(), previewY.roundToPx()) }
                                 .size(
                                     width = (dragged.width * cellWidthDp.value).dp,
                                     height = (dragged.height * cellHeightDp.value).dp
@@ -1115,7 +1042,6 @@ fun WidgetPage(
                         )
                     }
 
-                    // Resize handles, floated above the pager so the drag layer can't swallow them
                     if (selected != null && drag == null && selected.page == pagerState.currentPage) {
                         val selInfo = remember(selected.id) {
                             runCatching { appWidgetManager.getAppWidgetInfo(selected.id) }.getOrNull()
@@ -1158,7 +1084,7 @@ fun WidgetPage(
 
                         Box(
                             modifier = Modifier
-                                .offset(x = handleX, y = handleY)
+                                .offset { IntOffset(handleX.roundToPx(), handleY.roundToPx()) }
                                 .size(width = handleW, height = handleH)
                                 .padding(
                                     horizontal = cellInsetHorizontal,
@@ -1257,7 +1183,6 @@ fun WidgetPage(
                         }
                     }
 
-                    // The ghost: a snapshot of the widget, tracking the finger exactly
                     if (activeDrag != null && dragged != null) {
                         Box(
                             modifier = Modifier
@@ -1311,7 +1236,6 @@ fun WidgetPage(
                 }
             }
 
-            // Remove Bar — above the edit layer so the buttons stay tappable
             AnimatedVisibility(
                 visible = isEditing && !isDraggingBody,
                 enter = fadeIn() + scaleIn(),
@@ -1334,12 +1258,10 @@ fun WidgetPage(
                         Text(stringResource(R.string.done), fontWeight = FontWeight.SemiBold)
                     }
 
-                    if (selectedWidgetId >= 0) {
+                    if (selectedWidgetId != -1 && selectedWidgetId != -2) {
                         Button(
                             onClick = {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                // Release the host's app widget id so it isn't leaked.
-                                // Shortcuts use launcher-generated ids, so skip those.
                                 val target = widgets.firstOrNull { it.id == selectedWidgetId }
                                 if (target != null && target.type != "shortcut") {
                                     runCatching { appWidgetHost.deleteAppWidgetId(target.id) }
@@ -1363,7 +1285,6 @@ fun WidgetPage(
                 }
             }
 
-            // Vertical Page Indicator
             if (pageCount > 1) {
                 PageIndicator(
                     pagerState = pagerState,
@@ -1389,7 +1310,6 @@ fun WidgetPage(
                     val success =
                         appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)
 
-                    // Size the new widget from what the provider actually asks for
                     val (w, h) = defaultSpanFor(info)
                     val space = findFirstAvailableSpace(w, h, pagerState.currentPage)
                     val (targetPage, targetX, targetY) = space ?: Triple(
@@ -1413,7 +1333,7 @@ fun WidgetPage(
                     }
                 } else if (item.shortcutInfo != null) {
                     val intent = Intent(Intent.ACTION_CREATE_SHORTCUT).apply {
-                        component = android.content.ComponentName(
+                        component = ComponentName(
                             item.shortcutInfo.activityInfo.packageName,
                             item.shortcutInfo.activityInfo.name
                         )
@@ -1429,9 +1349,21 @@ fun WidgetPage(
     }
 }
 
+@Suppress("DiscouragedApi")
+private fun resolveForeignDrawableId(
+    res: Resources,
+    resName: String,
+    pkg: String
+): Int {
+    val direct = res.getIdentifier(resName, null, null)
+    if (direct != 0) return direct
+    return res.getIdentifier(resName.substringAfterLast("/"), "drawable", pkg)
+}
+
 @Composable
 fun ShortcutWidgetContent(widget: WidgetItem) {
     val context = LocalContext.current
+    val resources = LocalResources.current
 
     val iconDrawable = remember(widget.shortcutIconRes, widget.shortcutIntent) {
         try {
@@ -1439,17 +1371,16 @@ fun ShortcutWidgetContent(widget: WidgetItem) {
                 val fileName = widget.shortcutIconRes.substring(5)
                 val file = context.getFileStreamPath(fileName)
                 if (file.exists()) {
-                    BitmapDrawable(context.resources, file.absolutePath)
+                    BitmapFactory.decodeFile(file.absolutePath)
+                        ?.toDrawable(resources)
                 } else null
             } else if (widget.shortcutIconRes != null) {
-                val parts = widget.shortcutIconRes.split(":")
-                if (parts.size == 2) {
-                    val pkg = parts[0]
-                    val resName = parts[1]
-                    val appRes = context.packageManager.getResourcesForApplication(pkg)
-                    val id = appRes.getIdentifier(resName, null, null)
-                    if (id != 0) appRes.getDrawable(id, null) else null
-                } else null
+                val stored = widget.shortcutIconRes
+                val pkg = stored.substringBefore(":")
+                val resName = stored.substringAfter(":")
+                val appRes = context.packageManager.getResourcesForApplication(pkg)
+                val id = resolveForeignDrawableId(appRes, resName, pkg)
+                if (id != 0) ResourcesCompat.getDrawable(appRes, id, null) else null
             } else {
                 val intent = Intent.parseUri(widget.shortcutIntent, 0)
                 val pkg = intent.`package` ?: intent.component?.packageName
@@ -1483,22 +1414,17 @@ fun ShortcutWidgetContent(widget: WidgetItem) {
 
             Text(
                 text = widget.shortcutLabel ?: "",
-                style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.labelSmall,
                 maxLines = if (widget.height > 1) 2 else 1,
                 fontWeight = FontWeight.Medium,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
                 modifier = Modifier.padding(top = SmallPadding)
             )
         }
     }
 }
 
-/**
- * Reads [PagerState.currentPage] in its own composable so a page change only recomposes these
- * dots. Read directly inside [WidgetPage] (through inline Box/Column scopes) it invalidated the
- * whole screen, so every widget's composition re-ran in the middle of the swipe.
- */
 @Composable
 private fun PageIndicator(
     pagerState: PagerState,
@@ -1530,15 +1456,6 @@ private fun PageIndicator(
     }
 }
 
-/**
- * Fades content out over the top [top] and bottom [bottom] of the layout.
- *
- * The previous version composited the whole pager offscreen (CompositingStrategy.Offscreen) and
- * masked it with a full-height DstIn gradient, so every frame of a swipe re-rendered a
- * screen-sized layer and built a fresh gradient shader. Here the middle band is drawn straight
- * to the screen and only the two edge strips go through a small, bounded offscreen layer each.
- * Rects, brushes and the layer paint are created once per size, not once per frame.
- */
 private fun Modifier.fadeEdges(top: Dp, bottom: Dp): Modifier = drawWithCache {
     val topPx = top.roundToPx().toFloat().coerceIn(0f, size.height)
     val bottomPx = bottom.roundToPx().toFloat().coerceIn(0f, size.height - topPx)
@@ -1558,13 +1475,10 @@ private fun Modifier.fadeEdges(top: Dp, bottom: Dp): Modifier = drawWithCache {
     val layerPaint = Paint()
 
     onDrawWithContent {
-        // Middle band: no layer at all
         clipRect(top = topPx, bottom = size.height - bottomPx) {
             this@onDrawWithContent.drawContent()
         }
 
-        // Edge strips: a bounded offscreen layer each, so DstIn only masks the content and
-        // never the wallpaper behind the window
         if (topPx > 0f) {
             drawContext.canvas.withSaveLayer(topStrip, layerPaint) {
                 drawContent()

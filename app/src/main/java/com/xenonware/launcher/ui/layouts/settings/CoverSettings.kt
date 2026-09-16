@@ -133,9 +133,13 @@ fun CoverSettings(
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             val data = result.data ?: return@rememberLauncherForActivityResult
+            // Legacy ACTION_CREATE_SHORTCUT result extras; deprecated but the only
+            // channel the pin-shortcut flow returns through.
+            @Suppress("DEPRECATION")
             val intent = data.getParcelableExtra(
                 Intent.EXTRA_SHORTCUT_INTENT, Intent::class.java
             )
+            @Suppress("DEPRECATION")
             val name = data.getStringExtra(Intent.EXTRA_SHORTCUT_NAME)
 
             if (intent != null && name != null) {
@@ -295,16 +299,16 @@ fun CoverSettings(
             modifier = Modifier
                 .fillMaxSize()
                 .hazeEffect(hazeState)
-            ) {
-                DialogResetSettingsConfirmation(
-                    onConfirm = { viewModel.confirmResetSettings() },
-                    onDismiss = { viewModel.dismissResetSettingsDialog() },
-                    dialogTitle = stringResource(id = R.string.reset_settings),
-                    confirmText = stringResource(id = R.string.confirm),
-                    descriptionText = stringResource(id = R.string.reset_all_settings_description)
-                )
-            }
+        ) {
+            DialogResetSettingsConfirmation(
+                onConfirm = { viewModel.confirmResetSettings() },
+                onDismiss = { viewModel.dismissResetSettingsDialog() },
+                dialogTitle = stringResource(id = R.string.reset_settings),
+                confirmText = stringResource(id = R.string.confirm),
+                descriptionText = stringResource(id = R.string.reset_all_settings_description)
+            )
         }
+    }
 
     if (showVersionDialog) {
         Box(
@@ -420,7 +424,7 @@ fun CoverSettings(
                 title = stringResource(R.string.hidden_apps),
                 description = stringResource(R.string.hidden_apps_description),
                 onDismiss = { viewModel.setShowHiddenApps(false) },
-                onToggleApp = { 
+                onToggleApp = {
                     if (it in hiddenApps) viewModel.unhideApp(it)
                     else viewModel.hideApp(it)
                 },

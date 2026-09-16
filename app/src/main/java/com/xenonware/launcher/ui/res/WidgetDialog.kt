@@ -88,16 +88,6 @@ import kotlin.time.Duration.Companion.milliseconds
 
 private val bitmapCache = LruCache<String, ImageBitmap>(100)
 
-/**
- * Strips resource-type annotations from an int.
- *
- * [android.appwidget.AppWidgetProviderInfo.previewLayout] is annotated `@IdRes` in the
- * framework SDK, but it actually holds a layout resource. Passing it straight to
- * [android.view.LayoutInflater.inflate] (which expects `@LayoutRes`) therefore trips the
- * `ResourceType` lint check. Lint does not propagate resource-type annotations through a
- * function boundary, so routing the id through this helper clears the false positive in
- * both the IDE inspection and the Gradle lint task.
- */
 private fun untypedRes(id: Int): Int = id
 
 @Composable

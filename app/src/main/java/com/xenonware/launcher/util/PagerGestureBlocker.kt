@@ -8,18 +8,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChangeIgnoreConsumed
 import kotlin.math.abs
 
-/**
- * Swallows horizontal drags before they can reach an ancestor pager.
- *
- * Pointer passes go Initial (ancestor -> descendant), Main (descendant -> ancestor), Final.
- * By listening on Main, every child of this node — the notification card's own swipe, a tab
- * button's fling, an AndroidView-hosted widget — has already had its turn, while the
- * HorizontalPager above us has not. Consuming here therefore never steals a gesture from a
- * child, but the pager's touch-slop detector bails out the moment it sees a consumed change.
- *
- * Only horizontal-dominant gestures are consumed, so a LazyColumn inside this node still
- * scrolls and a VerticalPager above it still turns pages.
- */
 fun Modifier.blockHorizontalPagerSwipe(): Modifier = this.pointerInput(Unit) {
     val slop = viewConfiguration.touchSlop
     awaitEachGesture {

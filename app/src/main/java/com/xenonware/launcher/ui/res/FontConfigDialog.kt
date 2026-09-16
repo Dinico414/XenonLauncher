@@ -457,6 +457,7 @@ private fun AxisSliderItem(
                 }
             }
         }
+        @Suppress("DEPRECATION")
         Slider(
             value = value,
             onValueChange = { onValueChange(if (axis.isInteger) it.roundToInt().toFloat() else it) },

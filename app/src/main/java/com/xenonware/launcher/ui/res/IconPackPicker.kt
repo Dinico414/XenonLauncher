@@ -157,7 +157,6 @@ fun IconPackPicker(
                                 overlineContent = null,
                                 supportingContent = null,
                                 colors = ListItemDefaults.colors(),
-                                elevation = ListItemDefaults.elevation(ListItemDefaults.Elevation),
                                 content = { Text(pack.loadLabel(pm).toString()) },
                             )
                         }
@@ -230,7 +229,6 @@ fun GlobalIconPackPicker(
                     supportingContent = null,
                     trailingContent = null,
                     colors = ListItemDefaults.colors(),
-                    elevation = ListItemDefaults.elevation(ListItemDefaults.Elevation),
                 )
             }
             if (iconPacks.isEmpty()) {
@@ -275,7 +273,6 @@ fun GlobalIconPackPicker(
                         overlineContent = null,
                         supportingContent = null,
                         colors = ListItemDefaults.colors(),
-                        elevation = ListItemDefaults.elevation(ListItemDefaults.Elevation),
                     )
                 }
             }

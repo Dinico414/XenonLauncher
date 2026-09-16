@@ -177,6 +177,7 @@ object NotificationManager {
                 val title = extras.getCharSequence("android.title")
                 val text = extras.getCharSequence("android.text")
                 val bigText = extras.getCharSequence("android.bigText")
+                @Suppress("DEPRECATION")  // untyped presence check on the messages extra
                 val messages = extras.get("android.messages")
 
                 if (title.isNullOrBlank() && text.isNullOrBlank() &&
@@ -263,6 +264,8 @@ object NotificationManager {
 
                 var messagingImage: Drawable? = null
                 if (isMessaging) {
+                    @Suppress("DEPRECATION")  // getParcelableArray(String): the typed overload does
+                    // not exist for the untyped "android.messages" payload on all target levels.
                     val messages = extras.getParcelableArray("android.messages")
                     if (!messages.isNullOrEmpty()) {
                         for (i in messages.indices.reversed()) {
@@ -328,7 +331,7 @@ object NotificationManager {
                     ranking.importance <= 2
                 } else false
                 val rank = rankOrder[sbn.key] ?: if (hasRanking) ranking.rank else Int.MAX_VALUE
-                
+
                 Log.d(TAG, "Notification ${sbn.key}: importance=${ranking.importance}, isMuted=$isMuted, rank=$rank")
 
                 LauncherNotification(

@@ -24,7 +24,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
@@ -49,7 +48,6 @@ import com.xenon.mylibrary.values.NoSpacing
 import com.xenonware.launcher.BuildConfig
 import com.xenonware.launcher.R
 import com.xenonware.launcher.model.FabAction
-import com.xenonware.launcher.presentation.sign_in.GoogleAuthUiClient
 import com.xenonware.launcher.presentation.sign_in.SignInState
 import com.xenonware.launcher.ui.res.BackupRestoreDialog
 import com.xenonware.launcher.ui.res.CalendarSelectionDialog
@@ -78,7 +76,6 @@ fun DefaultSettings(
     onSignInClick: () -> Unit,
     onSignOutClick: () -> Unit,
     onConfirmSignOut: () -> Unit,
-    googleAuthUiClient: GoogleAuthUiClient,
     appSize: IntSize,
 ) {
     DeviceConfigProvider(appSize = appSize) {
@@ -110,7 +107,7 @@ fun DefaultSettings(
         val showHiddenAppsDialog by viewModel.showHiddenAppsDialog.collectAsState()
         val hiddenApps by viewModel.hiddenApps.collectAsState()
         val configShortcutType by viewModel.configShortcutType.collectAsState()
-        
+
         val showPermissionsDialog by viewModel.showPermissionsDialog.collectAsState()
         val permissionsList by viewModel.permissionsList.collectAsState()
 
@@ -142,11 +139,15 @@ fun DefaultSettings(
         ) { result ->
             if (result.resultCode == Activity.RESULT_OK) {
                 val data = result.data ?: return@rememberLauncherForActivityResult
+                // Legacy ACTION_CREATE_SHORTCUT result extras; deprecated but the only
+                // channel the pin-shortcut flow returns through.
+                @Suppress("DEPRECATION")
                 val intent = data.getParcelableExtra(
                     Intent.EXTRA_SHORTCUT_INTENT, Intent::class.java
                 )
+                @Suppress("DEPRECATION")
                 val name = data.getStringExtra(Intent.EXTRA_SHORTCUT_NAME)
-                
+
                 if (intent != null && name != null) {
                     val value = "$name|${intent.toUri(0)}"
                     viewModel.setFabAction(showFabConfigMode, FabAction.OPEN_SHORTCUT, value)
@@ -174,10 +175,11 @@ fun DefaultSettings(
             viewModel.applyCoverTheme(containerSize)
         }
 
-        val configuration = LocalConfiguration.current
         val isCompact =
             LocalDeviceConfig.current.isCommunicator || LocalDeviceConfig.current.isMindOne
-        val appHeight = configuration.screenHeightDp.dp
+        // Reuse the true window size read above instead of Configuration.screenHeightDp.
+        val density = androidx.compose.ui.platform.LocalDensity.current
+        val appHeight = with(density) { containerSize.height.toDp() }
 
         val isAppBarExpandable = when (layoutType) {
             LayoutType.COVER -> false
@@ -391,15 +393,15 @@ fun DefaultSettings(
                     .fillMaxSize()
                     .hazeEffect(hazeState)
             ) {
-            CalendarSelectionDialog(
-                availableCalendars = availableCalendars,
-                selectedCalendars = visibleCalendars,
-                onDismiss = { viewModel.setShowCalendarSelectionDialog(false) },
-                onToggleCalendar = { viewModel.toggleCalendarVisibility(it) },
-                onSelectAll = { viewModel.setVisibleCalendars(emptyList()) },
-                onClearAll = { viewModel.setVisibleCalendars(listOf("__NONE__")) }
-            )
-        }}
+                CalendarSelectionDialog(
+                    availableCalendars = availableCalendars,
+                    selectedCalendars = visibleCalendars,
+                    onDismiss = { viewModel.setShowCalendarSelectionDialog(false) },
+                    onToggleCalendar = { viewModel.toggleCalendarVisibility(it) },
+                    onSelectAll = { viewModel.setVisibleCalendars(emptyList()) },
+                    onClearAll = { viewModel.setVisibleCalendars(listOf("__NONE__")) }
+                )
+            }}
 
         if (showNotificationManagerDialog) {
             Box(
@@ -407,17 +409,17 @@ fun DefaultSettings(
                     .fillMaxSize()
                     .hazeEffect(hazeState)
             ) {
-            NotificationManagerDialog(
-                allApps = apps,
-                visibleApps = visibleNotificationApps,
-                onDismiss = { viewModel.setShowNotificationManagerDialog(false) },
-                onToggleApp = { viewModel.toggleNotificationAppVisibility(it) },
-                onSelectAll = { viewModel.setVisibleNotificationApps(emptyList()) },
-                onClearAll = { viewModel.setVisibleNotificationApps(listOf("__NONE__")) },
-                iconShape = iconShape,
-                showShadow = showShadow
-            )
-        }}
+                NotificationManagerDialog(
+                    allApps = apps,
+                    visibleApps = visibleNotificationApps,
+                    onDismiss = { viewModel.setShowNotificationManagerDialog(false) },
+                    onToggleApp = { viewModel.toggleNotificationAppVisibility(it) },
+                    onSelectAll = { viewModel.setVisibleNotificationApps(emptyList()) },
+                    onClearAll = { viewModel.setVisibleNotificationApps(listOf("__NONE__")) },
+                    iconShape = iconShape,
+                    showShadow = showShadow
+                )
+            }}
 
         if (showHiddenAppsDialog) {
             Box(

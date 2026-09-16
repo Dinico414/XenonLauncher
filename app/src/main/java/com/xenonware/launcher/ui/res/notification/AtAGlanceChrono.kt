@@ -38,13 +38,6 @@ import java.util.Locale
 import kotlin.math.abs
 import kotlin.time.Duration.Companion.milliseconds
 
-/**
- * Ticks once per second, phase-locked to [phase].
- *
- * A chronometer based at, say, x.300s rolls over at .300 — not at .000. Ticking on
- * wall-clock second boundaries would repaint up to 999ms after the value actually
- * changed, which reads as the display lagging a second behind the clock app.
- */
 @Composable
 fun rememberChronoTick(enabled: Boolean, phase: Long): State<Long> {
     val state = remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -53,7 +46,6 @@ fun rememberChronoTick(enabled: Boolean, phase: Long): State<Long> {
         while (true) {
             val now = System.currentTimeMillis()
             state.longValue = now
-            // Land just past the next rollover, so jitter can't read the stale value.
             val rem = ((now - phase) % 1000L + 1000L) % 1000L
             delay((1000L - rem + 10L).milliseconds)
         }
@@ -61,10 +53,6 @@ fun rememberChronoTick(enabled: Boolean, phase: Long): State<Long> {
     return state
 }
 
-/**
- * The right-hand cluster of the At a Glance header.
- * Falls back to the next alarm only when nothing is running or paused.
- */
 @Composable
 fun ChronoCluster(
     timers: List<LauncherNotification>,
@@ -79,7 +67,6 @@ fun ChronoCluster(
             .asSequence()
             .map { it.chrono }
             .filter { it.isDisplayable }
-            // Clock can post the same chrono under several keys during updates.
             .distinctBy { Triple(it.kind, it.baseWallTime, it.frozenMs) }
             .sortedBy { it.kind.ordinal }
             .take(3)
@@ -91,7 +78,6 @@ fun ChronoCluster(
         horizontalArrangement = Arrangement.spacedBy(LargeMediumSpacer),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Each item owns a ticker locked to its own base.
         items.forEach { chrono -> ChronoPreviewItem(chrono, fontSize, isWallpaperDark) }
 
         if (items.isEmpty() && nextAlarm != null) {
@@ -108,8 +94,6 @@ fun ChronoCluster(
 
 @Composable
 private fun ChronoPreviewItem(chrono: ChronoState, fontSize: TextUnit, isWallpaperDark: Boolean) {
-    // Both kinds roll over on the same phase: TIMER shows cell(base - now),
-    // STOPWATCH shows floor(now - base), and both change when (now - base) % 1000 == 0.
     val now by rememberChronoTick(enabled = chrono.isRunning, phase = chrono.baseWallTime)
 
     when (chrono.kind) {
@@ -118,7 +102,6 @@ private fun ChronoPreviewItem(chrono: ChronoState, fontSize: TextUnit, isWallpap
                 if (chrono.isRunning) chrono.baseWallTime - now
                 else chrono.frozenMs.coerceAtLeast(0L)
             val expired = chrono.isRunning && remainingMs <= 0L
-            // Round UP: a freshly started 5:00 timer must read 5:00, not 4:59.
             val seconds = ceilSeconds(abs(remainingMs))
 
             TimePreviewItem(
@@ -141,7 +124,6 @@ private fun ChronoPreviewItem(chrono: ChronoState, fontSize: TextUnit, isWallpap
 
             TimePreviewItem(
                 icon = if (chrono.isRunning) Icons.Rounded.Timer else Icons.Rounded.PauseCircle,
-                // Floor, matching how a counting-up Chronometer renders.
                 text = formatClock(elapsedMs.coerceAtLeast(0L) / 1000L),
                 fontSize = fontSize,
                 isWallpaperDark = isWallpaperDark

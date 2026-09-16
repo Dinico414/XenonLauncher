@@ -16,18 +16,10 @@ import kotlin.math.abs
 
 enum class ChronoKind { NONE, TIMER, STOPWATCH }
 
-/**
- * Everything the UI needs to render a live timer/stopwatch, in one place.
- *
- * All times are WALL CLOCK (System.currentTimeMillis). elapsedRealtime bases are
- * normalized on the way in, so the UI never has to care about time domains.
- */
 data class ChronoState(
     val kind: ChronoKind = ChronoKind.NONE,
     val isRunning: Boolean = false,
-    /** TIMER: wall-clock instant it expires. STOPWATCH: wall-clock instant it started. */
     val baseWallTime: Long = 0L,
-    /** Only when !isRunning. TIMER: remaining ms. STOPWATCH: elapsed ms. -1 = unknown. */
     val frozenMs: Long = -1L,
 ) {
     val isTimeRelated: Boolean get() = kind != ChronoKind.NONE
@@ -53,12 +45,6 @@ object ChronoDetector {
     private const val KEY_PAUSED_DURATION = "pausedDuration"
     private const val KEY_COUNT_DOWN = "countDown"
 
-    /**
-     * A Chronometer base is only credible as a live base if it sits near the current
-     * elapsedRealtime. Paused notifications reuse the same field for a raw duration
-     * (e.g. -25761), which would otherwise be read as a base ~5 days in the past.
-     * Cost: a chronometer running longer than this window is treated as paused.
-     */
     private const val LIVE_BASE_WINDOW_MS = 24L * 60 * 60 * 1000
 
     private val CLOCK_PACKAGE_HINTS = listOf("deskclock", "clock", "alarm", "timer", "stopwatch")
@@ -82,7 +68,6 @@ object ChronoDetector {
         return CLOCK_PACKAGE_HINTS.any { pkg.contains(it) }
     }
 
-    /** Main thread only — the RemoteViews fallback inflates views. */
     fun detect(context: Context, sbn: StatusBarNotification): ChronoState {
         val n = sbn.notification ?: return ChronoState.NONE
         val extras = n.extras ?: return ChronoState.NONE
@@ -98,18 +83,11 @@ object ChronoDetector {
         val kindFromId = hintKind(idHint)
         val kindFromText = hintKind(textHint, localised = true)
 
-        // -----------------------------------------------------------------
-        // Path 0 — android.metrics (Android 16 promoted ongoing / MetricStyle).
-        // Structured, unlocalized, and exactly what the shelf renders from.
-        // -----------------------------------------------------------------
         fromMetrics(extras, now, kindFromId, kindFromText)?.let {
             if (DEBUG) Log.d(TAG, "PATH0 (metrics): $it")
             return it
         }
 
-        // -----------------------------------------------------------------
-        // Path 1 — standard header chronometer (EXTRA_SHOW_CHRONOMETER).
-        // -----------------------------------------------------------------
         val showChrono = extras.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER, false)
         val countDownFlag = extras.getBoolean(Notification.EXTRA_CHRONOMETER_COUNT_DOWN, false)
         val hasCountDownKey = extras.containsKey(Notification.EXTRA_CHRONOMETER_COUNT_DOWN)
@@ -136,10 +114,6 @@ object ChronoDetector {
             return ChronoState.NONE
         }
 
-        // -----------------------------------------------------------------
-        // Path 2 — inflate the RemoteViews and read the Chronometer widget.
-        // Fallback for clock apps that predate MetricStyle.
-        // -----------------------------------------------------------------
         val probe = probeRemoteViews(context, n)
         val kindHint = when {
             kindFromId != ChronoKind.NONE -> kindFromId
@@ -164,7 +138,6 @@ object ChronoDetector {
                 return ChronoState(kind, isRunning = true, baseWallTime = base)
             }
 
-            // Not a base — a paused duration reusing the same field.
             val kind = when {
                 probe.countDown == true -> ChronoKind.TIMER
                 probe.countDown == false -> ChronoKind.STOPWATCH
@@ -177,9 +150,6 @@ object ChronoDetector {
             }
         }
 
-        // -----------------------------------------------------------------
-        // Path 3 — last resort: scrape a duration out of the text.
-        // -----------------------------------------------------------------
         if (kindHint == ChronoKind.NONE) return ChronoState.NONE
 
         val frozen = parseDuration(textHint).takeIf { it >= 0L }
@@ -190,16 +160,13 @@ object ChronoDetector {
         return ChronoState(kindHint, isRunning = false, frozenMs = frozen)
     }
 
-    // ------------------------------------------------------------------
-    // Path 0: android.metrics
-    // ------------------------------------------------------------------
-
     private fun fromMetrics(
         extras: Bundle,
         now: Long,
         kindFromId: ChronoKind,
         kindFromText: ChronoKind,
     ): ChronoState? {
+        @Suppress("DEPRECATION")
         val raw = try { extras.get(KEY_METRICS) } catch (_: Throwable) { null } ?: return null
 
         val entries: List<Bundle> = when (raw) {
@@ -212,6 +179,7 @@ object ChronoDetector {
 
         for (entry in entries) {
             val value = entry.getBundle(KEY_VALUE) ?: continue
+            @Suppress("DEPRECATION")  // untyped label field on the metrics sub-bundle
             val label = entry.get(KEY_LABEL)?.toString()?.lowercase().orEmpty()
 
             val countDown = if (value.containsKey(KEY_COUNT_DOWN)) {
@@ -230,6 +198,7 @@ object ChronoDetector {
 
             // Running: base is an elapsedRealtime instant.
             if (value.containsKey(KEY_ZERO_ELAPSED)) {
+                @Suppress("DEPRECATION")
                 val zero = (value.get(KEY_ZERO_ELAPSED) as? Number)?.toLong() ?: continue
                 val baseWall = now - SystemClock.elapsedRealtime() + zero
                 return ChronoState(kind, isRunning = true, baseWallTime = baseWall)
@@ -237,6 +206,7 @@ object ChronoDetector {
 
             // Paused: a raw duration. TIMER -> remaining, STOPWATCH -> elapsed.
             if (value.containsKey(KEY_PAUSED_DURATION)) {
+                @Suppress("DEPRECATION")
                 val paused = (value.get(KEY_PAUSED_DURATION) as? Number)?.toLong() ?: continue
                 return ChronoState(kind, isRunning = false, frozenMs = abs(paused))
             }
@@ -244,17 +214,13 @@ object ChronoDetector {
         return null
     }
 
-    // ------------------------------------------------------------------
-    // Path 2: RemoteViews probing
-    // ------------------------------------------------------------------
-
     private class Probe(
-        /** RAW Chronometer.getBase() — caller decides if it's a base or a duration. */
         val chronoBase: Long?,
         val countDown: Boolean?,
         val texts: List<String>,
     )
 
+    @Suppress("DEPRECATION")
     private fun probeRemoteViews(context: Context, n: Notification): Probe? {
         var source = "bigContentView"
         var views: RemoteViews? = n.bigContentView
@@ -310,8 +276,6 @@ object ChronoDetector {
         }
     }
 
-    // ------------------------------------------------------------------
-
     private fun normaliseToWallClock(raw: Long, now: Long): Long = when {
         raw <= 0L -> 0L
         raw < 1_000_000_000_000L -> now - SystemClock.elapsedRealtime() + raw
@@ -362,9 +326,7 @@ object ChronoDetector {
         return if (matched) total else -1L
     }
 
-    // ------------------------------------------------------------------
-
-    /** One Log.d per line — Android Studio collapses multi-line entries. */
+    @Suppress("DEPRECATION")
     fun dump(sbn: StatusBarNotification) {
         val n = sbn.notification ?: return
         val e = n.extras

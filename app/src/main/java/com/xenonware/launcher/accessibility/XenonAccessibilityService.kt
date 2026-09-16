@@ -24,10 +24,6 @@ class XenonAccessibilityService : AccessibilityService() {
         performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN)
     }
 
-    fun openQuickSettings() {
-        performGlobalAction(GLOBAL_ACTION_QUICK_SETTINGS)
-    }
-
     fun openNotifications() {
         performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS)
     }
@@ -40,15 +36,6 @@ class XenonAccessibilityService : AccessibilityService() {
             val service = instance
             if (service != null) {
                 service.lockScreen()
-            } else {
-                AccessibilityUtils.requestAccessibility(context)
-            }
-        }
-
-        fun openQuickSettingsOrRequestAccess(context: android.content.Context) {
-            val service = instance
-            if (service != null) {
-                service.openQuickSettings()
             } else {
                 AccessibilityUtils.requestAccessibility(context)
             }

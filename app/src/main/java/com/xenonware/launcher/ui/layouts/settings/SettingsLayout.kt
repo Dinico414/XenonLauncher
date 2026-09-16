@@ -6,7 +6,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.IntSize
 import com.xenon.mylibrary.theme.LayoutType
-import com.xenonware.launcher.presentation.sign_in.GoogleAuthUiClient
 import com.xenonware.launcher.presentation.sign_in.SignInState
 import com.xenonware.launcher.viewmodel.SettingsViewModel
 
@@ -19,7 +18,6 @@ fun SettingsLayout(
     onNavigateToDeveloperOptions: () -> Unit,
     modifier: Modifier = Modifier,
     state: SignInState,
-    googleAuthUiClient: GoogleAuthUiClient,
     onSignInClick: () -> Unit,
     onSignOutClick: () -> Unit,
     onConfirmSignOut: () -> Unit,
@@ -47,7 +45,6 @@ fun SettingsLayout(
                     isLandscape = isLandscape,
                     onNavigateToDeveloperOptions = onNavigateToDeveloperOptions,
                     state = state,
-                    googleAuthUiClient = googleAuthUiClient,
                     onSignInClick = onSignInClick,
                     onSignOutClick = onSignOutClick,
                     onConfirmSignOut = onConfirmSignOut,

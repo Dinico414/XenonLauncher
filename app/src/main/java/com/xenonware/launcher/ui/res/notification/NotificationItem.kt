@@ -222,7 +222,7 @@ fun NotificationItem(
             replyState.setTextAndPlaceCursorAtEnd("")
         }
     }
-
+    @Suppress("DEPRECATION")
     fun sendReply() {
         val action = selectedActionForReply ?: return
         val remoteInput = action.remoteInput ?: return
@@ -777,6 +777,7 @@ fun NotificationItem(
                             horizontalArrangement = Arrangement.spacedBy(MediumSpacer)
                         ) {
                             notification.actions.forEach { action ->
+                                @Suppress("DEPRECATION")
                                 Surface(
                                     onClick = {
                                         if (action.remoteInput != null) {

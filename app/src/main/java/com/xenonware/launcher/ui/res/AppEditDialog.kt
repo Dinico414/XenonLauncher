@@ -221,6 +221,7 @@ fun AppEditDialog(
                         "${stringResource(R.string.zoom)}: ${(zoom * 100).toInt()}%",
                         style = MaterialTheme.typography.labelMedium
                     )
+                    @Suppress("DEPRECATION")  // value/onValueChange overload; SliderState ctor varies across Material3 versions
                     Slider(
                         value = zoom, onValueChange = { zoom = it }, valueRange = 0.5f..2.0f
                     )
@@ -229,6 +230,7 @@ fun AppEditDialog(
                         "${stringResource(R.string.border_width)}: ${borderWidth.toInt()}",
                         style = MaterialTheme.typography.labelMedium
                     )
+                    @Suppress("DEPRECATION")  // value/onValueChange overload; SliderState ctor varies across Material3 versions
                     Slider(
                         value = borderWidth,
                         onValueChange = { borderWidth = it },

@@ -139,10 +139,7 @@ fun MediaSection(
         shape = DockSectionShape,
         color = backgroundColor,
         contentColor = contentColor,
-        // Drawn by the Surface itself, not on the incoming modifier: a clickable
-        // Surface inflates its outer node to the 48.dp minimum touch target, so
-        // anything drawn out there traces a 48x48 square (a circle, once the
-        // corners are clamped) instead of the visible 32x48 pill.
+
         border = BorderStroke(SmallestStroke, theme.accent.copy(alpha = borderAlpha))
     ) {
         MaterialTheme(colorScheme = theme.scheme) {
@@ -170,10 +167,6 @@ fun MediaSection(
     }
 }
 
-/* ---------------------------------------------------------------------- */
-/* Album art theming                                                       */
-/* ---------------------------------------------------------------------- */
-
 @Immutable
 private data class MediaTheme(
     val background: Color,
@@ -182,11 +175,6 @@ private data class MediaTheme(
     val scheme: ColorScheme,
 )
 
-/**
- * Pulls a dominant color out of the current album art and blends it into the
- * app's scheme. Falls back to the default surface colors, debounced so that
- * track changes don't make the pill flicker.
- */
 @Composable
 private fun rememberMediaTheme(mediaState: MediaState): MediaTheme {
     val context = LocalContext.current
@@ -269,10 +257,6 @@ private fun rememberMediaTheme(mediaState: MediaState): MediaTheme {
     }
 }
 
-/* ---------------------------------------------------------------------- */
-/* Music note idle animation                                               */
-/* ---------------------------------------------------------------------- */
-
 @Immutable
 private data class MusicNoteAnimation(
     val rotation: Float,
@@ -315,10 +299,6 @@ private fun Modifier.musicNote(note: MusicNoteAnimation) = graphicsLayer {
     scaleX = 1f + (note.scale - 1f) * note.playingFactor
     scaleY = 1f + (note.scale - 1f) * note.playingFactor
 }
-
-/* ---------------------------------------------------------------------- */
-/* Expanded content                                                        */
-/* ---------------------------------------------------------------------- */
 
 @Composable
 private fun MediaSectionContent(

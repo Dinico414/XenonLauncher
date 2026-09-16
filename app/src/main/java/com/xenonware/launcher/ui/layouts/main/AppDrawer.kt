@@ -226,11 +226,6 @@ fun AppDrawer(
     hideDockScrolling: Boolean = false,
     onDockVisibilityChange: (Boolean) -> Unit = {},
     moveWebSearch: Boolean = false,
-    /**
-     * Called when the user picks "Edit" for an app. The caller renders the edit dialog above
-     * the launcher's full-screen hazeSource, so its backdrop blurs the whole screen as one
-     * image — the drawer can't do that from inside the very content being blurred.
-     */
     onEditApp: (AppInfo) -> Unit
 ) {
     val dragDropState = LocalDragDropState.current

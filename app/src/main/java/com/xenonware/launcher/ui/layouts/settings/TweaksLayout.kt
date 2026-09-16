@@ -17,7 +17,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -47,10 +46,12 @@ fun TweaksLayout(
 ) {
     DeviceConfigProvider(appSize = appSize) {
 
-        val configuration = LocalConfiguration.current
         val isCompact =
             LocalDeviceConfig.current.isCommunicator || LocalDeviceConfig.current.isMindOne
-        val appHeight = configuration.screenHeightDp.dp
+        // Window height in dp from the true container size; screenHeightDp lags resizes.
+        val windowInfo = androidx.compose.ui.platform.LocalWindowInfo.current
+        val density = androidx.compose.ui.platform.LocalDensity.current
+        val appHeight = with(density) { windowInfo.containerSize.height.toDp() }
 
         val isAppBarExpandable = when (layoutType) {
             LayoutType.COVER -> false

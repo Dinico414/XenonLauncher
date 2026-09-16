@@ -59,6 +59,8 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -90,31 +92,17 @@ import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import dev.chrisbanes.haze.materials.HazeMaterials
 import kotlin.math.roundToInt
 
-/* ---------------------------------------------------------------------- */
-/* Shared dock values                                                      */
-/* ---------------------------------------------------------------------- */
-
-/** Which of the three sections currently owns the free space inside the pill. */
 internal enum class DockPage { Status, Apps, Media }
 
 internal val DockHeight = HugeBiggerSpacing
 internal val DockFabSize = HugerSpacing
 internal val DockCollapsedSectionWidth = BiggestSpacing
 
-/**
- * Single source of truth for the section shape. Anything that draws a border or
- * outline for a section uses this shape instead of re-deriving corner radii.
- */
 internal val DockSectionShape = RoundedCornerShape(MassiveCornerRadius)
 
-/** Sections are translucent on dark backgrounds, opaque on light ones. */
 @Composable
 internal fun dockButtonAlpha(): Float = if (LocalIsDarkTheme.current) 0.35f else 1f
 
-/**
- * The size behavior every section shares: full dock height minus the collapse
- * padding, stretching when expanded, a fixed 32.dp pill when not.
- */
 @Composable
 internal fun Modifier.dockSectionSize(
     isExpanded: Boolean,
@@ -133,7 +121,6 @@ internal fun Modifier.dockSectionSize(
         )
 }
 
-/** Bottom inset for the dock, following the nav bar and (optionally) the IME. */
 @Composable
 private fun rememberDockBottomPadding(
     dockSafeDrawIme: Boolean,
@@ -141,7 +128,7 @@ private fun rememberDockBottomPadding(
 ): Dp {
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
-    
+
     val navPadding = WindowInsets.navigationBars
         .only(WindowInsetsSides.Bottom).asPaddingValues().calculateBottomPadding()
     val imePadding = WindowInsets.ime
@@ -166,10 +153,6 @@ private fun rememberDockBottomPadding(
     )
     return animated.coerceAtLeast(NoSpacing)
 }
-
-/* ---------------------------------------------------------------------- */
-/* Layout                                                                  */
-/* ---------------------------------------------------------------------- */
 
 @OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
@@ -209,8 +192,10 @@ fun DockPill(
     onPinApp: (String, Int) -> Unit = { _, _ -> },
     onReorderApp: (Int, Int) -> Unit = { _, _ -> },
 ) {
-    val configuration = LocalConfiguration.current
-    val screenWidth = configuration.screenWidthDp.dp
+    // True window width in px -> dp; screenWidthDp lags multi-window/foldable resizes.
+    val density = LocalDensity.current
+    val windowInfo = LocalWindowInfo.current
+    val screenWidth = with(density) { windowInfo.containerSize.width.toDp() }
     val finalMaxDockWidth = screenWidth.coerceAtMost(540.dp)
 
     var currentPage by remember { mutableStateOf(DockPage.Apps) }

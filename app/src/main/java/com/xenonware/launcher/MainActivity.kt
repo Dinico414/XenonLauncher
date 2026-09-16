@@ -721,16 +721,8 @@ fun LauncherScreen(
                                             if (p > 0f) {
                                                 translationX = -0.25f * size.width * p
                                                 alpha = 1f - p
-                                                // Depth cue in place of the old blur. A screen-sized
-                                                // gaussian costs several ms each time it is
-                                                // recomputed, and any animation on this page (a
-                                                // marquee, the timer tick) forced that every frame;
-                                                // scaling a cached layer costs nothing.
                                                 scaleX = 1f - 0.06f * p
                                                 scaleY = 1f - 0.06f * p
-                                                // While it slides out the page is composited from
-                                                // a cached texture; the group alpha comes for free
-                                                // instead of a saveLayer per frame
                                                 compositingStrategy = CompositingStrategy.Offscreen
                                             }
                                         }

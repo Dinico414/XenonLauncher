@@ -23,7 +23,6 @@ class SignInViewModel(
     val state = _state.asStateFlow()
 
     private val _signInEvent = MutableStateFlow<SignInEvent?>(null)
-    val signInEvent = _signInEvent.asStateFlow()
 
     private val preferenceListener = SharedPreferences.OnSharedPreferenceChangeListener { prefs, key ->
         if (key == "is_user_logged_in") {
@@ -53,7 +52,6 @@ class SignInViewModel(
 
     override fun onCleared() {
         sharedPreferenceManager.unregisterListener(preferenceListener)
-        super.onCleared()
     }
 
     fun updateSignInState(userData: UserData?) {
