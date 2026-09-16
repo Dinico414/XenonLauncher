@@ -29,7 +29,6 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
-import com.xenon.mylibrary.res.LanguageOption
 import com.xenon.mylibrary.res.ThemeSetting
 import com.xenonware.launcher.R
 import com.xenonware.launcher.accessibility.XenonAccessibilityService
@@ -261,12 +260,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _currentLanguage = MutableStateFlow(getCurrentLocaleDisplayName())
     val currentLanguage: StateFlow<String> = _currentLanguage.asStateFlow()
 
-    private val _availableLanguages = MutableStateFlow<List<LanguageOption>>(emptyList())
-    val availableLanguages: StateFlow<List<LanguageOption>> = _availableLanguages.asStateFlow()
-
-    private val _selectedLanguageTagInDialog = MutableStateFlow("")
-    val selectedLanguageTagInDialog: StateFlow<String> = _selectedLanguageTagInDialog.asStateFlow()
-
     private val _showThemeDialog = MutableStateFlow(false)
     val showThemeDialog: StateFlow<Boolean> = _showThemeDialog.asStateFlow()
 
@@ -278,9 +271,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     private val _showCoverSelectionDialog = MutableStateFlow(false)
     val showCoverSelectionDialog: StateFlow<Boolean> = _showCoverSelectionDialog.asStateFlow()
-
-    private val _showLanguageDialog = MutableStateFlow(false)
-    val showLanguageDialog: StateFlow<Boolean> = _showLanguageDialog.asStateFlow()
 
     private val _showGlobalIconPackDialog = MutableStateFlow(false)
     val showGlobalIconPackDialog: StateFlow<Boolean> = _showGlobalIconPackDialog.asStateFlow()
@@ -524,7 +514,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             }
         }
         updateCurrentLanguage()
-        prepareLanguageOptions()
         loadApps()
         loadInstalledShortcuts()
     }
@@ -935,25 +924,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun onLanguageSettingClicked(context: Context) {
-        val localeManager = context.getSystemService(Context.LOCALE_SERVICE) as LocaleManager
-        val currentLocales = localeManager.applicationLocales
-        _selectedLanguageTagInDialog.value = if (currentLocales.isEmpty) "" else currentLocales.toLanguageTags()
-        _showLanguageDialog.value = true
-    }
-
-    fun onLanguageSelectedInDialog(tag: String) {
-        _selectedLanguageTagInDialog.value = tag
-    }
-
-    fun applySelectedLanguage() {
-        val tag = _selectedLanguageTagInDialog.value
-        sharedPreferenceManager.languageTag = tag
-        _showLanguageDialog.value = false
-        // The activity will recreate itself and apply the new locale in attachBaseContext
-    }
-
-    fun dismissLanguageDialog() {
-        _showLanguageDialog.value = false
+        val intent = Intent(Settings.ACTION_APP_LOCALE_SETTINGS).apply {
+            data = Uri.fromParts("package", context.packageName, null)
+        }
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
     }
 
     fun updateCurrentLanguage() {
@@ -961,23 +936,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun getCurrentLocaleDisplayName(): String {
-        val tag = sharedPreferenceManager.languageTag
-        return if (tag.isEmpty()) {
+        val localeManager = getApplication<Application>().getSystemService(Context.LOCALE_SERVICE) as LocaleManager
+        val locales = localeManager.applicationLocales
+        return if (locales.isEmpty) {
             getApplication<Application>().getString(R.string.system_default)
         } else {
-            Locale.forLanguageTag(tag).getDisplayName(Locale.forLanguageTag(tag))
-                .replaceFirstChar { it.uppercase() }
-        }
-    }
-
-    fun prepareLanguageOptions() {
-        viewModelScope.launch(Dispatchers.IO) {
-            val options = listOf(
-                LanguageOption("", getApplication<Application>().getString(R.string.system_default)),
-                LanguageOption("en", "English"),
-                LanguageOption("de", "Deutsch"),
-            )
-            _availableLanguages.value = options
+            val locale = locales.get(0)!!
+            locale.getDisplayName(locale).replaceFirstChar { it.uppercase() }
         }
     }
 

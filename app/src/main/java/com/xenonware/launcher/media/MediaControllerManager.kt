@@ -11,6 +11,7 @@ import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.provider.Settings
 import android.text.TextUtils
+import android.util.Log
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -72,14 +73,14 @@ class MediaControllerManager(context: Context) {
             try {
                 updateState()
             } catch (e: Throwable) {
-                android.util.Log.e("MediaControllerManager", "Error in onPlaybackStateChanged", e)
+                Log.e("MediaControllerManager", "Error in onPlaybackStateChanged", e)
             }
         }
         override fun onMetadataChanged(metadata: MediaMetadata?) {
             try {
                 updateState()
             } catch (e: Throwable) {
-                android.util.Log.e("MediaControllerManager", "Error in onMetadataChanged", e)
+                Log.e("MediaControllerManager", "Error in onMetadataChanged", e)
             }
         }
     }
@@ -219,7 +220,7 @@ class MediaControllerManager(context: Context) {
                 mediaState = MediaState()
             }
         } catch (e: Throwable) {
-            android.util.Log.e("MediaControllerManager", "Error in updateState", e)
+            Log.e("MediaControllerManager", "Error in updateState", e)
         }
     }
 
@@ -278,7 +279,7 @@ class MediaControllerManager(context: Context) {
             }
 
             val log = sb.toString()
-            android.util.Log.d("MediaControllerManager", "Media State Dump:\n$log")
+            Log.d("MediaControllerManager", "Media State Dump:\n$log")
             log
         } catch (e: Throwable) {
             "Error dumping media state: ${e.message}"
@@ -331,9 +332,9 @@ class MediaControllerManager(context: Context) {
 
         // Log it so we can see exactly why YouTube is still showing these buttons
         if (isStandard) {
-            android.util.Log.d("MediaControllerManager", "Filtered standard action: title='$t', id='$id', res='$res'")
+            Log.d("MediaControllerManager", "Filtered standard action: title='$t', id='$id', res='$res'")
         } else {
-            android.util.Log.d("MediaControllerManager", "Found custom action: title='$t', id='$id', res='$res'")
+            Log.d("MediaControllerManager", "Found custom action: title='$t', id='$id', res='$res'")
         }
 
         return isStandard || t == "x" || id == "x" || res == "x"

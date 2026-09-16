@@ -2,7 +2,6 @@ package com.xenonware.launcher
 
 import android.app.WallpaperColors
 import android.app.WallpaperManager
-import android.content.ContextWrapper
 import android.content.Intent
 import android.content.res.Configuration
 import android.os.Bundle
@@ -102,7 +101,6 @@ import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.util.Locale
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -444,21 +442,6 @@ class MainActivity : ComponentActivity() {
         } else {
             AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
         }
-    }
-
-    override fun attachBaseContext(newBase: android.content.Context) {
-        var context = newBase
-        val prefs = SharedPreferenceManager(newBase)
-        val savedTag = prefs.languageTag
-        if (savedTag.isNotEmpty()) {
-            val locale = Locale.forLanguageTag(savedTag)
-            Locale.setDefault(locale)
-            val config = Configuration(newBase.resources.configuration)
-            config.setLocale(locale)
-            config.setLayoutDirection(locale)
-            context = newBase.createConfigurationContext(config)
-        }
-        super.attachBaseContext(ContextWrapper(context))
     }
 }
 

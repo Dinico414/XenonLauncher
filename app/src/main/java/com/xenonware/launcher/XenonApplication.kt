@@ -1,9 +1,7 @@
 package com.xenonware.launcher
 
 import android.app.Application
-import androidx.appcompat.app.AppCompatDelegate
-import androidx.core.os.LocaleListCompat
-import com.xenonware.launcher.data.SharedPreferenceManager
+import android.os.Build
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -13,17 +11,7 @@ class XenonApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        applySavedLocale()
         setupCrashHandler()
-    }
-
-    private fun applySavedLocale() {
-        val prefs = SharedPreferenceManager(this)
-        val tag = prefs.languageTag
-        if (tag.isNotEmpty()) {
-            val appLocale = LocaleListCompat.forLanguageTags(tag)
-            AppCompatDelegate.setApplicationLocales(appLocale)
-        }
     }
 
     private fun setupCrashHandler() {
@@ -35,7 +23,7 @@ class XenonApplication : Application() {
                 val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
                 val logFile = File(getExternalFilesDir(null), "crash_log.txt")
                 
-                val deviceInfo = "Device: ${android.os.Build.MODEL} (Android ${android.os.Build.VERSION.RELEASE})\n" +
+                val deviceInfo = "Device: ${Build.MODEL} (Android ${Build.VERSION.RELEASE})\n" +
                         "App Version: ${packageManager.getPackageInfo(packageName, 0).versionName}\n"
                 
                 val logContent = "--- CRASH LOG ---\n" +

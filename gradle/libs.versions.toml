@@ -1,5 +1,5 @@
 [versions]
-agp = "9.3.2"
+agp = "9.4.0"
 coreKtx = "1.19.0"
 junit = "4.13.2"
 junitVersion = "1.3.0"
@@ -25,11 +25,11 @@ googleid = "1.2.0"
 navigationCompose = "2.10.1"
 credentials = "1.6.0"
 credentialsPlayServicesAuth = "1.6.0"
+leakcanary = "1.0.0"
 
 xenonCommons = "3.0.7"
 #noinspection UnusedVersionCatalogEntry
 xenonUi = "4.0"
-leakcanary = "1.0.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
