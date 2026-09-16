@@ -97,7 +97,7 @@ Never lose your setup again. Xenon includes a built-in **Backup & Restore** syst
 *   **No Tracking:** Xenon Launcher contains no analytics or tracking SDKs.
 *   **Transparent Permissions:** Each permission (Calendar, Contacts, Storage) is optional and only used to power the specific feature you enable.
 
-### 🛡️ [Read our Privacy Policy](PRIVACY_POLICY.md)
+### [Read our Privacy Policy](PRIVACY_POLICY.md)
 
 ---
 
