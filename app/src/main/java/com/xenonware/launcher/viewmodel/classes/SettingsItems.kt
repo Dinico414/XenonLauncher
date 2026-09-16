@@ -41,6 +41,7 @@ import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
+import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
@@ -900,6 +901,21 @@ fun SettingsItems(
             subtitle = stringResource(R.string.reset_all_settings_description),
             onClick = { viewModel.onResetSettingsClicked(); haptic.performHapticFeedback(HapticFeedbackType.LongPress) },
             icon = { Icon(painterResource(R.drawable.reset_settings), null, tint = tileSubtitleColor) },
+            shape = tileShapeOverride ?: middleShape,
+            backgroundColor = tileBackgroundColor,
+            contentColor = tileContentColor,
+            subtitleColor = tileSubtitleColor,
+
+        )
+        Spacer(Modifier.height(actualInnerGroupSpacing))
+        SettingsTile(
+            title = stringResource(R.string.privacy_policy_title),
+            subtitle = stringResource(R.string.privacy_policy_description),
+            onClick = {
+                val intent = Intent(Intent.ACTION_VIEW, "https://xenonware.com/privacy_policy_launcher".toUri())
+                context.startActivity(intent)
+            },
+            icon = { Icon(Icons.Rounded.Shield, null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: middleShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,

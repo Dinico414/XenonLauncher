@@ -336,4 +336,6 @@
     <string name="axis_ascender_height">Oberlängenhöhe</string>
     <string name="axis_descender_depth">Unterlängentiefe</string>
     <string name="axis_figure_height">Ziffernhöhe</string>
+    <string name="privacy_policy_title">Datenschutzerklärung</string>
+    <string name="privacy_policy_description">Lese hier die Datenschutzerklärung</string>
 </resources>

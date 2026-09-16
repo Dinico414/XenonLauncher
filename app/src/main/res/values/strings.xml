@@ -338,4 +338,6 @@
     <string name="axis_ascender_height">Ascender Height</string>
     <string name="axis_descender_depth">Descender Depth</string>
     <string name="axis_figure_height">Figure Height</string>
+    <string name="privacy_policy_title">Privacy Policy</string>
+    <string name="privacy_policy_description">Read privacy policy here</string>
 </resources>
