@@ -96,7 +96,6 @@ Never lose your setup again. Xenon includes a built-in **Backup & Restore** syst
 *   **Local First:** Your app usage data, hidden apps, and search history never leave your device unless you manually trigger a cloud backup.
 *   **No Tracking:** Xenon Launcher contains no analytics or tracking SDKs.
 *   **Transparent Permissions:** Each permission (Calendar, Contacts, Storage) is optional and only used to power the specific feature you enable.
----
 
 ### 🛡️ [Read our Privacy Policy](PRIVACY_POLICY.md)
 
