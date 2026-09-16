@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy - Xenon Launcher</title>
+    <style>
+        :root {
+            --primary-color: #2196F3;
+            --text-color: #333333;
+            --bg-color: #f9f9f9;
+            --card-bg: #ffffff;
+            --border-color: #e0e0e0;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --primary-color: #64B5F6;
+                --text-color: #f5f5f5;
+                --bg-color: #121212;
+                --card-bg: #1e1e1e;
+                --border-color: #333333;
+            }
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-top: 0;
+            color: var(--primary-color);
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            margin-top: 30px;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 8px;
+        }
+
+        h3 {
+            font-size: 1.1rem;
+            margin-top: 20px;
+            color: var(--primary-color);
+        }
+
+        p, ul {
+            margin-bottom: 20px;
+        }
+
+        ul {
+            padding-left: 20px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        .highlight-box {
+            background-color: rgba(33, 155, 243, 0.1);
+            border-left: 4px solid var(--primary-color);
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+
+        .permission-list {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        .permission-item {
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 12px;
+            background-color: rgba(0, 0, 0, 0.01);
+        }
+
+        .permission-name {
+            font-family: monospace;
+            font-weight: bold;
+            color: var(--primary-color);
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card">
+        <h1>Privacy Policy</h1>
+        <p><strong>Last Updated: August 31, 2026</strong></p>
+        <p>This privacy policy applies to the <strong>Xenon Launcher</strong> application for Android devices. We believe in absolute transparency and value your privacy above everything else.</p>
+
+        <div class="highlight-box">
+            <strong>Core Privacy Principles:</strong>
+            <ul>
+                <li><strong>100% Local Data:</strong> All data generated, parsed, or processed by Xenon Launcher remains strictly on your local device.</li>
+                <li><strong>No External Transmission:</strong> We do not operate any external tracking, analytics, or cloud synchronization servers. No personal data, telemetry, or usage metrics are collected or transmitted to anyone.</li>
+                <li><strong>No Data Harvesting:</strong> We do not track what apps you open, your layout preferences, your location, or any other activity.</li>
+            </ul>
+        </div>
+
+        <h2>1. Application Functionality &amp; Permission Usage</h2>
+        <p>To function effectively as a home screen replacement, Xenon Launcher requires certain Android system permissions. Below is an exhaustive list of requested permissions and why they are required:</p>
+
+        <ul class="permission-list">
+            <li class="permission-item">
+                <span class="permission-name">android.permission.QUERY_ALL_PACKAGES</span>
+                <strong>Purpose:</strong> Required to query and retrieve the list of installed applications on your device, allowing them to be displayed in the launcher home screens, app drawer, and search index.
+            </li>
+            <li class="permission-item">
+                <span class="permission-name">android.permission.REQUEST_DELETE_PACKAGES</span>
+                <strong>Purpose:</strong> Allows you to uninstall third-party applications directly via the launcher's user interface shortcuts.
+            </li>
+            <li class="permission-item">
+                <span class="permission-name">android.permission.BIND_NOTIFICATION_LISTENER_SERVICE</span>
+                <strong>Purpose:</strong> Used to detect incoming notifications solely for displaying custom notification badges or counts directly on top of app icons or inside custom widgets.
+            </li>
+            <li class="permission-item">
+                <span class="permission-name">android.permission.BIND_ACCESSIBILITY_SERVICE</span>
+                <strong>Purpose:</strong> Optional feature enabling convenient user-triggered shortcuts or navigation gestures (such as double-tapping the screen to turn off the display or swiping down to expand the status bar panel).
+            </li>
+            <li class="permission-item">
+                <span class="permission-name">android.permission.MANAGE_EXTERNAL_STORAGE / android.permission.READ_EXTERNAL_STORAGE / android.permission.READ_MEDIA_AUDIO</span>
+                <strong>Purpose:</strong> Used to load custom icon packs, local wallpapers, or audio assets chosen explicitly by you to personalize the user interface.
+            </li>
+            <li class="permission-item">
+                <span class="permission-name">android.permission.SET_WALLPAPER</span>
+                <strong>Purpose:</strong> Allows the launcher to set your system or lock screen wallpaper from within the launcher application settings or themes menu.
+            </li>
+            <li class="permission-item">
+                <span class="permission-name">android.permission.READ_CONTACTS</span>
+                <strong>Purpose:</strong> Allows the search feature or optional contact shortcuts to find contact information directly on your device for rapid interaction.
+            </li>
+            <li class="permission-item">
+                <span class="permission-name">android.permission.ACCESS_FINE_LOCATION / android.permission.ACCESS_COARSE_LOCATION</span>
+                <strong>Purpose:</strong> Used locally to deliver location-based features such as local weather widgets or astronomical clock visualizations.
+            </li>
+            <li class="permission-item">
+                <span class="permission-name">android.permission.READ_CALENDAR / android.permission.WRITE_CALENDAR</span>
+                <strong>Purpose:</strong> Enables optional calendar/agenda widgets to fetch and show upcoming schedule events directly on your home screen.
+            </li>
+            <li class="permission-item">
+                <span class="permission-name">android.permission.EXPAND_STATUS_BAR</span>
+                <strong>Purpose:</strong> Used to trigger expanding the status bar notifications tray programmatically when a swipe-down gesture is performed on the home screen.
+            </li>
+            <li class="permission-item">
+                <span class="permission-name">android.permission.POST_NOTIFICATIONS</span>
+                <strong>Purpose:</strong> Allows the launcher to issue system notifications when critical or user-requested operations are running.
+            </li>
+            <li class="permission-item">
+                <span class="permission-name">android.permission.VIBRATE</span>
+                <strong>Purpose:</strong> Provides haptic/vibrational feedback when long-pressing, rearranging icons, or invoking gestures.
+            </li>
+            <li class="permission-item">
+                <span class="permission-name">android.permission.INTERNET</span>
+                <strong>Purpose:</strong> Included for standard network capabilities (e.g., if you choose to fetch weather updates from public data feeds). No app usage telemetry, device statistics, or layout data is ever sent across the network.
+            </li>
+        </ul>
+
+        <h2>2. Data Security &amp; Storage</h2>
+        <p>Because all data stays local to the sandbox allocated to the application on your device, your data's security relies entirely on the built-in security features of the Android operating system. Xenon Launcher does not employ any remote database, third-party analytics SDKs (such as Firebase Analytics, Flurry, or Mixpanel), or advertisement trackers.</p>
+
+        <h2>3. Changes to This Privacy Policy</h2>
+        <p>We may update our Privacy Policy from time to time. Since no user data is collected or synchronized remotely, any updates to this policy will simply be posted within the application package or repository. You are advised to review this page periodically for any changes.</p>
+
+        <h2>4. Contact Us</h2>
+        <p>If you have any questions, suggestions, or bug reports regarding this Privacy Policy or the security of the application, please feel free to reach out:</p>
+        <ul>
+            <li><strong>Developer Name:</strong> Lead: Nico (Dinico414) / Company: Xenonware</li>
+            <li><strong>Contact Email:</strong> dinicokustom@gmail.com</li>
+        </ul>
+    </div>
+    <div class="footer">
+        &copy; 2026 Xenon Launcher. All Rights Reserved.
+    </div>
+</div>
+
+</body>
+</html>

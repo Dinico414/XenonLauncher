@@ -20,10 +20,6 @@ android {
         buildConfigField("String", "XENON_COMMONS_VERSION", "\"${libs.versions.xenonCommons.get()}\"")
         buildConfigField("String", "XENON_UI_VERSION", "\"${libs.versions.xenonUi.get()}\"")
     }
-    androidResources {
-        generateLocaleConfig = true
-    }
-
     buildTypes {
         debug {
             isMinifyEnabled = false
@@ -62,7 +58,6 @@ dependencies {
     implementation(libs.material3)
     implementation(libs.xenon.commons)
     implementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
