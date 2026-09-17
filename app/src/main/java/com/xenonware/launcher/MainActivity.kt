@@ -93,6 +93,7 @@ import com.xenonware.launcher.ui.theme.ScreenEnvironment
 import com.xenonware.launcher.ui.theme.createCustomFontFamily
 import com.xenonware.launcher.ui.theme.mainFontFamily
 import com.xenonware.launcher.util.DragHandler
+import com.xenonware.launcher.util.PerfLog
 import com.xenonware.launcher.util.WindowBlurBehind
 import com.xenonware.launcher.util.rememberBlurAvailable
 import com.xenonware.launcher.viewmodel.LauncherViewModel
@@ -124,6 +125,8 @@ class MainActivity : ComponentActivity() {
             window.setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE, WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
             window.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
         }
+        // Debug builds only: logs main-thread stalls under the XenonJank tag. No-op in release.
+        PerfLog.init(this)
 
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -668,7 +671,11 @@ fun LauncherScreen(
                         HorizontalPager(
                             state = pagerState,
                             modifier = Modifier.fillMaxSize(),
-                            beyondViewportPageCount = 1,
+                            // All three pages stay composed at all times. With 1, the widget
+                            // page (2) was dropped whenever you were on the media page (0), and
+                            // swiping back to the notification page (1) rebuilt it: every
+                            // widget was inflated again, which was the ~0.5 s freeze.
+                            beyondViewportPageCount = 2,
                             userScrollEnabled = !dragDropState.isDragging
                         ) { page ->
                             when (page) {

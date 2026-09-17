@@ -3,15 +3,18 @@ package com.xenonware.launcher.ui.res.notification
 import android.app.Notification
 import android.content.Context
 import android.os.Bundle
+import android.os.Looper
 import android.os.SystemClock
 import android.service.notification.StatusBarNotification
 import android.util.Log
+import android.util.LruCache
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Chronometer
 import android.widget.FrameLayout
 import android.widget.RemoteViews
 import android.widget.TextView
+import com.xenonware.launcher.util.PerfLog
 import kotlin.math.abs
 
 enum class ChronoKind { NONE, TIMER, STOPWATCH }
@@ -35,9 +38,11 @@ data class ChronoState(
 object ChronoDetector {
 
     private const val TAG = "XenonChrono"
-    private const val DEBUG = true
 
-    // Android 16 promoted-ongoing / MetricStyle payload. No public constants yet.
+    // Verbose per-notification logging. Keep off: the probe logs every TextView it finds,
+    // and string-building those logs on every pass is itself measurable work.
+    private const val DEBUG = false
+
     private const val KEY_METRICS = "android.metrics"
     private const val KEY_LABEL = "label"
     private const val KEY_VALUE = "value"
@@ -63,6 +68,8 @@ object ChronoDetector {
     private val CLOCK_PATTERN = Regex("""(?<!\d)(?:(\d{1,3}):)?(\d{1,2}):([0-5]\d)(?!\d)""")
     private val UNIT_PATTERN = Regex("""(\d+)\s*(h|hr|hrs|std|m|min|mins|s|sec|secs)\b""")
 
+    private val cache = LruCache<String, ChronoState>(128)
+
     fun looksLikeClockApp(packageName: String): Boolean {
         val pkg = packageName.lowercase()
         return CLOCK_PACKAGE_HINTS.any { pkg.contains(it) }
@@ -70,6 +77,26 @@ object ChronoDetector {
 
     fun detect(context: Context, sbn: StatusBarNotification): ChronoState {
         val n = sbn.notification ?: return ChronoState.NONE
+        val key = cacheKey(sbn, n)
+        cache.get(key)?.let { return it }
+
+        val result = PerfLog.measure("chrono.detect ${sbn.packageName}", thresholdMs = 8) {
+            detectUncached(context, sbn, n)
+        }
+        cache.put(key, result)
+        return result
+    }
+
+    private fun cacheKey(sbn: StatusBarNotification, n: Notification): String {
+        val textHash = n.extras?.let { textOf(it).hashCode() } ?: 0
+        return "${sbn.key}|${sbn.postTime}|${n.`when`}|$textHash"
+    }
+
+    private fun detectUncached(
+        context: Context,
+        sbn: StatusBarNotification,
+        n: Notification,
+    ): ChronoState {
         val extras = n.extras ?: return ChronoState.NONE
 
         val now = System.currentTimeMillis()
@@ -112,6 +139,14 @@ object ChronoDetector {
 
         if (n.category == Notification.CATEGORY_ALARM && kindFromId == ChronoKind.NONE) {
             return ChronoState.NONE
+        }
+
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            Log.w(
+                TAG,
+                "RemoteViews probe for ${sbn.packageName} is running on the main thread; " +
+                        "call detect() from a background dispatcher"
+            )
         }
 
         val probe = probeRemoteViews(context, n)

@@ -3,7 +3,10 @@ package com.xenonware.launcher.ui.res.notification
 import android.app.ActivityOptions
 import android.app.RemoteInput
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.drawable.Drawable
 import android.os.Bundle
+import android.util.LruCache
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
@@ -24,6 +27,7 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitHorizontalTouchSlopOrCancellation
 import androidx.compose.foundation.gestures.horizontalDrag
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -80,6 +84,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
@@ -98,6 +103,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -133,6 +139,7 @@ import com.xenonware.launcher.R
 import com.xenonware.launcher.notification.LauncherNotification
 import com.xenonware.launcher.notification.LauncherNotificationAction
 import com.xenonware.launcher.util.ColorUtils
+import com.xenonware.launcher.util.PerfLog
 import com.xenonware.launcher.util.blockHorizontalPagerSwipe
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -141,6 +148,69 @@ import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sign
 
+/** How a drawable is sized when it is turned into a bitmap for display. */
+internal enum class BitmapFit {
+    /** Exactly size x size, like the old toBitmap(w, h) calls. */
+    Exact,
+    /** Longest side at most size. For images shown whole (ContentScale.Fit). */
+    Inside,
+    /** Shortest side at most size. For images cropped to a square (ContentScale.Crop). */
+    Cover
+}
+
+/**
+ * Process-wide cache of display-sized notification bitmaps.
+ *
+ * NotificationItem used to call toBitmap() on sender icons and media images at full resolution,
+ * inside composition, every time the page re-entered composition. Album art or a shared photo can
+ * be several megabytes, and a 4000 px image drawn into a 48 dp box also costs a large texture
+ * upload. Converting once, at the size actually drawn, and reusing the result removes that work
+ * from every later page visit.
+ */
+internal object NotificationBitmapCache {
+    private val cache = object : LruCache<String, ImageBitmap>(24 * 1024 * 1024) {
+        override fun sizeOf(key: String, value: ImageBitmap): Int =
+            (value.width * value.height * 4).coerceAtLeast(1)
+    }
+
+    fun get(
+        ownerKey: String,
+        drawable: Drawable?,
+        sizePx: Int,
+        fit: BitmapFit,
+        tag: String,
+    ): ImageBitmap? {
+        if (drawable == null || sizePx <= 0) return null
+        // Keyed on the notification identity, not the Drawable instance. If the notification
+        // list is rebuilt with fresh Drawable objects on every update, an identity key would
+        // miss every time and re-scale every image on each recomposition.
+        val key = "$ownerKey|$tag|$fit|$sizePx"
+        cache.get(key)?.let { return it }
+        val bitmap = try {
+            PerfLog.measure("bitmap $tag ${sizePx}px", thresholdMs = 8) {
+                drawable.toBoundedBitmap(sizePx, fit).asImageBitmap()
+            }
+        } catch (_: Exception) {
+            null
+        } ?: return null
+        cache.put(key, bitmap)
+        return bitmap
+    }
+
+    private fun Drawable.toBoundedBitmap(sizePx: Int, fit: BitmapFit): Bitmap {
+        val w = intrinsicWidth
+        val h = intrinsicHeight
+        if (fit == BitmapFit.Exact || w <= 0 || h <= 0) return toBitmap(sizePx, sizePx)
+        val scale = when (fit) {
+            BitmapFit.Inside -> sizePx.toFloat() / maxOf(w, h)
+            else -> sizePx.toFloat() / minOf(w, h)
+        }.coerceAtMost(1f) // never upscale
+        return toBitmap(
+            (w * scale).roundToInt().coerceAtLeast(1),
+            (h * scale).roundToInt().coerceAtLeast(1)
+        )
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -166,6 +236,12 @@ fun NotificationItem(
     val density = LocalDensity.current
     val view = LocalView.current
     val context = LocalContext.current
+    val windowWidthPx = LocalWindowInfo.current.containerSize.width
+
+    // Pixel sizes the bitmaps are actually drawn at.
+    val appIconSizePx = remember(density) { (40 * density.density).toInt().coerceAtLeast(1) }
+    val thumbSizePx = with(density) { ExtraBigSpacing.roundToPx() }
+    val mediaSizePx = maxOf(windowWidthPx, with(density) { 300.dp.roundToPx() })
 
     val offsetX = remember { Animatable(0f) }
     var rawDragOffset by remember { mutableFloatStateOf(0f) }
@@ -280,8 +356,8 @@ fun NotificationItem(
 
     DisposableEffect(notification.key) {
         onDispose {
-            onOffsetChanged(0f)
-            onSwipeActiveChange(false)
+            currentOnOffsetChanged(0f)
+            currentOnSwipeActiveChange(false)
         }
     }
 
@@ -436,17 +512,16 @@ fun NotificationItem(
                         notification.iconKey ?: notification.key
                     }
 
-                    Crossfade(targetState = stableKey to iconToDraw, label = "notification_icon_fade") { (_, targetIcon) ->
+                    Crossfade(targetState = stableKey to iconToDraw, label = "notification_icon_fade") { (targetKey, targetIcon) ->
                         if (targetIcon != null) {
-                            val iconBitmap = remember(stableKey) {
-                                try {
-                                    targetIcon.toBitmap(
-                                        width = (40 * density.density).toInt().coerceAtLeast(1),
-                                        height = (40 * density.density).toInt().coerceAtLeast(1)
-                                    ).asImageBitmap()
-                                } catch (_: Exception) {
-                                    null
-                                }
+                            val iconBitmap = remember(targetKey, targetIcon, appIconSizePx) {
+                                NotificationBitmapCache.get(
+                                    ownerKey = notification.iconKey ?: "$targetKey|${notification.postTime}",
+                                    drawable = targetIcon,
+                                    sizePx = appIconSizePx,
+                                    fit = BitmapFit.Exact,
+                                    tag = "icon"
+                                )
                             }
 
                             Box(
@@ -496,12 +571,14 @@ fun NotificationItem(
                     }
 
                     if (showSenderIcon) {
-                        val senderBitmap = remember(notification.senderIcon) {
-                            try {
-                                notification.senderIcon?.toBitmap()?.asImageBitmap()
-                            } catch (_: Exception) {
-                                null
-                            }
+                        val senderBitmap = remember(notification.key, notification.senderIcon, thumbSizePx) {
+                            NotificationBitmapCache.get(
+                                ownerKey = "${notification.key}|${notification.postTime}",
+                                drawable = notification.senderIcon,
+                                sizePx = thumbSizePx,
+                                fit = BitmapFit.Cover,
+                                tag = "sender"
+                            )
                         }
                         if (senderBitmap != null) {
                             Image(
@@ -515,12 +592,14 @@ fun NotificationItem(
 
                     // Collapsed Media Thumbnail
                     if (!expanded && notification.mediaImage != null) {
-                        val thumbnailBitmap = remember(notification.mediaImage) {
-                            try {
-                                notification.mediaImage.toBitmap().asImageBitmap()
-                            } catch (_: Exception) {
-                                null
-                            }
+                        val thumbnailBitmap = remember(notification.key, notification.mediaImage, thumbSizePx) {
+                            NotificationBitmapCache.get(
+                                ownerKey = "${notification.key}|${notification.postTime}",
+                                drawable = notification.mediaImage,
+                                sizePx = thumbSizePx,
+                                fit = BitmapFit.Cover,
+                                tag = "thumb"
+                            )
                         }
                         if (thumbnailBitmap != null) {
                             Image(
@@ -604,16 +683,19 @@ fun NotificationItem(
 
                 // Expanded Media (Big) with Aspect Ratio
                 if (expanded && notification.mediaImage != null) {
-                    var aspectRatio by remember { mutableFloatStateOf(16f / 9f) }
-                    val mediaBitmap = remember(notification.mediaImage) {
-                        try {
-                            val bmp = notification.mediaImage.toBitmap()
-                            aspectRatio = (bmp.width.toFloat() / bmp.height.toFloat()).coerceIn(0.2f, 2.5f)
-                            bmp.asImageBitmap()
-                        } catch (_: Exception) {
-                            null
-                        }
+                    val mediaBitmap = remember(notification.key, notification.mediaImage, mediaSizePx) {
+                        NotificationBitmapCache.get(
+                            ownerKey = "${notification.key}|${notification.postTime}",
+                            drawable = notification.mediaImage,
+                            sizePx = mediaSizePx,
+                            fit = BitmapFit.Inside,
+                            tag = "media"
+                        )
                     }
+                    // Derived from the bitmap instead of written to state during composition.
+                    val aspectRatio = mediaBitmap
+                        ?.let { (it.width.toFloat() / it.height.toFloat()).coerceIn(0.2f, 2.5f) }
+                        ?: (16f / 9f)
                     if (mediaBitmap != null) {
                         Box(
                             modifier = Modifier
@@ -678,8 +760,14 @@ fun NotificationItem(
                                 horizontalArrangement = Arrangement.spacedBy(MediumSpacer)
                             ) {
                                 val replyScrollState = rememberScrollState()
-                                val replyInteractionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                                val replyInteractionSource = remember { MutableInteractionSource() }
                                 val lineLimits = TextFieldLineLimits.MultiLine(maxHeightInLines = 5)
+                                val fieldColors = TextFieldDefaults.colors(
+                                    focusedContainerColor = colorScheme.surfaceContainerLowest.copy(alpha = 0.2f),
+                                    unfocusedContainerColor = colorScheme.surfaceContainerLowest.copy(alpha = 0.2f),
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent
+                                )
 
                                 BasicTextField(
                                     state = replyState,
@@ -703,24 +791,14 @@ fun NotificationItem(
                                         outputTransformation = null,
                                         interactionSource = replyInteractionSource,
                                         placeholder = { Text(stringResource(R.string.type_message), fontSize = 13.sp) },
-                                        colors = TextFieldDefaults.colors(
-                                            focusedContainerColor = colorScheme.surfaceContainerLowest.copy(alpha = 0.2f),
-                                            unfocusedContainerColor = colorScheme.surfaceContainerLowest.copy(alpha = 0.2f),
-                                            focusedIndicatorColor = Color.Transparent,
-                                            unfocusedIndicatorColor = Color.Transparent
-                                        ),
+                                        colors = fieldColors,
                                         contentPadding = PaddingValues(horizontal = LargeMediumPadding, vertical = MediumPadding),
                                         container = {
                                             TextFieldDefaults.Container(
                                                 enabled = true,
                                                 isError = false,
                                                 interactionSource = replyInteractionSource,
-                                                colors = TextFieldDefaults.colors(
-                                                    focusedContainerColor = colorScheme.surfaceContainerLowest.copy(alpha = 0.2f),
-                                                    unfocusedContainerColor = colorScheme.surfaceContainerLowest.copy(alpha = 0.2f),
-                                                    focusedIndicatorColor = Color.Transparent,
-                                                    unfocusedIndicatorColor = Color.Transparent
-                                                ),
+                                                colors = fieldColors,
                                                 shape = RoundedCornerShape(LargestCornerRadius)
                                             )
                                         }

@@ -5,8 +5,11 @@ import android.app.AlarmManager
 import android.content.ContentUris
 import android.content.Intent
 import android.content.res.Configuration
+import android.graphics.drawable.Drawable
+import android.os.SystemClock
 import android.provider.CalendarContract
 import android.text.format.DateFormat
+import android.util.LruCache
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
@@ -63,6 +66,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyItemScope
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -100,7 +105,10 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -139,6 +147,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -185,6 +194,7 @@ import com.xenonware.launcher.ui.res.notification.NotificationItem
 import com.xenonware.launcher.ui.res.notification.NotificationTabButton
 import com.xenonware.launcher.ui.theme.mainFontFamily
 import com.xenonware.launcher.util.ColorUtils
+import com.xenonware.launcher.util.PerfLog
 import com.xenonware.launcher.util.blockHorizontalPagerSwipe
 import com.xenonware.launcher.util.shouldDisableLandscapeLayout
 import com.xenonware.launcher.viewmodel.CalendarEvent
@@ -202,6 +212,53 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
+
+/**
+ * Process-wide cache of dominant icon colors.
+ *
+ * `remember(app) { ColorUtils.getDominantColor(...) }` only survives while the composable is
+ * alive. Every time this page left and re-entered composition (e.g. coming back from the media
+ * page), every tab and every notification recomputed its color on the main thread.
+ */
+private object AppColorCache {
+    private val cache = LruCache<String, Color>(256)
+
+    fun get(app: AppInfo?): Color {
+        val noIcon: Drawable? = null
+        if (app == null) return ColorUtils.getDominantColor(noIcon)
+        val icon: Drawable = app.icon ?: return ColorUtils.getDominantColor(noIcon)
+        val key = "${app.packageName}|${System.identityHashCode(icon)}"
+        cache.get(key)?.let { return it }
+        return PerfLog.measure("dominantColor ${app.packageName}", thresholdMs = 8) {
+            ColorUtils.getDominantColor(icon)
+        }.also { cache.put(key, it) }
+    }
+}
+
+@Composable
+private fun rememberAppColor(app: AppInfo?): Color =
+    remember(app?.packageName, app?.icon) { AppColorCache.get(app) }
+
+/**
+ * The calendar used to be reloaded every time the page entered composition. Re-entering within
+ * this window skips the immediate reload; the periodic refresh still runs while the page is shown.
+ */
+private object CalendarRefreshThrottle {
+    const val MIN_REENTRY_INTERVAL_MS = 30_000L
+
+    @Volatile
+    var lastLoadElapsed = 0L
+}
+
+/**
+ * Last non-empty tab data, kept so the tabs don't vanish mid exit-animation when everything is
+ * cleared. A plain holder, not snapshot state: it is only read in the same composition that makes
+ * the notification count drop to zero, so observing it would just add recompositions.
+ */
+private class LastTabs {
+    var packages: List<String> = emptyList()
+    var groups: Map<String, List<LauncherNotification>> = emptyMap()
+}
 
 @Composable
 fun NotificationPage(
@@ -295,10 +352,20 @@ fun NotificationPage(
         }
     }
 
+    // One map lookup per item instead of a linear search through every installed app.
+    val appsByPackage = remember(apps) { apps.associateBy { it.packageName } }
+
     LaunchedEffect(Unit) {
         while (true) {
-            viewModel.loadCalendarEvents()
-            delay(5.minutes)
+            val last = CalendarRefreshThrottle.lastLoadElapsed
+            val sinceLast = SystemClock.elapsedRealtime() - last
+            if (last == 0L || sinceLast >= CalendarRefreshThrottle.MIN_REENTRY_INTERVAL_MS) {
+                PerfLog.measure("loadCalendarEvents", thresholdMs = 8) { viewModel.loadCalendarEvents() }
+                CalendarRefreshThrottle.lastLoadElapsed = SystemClock.elapsedRealtime()
+                delay(5.minutes)
+            } else {
+                delay((CalendarRefreshThrottle.MIN_REENTRY_INTERVAL_MS - sinceLast).milliseconds)
+            }
         }
     }
 
@@ -338,27 +405,26 @@ fun NotificationPage(
         apps
     }
 
-    // Keep a "last known" set of data for the tabs to prevent them from vanishing
-    // instantly during the exit animation when notifications are cleared.
-    var lastTabsData by remember { mutableStateOf<Pair<List<String>, Map<String, List<LauncherNotification>>>?>(null) }
+    // A fresh holder whenever grouping is toggled, seeded in the same composition below.
+    val lastTabs = remember(disableGrouping) { LastTabs() }
     if (sortedAppPackages.isNotEmpty()) {
-        lastTabsData = sortedAppPackages to groupedNotifications
+        lastTabs.packages = sortedAppPackages
+        lastTabs.groups = groupedNotifications
     }
     LaunchedEffect(disableGrouping) {
-        lastTabsData = null
         selectedPackage = null
     }
-    val effectiveTabs = if (notificationCount > 0) sortedAppPackages else lastTabsData?.first ?: emptyList()
-    val effectiveGroups = if (notificationCount > 0) groupedNotifications else lastTabsData?.second ?: emptyMap()
+    val effectiveTabs = if (notificationCount > 0) sortedAppPackages else lastTabs.packages
+    val effectiveGroups = if (notificationCount > 0) groupedNotifications else lastTabs.groups
 
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val disableLandscape = shouldDisableLandscapeLayout(context)
     val useLandscapeLayout = isLandscape && !disableLandscape
-    val windowInfoForWidth = LocalWindowInfo.current
-    val densityForWidth = LocalDensity.current
-    val windowWidthDp = with(densityForWidth) { windowInfoForWidth.containerSize.width.toDp() }
+    val windowInfo = LocalWindowInfo.current
+    val density = LocalDensity.current
+    val windowWidthDp = with(density) { windowInfo.containerSize.width.toDp() }
     val isWideScreen = windowWidthDp >= 600.dp
     val glanceHidesNotifications = !useLandscapeLayout && !isWideScreen
     // 0 = default layout, 1 = the event list owns the whole column
@@ -378,9 +444,11 @@ fun NotificationPage(
 
     // --- Keyboard-aware lift for the notification being replied to ---
 
-    val density = LocalDensity.current
-    val windowHeightPx = LocalWindowInfo.current.containerSize.height.toFloat()
-    val imeBottomPx = WindowInsets.ime.getBottom(density).toFloat()
+    val windowHeightPx = windowInfo.containerSize.height.toFloat()
+    val isReplying = replyingNotificationKey != null
+
+    val imeInsets = WindowInsets.ime
+    val imeBottomPx = if (isReplying) imeInsets.getBottom(density).toFloat() else 0f
 
     val hasHardwareKeyboard = configuration.keyboard != Configuration.KEYBOARD_NOKEYS &&
             configuration.hardKeyboardHidden == Configuration.HARDKEYBOARDHIDDEN_NO
@@ -393,8 +461,6 @@ fun NotificationPage(
     // value is a stable fixed point instead of feeding back into itself.
     var replyTopPx by remember { mutableFloatStateOf(0f) }
     var replyBottomPx by remember { mutableFloatStateOf(0f) }
-
-    val isReplying = replyingNotificationKey != null
 
     // With a hardware keyboard there is no IME, so the dock is the obstruction.
     val obstructionPx = if (isReplying && hasHardwareKeyboard) {
@@ -414,7 +480,9 @@ fun NotificationPage(
         needed.coerceAtMost(maxShift)
     }
 
-    val contentShiftPx by animateFloatAsState(
+    // Kept as a State and only read in effects, callbacks and the offset lambda, so the
+    // animation itself never recomposes the page.
+    val contentShift = animateFloatAsState(
         targetValue = targetShiftPx,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
@@ -423,8 +491,11 @@ fun NotificationPage(
         label = "notificationKeyboardShift"
     )
 
-    LaunchedEffect(contentShiftPx, hasHardwareKeyboard) {
-        onContentShiftChanged(if (hasHardwareKeyboard) contentShiftPx else 0f)
+    val currentOnContentShiftChanged by rememberUpdatedState(onContentShiftChanged)
+    LaunchedEffect(hasHardwareKeyboard) {
+        snapshotFlow { contentShift.value }.collect { shift ->
+            currentOnContentShiftChanged(if (hasHardwareKeyboard) shift else 0f)
+        }
     }
 
     // Bounds are per-reply, so clear them on every transition — including close, so
@@ -438,9 +509,14 @@ fun NotificationPage(
         onDispose { viewModel.setReplyingNotification(null) }
     }
 
-    val onReplyBounds: (Rect) -> Unit = { rect ->
-        replyTopPx = rect.top + contentShiftPx
-        replyBottomPx = rect.bottom + contentShiftPx
+    val onReplyBounds: (Rect) -> Unit = remember(contentShift) {
+        { rect ->
+            replyTopPx = rect.top + contentShift.value
+            replyBottomPx = rect.bottom + contentShift.value
+        }
+    }
+    val onReplyOpen: (String?) -> Unit = remember(viewModel) {
+        { key -> viewModel.setReplyingNotification(key) }
     }
 
     val focusManager = LocalFocusManager.current
@@ -455,7 +531,7 @@ fun NotificationPage(
         }
     }
 
-    val hideKeyboardOnOverscroll = remember {
+    val hideKeyboardOnOverscroll = remember(focusManager) {
         object : NestedScrollConnection {
             override fun onPostScroll(
                 consumed: Offset,
@@ -471,8 +547,19 @@ fun NotificationPage(
         }
     }
 
-    val contentOffset = Modifier.offset { IntOffset(0, -contentShiftPx.roundToInt()) }
+    val contentOffset = remember(contentShift) {
+        Modifier.offset { IntOffset(0, -contentShift.value.roundToInt()) }
+    }
     val wholeScreenOffset = if (hasHardwareKeyboard) contentOffset else Modifier
+
+    val stateKey = when {
+        notificationCount == 0 -> "empty"
+        selectedPackage == null -> "summary"
+        selectedPackage == "__MUTED__" -> "muted"
+        selectedPackage == "__PERMANENT__" -> "permanent"
+        selectedPackage == "__ALL__" -> "all"
+        else -> "details|$selectedPackage"
+    }
 
     Box(modifier = Modifier
         .fillMaxSize()
@@ -578,359 +665,28 @@ fun NotificationPage(
                         .fillMaxHeight()
                         .animateContentSize(animationSpec = spring(stiffness = Spring.StiffnessMedium))
                 ) {
-                    val stateKey = when {
-                        notificationCount == 0 -> "empty"
-                        selectedPackage == null -> "summary"
-                        selectedPackage == "__MUTED__" -> "muted"
-                        selectedPackage == "__PERMANENT__" -> "permanent"
-                        selectedPackage == "__ALL__" -> "all"
-                        else -> "details|$selectedPackage"
-                    }
-
-                    AnimatedContent(
-                        targetState = stateKey,
-                        transitionSpec = {
-                            (fadeIn(animationSpec = tween(150)) + scaleIn(initialScale = 0.98f, animationSpec = tween(150)))
-                                .togetherWith(fadeOut(animationSpec = tween(80)))
-                        },
+                    NotificationContent(
+                        stateKey = stateKey,
                         label = "notification_content_landscape",
+                        listState = landscapeListState,
+                        notificationCount = notificationCount,
+                        notifications = notifications,
+                        indicatorType = indicatorType,
+                        messageType = messageType,
+                        baseColor = baseColor,
+                        groupedNotifications = groupedNotifications,
+                        mutedNotifications = mutedNotifications,
+                        permanentNotifications = permanentNotifications,
+                        appsByPackage = appsByPackage,
+                        offsets = offsets,
+                        replyingNotificationKey = replyingNotificationKey,
+                        onReplyOpen = onReplyOpen,
+                        onReplyBounds = onReplyBounds,
+                        contentOffset = contentOffset,
+                        overscrollConnection = hideKeyboardOnOverscroll,
+                        onDismissNotification = onDismissNotification,
                         modifier = Modifier.weight(1f).fillMaxWidth()
-                    ) { targetState ->
-                        when {
-                            targetState == "empty" -> {
-                                val emptyIcon = when (indicatorType) {
-                                    1 -> Icons.Rounded.Check
-                                    2 -> Icons.Rounded.EmojiEvents
-                                    else -> null
-                                }
-                                val emptyMessage = when (messageType) {
-                                    1 -> stringResource(R.string.notification_message_no_notification)
-                                    2 -> stringResource(R.string.notification_message_up_to_date)
-                                    else -> ""
-                                }
-
-                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.spacedBy(LargeMediumSpacer)
-                                    ) {
-                                        if (emptyIcon != null) {
-                                            Icon(
-                                                imageVector = emptyIcon,
-                                                contentDescription = null,
-                                                tint = baseColor.copy(alpha = 0.8f),
-                                                modifier = Modifier.size(HugerSpacing)
-                                            )
-                                        }
-                                        if (emptyMessage.isNotEmpty()) {
-                                            Text(
-                                                text = emptyMessage,
-                                                color = baseColor.copy(alpha = 0.8f),
-                                                fontSize = 18.sp,
-                                                fontWeight = FontWeight.Medium,
-                                                maxLines = 1,
-                                                modifier = Modifier.basicMarquee()
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                            targetState == "summary" -> {
-                                val allMuted = notifications.isNotEmpty() && notifications.all { it.isMuted }
-                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.spacedBy(LargeMediumSpacer)
-                                    ) {
-                                        Icon(
-                                            imageVector = if (allMuted) Icons.Rounded.NotificationsOff else Icons.Rounded.NotificationsActive,
-                                            contentDescription = null,
-                                            tint = baseColor.copy(alpha = 0.8f),
-                                            modifier = Modifier.size(HugerSpacing)
-                                        )
-                                        Text(
-                                            text = if (allMuted) stringResource(R.string.notification_message_no_notification) else pluralStringResource(R.plurals.notification_count, notificationCount, notificationCount),
-                                            color = baseColor.copy(alpha = 0.8f),
-                                            fontSize = 18.sp,
-                                            fontFamily = mainFontFamily,
-                                            fontWeight = FontWeight.Medium
-                                        )
-                                    }
-                                }
-                            }
-                            targetState == "muted" -> {
-                                LazyColumn(
-                                    state = landscapeListState,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .then(contentOffset)
-                                        .nestedScroll(hideKeyboardOnOverscroll)
-                                        .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                                        .drawWithContent {
-                                            drawContent()
-                                            val fadeHeight = LargestSpacing.toPx()
-                                            drawRect(
-                                                brush = Brush.verticalGradient(
-                                                    0f to Color.Transparent,
-                                                    fadeHeight / size.height to Color.Black
-                                                ),
-                                                blendMode = BlendMode.DstIn
-                                            )
-                                            drawRect(
-                                                brush = Brush.verticalGradient(
-                                                    (size.height - fadeHeight) / size.height to Color.Black,
-                                                    1f to Color.Transparent
-                                                ),
-                                                blendMode = BlendMode.DstIn
-                                            )
-                                        }
-                                        .drawVerticalScrollbar(landscapeListState, MaterialTheme.colorScheme.primary),
-                                    verticalArrangement = Arrangement.spacedBy(SmallerSpacer, Alignment.Bottom),
-                                    contentPadding = PaddingValues(top = LargestPadding, bottom = LargestPadding)
-                                ) {
-                                    itemsIndexed(mutedNotifications, key = { _, it -> it.key }) { index, notification ->
-                                        val app = apps.find { it.packageName == notification.packageName }
-                                        val appColor = remember(app) { ColorUtils.getDominantColor(app?.icon) }
-
-                                        NotificationItem(
-                                            notification = notification,
-                                            appColor = appColor,
-                                            isFirst = index == 0,
-                                            isLast = index == mutedNotifications.size - 1,
-                                            offsetAbove = 0f,
-                                            offsetBelow = 0f,
-                                            replyingNotificationKey = replyingNotificationKey,
-                                            onReplyOpen = { viewModel.setReplyingNotification(it) },
-                                            onReplyBoundsChanged = onReplyBounds,
-                                            onOffsetChanged = { offsets[notification.key] = it },
-                                            modifier = Modifier.animateItem(
-                                                fadeInSpec = tween(durationMillis = 120),
-                                                placementSpec = spring(
-                                                    dampingRatio = Spring.DampingRatioNoBouncy,
-                                                    stiffness = Spring.StiffnessHigh
-                                                ),
-                                                fadeOutSpec = tween(durationMillis = 120)
-                                            ),
-                                            onOpen = {
-                                                sendContentIntent(context, notification)
-                                            },
-                                            onDismiss = { onDismissNotification(notification.key) },
-                                            forceRounded = true
-                                        )
-                                    }
-                                }
-                            }
-                            targetState == "permanent" -> {
-                                LazyColumn(
-                                    state = landscapeListState,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .then(contentOffset)
-                                        .nestedScroll(hideKeyboardOnOverscroll)
-                                        .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                                        .drawWithContent {
-                                            drawContent()
-                                            val fadeHeight = LargestSpacing.toPx()
-                                            drawRect(
-                                                brush = Brush.verticalGradient(
-                                                    0f to Color.Transparent,
-                                                    fadeHeight / size.height to Color.Black
-                                                ),
-                                                blendMode = BlendMode.DstIn
-                                            )
-                                            drawRect(
-                                                brush = Brush.verticalGradient(
-                                                    (size.height - fadeHeight) / size.height to Color.Black,
-                                                    1f to Color.Transparent
-                                                ),
-                                                blendMode = BlendMode.DstIn
-                                            )
-                                        }
-                                        .drawVerticalScrollbar(landscapeListState, MaterialTheme.colorScheme.primary),
-                                    verticalArrangement = Arrangement.spacedBy(SmallerSpacer, Alignment.Bottom),
-                                    contentPadding = PaddingValues(top = LargestPadding, bottom = LargestPadding)
-                                ) {
-                                    itemsIndexed(permanentNotifications, key = { _, it -> it.key }) { index, notification ->
-                                        val app = apps.find { it.packageName == notification.packageName }
-                                        val appColor = remember(app) { ColorUtils.getDominantColor(app?.icon) }
-
-                                        NotificationItem(
-                                            notification = notification,
-                                            appColor = appColor,
-                                            isFirst = index == 0,
-                                            isLast = index == permanentNotifications.size - 1,
-                                            offsetAbove = 0f,
-                                            offsetBelow = 0f,
-                                            replyingNotificationKey = replyingNotificationKey,
-                                            onReplyOpen = { viewModel.setReplyingNotification(it) },
-                                            onReplyBoundsChanged = onReplyBounds,
-                                            onOffsetChanged = { offsets[notification.key] = it },
-                                            modifier = Modifier.animateItem(
-                                                fadeInSpec = tween(durationMillis = 120),
-                                                placementSpec = spring(
-                                                    dampingRatio = Spring.DampingRatioNoBouncy,
-                                                    stiffness = Spring.StiffnessHigh
-                                                ),
-                                                fadeOutSpec = tween(durationMillis = 120)
-                                            ),
-                                            onOpen = {
-                                                sendContentIntent(context, notification)
-                                            },
-                                            onDismiss = { onDismissNotification(notification.key) },
-                                            forceRounded = true
-                                        )
-                                    }
-                                }
-                            }
-                            targetState == "all" -> {
-                                val allNotificationsList = groupedNotifications["__ALL__"] ?: emptyList()
-                                val groupedByApp = remember(allNotificationsList) {
-                                    val map = linkedMapOf<String, MutableList<LauncherNotification>>()
-                                    for (notification in allNotificationsList) {
-                                        map.getOrPut(notification.packageName) { mutableListOf() }.add(notification)
-                                    }
-                                    map.values.toList()
-                                }
-
-                                LazyColumn(
-                                    state = landscapeListState,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .then(contentOffset)
-                                        .nestedScroll(hideKeyboardOnOverscroll)
-                                        .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                                        .drawWithContent {
-                                            drawContent()
-                                            val fadeHeight = LargestSpacing.toPx()
-                                            drawRect(
-                                                brush = Brush.verticalGradient(
-                                                    0f to Color.Transparent,
-                                                    fadeHeight / size.height to Color.Black
-                                                ),
-                                                blendMode = BlendMode.DstIn
-                                            )
-                                            drawRect(
-                                                brush = Brush.verticalGradient(
-                                                    (size.height - fadeHeight) / size.height to Color.Black,
-                                                    1f to Color.Transparent
-                                                ),
-                                                blendMode = BlendMode.DstIn
-                                            )
-                                        }
-                                        .drawVerticalScrollbar(landscapeListState, MaterialTheme.colorScheme.primary),
-                                    verticalArrangement = Arrangement.spacedBy(SmallerSpacer, Alignment.Bottom),
-                                    contentPadding = PaddingValues(top = LargestPadding, bottom = LargestPadding)
-                                ) {
-                                    groupedByApp.forEachIndexed { groupIndex, notificationsInGroup ->
-                                        itemsIndexed(notificationsInGroup, key = { _, it -> it.key }) { indexInGroup, notification ->
-                                            val isFirst = indexInGroup == 0
-                                            val isLast = indexInGroup == notificationsInGroup.size - 1
-                                            val isLastGroup = groupIndex == groupedByApp.size - 1
-                                            val offsetAbove = if (indexInGroup > 0) offsets[notificationsInGroup[indexInGroup - 1].key] ?: 0f else 0f
-                                            val offsetBelow = if (indexInGroup < notificationsInGroup.size - 1) offsets[notificationsInGroup[indexInGroup + 1].key] ?: 0f else 0f
-                                            val app = apps.find { it.packageName == notification.packageName }
-                                            val appColor = remember(app) { ColorUtils.getDominantColor(app?.icon) }
-
-                                            NotificationItem(
-                                                notification = notification,
-                                                appColor = appColor,
-                                                isFirst = isFirst,
-                                                isLast = isLast,
-                                                offsetAbove = offsetAbove,
-                                                offsetBelow = offsetBelow,
-                                                replyingNotificationKey = replyingNotificationKey,
-                                                onReplyOpen = { viewModel.setReplyingNotification(it) },
-                                                onReplyBoundsChanged = onReplyBounds,
-                                                onOffsetChanged = { offsets[notification.key] = it },
-                                                modifier = Modifier
-                                                    .animateItem(
-                                                        fadeInSpec = tween(durationMillis = 120),
-                                                        placementSpec = spring(
-                                                            dampingRatio = Spring.DampingRatioNoBouncy,
-                                                            stiffness = Spring.StiffnessHigh
-                                                        ),
-                                                        fadeOutSpec = tween(durationMillis = 120)
-                                                    )
-                                                    .then(
-                                                        if (isLast && !isLastGroup) Modifier.padding(bottom = SmallerPadding) else Modifier
-                                                    ),
-                                                onOpen = {
-                                                    sendContentIntent(context, notification)
-                                                },
-                                                onDismiss = { onDismissNotification(notification.key) }
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                            targetState.startsWith("details|") -> {
-                                val pkg = targetState.substringAfter("|")
-                                val app = apps.find { it.packageName == pkg }
-                                val appColor = remember(app) { ColorUtils.getDominantColor(app?.icon) }
-
-                                LazyColumn(
-                                    state = landscapeListState,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .then(contentOffset)
-                                        .nestedScroll(hideKeyboardOnOverscroll)
-                                        .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                                        .drawWithContent {
-                                            drawContent()
-                                            val fadeHeight = LargestSpacing.toPx()
-                                            drawRect(
-                                                brush = Brush.verticalGradient(
-                                                    0f to Color.Transparent,
-                                                    fadeHeight / size.height to Color.Black
-                                                ),
-                                                blendMode = BlendMode.DstIn
-                                            )
-                                            drawRect(
-                                                brush = Brush.verticalGradient(
-                                                    (size.height - fadeHeight) / size.height to Color.Black,
-                                                    1f to Color.Transparent
-                                                ),
-                                                blendMode = BlendMode.DstIn
-                                            )
-                                        }
-                                        .drawVerticalScrollbar(landscapeListState, MaterialTheme.colorScheme.primary),
-                                    verticalArrangement = Arrangement.spacedBy(SmallerSpacer, Alignment.Bottom),
-                                    contentPadding = PaddingValues(top = LargestPadding, bottom = LargestPadding)
-                                ) {
-                                    val notificationsInGroup = groupedNotifications[pkg]?.reversed() ?: emptyList()
-                                    itemsIndexed(notificationsInGroup, key = { _, it -> it.key }) { index, notification ->
-                                        val offsetAbove = if (index > 0) offsets[notificationsInGroup[index - 1].key] ?: 0f else 0f
-                                        val offsetBelow = if (index < notificationsInGroup.size - 1) offsets[notificationsInGroup[index + 1].key] ?: 0f else 0f
-
-                                        NotificationItem(
-                                            notification = notification,
-                                            appColor = appColor,
-                                            isFirst = index == 0,
-                                            isLast = index == notificationsInGroup.size - 1,
-                                            offsetAbove = offsetAbove,
-                                            offsetBelow = offsetBelow,
-                                            replyingNotificationKey = replyingNotificationKey,
-                                            onReplyOpen = { viewModel.setReplyingNotification(it) },
-                                            onReplyBoundsChanged = onReplyBounds,
-                                            onOffsetChanged = { offsets[notification.key] = it },
-                                            modifier = Modifier.animateItem(
-                                                fadeInSpec = tween(durationMillis = 120),
-                                                placementSpec = spring(
-                                                    dampingRatio = Spring.DampingRatioNoBouncy,
-                                                    stiffness = Spring.StiffnessHigh
-                                                ),
-                                                fadeOutSpec = tween(durationMillis = 120)
-                                            ),
-                                            onOpen = {
-                                                sendContentIntent(context, notification)
-                                            },
-                                            onDismiss = { onDismissNotification(notification.key) }
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    )
 
                     AnimatedVisibility(
                         visible = notificationCount > 0,
@@ -1020,365 +776,28 @@ fun NotificationPage(
                         .padding(bottom = dockAreaHeight)
                         .animateContentSize(animationSpec = spring(stiffness = Spring.StiffnessMedium))
                 ) {
-                    val stateKey = when {
-                        notificationCount == 0 -> "empty"
-                        selectedPackage == null -> "summary"
-                        selectedPackage == "__MUTED__" -> "muted"
-                        selectedPackage == "__PERMANENT__" -> "permanent"
-                        selectedPackage == "__ALL__" -> "all"
-                        else -> "details|$selectedPackage"
-                    }
-
-                    AnimatedContent(
-                        targetState = stateKey,
-                        transitionSpec = {
-                            (fadeIn(animationSpec = tween(150)) + scaleIn(initialScale = 0.98f, animationSpec = tween(150)))
-                                .togetherWith(fadeOut(animationSpec = tween(80)))
-                        },
+                    NotificationContent(
+                        stateKey = stateKey,
                         label = "notification_content_portrait",
+                        listState = portraitListState,
+                        notificationCount = notificationCount,
+                        notifications = notifications,
+                        indicatorType = indicatorType,
+                        messageType = messageType,
+                        baseColor = baseColor,
+                        groupedNotifications = groupedNotifications,
+                        mutedNotifications = mutedNotifications,
+                        permanentNotifications = permanentNotifications,
+                        appsByPackage = appsByPackage,
+                        offsets = offsets,
+                        replyingNotificationKey = replyingNotificationKey,
+                        onReplyOpen = onReplyOpen,
+                        onReplyBounds = onReplyBounds,
+                        contentOffset = contentOffset,
+                        overscrollConnection = hideKeyboardOnOverscroll,
+                        onDismissNotification = onDismissNotification,
                         modifier = Modifier.weight(1f).fillMaxWidth()
-                    ) { targetState ->
-                        when {
-                            targetState == "empty" -> {
-                                val emptyIcon = when (indicatorType) {
-                                    1 -> Icons.Rounded.Check
-                                    2 -> Icons.Rounded.EmojiEvents
-                                    else -> null
-                                }
-                                val emptyMessage = when (messageType) {
-                                    1 -> stringResource(R.string.notification_message_no_notification)
-                                    2 -> stringResource(R.string.notification_message_up_to_date)
-                                    else -> ""
-                                }
-
-                                Box(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.spacedBy(LargeMediumSpacer)
-                                    ) {
-                                        if (emptyIcon != null) {
-                                            Icon(
-                                                imageVector = emptyIcon,
-                                                contentDescription = null,
-                                                tint = baseColor.copy(alpha = 0.8f),
-                                                modifier = Modifier.size(HugerSpacing)
-                                            )
-                                        }
-                                        if (emptyMessage.isNotEmpty()) {
-                                            Text(
-                                                text = emptyMessage,
-                                                color = baseColor.copy(alpha = 0.8f),
-                                                fontSize = 18.sp,
-                                                fontWeight = FontWeight.Medium,
-                                                maxLines = 1,
-                                                modifier = Modifier.basicMarquee()
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                            targetState == "summary" -> {
-                                val allMuted = notifications.isNotEmpty() && notifications.all { it.isMuted }
-                                Box(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.spacedBy(LargeMediumSpacer)
-                                    ) {
-                                        Icon(
-                                            imageVector = if (allMuted) Icons.Rounded.NotificationsOff else Icons.Rounded.NotificationsActive,
-                                            contentDescription = null,
-                                            tint = baseColor.copy(alpha = 0.8f),
-                                            modifier = Modifier.size(HugerSpacing)
-                                        )
-                                        Text(
-                                            text = if (allMuted) stringResource(R.string.notification_message_no_notification) else pluralStringResource(R.plurals.notification_count, notificationCount, notificationCount),
-                                            color = baseColor.copy(alpha = 0.8f),
-                                            fontSize = 18.sp,
-                                            fontFamily = mainFontFamily,
-                                            fontWeight = FontWeight.Medium
-                                        )
-                                    }
-                                }
-                            }
-                            targetState == "muted" -> {
-                                LazyColumn(
-                                    state = portraitListState,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .then(contentOffset)
-                                        .nestedScroll(hideKeyboardOnOverscroll)
-                                        .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                                        .drawWithContent {
-                                            drawContent()
-                                            val fadeHeight = LargestSpacing.toPx()
-                                            drawRect(
-                                                brush = Brush.verticalGradient(
-                                                    0f to Color.Transparent,
-                                                    fadeHeight / size.height to Color.Black
-                                                ),
-                                                blendMode = BlendMode.DstIn
-                                            )
-                                            drawRect(
-                                                brush = Brush.verticalGradient(
-                                                    (size.height - fadeHeight) / size.height to Color.Black,
-                                                    1f to Color.Transparent
-                                                ),
-                                                blendMode = BlendMode.DstIn
-                                            )
-                                        }
-                                        .drawVerticalScrollbar(portraitListState, MaterialTheme.colorScheme.primary),
-                                    verticalArrangement = Arrangement.spacedBy(SmallerSpacer, Alignment.Bottom),
-                                    contentPadding = PaddingValues(top = LargestPadding, bottom = LargestPadding)
-                                ) {
-                                    itemsIndexed(mutedNotifications, key = { _, it -> it.key }) { index, notification ->
-                                        val app = apps.find { it.packageName == notification.packageName }
-                                        val appColor = remember(app) { ColorUtils.getDominantColor(app?.icon) }
-
-                                        NotificationItem(
-                                            notification = notification,
-                                            appColor = appColor,
-                                            isFirst = index == 0,
-                                            isLast = index == mutedNotifications.size - 1,
-                                            offsetAbove = 0f,
-                                            offsetBelow = 0f,
-                                            replyingNotificationKey = replyingNotificationKey,
-                                            onReplyOpen = { viewModel.setReplyingNotification(it) },
-                                            onReplyBoundsChanged = onReplyBounds,
-                                            onOffsetChanged = { offsets[notification.key] = it },
-                                            modifier = Modifier.animateItem(
-                                                fadeInSpec = tween(durationMillis = 120),
-                                                placementSpec = spring(
-                                                    dampingRatio = Spring.DampingRatioNoBouncy,
-                                                    stiffness = Spring.StiffnessHigh
-                                                ),
-                                                fadeOutSpec = tween(durationMillis = 120)
-                                            ),
-                                            onOpen = {
-                                                sendContentIntent(context, notification)
-                                            },
-                                            onDismiss = { onDismissNotification(notification.key) },
-                                            forceRounded = true
-                                        )
-                                    }
-                                }
-                            }
-                            targetState == "permanent" -> {
-                                LazyColumn(
-                                    state = portraitListState,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .then(contentOffset)
-                                        .nestedScroll(hideKeyboardOnOverscroll)
-                                        .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                                        .drawWithContent {
-                                            drawContent()
-                                            val fadeHeight = LargestSpacing.toPx()
-                                            drawRect(
-                                                brush = Brush.verticalGradient(
-                                                    0f to Color.Transparent,
-                                                    fadeHeight / size.height to Color.Black
-                                                ),
-                                                blendMode = BlendMode.DstIn
-                                            )
-                                            drawRect(
-                                                brush = Brush.verticalGradient(
-                                                    (size.height - fadeHeight) / size.height to Color.Black,
-                                                    1f to Color.Transparent
-                                                ),
-                                                blendMode = BlendMode.DstIn
-                                            )
-                                        }
-                                        .drawVerticalScrollbar(portraitListState, MaterialTheme.colorScheme.primary),
-                                    verticalArrangement = Arrangement.spacedBy(SmallerSpacer, Alignment.Bottom),
-                                    contentPadding = PaddingValues(top = LargestPadding, bottom = LargestPadding)
-                                ) {
-                                    itemsIndexed(permanentNotifications, key = { _, it -> it.key }) { index, notification ->
-                                        val app = apps.find { it.packageName == notification.packageName }
-                                        val appColor = remember(app) { ColorUtils.getDominantColor(app?.icon) }
-
-                                        NotificationItem(
-                                            notification = notification,
-                                            appColor = appColor,
-                                            isFirst = index == 0,
-                                            isLast = index == permanentNotifications.size - 1,
-                                            offsetAbove = 0f,
-                                            offsetBelow = 0f,
-                                            replyingNotificationKey = replyingNotificationKey,
-                                            onReplyOpen = { viewModel.setReplyingNotification(it) },
-                                            onReplyBoundsChanged = onReplyBounds,
-                                            onOffsetChanged = { offsets[notification.key] = it },
-                                            modifier = Modifier.animateItem(
-                                                fadeInSpec = tween(durationMillis = 120),
-                                                placementSpec = spring(
-                                                    dampingRatio = Spring.DampingRatioNoBouncy,
-                                                    stiffness = Spring.StiffnessHigh
-                                                ),
-                                                fadeOutSpec = tween(durationMillis = 120)
-                                            ),
-                                            onOpen = {
-                                                sendContentIntent(context, notification)
-                                            },
-                                            onDismiss = { onDismissNotification(notification.key) },
-                                            forceRounded = true
-                                        )
-                                    }
-                                }
-                            }
-                            targetState == "all" -> {
-                                val allNotificationsList = groupedNotifications["__ALL__"] ?: emptyList()
-                                val groupedByApp = remember(allNotificationsList) {
-                                    val map = linkedMapOf<String, MutableList<LauncherNotification>>()
-                                    for (notification in allNotificationsList) {
-                                        map.getOrPut(notification.packageName) { mutableListOf() }.add(notification)
-                                    }
-                                    map.values.toList()
-                                }
-
-                                LazyColumn(
-                                    state = portraitListState,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .then(contentOffset)
-                                        .nestedScroll(hideKeyboardOnOverscroll)
-                                        .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                                        .drawWithContent {
-                                            drawContent()
-                                            val fadeHeight = LargestSpacing.toPx()
-                                            drawRect(
-                                                brush = Brush.verticalGradient(
-                                                    0f to Color.Transparent,
-                                                    fadeHeight / size.height to Color.Black
-                                                ),
-                                                blendMode = BlendMode.DstIn
-                                            )
-                                            drawRect(
-                                                brush = Brush.verticalGradient(
-                                                    (size.height - fadeHeight) / size.height to Color.Black,
-                                                    1f to Color.Transparent
-                                                ),
-                                                blendMode = BlendMode.DstIn
-                                            )
-                                        }
-                                        .drawVerticalScrollbar(portraitListState, MaterialTheme.colorScheme.primary),
-                                    verticalArrangement = Arrangement.spacedBy(SmallerSpacer, Alignment.Bottom),
-                                    contentPadding = PaddingValues(top = LargestPadding, bottom = LargestPadding)
-                                ) {
-                                    groupedByApp.forEachIndexed { groupIndex, notificationsInGroup ->
-                                        itemsIndexed(notificationsInGroup, key = { _, it -> it.key }) { indexInGroup, notification ->
-                                            val isFirst = indexInGroup == 0
-                                            val isLast = indexInGroup == notificationsInGroup.size - 1
-                                            val isLastGroup = groupIndex == groupedByApp.size - 1
-                                            val offsetAbove = if (indexInGroup > 0) offsets[notificationsInGroup[indexInGroup - 1].key] ?: 0f else 0f
-                                            val offsetBelow = if (indexInGroup < notificationsInGroup.size - 1) offsets[notificationsInGroup[indexInGroup + 1].key] ?: 0f else 0f
-                                            val app = apps.find { it.packageName == notification.packageName }
-                                            val appColor = remember(app) { ColorUtils.getDominantColor(app?.icon) }
-
-                                            NotificationItem(
-                                                notification = notification,
-                                                appColor = appColor,
-                                                isFirst = isFirst,
-                                                isLast = isLast,
-                                                offsetAbove = offsetAbove,
-                                                offsetBelow = offsetBelow,
-                                                replyingNotificationKey = replyingNotificationKey,
-                                                onReplyOpen = { viewModel.setReplyingNotification(it) },
-                                                onReplyBoundsChanged = onReplyBounds,
-                                                onOffsetChanged = { offsets[notification.key] = it },
-                                                modifier = Modifier
-                                                    .animateItem(
-                                                        fadeInSpec = tween(durationMillis = 120),
-                                                        placementSpec = spring(
-                                                            dampingRatio = Spring.DampingRatioNoBouncy,
-                                                            stiffness = Spring.StiffnessHigh
-                                                        ),
-                                                        fadeOutSpec = tween(durationMillis = 120)
-                                                    )
-                                                    .then(
-                                                        if (isLast && !isLastGroup) Modifier.padding(bottom = SmallerPadding) else Modifier
-                                                    ),
-                                                onOpen = {
-                                                    sendContentIntent(context, notification)
-                                                },
-                                                onDismiss = { onDismissNotification(notification.key) }
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                            targetState.startsWith("details|") -> {
-                                val pkg = targetState.substringAfter("|")
-                                val app = apps.find { it.packageName == pkg }
-                                val appColor = remember(app) { ColorUtils.getDominantColor(app?.icon) }
-
-                                LazyColumn(
-                                    state = portraitListState,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .then(contentOffset)
-                                        .nestedScroll(hideKeyboardOnOverscroll)
-                                        .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                                        .drawWithContent {
-                                            drawContent()
-                                            val fadeHeight = LargestPadding.toPx()
-                                            drawRect(
-                                                brush = Brush.verticalGradient(
-                                                    0f to Color.Transparent,
-                                                    fadeHeight / size.height to Color.Black
-                                                ),
-                                                blendMode = BlendMode.DstIn
-                                            )
-                                            drawRect(
-                                                brush = Brush.verticalGradient(
-                                                    (size.height - fadeHeight) / size.height to Color.Black,
-                                                    1f to Color.Transparent
-                                                ),
-                                                blendMode = BlendMode.DstIn
-                                            )
-                                        }
-                                        .drawVerticalScrollbar(portraitListState, MaterialTheme.colorScheme.primary),
-                                    verticalArrangement = Arrangement.spacedBy(SmallerSpacer, Alignment.Bottom),
-                                    contentPadding = PaddingValues(top = LargestPadding, bottom = LargestPadding)
-                                ) {
-                                    val notificationsInGroup = groupedNotifications[pkg]?.reversed() ?: emptyList()
-                                    itemsIndexed(notificationsInGroup, key = { _, it -> it.key }) { index, notification ->
-                                        val offsetAbove = if (index > 0) offsets[notificationsInGroup[index - 1].key] ?: 0f else 0f
-                                        val offsetBelow = if (index < notificationsInGroup.size - 1) offsets[notificationsInGroup[index + 1].key] ?: 0f else 0f
-
-                                        NotificationItem(
-                                            notification = notification,
-                                            appColor = appColor,
-                                            isFirst = index == 0,
-                                            isLast = index == notificationsInGroup.size - 1,
-                                            offsetAbove = offsetAbove,
-                                            offsetBelow = offsetBelow,
-                                            replyingNotificationKey = replyingNotificationKey,
-                                            onReplyOpen = { viewModel.setReplyingNotification(it) },
-                                            onReplyBoundsChanged = onReplyBounds,
-                                            onOffsetChanged = { offsets[notification.key] = it },
-                                            modifier = Modifier.animateItem(
-                                                fadeInSpec = tween(durationMillis = 120),
-                                                placementSpec = spring(
-                                                    dampingRatio = Spring.DampingRatioNoBouncy,
-                                                    stiffness = Spring.StiffnessHigh
-                                                ),
-                                                fadeOutSpec = tween(durationMillis = 120)
-                                            ),
-                                            onOpen = {
-                                                sendContentIntent(context, notification)
-                                            },
-                                            onDismiss = { onDismissNotification(notification.key) }
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    )
 
                     AnimatedVisibility(
                         visible = notificationCount > 0,
@@ -1470,6 +889,285 @@ fun NotificationPage(
     }
 }
 
+/**
+ * The notification area shared by the landscape and portrait layouts. These branches used to be
+ * written out twice, once per orientation, and differed only in the list state and label.
+ */
+@Composable
+private fun NotificationContent(
+    stateKey: String,
+    label: String,
+    listState: LazyListState,
+    notificationCount: Int,
+    notifications: List<LauncherNotification>,
+    indicatorType: Int,
+    messageType: Int,
+    baseColor: Color,
+    groupedNotifications: Map<String, List<LauncherNotification>>,
+    mutedNotifications: List<LauncherNotification>,
+    permanentNotifications: List<LauncherNotification>,
+    appsByPackage: Map<String, AppInfo>,
+    offsets: SnapshotStateMap<String, Float>,
+    replyingNotificationKey: String?,
+    onReplyOpen: (String?) -> Unit,
+    onReplyBounds: (Rect) -> Unit,
+    contentOffset: Modifier,
+    overscrollConnection: NestedScrollConnection,
+    onDismissNotification: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+
+    AnimatedContent(
+        targetState = stateKey,
+        transitionSpec = {
+            (fadeIn(animationSpec = tween(150)) + scaleIn(initialScale = 0.98f, animationSpec = tween(150)))
+                .togetherWith(fadeOut(animationSpec = tween(80)))
+        },
+        label = label,
+        modifier = modifier
+    ) { targetState ->
+        when {
+            targetState == "empty" -> {
+                EmptyNotificationsState(
+                    indicatorType = indicatorType,
+                    messageType = messageType,
+                    baseColor = baseColor
+                )
+            }
+            targetState == "summary" -> {
+                NotificationSummaryState(
+                    notifications = notifications,
+                    notificationCount = notificationCount,
+                    baseColor = baseColor
+                )
+            }
+            targetState == "muted" || targetState == "permanent" -> {
+                val list = if (targetState == "muted") mutedNotifications else permanentNotifications
+                NotificationLazyList(listState, contentOffset, overscrollConnection) {
+                    itemsIndexed(list, key = { _, it -> it.key }) { index, notification ->
+                        val appColor = rememberAppColor(appsByPackage[notification.packageName])
+
+                        NotificationItem(
+                            notification = notification,
+                            appColor = appColor,
+                            isFirst = index == 0,
+                            isLast = index == list.size - 1,
+                            offsetAbove = 0f,
+                            offsetBelow = 0f,
+                            replyingNotificationKey = replyingNotificationKey,
+                            onReplyOpen = onReplyOpen,
+                            onReplyBoundsChanged = onReplyBounds,
+                            onOffsetChanged = { offsets[notification.key] = it },
+                            modifier = notificationItemAnimation(),
+                            onOpen = { sendContentIntent(context, notification) },
+                            onDismiss = { onDismissNotification(notification.key) },
+                            forceRounded = true
+                        )
+                    }
+                }
+            }
+            targetState == "all" -> {
+                val allNotificationsList = groupedNotifications["__ALL__"] ?: emptyList()
+                val groupedByApp = remember(allNotificationsList) {
+                    val map = linkedMapOf<String, MutableList<LauncherNotification>>()
+                    for (notification in allNotificationsList) {
+                        map.getOrPut(notification.packageName) { mutableListOf() }.add(notification)
+                    }
+                    map.values.toList()
+                }
+
+                NotificationLazyList(listState, contentOffset, overscrollConnection) {
+                    groupedByApp.forEachIndexed { groupIndex, notificationsInGroup ->
+                        itemsIndexed(notificationsInGroup, key = { _, it -> it.key }) { indexInGroup, notification ->
+                            val isFirst = indexInGroup == 0
+                            val isLast = indexInGroup == notificationsInGroup.size - 1
+                            val isLastGroup = groupIndex == groupedByApp.size - 1
+                            val offsetAbove = if (indexInGroup > 0) offsets[notificationsInGroup[indexInGroup - 1].key] ?: 0f else 0f
+                            val offsetBelow = if (indexInGroup < notificationsInGroup.size - 1) offsets[notificationsInGroup[indexInGroup + 1].key] ?: 0f else 0f
+                            val appColor = rememberAppColor(appsByPackage[notification.packageName])
+
+                            NotificationItem(
+                                notification = notification,
+                                appColor = appColor,
+                                isFirst = isFirst,
+                                isLast = isLast,
+                                offsetAbove = offsetAbove,
+                                offsetBelow = offsetBelow,
+                                replyingNotificationKey = replyingNotificationKey,
+                                onReplyOpen = onReplyOpen,
+                                onReplyBoundsChanged = onReplyBounds,
+                                onOffsetChanged = { offsets[notification.key] = it },
+                                modifier = notificationItemAnimation().then(
+                                    if (isLast && !isLastGroup) Modifier.padding(bottom = SmallerPadding) else Modifier
+                                ),
+                                onOpen = { sendContentIntent(context, notification) },
+                                onDismiss = { onDismissNotification(notification.key) }
+                            )
+                        }
+                    }
+                }
+            }
+            targetState.startsWith("details|") -> {
+                val pkg = targetState.substringAfter("|")
+                val appColor = rememberAppColor(appsByPackage[pkg])
+                val notificationsInGroup = remember(groupedNotifications, pkg) {
+                    groupedNotifications[pkg]?.reversed() ?: emptyList()
+                }
+
+                NotificationLazyList(listState, contentOffset, overscrollConnection) {
+                    itemsIndexed(notificationsInGroup, key = { _, it -> it.key }) { index, notification ->
+                        val offsetAbove = if (index > 0) offsets[notificationsInGroup[index - 1].key] ?: 0f else 0f
+                        val offsetBelow = if (index < notificationsInGroup.size - 1) offsets[notificationsInGroup[index + 1].key] ?: 0f else 0f
+
+                        NotificationItem(
+                            notification = notification,
+                            appColor = appColor,
+                            isFirst = index == 0,
+                            isLast = index == notificationsInGroup.size - 1,
+                            offsetAbove = offsetAbove,
+                            offsetBelow = offsetBelow,
+                            replyingNotificationKey = replyingNotificationKey,
+                            onReplyOpen = onReplyOpen,
+                            onReplyBoundsChanged = onReplyBounds,
+                            onOffsetChanged = { offsets[notification.key] = it },
+                            modifier = notificationItemAnimation(),
+                            onOpen = { sendContentIntent(context, notification) },
+                            onDismiss = { onDismissNotification(notification.key) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NotificationLazyList(
+    listState: LazyListState,
+    contentOffset: Modifier,
+    overscrollConnection: NestedScrollConnection,
+    content: LazyListScope.() -> Unit
+) {
+    LazyColumn(
+        state = listState,
+        modifier = Modifier
+            .fillMaxSize()
+            .then(contentOffset)
+            .nestedScroll(overscrollConnection)
+            .verticalEdgeFade(LargestSpacing)
+            .drawVerticalScrollbar(listState, MaterialTheme.colorScheme.primary),
+        verticalArrangement = Arrangement.spacedBy(SmallerSpacer, Alignment.Bottom),
+        contentPadding = PaddingValues(top = LargestPadding, bottom = LargestPadding),
+        content = content
+    )
+}
+
+private fun LazyItemScope.notificationItemAnimation(): Modifier = Modifier.animateItem(
+    fadeInSpec = tween(durationMillis = 120),
+    placementSpec = spring(
+        dampingRatio = Spring.DampingRatioNoBouncy,
+        stiffness = Spring.StiffnessHigh
+    ),
+    fadeOutSpec = tween(durationMillis = 120)
+)
+
+private fun Modifier.verticalEdgeFade(fade: Dp): Modifier = this
+    .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+    .drawWithContent {
+        drawContent()
+        val fadeHeight = fade.toPx()
+        drawRect(
+            brush = Brush.verticalGradient(
+                0f to Color.Transparent,
+                fadeHeight / size.height to Color.Black
+            ),
+            blendMode = BlendMode.DstIn
+        )
+        drawRect(
+            brush = Brush.verticalGradient(
+                (size.height - fadeHeight) / size.height to Color.Black,
+                1f to Color.Transparent
+            ),
+            blendMode = BlendMode.DstIn
+        )
+    }
+
+@Composable
+private fun EmptyNotificationsState(
+    indicatorType: Int,
+    messageType: Int,
+    baseColor: Color
+) {
+    val emptyIcon = when (indicatorType) {
+        1 -> Icons.Rounded.Check
+        2 -> Icons.Rounded.EmojiEvents
+        else -> null
+    }
+    val emptyMessage = when (messageType) {
+        1 -> stringResource(R.string.notification_message_no_notification)
+        2 -> stringResource(R.string.notification_message_up_to_date)
+        else -> ""
+    }
+
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(LargeMediumSpacer)
+        ) {
+            if (emptyIcon != null) {
+                Icon(
+                    imageVector = emptyIcon,
+                    contentDescription = null,
+                    tint = baseColor.copy(alpha = 0.8f),
+                    modifier = Modifier.size(HugerSpacing)
+                )
+            }
+            if (emptyMessage.isNotEmpty()) {
+                Text(
+                    text = emptyMessage,
+                    color = baseColor.copy(alpha = 0.8f),
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    modifier = Modifier.basicMarquee()
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NotificationSummaryState(
+    notifications: List<LauncherNotification>,
+    notificationCount: Int,
+    baseColor: Color
+) {
+    val allMuted = remember(notifications) {
+        notifications.isNotEmpty() && notifications.all { it.isMuted }
+    }
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(LargeMediumSpacer)
+        ) {
+            Icon(
+                imageVector = if (allMuted) Icons.Rounded.NotificationsOff else Icons.Rounded.NotificationsActive,
+                contentDescription = null,
+                tint = baseColor.copy(alpha = 0.8f),
+                modifier = Modifier.size(HugerSpacing)
+            )
+            Text(
+                text = if (allMuted) stringResource(R.string.notification_message_no_notification) else pluralStringResource(R.plurals.notification_count, notificationCount, notificationCount),
+                color = baseColor.copy(alpha = 0.8f),
+                fontSize = 18.sp,
+                fontFamily = mainFontFamily,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
 private fun sendContentIntent(
     context: android.content.Context,
     notification: LauncherNotification
@@ -1531,7 +1229,6 @@ fun AtAGlance(
     weatherState: WeatherState,
     isWallpaperDark: Boolean = false,
     onLongClick: (() -> Unit)? = null,
-    /** True while the full event list is shown instead of the pager. */
     expanded: Boolean = false,
     onExpandedChange: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
@@ -1711,25 +1408,7 @@ fun AtAGlance(
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(pageHeight)
-                                    .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                                    .drawWithContent {
-                                        drawContent()
-                                        val fadeHeight = MediumSpacing.toPx()
-                                        drawRect(
-                                            brush = Brush.verticalGradient(
-                                                0f to Color.Transparent,
-                                                fadeHeight / size.height to Color.Black
-                                            ),
-                                            blendMode = BlendMode.DstIn
-                                        )
-                                        drawRect(
-                                            brush = Brush.verticalGradient(
-                                                (size.height - fadeHeight) / size.height to Color.Black,
-                                                1f to Color.Transparent
-                                            ),
-                                            blendMode = BlendMode.DstIn
-                                        )
-                                    },
+                                    .verticalEdgeFade(MediumSpacing),
                                 horizontalAlignment = Alignment.Start
                             ) { index ->
                                 if (index == 0) {
@@ -2105,7 +1784,11 @@ fun NotificationTabs(
 
         var displayedPackages by remember { mutableStateOf(sortedAppPackages) }
         val leavingPackages = remember { mutableStateMapOf<String, Boolean>() }
-        val cachedTabInfo = remember { mutableStateMapOf<String, CachedTabInfo>() }
+        // Plain map, not snapshot state. It was written during composition on every pass with a
+        // fresh CachedTabInfo instance, which counted as a change and invalidated the tab strip
+        // that reads it, causing extra recompositions. It is only a fallback for tabs that are
+        // leaving, and the change that makes a tab leave already recomposes this scope.
+        val cachedTabInfo = remember { HashMap<String, CachedTabInfo>() }
 
         LaunchedEffect(sortedAppPackages) {
             val currentSet = sortedAppPackages.toSet()
@@ -2271,7 +1954,7 @@ fun NotificationTabs(
                                     isMutedTab -> MaterialTheme.colorScheme.surfaceContainerHighest
                                     isPermanentTab -> MaterialTheme.colorScheme.primary
                                     isAllTab -> MaterialTheme.colorScheme.primary
-                                    else -> remember(liveApp) { ColorUtils.getDominantColor(liveApp?.icon) }
+                                    else -> rememberAppColor(liveApp)
                                 }
 
                                 val liveContrastColor = remember(liveAppColor) { ColorUtils.getContrastColor(liveAppColor) }

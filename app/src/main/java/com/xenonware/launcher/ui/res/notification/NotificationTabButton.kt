@@ -39,24 +39,28 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import com.xenon.mylibrary.values.ExtraBigSpacing
@@ -91,15 +95,19 @@ fun NotificationTabButton(
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
-    val view = androidx.compose.ui.platform.LocalView.current
+    val view = LocalView.current
     val haptic = LocalHapticFeedback.current
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
     var itemPos by remember { mutableStateOf(Offset.Zero) }
-    var itemSize by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
+    var itemSize by remember { mutableStateOf(IntSize.Zero) }
     val dragOffset = remember { Animatable(Offset.Zero, Offset.VectorConverter) }
     var isDragging by remember { mutableStateOf(false) }
+
+    val currentOnDismiss by rememberUpdatedState(onDismiss)
+    val currentIsOverDelete by rememberUpdatedState(isOverDelete)
+    val currentOnDragStateChanged by rememberUpdatedState(onDragStateChanged)
 
     val iconScale = remember { Animatable(1f) }
     var prevCount by remember { mutableIntStateOf(notificationCount) }
@@ -116,6 +124,11 @@ fun NotificationTabButton(
             )
         }
         prevCount = notificationCount
+    }
+
+    val iconScaleModifier = Modifier.graphicsLayer {
+        scaleX = iconScale.value
+        scaleY = iconScale.value
     }
 
     val cornerRadius by animateDpAsState(
@@ -144,7 +157,7 @@ fun NotificationTabButton(
         color = if (isDragging) backgroundColor.copy(alpha = 0.9f) else backgroundColor,
         modifier = modifier
             .height(ExtraBigSpacing)
-            .onGloballyPositioned { 
+            .onGloballyPositioned {
                 itemPos = it.positionInRoot()
                 itemSize = it.size
             }
@@ -156,10 +169,10 @@ fun NotificationTabButton(
             }
             .pointerInput(Unit) {
                 detectDragGesturesAfterLongPress(
-                    onDragStart = { 
+                    onDragStart = {
                         isDragging = true
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onDragStateChanged(true)
+                        currentOnDragStateChanged(true)
                         view.parent?.requestDisallowInterceptTouchEvent(true)
                     },
                     onDrag = { change, dragAmount ->
@@ -171,15 +184,15 @@ fun NotificationTabButton(
                     },
                     onDragEnd = {
                         isDragging = false
-                        onDragStateChanged(false)
+                        currentOnDragStateChanged(false)
                         val currentRect = Rect(
                             itemPos + dragOffset.value,
-                            androidx.compose.ui.geometry.Size(itemSize.width.toFloat(), itemSize.height.toFloat())
+                            Size(itemSize.width.toFloat(), itemSize.height.toFloat())
                         )
-                        if (isOverDelete(currentRect)) {
-                            onDismiss()
+                        if (currentIsOverDelete(currentRect)) {
+                            currentOnDismiss()
                         }
-                        
+
                         scope.launch {
                             dragOffset.animateTo(
                                 Offset.Zero,
@@ -192,7 +205,7 @@ fun NotificationTabButton(
                     },
                     onDragCancel = {
                         isDragging = false
-                        onDragStateChanged(false)
+                        currentOnDragStateChanged(false)
                         scope.launch {
                             dragOffset.animateTo(Offset.Zero)
                         }
@@ -219,7 +232,7 @@ fun NotificationTabButton(
                         contentDescription = null,
                         modifier = Modifier
                             .size(SmallIconSize)
-                            .scale(iconScale.value),
+                            .then(iconScaleModifier),
                         tint = iconColor
                     )
                 } else {
@@ -236,7 +249,7 @@ fun NotificationTabButton(
                             contentDescription = null,
                             modifier = Modifier
                                 .size(ExtraLargeSpacing)
-                                .scale(iconScale.value),
+                                .then(iconScaleModifier),
                             colorFilter = ColorFilter.tint(iconColor)
                         )
                     } else {
@@ -245,7 +258,7 @@ fun NotificationTabButton(
                             contentDescription = null,
                             modifier = Modifier
                                 .size(SmallIconSize)
-                                .scale(iconScale.value),
+                                .then(iconScaleModifier),
                             tint = iconColor
                         )
                     }
@@ -271,4 +284,3 @@ fun NotificationTabButton(
         }
     }
 }
-

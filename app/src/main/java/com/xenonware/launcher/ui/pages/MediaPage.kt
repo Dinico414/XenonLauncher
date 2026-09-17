@@ -1,7 +1,6 @@
 package com.xenonware.launcher.ui.pages
 
 import android.content.res.Configuration
-import android.graphics.Canvas
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.EaseInOut
 import androidx.compose.animation.core.RepeatMode
@@ -76,8 +75,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -95,9 +94,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toBitmap
-import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.imageLoader
 import coil.request.ImageRequest
@@ -141,6 +138,7 @@ import com.xenon.mylibrary.values.SmallSpacing
 import com.xenon.mylibrary.values.SmallerSpacer
 import com.xenonware.launcher.R
 import com.xenonware.launcher.media.MediaAction
+import com.xenonware.launcher.media.MediaControllerManager
 import com.xenonware.launcher.media.MediaState
 import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
 import com.xenonware.launcher.ui.theme.mainFontFamily
@@ -148,7 +146,6 @@ import com.xenonware.launcher.util.ColorUtils
 import com.xenonware.launcher.util.blockHorizontalPagerSwipe
 import com.xenonware.launcher.util.isSmallScreenDevice
 import com.xenonware.launcher.util.shouldDisableLandscapeLayout
-import com.xenonware.launcher.viewmodel.LauncherViewModel
 import kotlinx.coroutines.delay
 import java.util.Locale
 import kotlin.time.Duration.Companion.milliseconds
@@ -156,10 +153,6 @@ import kotlin.time.Duration.Companion.milliseconds
 @Composable
 fun MediaPage(
     mediaState: MediaState,
-    /**
-     * Pager progress towards this page, 0..1, read lazily in the draw phase. It changes on
-     * every frame of a swipe; taking it as a plain value recomposed the whole page per frame.
-     */
     progress: () -> Float,
     isPermissionGranted: Boolean,
     isDarkTheme: Boolean = LocalIsDarkTheme.current,
@@ -1132,6 +1125,36 @@ private fun ShadowedIcon(
     }
 }
 
+/** Bitmap counterpart of [ShadowedIcon], so app-provided action icons match the transport icons. */
+@Composable
+private fun ShadowedBitmapIcon(
+    bitmap: ImageBitmap,
+    contentDescription: String?,
+    modifier: Modifier = Modifier,
+    tint: Color,
+    shadowColor: Color = Color.Black.copy(alpha = 0.3f),
+    offset: Dp = SmallerSpacer,
+) {
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        Icon(
+            bitmap = bitmap,
+            contentDescription = null,
+            modifier = Modifier
+                .fillMaxSize()
+                .offset(y = offset)
+                .blur(offset)
+                .alpha(0.5f),
+            tint = shadowColor
+        )
+        Icon(
+            bitmap = bitmap,
+            contentDescription = contentDescription,
+            modifier = Modifier.fillMaxSize(),
+            tint = tint
+        )
+    }
+}
+
 private fun formatTime(millis: Long): String {
     val totalSeconds = millis / 1000
     val seconds = totalSeconds % 60
@@ -1150,51 +1173,20 @@ private fun MediaActionButton(
     tint: Color,
     modifier: Modifier = Modifier,
 ) {
-    val viewModel: LauncherViewModel = viewModel()
     IconButton(
-        onClick = {
-            try {
-                if (action.actionIntent != null) {
-                    action.actionIntent.send()
-                } else if (action.customAction != null) {
-                    viewModel.sendCustomAction(action.customAction)
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        },
+        // Custom session actions first, then the notification intent; refreshes the state
+        // right away so a toggled like/shuffle icon updates without waiting for the next poll.
+        onClick = { MediaControllerManager.instance?.perform(action) },
         modifier = modifier.size(ExtraBiggerSpacing)
     ) {
-        if (action.icon != null) {
-            val bitmap = remember(action.icon) {
-                try {
-                    val drawable = action.icon
-                    val width = drawable.intrinsicWidth.coerceAtLeast(1)
-                    val height = drawable.intrinsicHeight.coerceAtLeast(1)
-                    val bmp = createBitmap(width, height)
-                    val canvas = Canvas(bmp)
-                    drawable.setBounds(0, 0, width, height)
-                    drawable.draw(canvas)
-                    bmp.asImageBitmap()
-                } catch (_: Exception) {
-                    null
-                }
-            }
-            if (bitmap != null) {
-                Icon(
-                    bitmap = bitmap,
-                    contentDescription = action.title,
-                    tint = tint,
-                    modifier = Modifier.size(LargeMediumIconSize)
-                )
-            } else {
-                Text(
-                    text = action.title.take(1),
-                    color = tint,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+        val bitmap = action.iconBitmap
+        if (bitmap != null) {
+            ShadowedBitmapIcon(
+                bitmap = bitmap,
+                contentDescription = action.title,
+                modifier = Modifier.size(LargeMediumIconSize),
+                tint = tint
+            )
         } else {
             Text(
                 text = action.title.take(1),

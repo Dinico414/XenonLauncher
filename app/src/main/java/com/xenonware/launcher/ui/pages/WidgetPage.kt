@@ -1,7 +1,6 @@
 package com.xenonware.launcher.ui.pages
 
 import android.app.Activity
-import android.appwidget.AppWidgetHostView
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
 import android.content.ComponentName
@@ -10,9 +9,6 @@ import android.content.res.Configuration
 import android.content.res.Resources
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.os.Bundle
-import android.util.SizeF
-import android.view.View
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -70,7 +66,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -151,8 +146,8 @@ import com.xenonware.launcher.R
 import com.xenonware.launcher.model.WidgetItem
 import com.xenonware.launcher.ui.res.WidgetEditBorder
 import com.xenonware.launcher.ui.res.WidgetSelectorDialog
-import com.xenonware.launcher.util.InteractiveAppWidgetHost
 import com.xenonware.launcher.util.InteractiveAppWidgetHostView
+import com.xenonware.launcher.util.rememberWidgetHost
 import com.xenonware.launcher.viewmodel.LauncherViewModel
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
@@ -161,11 +156,6 @@ import kotlinx.coroutines.launch
 import kotlin.math.ceil
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
-
-private fun AppWidgetHostView.applyGridSize(widthDp: Int, heightDp: Int) {
-    if (widthDp <= 0 || heightDp <= 0) return
-    updateAppWidgetSize(Bundle(), listOf(SizeF(widthDp.toFloat(), heightDp.toFloat())))
-}
 
 private fun Int.pxToDp(density: Density): Float = with(density) { this@pxToDp.toDp().value }
 
@@ -256,8 +246,12 @@ fun WidgetPage(
     val edgeTurnBottomZonePx = with(density) { edgeTurnBottomZone.toPx() }
 
     val appWidgetManager = remember { AppWidgetManager.getInstance(context) }
-    val appWidgetHost = remember { InteractiveAppWidgetHost(context, 1024) }
-    val hostViews = remember { mutableMapOf<Int, View>() }
+
+    // The host and every widget view live with the Activity, not with this composable. The
+    // launcher's pager drops this page from composition when you are on the media page; with
+    // `remember` that threw away every widget view, and coming back re-inflated all of them.
+    // Listening is tied to the Activity's start/stop inside the holder.
+    val widgetHost = rememberWidgetHost()
 
     var showDropDown by remember { mutableStateOf(false) }
     var dropDownOffset by remember { mutableStateOf(Offset.Zero) }
@@ -361,10 +355,29 @@ fun WidgetPage(
 
     val pagerState = rememberPagerState(initialPage = 0) { pageCount }
 
+    // The first frame composes only the visible widget page. Before the other pages are kept
+    // alive, their widgets are created one per frame, so switching them on below only attaches
+    // views that already exist instead of inflating every widget in a single frame.
     var keepAllPages by remember { mutableStateOf(false) }
+    val currentWidgets by rememberUpdatedState(widgets)
     LaunchedEffect(Unit) {
         withFrameNanos { }
+        for (w in currentWidgets) {
+            if (w.type == "shortcut" || widgetHost.isCreated(w.id)) continue
+            withFrameNanos { }
+            val info = runCatching { appWidgetManager.getAppWidgetInfo(w.id) }.getOrNull()
+            widgetHost.prewarm(w.id, info)
+        }
         keepAllPages = true
+    }
+
+    // Free the cached views of widgets that are no longer in the layout.
+    LaunchedEffect(widgets) {
+        if (widgets.isNotEmpty()) {
+            widgetHost.retainOnly(
+                widgets.asSequence().filter { it.type != "shortcut" }.map { it.id }.toSet()
+            )
+        }
     }
 
     LaunchedEffect(edgeScrollDir, isDraggingBody) {
@@ -401,7 +414,7 @@ fun WidgetPage(
             }
         } else {
             if (pendingWidgetId != -1) {
-                runCatching { appWidgetHost.deleteAppWidgetId(pendingWidgetId) }
+                widgetHost.deleteWidget(pendingWidgetId)
                 pendingWidgetId = -1
             }
         }
@@ -443,13 +456,6 @@ fun WidgetPage(
         }
     }
 
-    DisposableEffect(Unit) {
-        appWidgetHost.startListening()
-        onDispose {
-            appWidgetHost.stopListening()
-        }
-    }
-
     val gridAlpha by animateFloatAsState(if (isEditing) 0.12f else 0f, label = "gridAlpha")
 
     Box(
@@ -475,7 +481,7 @@ fun WidgetPage(
             exit = fadeOut(),
             modifier = Modifier.fillMaxSize()
         ) {
-            val topIndicatorHeight:Dp = edgeTurnTopZone
+            val topIndicatorHeight: Dp = edgeTurnTopZone
             val primaryColor = colorScheme.primary
 
             val topArmed by animateFloatAsState(
@@ -677,8 +683,6 @@ fun WidgetPage(
                                     (widget.height * cellHeightDp.value - cellInsetVertical.value * 2)
                                         .roundToInt().coerceAtLeast(1)
                                 }
-                                val lastAppliedSize =
-                                    remember(widget.id) { mutableStateOf<Pair<Int, Int>?>(null) }
 
                                 Box(
                                     modifier = Modifier
@@ -710,37 +714,28 @@ fun WidgetPage(
                                             ShortcutWidgetContent(widget)
                                         } else {
                                             AndroidView(
-                                                factory = { ctx ->
-                                                    val hostView = appWidgetHost.createView(
-                                                        ctx,
-                                                        widget.id,
-                                                        widgetInfo
-                                                    )
-                                                    hostView.setPadding(0, 0, 0, 0)
-                                                    (hostView as? InteractiveAppWidgetHostView)
-                                                        ?.onWidgetLongPress = {
-                                                        haptic.performHapticFeedback(
-                                                            HapticFeedbackType.LongPress
-                                                        )
-                                                        selectedWidgetId = widget.id
-                                                    }
-                                                    hostViews[widget.id] = hostView
-                                                    hostView
-                                                },
-                                                update = { hostView ->
-                                                    val target =
-                                                        reportedWidthDp to reportedHeightDp
-                                                    if (lastAppliedSize.value != target) {
-                                                        lastAppliedSize.value = target
-                                                        runCatching {
-                                                            hostView.applyGridSize(
-                                                                reportedWidthDp,
-                                                                reportedHeightDp
+                                                // Reuses the view created earlier (or creates it once)
+                                                factory = { _ ->
+                                                    widgetHost.obtainView(widget.id, widgetInfo).also { hostView ->
+                                                        // Re-bound on every attach, so the callback always
+                                                        // writes into the current composition's state.
+                                                        (hostView as? InteractiveAppWidgetHostView)
+                                                            ?.onWidgetLongPress = {
+                                                            haptic.performHapticFeedback(
+                                                                HapticFeedbackType.LongPress
                                                             )
+                                                            selectedWidgetId = widget.id
                                                         }
                                                     }
                                                 },
-                                                onRelease = { hostViews.remove(widget.id) },
+                                                update = { hostView ->
+                                                    widgetHost.applySize(
+                                                        widget.id,
+                                                        hostView,
+                                                        reportedWidthDp,
+                                                        reportedHeightDp
+                                                    )
+                                                },
                                                 modifier = Modifier.fillMaxSize()
                                             )
                                         }
@@ -908,7 +903,7 @@ fun WidgetPage(
                                         lastDrop = sel.x to sel.y
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
 
-                                        val ghost = hostViews[sel.id]?.let { view ->
+                                        val ghost = widgetHost.viewFor(sel.id)?.let { view ->
                                             runCatching {
                                                 if (view.width > 0 && view.height > 0)
                                                     view.drawToBitmap().asImageBitmap()
@@ -983,7 +978,7 @@ fun WidgetPage(
                                                     sel.width, sel.height
                                                 )
                                             } else if (page != sel.page) {
-                                               val space = findFirstAvailableSpace(
+                                                val space = findFirstAvailableSpace(
                                                     sel.width, sel.height, page
                                                 )
                                                 if (space != null && space.first == page) {
@@ -1264,7 +1259,7 @@ fun WidgetPage(
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 val target = widgets.firstOrNull { it.id == selectedWidgetId }
                                 if (target != null && target.type != "shortcut") {
-                                    runCatching { appWidgetHost.deleteAppWidgetId(target.id) }
+                                    widgetHost.deleteWidget(target.id)
                                 }
                                 viewModel.removeWidget(selectedWidgetId)
                                 selectedWidgetId = -1
@@ -1306,7 +1301,7 @@ fun WidgetPage(
             onWidgetSelected = { item ->
                 if (item.isWidget && item.widgetInfo != null) {
                     val info = item.widgetInfo
-                    val appWidgetId = appWidgetHost.allocateAppWidgetId()
+                    val appWidgetId = widgetHost.allocateAppWidgetId()
                     val success =
                         appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)
 
@@ -1365,8 +1360,8 @@ fun ShortcutWidgetContent(widget: WidgetItem) {
     val context = LocalContext.current
     val resources = LocalResources.current
 
-    val iconDrawable = remember(widget.shortcutIconRes, widget.shortcutIntent) {
-        try {
+    val iconBitmap = remember(widget.shortcutIconRes, widget.shortcutIntent) {
+        val drawable = try {
             if (widget.shortcutIconRes?.startsWith("file:") == true) {
                 val fileName = widget.shortcutIconRes.substring(5)
                 val file = context.getFileStreamPath(fileName)
@@ -1389,6 +1384,8 @@ fun ShortcutWidgetContent(widget: WidgetItem) {
         } catch (_: Exception) {
             null
         }
+        // Converted once here instead of on every recomposition below.
+        runCatching { drawable?.toBitmap()?.asImageBitmap() }.getOrNull()
     }
 
     Box(
@@ -1402,9 +1399,9 @@ fun ShortcutWidgetContent(widget: WidgetItem) {
             verticalArrangement = Arrangement.Center,
             modifier = Modifier.padding(MediumPadding)
         ) {
-            if (iconDrawable != null) {
+            if (iconBitmap != null) {
                 Image(
-                    bitmap = iconDrawable.toBitmap().asImageBitmap(),
+                    bitmap = iconBitmap,
                     contentDescription = null,
                     modifier = Modifier.size(if (widget.width > 1) HugeSpacing else ExtraBigSpacing)
                 )
