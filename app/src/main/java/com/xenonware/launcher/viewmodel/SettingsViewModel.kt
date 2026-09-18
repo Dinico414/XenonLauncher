@@ -348,6 +348,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _notificationDeleteSinglePress = MutableStateFlow(sharedPreferenceManager.notificationDeleteSinglePress)
     val notificationDeleteSinglePress: StateFlow<Boolean> = _notificationDeleteSinglePress.asStateFlow()
 
+    private val _notificationImageSizeFactor = MutableStateFlow(sharedPreferenceManager.notificationImageSizeFactor)
+    val notificationImageSizeFactor: StateFlow<Float> = _notificationImageSizeFactor.asStateFlow()
+
     private val _notificationIndicatorType = MutableStateFlow(sharedPreferenceManager.notificationIndicatorType)
     val notificationIndicatorType: StateFlow<Int> = _notificationIndicatorType.asStateFlow()
 
@@ -512,6 +515,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             "show_permanent_notifications" -> _showPermanentNotifications.value = sharedPreferenceManager.showPermanentNotifications
             "disable_grouping" -> _disableGrouping.value = sharedPreferenceManager.disableGrouping
             "notification_delete_single_press" -> _notificationDeleteSinglePress.value = sharedPreferenceManager.notificationDeleteSinglePress
+            "notification_image_size_factor" -> _notificationImageSizeFactor.value = sharedPreferenceManager.notificationImageSizeFactor
             "notification_indicator_type" -> _notificationIndicatorType.value = sharedPreferenceManager.notificationIndicatorType
             "notification_message_type" -> _notificationMessageType.value = sharedPreferenceManager.notificationMessageType
             "temp_unit" -> _tempUnit.value = sharedPreferenceManager.tempUnit
@@ -737,6 +741,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setNotificationDeleteSinglePress(enabled: Boolean) {
         sharedPreferenceManager.notificationDeleteSinglePress = enabled
         _notificationDeleteSinglePress.value = enabled
+    }
+
+    fun setNotificationImageSizeFactor(factor: Float) {
+        sharedPreferenceManager.notificationImageSizeFactor = factor
+        _notificationImageSizeFactor.value = factor
     }
 
     fun setNotificationIndicatorType(type: Int) {

@@ -136,6 +136,7 @@ import com.xenon.mylibrary.values.SmallPadding
 import com.xenon.mylibrary.values.SmallSpacing
 import com.xenon.mylibrary.values.SmallerCornerRadius
 import com.xenonware.launcher.R
+import com.xenonware.launcher.data.SharedPreferenceManager
 import com.xenonware.launcher.notification.LauncherNotification
 import com.xenonware.launcher.notification.LauncherNotificationAction
 import com.xenonware.launcher.util.ColorUtils
@@ -703,6 +704,7 @@ fun NotificationItem(
                                 .fillMaxWidth(),
                             contentAlignment = Alignment.CenterStart
                         ) {
+                            val factor = SharedPreferenceManager(context).notificationImageSizeFactor
                             Image(
                                 bitmap = mediaBitmap,
                                 contentDescription = null,
@@ -713,10 +715,10 @@ fun NotificationItem(
                                         if (aspectRatio < 1f) {
                                             // Vertical: Cap height at 300dp (approx square size on most screens)
                                             // and let the width adjust to maintain aspect ratio
-                                            Modifier.height(300.dp).aspectRatio(aspectRatio)
+                                            Modifier.height(300.dp * factor).aspectRatio(aspectRatio)
                                         } else {
                                             // Horizontal/Square: Fill width
-                                            Modifier.fillMaxWidth().aspectRatio(aspectRatio)
+                                            Modifier.fillMaxWidth(factor).aspectRatio(aspectRatio)
                                         }
                                     ),
                                 contentScale = ContentScale.Fit

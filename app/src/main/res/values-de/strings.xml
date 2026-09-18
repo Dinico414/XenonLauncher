@@ -300,6 +300,7 @@
     <string name="experimental_disable_grouping_description">Verhindert, dass Benachrichtigungen nach App gruppiert werden</string>
     <string name="notification_delete_single_press">Kurzes Drücken zum Löschen</string>
     <string name="notification_delete_single_press_description">Alle Benachrichtigungen mit kurzem statt langem Drücken löschen</string>
+    <string name="notification_image_size">Benachrichtigungsbildgröße</string>
     <string name="long_press_to_delete_all">Lange drücken, um alle Benachrichtigungen zu löschen</string>
     <string name="force_setup_flow">Einrichtung erneut starten</string>
     <string name="force_setup_flow_description">Ersteinrichtungs-Status zurücksetzen und Berechtigungs-Assistenten neu starten</string>

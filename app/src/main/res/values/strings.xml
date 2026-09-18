@@ -302,6 +302,7 @@
     <string name="experimental_disable_grouping_description">Prevent notifications from being grouped by app</string>
     <string name="notification_delete_single_press">Short Press to Delete</string>
     <string name="notification_delete_single_press_description">Delete all notifications with a short press instead of a long press</string>
+    <string name="notification_image_size">Notification Image Size</string>
     <string name="long_press_to_delete_all">Long press to delete all notifications</string>
     <string name="force_setup_flow">Re-run Setup</string>
     <string name="force_setup_flow_description">Reset first launch state and restart the permission setup wizard</string>

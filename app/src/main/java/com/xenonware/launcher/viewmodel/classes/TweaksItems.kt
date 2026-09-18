@@ -42,6 +42,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -90,6 +91,7 @@ import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
 import com.xenonware.launcher.viewmodel.SettingsViewModel
 import kotlinx.coroutines.delay
 import kotlin.math.abs
+import kotlin.math.round
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
@@ -449,12 +451,46 @@ fun TweaksItems(
                 onCheckedChange = { viewModel.setNotificationDeleteSinglePress(it) },
                 onClick = { viewModel.setNotificationDeleteSinglePress(!notificationDeleteSinglePress) },
                 icon = { Icon(Icons.Rounded.Delete, null, tint = tileSubtitleColor) },
-                shape = tileShapeOverride ?: bottomShape,
+                shape = tileShapeOverride ?: middleShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
                 subtitleColor = tileSubtitleColor,
                 mainContextFont = mainContextFont,
                 subContextFont = subContextFont
+            )
+
+            Spacer(Modifier.height(actualInnerGroupSpacing))
+
+            val notificationImageSizeFactor by viewModel.notificationImageSizeFactor.collectAsState()
+
+            SettingsTileContext(
+                title = stringResource(R.string.notification_image_size),
+                subtitle = "${round(notificationImageSizeFactor * 100).toInt()}%",
+                icon = { Icon(Icons.Rounded.Notifications, null, tint = tileSubtitleColor) },
+                showContext = true,
+                shape = tileShapeOverride ?: bottomShape,
+                backgroundColor = tileBackgroundColor,
+                contentColor = tileContentColor,
+                subtitleColor = tileSubtitleColor,
+                mainContextFont = mainContextFont,
+                subContextFont = subContextFont,
+                enableRipple = false,
+                contextContent = {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = LargestPadding, vertical = LargeMediumPadding),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Slider(
+                            value = notificationImageSizeFactor,
+                            onValueChange = { viewModel.setNotificationImageSizeFactor(round((it - 0.25f) / 0.05f) * 0.05f + 0.25f) },
+                            valueRange = 0.25f..1.0f,
+                            steps = 14,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
             )
         }
 

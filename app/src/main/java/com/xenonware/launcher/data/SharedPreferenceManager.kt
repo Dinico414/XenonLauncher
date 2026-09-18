@@ -239,6 +239,10 @@ class SharedPreferenceManager(context: Context) {
         get() = prefs.getBoolean("notification_delete_single_press", false)
         set(value) = prefs.edit { putBoolean("notification_delete_single_press", value) }
 
+    var notificationImageSizeFactor: Float
+        get() = prefs.getFloat("notification_image_size_factor", 1.0f)
+        set(value) = prefs.edit { putFloat("notification_image_size_factor", value) }
+
     var notificationIndicatorType: Int
         get() = prefs.getInt("notification_indicator_type", 2) // 0: None, 1: Checkmark, 2: Trophy
         set(value) = prefs.edit { putInt("notification_indicator_type", value) }
@@ -372,6 +376,7 @@ class SharedPreferenceManager(context: Context) {
             remove("cover_display_dimension_1")
             remove("cover_display_dimension_2")
             remove("app_menu_order")
+            remove("notification_image_size_factor")
         }
     }
 
