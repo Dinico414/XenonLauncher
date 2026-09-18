@@ -67,13 +67,14 @@ import com.xenon.mylibrary.values.SmallPadding
 import com.xenonware.launcher.R
 import com.xenonware.launcher.model.SearchResult
 import com.xenonware.launcher.ui.res.ContactAvatar
+import com.xenonware.launcher.ui.res.IconShape
 
 @Composable
 fun SearchResultItem(
     result: SearchResult,
     onClick: (SearchResult) -> Unit,
     onLongClick: ((SearchResult, Offset) -> Unit)? = null,
-    iconShape: com.xenonware.launcher.ui.res.IconShape = com.xenonware.launcher.ui.res.IconShape.Circle,
+    iconShape: IconShape = IconShape.Circle,
     showShadow: Boolean = false,
     shape: Shape = RoundedCornerShape(LargestCornerRadius)
 ) {

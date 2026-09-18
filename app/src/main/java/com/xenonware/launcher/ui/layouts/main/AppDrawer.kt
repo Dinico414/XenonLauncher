@@ -85,6 +85,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -359,7 +360,10 @@ fun AppDrawer(
     var searchBarAnchor by remember { mutableStateOf(Offset.Zero) }
 
     val recentCount = if (isWideScreen) 6 else 4
-    val recentApps = remember(recentlyOpened) { recentlyOpened.take(recentCount) }
+    // Deduplicated so each app can serve as a stable composition key
+    val recentApps = remember(recentlyOpened) {
+        recentlyOpened.distinctBy { it.packageName }.take(recentCount)
+    }
 
     val isAtTop by remember(isGridLayout) {
         derivedStateOf {
@@ -421,12 +425,16 @@ fun AppDrawer(
         }
     }
 
+    // Deduplicated by package: a package can expose several launcher activities, and lazy keys
+    // must be unique. Launching goes through getLaunchIntentForPackage anyway, so duplicates
+    // would all open the same thing.
     val filteredApps = remember(apps, allApps, searchQuery, showHiddenAppsInSearch) {
-        if (searchQuery.isBlank()) apps
+        val list = if (searchQuery.isBlank()) apps
         else {
             val source = if (showHiddenAppsInSearch) allApps else apps
             source.filter { it.matches(searchQuery) }
         }
+        list.distinctBy { it.packageName }
     }
 
     val openFileLabel = stringResource(R.string.open_file)
@@ -803,23 +811,26 @@ fun AppDrawer(
                                                     )
                                                 ) {
                                                     recentApps.forEach { app ->
-                                                        Box(
-                                                            modifier = Modifier.weight(1f),
-                                                            contentAlignment = Alignment.Center
-                                                        ) {
-                                                            AppDrawerGridLayout(
-                                                                app = app,
-                                                                notificationCount = groupedNotifications[app.packageName]?.size ?: 0,
-                                                                badgeType = badgeType,
-                                                                onAppClick = onAppClick,
-                                                                onDismiss = onDismiss,
-                                                                onPinApp = onPinApp,
-                                                                dragDropState = dragDropState,
-                                                                onLongPress = { appMenuInfo = app to it },
-                                                                iconShape = iconShape,
-                                                                showShadow = showShadow,
-                                                                showLabels = showLabels
-                                                            )
+                                                        // Keyed so a removed app's slot is never reused for the next one
+                                                        key(app.packageName) {
+                                                            Box(
+                                                                modifier = Modifier.weight(1f),
+                                                                contentAlignment = Alignment.Center
+                                                            ) {
+                                                                AppDrawerGridLayout(
+                                                                    app = app,
+                                                                    notificationCount = groupedNotifications[app.packageName]?.size ?: 0,
+                                                                    badgeType = badgeType,
+                                                                    onAppClick = onAppClick,
+                                                                    onDismiss = onDismiss,
+                                                                    onPinApp = onPinApp,
+                                                                    dragDropState = dragDropState,
+                                                                    onLongPress = { appMenuInfo = app to it },
+                                                                    iconShape = iconShape,
+                                                                    showShadow = showShadow,
+                                                                    showLabels = showLabels
+                                                                )
+                                                            }
                                                         }
                                                     }
                                                     repeat(recentCount - recentApps.size) {
@@ -847,7 +858,9 @@ fun AppDrawer(
                                 }
                             }
 
-                            items(filteredApps) { app ->
+                            // Keyed by package so each item's state and gesture handlers follow
+                            // their app instead of staying at a list position
+                            items(filteredApps, key = { it.packageName }) { app ->
                                 AppDrawerGridLayout(
                                     app = app,
                                     notificationCount = groupedNotifications[app.packageName]?.size ?: 0,
@@ -917,23 +930,26 @@ fun AppDrawer(
                                                         )
                                                     ) {
                                                         recentApps.forEach { app ->
-                                                            Box(
-                                                                modifier = Modifier.weight(1f),
-                                                                contentAlignment = Alignment.Center
-                                                            ) {
-                                                                AppDrawerGridLayout(
-                                                                    app = app,
-                                                                    notificationCount = groupedNotifications[app.packageName]?.size ?: 0,
-                                                                    badgeType = badgeType,
-                                                                    onAppClick = onAppClick,
-                                                                    onDismiss = onDismiss,
-                                                                    onPinApp = onPinApp,
-                                                                    dragDropState = dragDropState,
-                                                                    onLongPress = { appMenuInfo = app to it },
-                                                                    iconShape = iconShape,
-                                                                    showShadow = showShadow,
-                                                                    showLabels = showLabels
-                                                                )
+                                                            // Keyed so a removed app's slot is never reused for the next one
+                                                            key(app.packageName) {
+                                                                Box(
+                                                                    modifier = Modifier.weight(1f),
+                                                                    contentAlignment = Alignment.Center
+                                                                ) {
+                                                                    AppDrawerGridLayout(
+                                                                        app = app,
+                                                                        notificationCount = groupedNotifications[app.packageName]?.size ?: 0,
+                                                                        badgeType = badgeType,
+                                                                        onAppClick = onAppClick,
+                                                                        onDismiss = onDismiss,
+                                                                        onPinApp = onPinApp,
+                                                                        dragDropState = dragDropState,
+                                                                        onLongPress = { appMenuInfo = app to it },
+                                                                        iconShape = iconShape,
+                                                                        showShadow = showShadow,
+                                                                        showLabels = showLabels
+                                                                    )
+                                                                }
                                                             }
                                                         }
                                                         repeat(recentCount - recentApps.size) {
@@ -965,7 +981,9 @@ fun AppDrawer(
                                     }
                                 }
 
-                                items(filteredApps) { app ->
+                                // Keyed by package so itemPos/pressOffset and the gesture
+                                // handlers below always belong to the app shown in the row
+                                items(filteredApps, key = { it.packageName }) { app ->
                                     var itemPos by remember { mutableStateOf(Offset.Zero) }
                                     var pressOffset by remember { mutableStateOf(Offset.Zero) }
                                     var isActualDrag by remember { mutableStateOf(false) }
@@ -986,14 +1004,14 @@ fun AppDrawer(
                                                 .fillMaxWidth()
                                                 .clip(RoundedCornerShape(LargestCornerRadius))
                                                 .onGloballyPositioned { itemPos = it.positionInRoot() }
-                                                .pointerInput(Unit) {
+                                                .pointerInput(app.packageName) {
                                                     detectTapGestures(
                                                         onTap = {
                                                             onAppClick(app.packageName)
                                                             onDismiss()
                                                         })
                                                 }
-                                                .pointerInput(Unit) {
+                                                .pointerInput(app.packageName) {
                                                     var totalDragDistance = 0f
                                                     detectDragGesturesAfterLongPress(onDragStart = { offset ->
                                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)

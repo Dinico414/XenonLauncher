@@ -105,7 +105,6 @@ fun DevDefaultSettings(
                         .verticalScroll(rememberScrollState())
                 ) {
                     DevSettingsItems(
-                        settingsViewModel = settingsViewModel,
                         viewModel = viewModel,
                         mainContextFont = mainFont,
                         subContextFont = subFont

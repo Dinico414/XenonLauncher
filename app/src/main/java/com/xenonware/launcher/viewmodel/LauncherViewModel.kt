@@ -27,8 +27,9 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.CalendarContract
-import android.provider.ContactsContract
+import android.provider.ContactsContract.CommonDataKinds.Phone
 import android.provider.MediaStore
+import android.provider.MediaStore.Files.FileColumns
 import android.util.Log
 import android.util.Size
 import androidx.compose.ui.unit.IntSize
@@ -104,7 +105,6 @@ data class CalendarInfo(
     val name: String,
     val color: Int,
     val accountName: String,
-    /** False when the provider holds no events for this calendar, no matter what we query. */
     val syncEvents: Boolean = true,
     val visible: Boolean = true,
     val accountType: String = ""
@@ -129,17 +129,11 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
         private const val DAY_MILLIS = 24 * 60 * 60 * 1000L
 
-        /** A location fix younger than this is reused for weather instead of asking for a new one. */
         private const val LOCATION_MAX_AGE_MS = 30L * 60 * 1000
-        /** Hard cap on waiting for a fresh fix; the old request could wait forever. */
         private const val LOCATION_FIX_TIMEOUT_MS = 10_000L
 
         private val sharedApps = MutableStateFlow<List<AppInfo>>(emptyList())
 
-        /**
-         * Process-wide copy of the visible (non-hidden) app list, so [SplitScreenPickerActivity]
-         * can show the same apps and icons without starting a second view model.
-         */
         val launchableApps: StateFlow<List<AppInfo>> = sharedApps
     }
 
@@ -166,7 +160,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             }
             "drawer_icon_shape" -> {
                 _drawerIconShape.value = IconShape.valueOf(prefManager.drawerIconShape)
-                loadApps() // Reload icons when shape changes
+                loadApps()
             }
             "drawer_icon_shadow" -> _drawerIconShadow.value = prefManager.drawerIconShadow
             "app_labels_enabled" -> _appLabelsEnabled.value = prefManager.appLabelsEnabled
@@ -490,7 +484,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val fusedLocationClient: FusedLocationProviderClient =
         LocationServices.getFusedLocationProviderClient(application)
 
-    /** Last position a weather lookup used; the fallback when no fix is available right now. */
     private var lastWeatherLocation: Location? = null
 
     val notificationCount = NotificationManager.notificationCount
@@ -562,11 +555,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val _visibleCalendars = MutableStateFlow(prefManager.visibleCalendars)
     val visibleCalendars: StateFlow<List<String>> = _visibleCalendars
 
-    /**
-     * Calendars the user has ticked that the provider will never return events for,
-     * because Google isn't syncing them to this device. Surface these in the calendar
-     * picker with a "not synced" hint, otherwise the tick looks like it did something.
-     */
+
     private val _unsyncedSelectedCalendars = MutableStateFlow<List<CalendarInfo>>(emptyList())
 
     private val _showNotificationManagerDialog = MutableStateFlow(false)
@@ -584,7 +573,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun onHomePressed() {
         viewModelScope.launch {
             _isAppDrawerVisible.value = false
-            delay(100.milliseconds) // Wait for drawer animation or system transition
+            delay(100.milliseconds)
             _navigationEvents.emit(1)
         }
     }
@@ -630,12 +619,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     init {
         prefManager.registerListener(preferenceListener)
 
-        // Initialize NotificationManager with persistent settings
         NotificationManager.showMuteNotifications = prefManager.showMuteNotifications
         NotificationManager.showPermanentNotifications = prefManager.showPermanentNotifications
         NotificationManager.disableGrouping = prefManager.disableGrouping
 
-        // Delay everything except basic time updates if booting
         startTimeUpdates()
 
         if (!_isBooting.value) {
@@ -718,21 +705,13 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             while (true) {
                 val gotReading = updateWeatherOnce()
                 failures = if (gotReading) 0 else failures + 1
-                // A good reading refreshes every 15 min. Failures back off 1 → 2 → 4 → 8 → 15
-                // min so a flaky wttr.in isn't hammered; the last good reading stays on screen.
                 val waitMinutes = if (gotReading) 15 else minOf(15, 1 shl (failures - 1).coerceAtMost(4))
                 delay(waitMinutes.minutes)
             }
         }
     }
 
-    /**
-     * One attempt at a reading; true on success. On failure the previous reading is kept — a
-     * timeout or a 5xx from the weather API must not blank the widget until the next success.
-     */
     private suspend fun updateWeatherOnce(): Boolean {
-        // Open-Meteo needs coordinates; without a fix there is nothing to ask about (the old
-        // source had an IP fallback, this one does not). Keep whatever is already showing.
         val location = getDeviceLocation() ?: return false
         val lat = location.latitude
         val lon = location.longitude
@@ -748,7 +727,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 val tempParam = if (isMetric) "celsius" else "fahrenheit"
                 val unit = if (isMetric) "C" else "F"
 
-                // Keyless, stable JSON: current weather plus today's high/low and midday code.
                 val url = URL(
                     "https://api.open-meteo.com/v1/forecast" +
                             "?latitude=$lat&longitude=$lon" +
@@ -810,11 +788,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    /**
-     * Maps a WMO weather code (what Open-Meteo returns) to one of the English phrases the icon
-     * lookups in Glancly and AtAGlance already match on. [translateWeatherCondition] then produces
-     * the German display string, exactly as with the old text-based source.
-     */
     private fun weatherCodeToCondition(code: Int): String {
         val english = when (code) {
             0 -> "Clear"
@@ -1325,21 +1298,21 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         }
 
         val results = mutableListOf<SearchResult.Contact>()
-        val uri = ContactsContract.CommonDataKinds.Phone.CONTENT_URI
+        val uri = Phone.CONTENT_URI
         val projection = arrayOf(
-            ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
-            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
-            ContactsContract.CommonDataKinds.Phone.NUMBER,
-            ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI
+            Phone.CONTACT_ID,
+            Phone.DISPLAY_NAME,
+            Phone.NUMBER,
+            Phone.PHOTO_THUMBNAIL_URI
         )
         val selection = null
         val selectionArgs = null
 
         context.contentResolver.query(uri, projection, selection, selectionArgs, null)?.use { cursor ->
-            val idIdx = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
-            val nameIdx = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
-            val numberIdx = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
-            val photoIdx = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI)
+            val idIdx = cursor.getColumnIndex(Phone.CONTACT_ID)
+            val nameIdx = cursor.getColumnIndex(Phone.DISPLAY_NAME)
+            val numberIdx = cursor.getColumnIndex(Phone.NUMBER)
+            val photoIdx = cursor.getColumnIndex(Phone.PHOTO_THUMBNAIL_URI)
 
             while (cursor.moveToNext() && results.size < 20) {
                 val id = cursor.getString(idIdx)
@@ -1361,19 +1334,19 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
         val externalUri = MediaStore.Files.getContentUri("external")
         val projection = arrayOf(
-            MediaStore.Files.FileColumns.DISPLAY_NAME,
-            MediaStore.Files.FileColumns.DATA,
-            MediaStore.Files.FileColumns.MIME_TYPE,
-            MediaStore.Files.FileColumns._ID
+            FileColumns.DISPLAY_NAME,
+            FileColumns.DATA,
+            FileColumns.MIME_TYPE,
+            FileColumns._ID
         )
         val selection = null
         val selectionArgs = null
 
         context.contentResolver.query(externalUri, projection, selection, selectionArgs, null)?.use { cursor ->
-            val nameIdx = cursor.getColumnIndex(MediaStore.Files.FileColumns.DISPLAY_NAME)
-            val dataIdx = cursor.getColumnIndex(MediaStore.Files.FileColumns.DATA)
-            val mimeIdx = cursor.getColumnIndex(MediaStore.Files.FileColumns.MIME_TYPE)
-            val idIdx = cursor.getColumnIndex(MediaStore.Files.FileColumns._ID)
+            val nameIdx = cursor.getColumnIndex(FileColumns.DISPLAY_NAME)
+            val dataIdx = cursor.getColumnIndex(FileColumns.DATA)
+            val mimeIdx = cursor.getColumnIndex(FileColumns.MIME_TYPE)
+            val idIdx = cursor.getColumnIndex(FileColumns._ID)
 
             while (cursor.moveToNext() && results.size < 20) {
                 val name = cursor.getString(nameIdx) ?: ""

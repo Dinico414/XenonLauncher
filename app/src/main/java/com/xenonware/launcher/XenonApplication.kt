@@ -33,13 +33,11 @@ class XenonApplication : Application() {
                         "Message: ${throwable.message}\n" +
                         "Stacktrace:\n$trace\n" +
                         "-----------------\n\n"
-                // Append to file so we can store multiple crashes if they happen before a manual clear
                 logFile.appendText(logContent)
             } catch (e: Exception) {
                 e.printStackTrace()
             }
 
-            // Let the system handle the crash as well (shows the "App has stopped" dialog)
             defaultHandler?.uncaughtException(thread, throwable)
         }
     }

@@ -1,13 +1,16 @@
 package com.xenonware.launcher
 
+import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.IntentSenderRequest
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.IntentSenderRequest.Builder
+import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult
+import androidx.activity.result.contract.ActivityResultContracts.StartIntentSenderForResult
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -15,20 +18,22 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalWindowInfo
-import androidx.core.view.WindowCompat
+import androidx.core.view.WindowCompat.setDecorFitsSystemWindows
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
-import com.google.android.gms.auth.api.identity.Identity
+import com.google.android.gms.auth.api.identity.Identity.getSignInClient
 import com.xenonware.launcher.data.SharedPreferenceManager
 import com.xenonware.launcher.presentation.sign_in.GoogleAuthUiClient
 import com.xenonware.launcher.presentation.sign_in.SignInViewModel
+import com.xenonware.launcher.presentation.sign_in.SignInViewModel.SignInViewModelFactory
 import com.xenonware.launcher.ui.layouts.settings.SettingsLayout
 import com.xenonware.launcher.ui.theme.FontAxes
 import com.xenonware.launcher.ui.theme.FontType
 import com.xenonware.launcher.ui.theme.ScreenEnvironment
 import com.xenonware.launcher.ui.theme.createCustomFontFamily
 import com.xenonware.launcher.viewmodel.SettingsViewModel
+import com.xenonware.launcher.viewmodel.SettingsViewModel.SettingsViewModelFactory
 import kotlinx.coroutines.launch
 
 class SettingsActivity : ComponentActivity() {
@@ -41,7 +46,7 @@ class SettingsActivity : ComponentActivity() {
     private val googleAuthUiClient by lazy {
         GoogleAuthUiClient(
             context = applicationContext,
-            oneTapClient = Identity.getSignInClient(applicationContext)
+            oneTapClient = getSignInClient(applicationContext)
         )
     }
 
@@ -51,17 +56,17 @@ class SettingsActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        WindowCompat.setDecorFitsSystemWindows(window, false)
+        setDecorFitsSystemWindows(window, false)
         enableEdgeToEdge()
 
         settingsViewModel = ViewModelProvider(
             this,
-            SettingsViewModel.SettingsViewModelFactory(application)
+            SettingsViewModelFactory(application)
         )[SettingsViewModel::class.java]
 
         signInViewModel = ViewModelProvider(
             this,
-            SignInViewModel.SignInViewModelFactory(application)
+            SignInViewModelFactory(application)
         )[SignInViewModel::class.java]
 
         val initialThemePref = sharedPreferenceManager.theme
@@ -135,7 +140,7 @@ class SettingsActivity : ComponentActivity() {
                 val state by signInViewModel.state.collectAsStateWithLifecycle()
 
                 val oneTapLauncher = rememberLauncherForActivityResult(
-                    contract = ActivityResultContracts.StartIntentSenderForResult(),
+                    contract = StartIntentSenderForResult(),
                     onResult = { result ->
                         if (result.resultCode == RESULT_OK) {
                             lifecycleScope.launch {
@@ -149,7 +154,7 @@ class SettingsActivity : ComponentActivity() {
                 )
 
                 val traditionalSignInLauncher = rememberLauncherForActivityResult(
-                    contract = ActivityResultContracts.StartActivityForResult(),
+                    contract = StartActivityForResult(),
                     onResult = { result ->
                         if (result.resultCode == RESULT_OK) {
                             lifecycleScope.launch {
@@ -176,7 +181,7 @@ class SettingsActivity : ComponentActivity() {
                         lifecycleScope.launch {
                             val signInResult = googleAuthUiClient.signIn()
                             if (signInResult != null) {
-                                oneTapLauncher.launch(IntentSenderRequest.Builder(signInResult.pendingIntent.intentSender).build())
+                                oneTapLauncher.launch(Builder(signInResult.pendingIntent.intentSender).build())
                             } else {
                                 traditionalSignInLauncher.launch(googleAuthUiClient.getTraditionalSignInIntent())
                             }
@@ -217,7 +222,6 @@ class SettingsActivity : ComponentActivity() {
             signInViewModel.updateSignInState(user)
         }
 
-        // Theme handling - still keep this for synchronization when returning from other activities
         val currentThemePref = sharedPreferenceManager.theme
         val currentCoverThemeEnabledSetting = sharedPreferenceManager.coverThemeEnabled
         val currentBlackedOutMode = sharedPreferenceManager.blackedOutModeEnabled
@@ -246,7 +250,7 @@ class SettingsActivity : ComponentActivity() {
         }
     }
 
-    override fun attachBaseContext(newBase: android.content.Context) {
-        super.attachBaseContext(android.content.ContextWrapper(newBase))
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(ContextWrapper(newBase))
     }
 }

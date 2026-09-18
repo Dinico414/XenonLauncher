@@ -37,15 +37,15 @@ import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.NotificationsOff
 import androidx.compose.material.icons.rounded.Numbers
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
-import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.SwitchColors
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -66,6 +66,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -74,8 +75,6 @@ import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.compose.ui.text.font.FontFamily
-import com.xenon.mylibrary.theme.QuicksandTitleVariable
 import com.xenon.mylibrary.res.SettingsGoogleTile
 import com.xenon.mylibrary.res.SettingsSwitchMenuTile
 import com.xenon.mylibrary.res.SettingsSwitchTile
@@ -84,6 +83,7 @@ import com.xenon.mylibrary.res.SettingsTile
 import com.xenon.mylibrary.res.SettingsTileContext
 import com.xenon.mylibrary.res.XenonSingleChoiceButtonGroup
 import com.xenon.mylibrary.theme.LayoutType
+import com.xenon.mylibrary.theme.QuicksandTitleVariable
 import com.xenon.mylibrary.values.BiggestCornerRadius
 import com.xenon.mylibrary.values.BiggestSpacing
 import com.xenon.mylibrary.values.ExtraLargeCornerRadius
@@ -132,9 +132,9 @@ fun SettingsItems(
     outerGroupRadius: Dp = ExtraLargerCornerRadius,
     innerGroupSpacing: Dp = SmallerSpacer,
     outerGroupSpacing: Dp = ExtraLargeSpacing,
-    tileBackgroundColor: Color = MaterialTheme.colorScheme.surfaceBright,
-    tileContentColor: Color = MaterialTheme.colorScheme.onSurface,
-    tileSubtitleColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    tileBackgroundColor: Color = colorScheme.surfaceBright,
+    tileContentColor: Color = colorScheme.onSurface,
+    tileSubtitleColor: Color = colorScheme.onSurfaceVariant,
     tileShapeOverride: Shape? = null,
     switchColorsOverride: SwitchColors? = null,
     useGroupStyling: Boolean = true,
@@ -484,7 +484,7 @@ fun SettingsItems(
                         .fillMaxWidth()
                         .padding(start = LargestPadding, end = LargestPadding, bottom = LargestPadding)
                         .clip(RoundedCornerShape(ExtraLargeCornerRadius))
-                        .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = if (LocalIsDarkTheme.current)0.5f else 1f))
+                        .background(colorScheme.surfaceContainerLowest.copy(alpha = if (LocalIsDarkTheme.current)0.5f else 1f))
                         .padding(vertical = LargeMediumPadding)
                         .horizontalScroll(rememberScrollState())
                 ) {
@@ -528,12 +528,12 @@ fun SettingsItems(
                                 .width(containerWidth)
                                 .fillMaxHeight()
                                 .clip(containerShape)
-                                .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f))
-                                .border(width = SmallerStroke, color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent, shape = containerShape)
+                                .background(if (isSelected) colorScheme.primaryContainer else colorScheme.surfaceContainerHighest.copy(alpha = 0.5f))
+                                .border(width = SmallerStroke, color = if (isSelected) colorScheme.primary else Color.Transparent, shape = containerShape)
                                 .clickable(interactionSource = interactionSources[index], indication = null) { viewModel.setDrawerIconShape(shape) }
                                 .padding(LargeMediumPadding), contentAlignment = Alignment.Center) {
                             Box(
-                                modifier = Modifier.size(BiggestSpacing).clip(shape.getShape()).background(if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant)
+                                modifier = Modifier.size(BiggestSpacing).clip(shape.getShape()).background(if (isSelected) colorScheme.onPrimaryContainer else colorScheme.onSurfaceVariant)
                             )
                         }
                     }
@@ -630,7 +630,7 @@ fun SettingsItems(
                         .fillMaxWidth()
                         .padding(start = LargestPadding, end = LargestPadding, bottom = LargestPadding)
                         .clip(RoundedCornerShape(ExtraLargeCornerRadius))
-                        .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = if (LocalIsDarkTheme.current) 0.5f else 1f))
+                        .background(colorScheme.surfaceContainerLowest.copy(alpha = if (LocalIsDarkTheme.current) 0.5f else 1f))
                         .clickable { viewModel.setDockSafeDrawImePortraitOnly(!dockSafeDrawImePortraitOnly) }
                         .padding(LargeMediumPadding)
                 ) {
@@ -655,7 +655,7 @@ fun SettingsItems(
                             checked = dockSafeDrawImePortraitOnly,
                             onCheckedChange = { viewModel.setDockSafeDrawImePortraitOnly(it) },
                             colors = CheckboxDefaults.colors(
-                                checkedColor = MaterialTheme.colorScheme.primary,
+                                checkedColor = colorScheme.primary,
                                 uncheckedColor = tileSubtitleColor
                             )
                         )
@@ -685,7 +685,7 @@ fun SettingsItems(
                         .fillMaxWidth()
                         .padding(start = LargestPadding, end = LargestPadding, bottom = LargestPadding)
                         .clip(RoundedCornerShape(ExtraLargeCornerRadius))
-                        .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = if (LocalIsDarkTheme.current) 0.5f else 1f))
+                        .background(colorScheme.surfaceContainerLowest.copy(alpha = if (LocalIsDarkTheme.current) 0.5f else 1f))
                         .clickable { viewModel.setOpenKeyboardPortraitOnly(!openKeyboardPortraitOnly) }
                         .padding(LargeMediumPadding)
                 ) {
@@ -710,7 +710,7 @@ fun SettingsItems(
                             checked = openKeyboardPortraitOnly,
                             onCheckedChange = { viewModel.setOpenKeyboardPortraitOnly(it) },
                             colors = CheckboxDefaults.colors(
-                                checkedColor = MaterialTheme.colorScheme.primary,
+                                checkedColor = colorScheme.primary,
                                 uncheckedColor = tileSubtitleColor
                             )
                         )

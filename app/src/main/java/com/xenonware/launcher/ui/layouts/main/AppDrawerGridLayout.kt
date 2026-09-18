@@ -45,6 +45,7 @@ import com.xenon.mylibrary.values.SmallElevation
 import com.xenon.mylibrary.values.SmallSpacer
 import com.xenon.mylibrary.values.SmallerSpacing
 import com.xenonware.launcher.model.AppInfo
+import com.xenonware.launcher.ui.res.IconShape
 import com.xenonware.launcher.ui.res.notification.NotificationBadge
 import com.xenonware.launcher.util.DragDropState
 
@@ -59,7 +60,7 @@ fun AppDrawerGridLayout(
     onPinApp: (String, Int) -> Unit,
     dragDropState: DragDropState,
     onLongPress: ((Offset) -> Unit)? = null,
-    iconShape: com.xenonware.launcher.ui.res.IconShape = com.xenonware.launcher.ui.res.IconShape.Circle,
+    iconShape: IconShape = IconShape.Circle,
     showShadow: Boolean = false,
     showLabels: Boolean = true
 ) {

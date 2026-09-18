@@ -2,19 +2,23 @@ package com.xenonware.launcher
 
 import android.app.WallpaperColors
 import android.app.WallpaperManager
+import android.app.WallpaperManager.getInstance
 import android.content.Intent
 import android.content.res.Configuration
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
-import android.view.WindowManager
+import android.os.VibrationEffect
+import android.os.VibratorManager
+import android.view.WindowManager.LayoutParams
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -66,6 +70,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -73,12 +79,13 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import androidx.core.view.WindowCompat
+import androidx.core.view.WindowCompat.setDecorFitsSystemWindows
 import com.xenon.mylibrary.res.AnimatedGradientBackground
 import com.xenon.mylibrary.values.NoSpacing
 import com.xenonware.launcher.data.SharedPreferenceManager
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.model.FabAction
+import com.xenonware.launcher.notification.LauncherNotification
 import com.xenonware.launcher.ui.layouts.main.AppDrawer
 import com.xenonware.launcher.ui.pages.MediaPage
 import com.xenonware.launcher.ui.pages.NotificationPage
@@ -97,6 +104,8 @@ import com.xenonware.launcher.util.DragHandler
 import com.xenonware.launcher.util.PerfLog
 import com.xenonware.launcher.util.WindowBlurBehind
 import com.xenonware.launcher.util.rememberBlurAvailable
+import com.xenonware.launcher.viewmodel.CalendarEvent
+import com.xenonware.launcher.viewmodel.CalendarInfo
 import com.xenonware.launcher.viewmodel.LauncherViewModel
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
@@ -123,17 +132,17 @@ class MainActivity : ComponentActivity() {
         if (isFreshBoot) {
             bootWelcomeAlreadyShown = true
             viewModel.setBooting(true)
-            window.setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE, WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
-            window.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
+            window.setFlags(LayoutParams.FLAG_NOT_TOUCHABLE, LayoutParams.FLAG_NOT_TOUCHABLE)
+            window.setFlags(LayoutParams.FLAG_LAYOUT_NO_LIMITS, LayoutParams.FLAG_LAYOUT_NO_LIMITS)
         }
         // Debug builds only: logs main-thread stalls under the XenonJank tag. No-op in release.
         PerfLog.init(this)
 
         super.onCreate(savedInstanceState)
-        WindowCompat.setDecorFitsSystemWindows(window, false)
+        setDecorFitsSystemWindows(window, false)
         enableEdgeToEdge()
 
-        window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
+        window.addFlags(LayoutParams.FLAG_SHOW_WALLPAPER)
 
         sharedPreferenceManager = SharedPreferenceManager(applicationContext)
 
@@ -186,19 +195,15 @@ class MainActivity : ComponentActivity() {
             val statusBarDarkIcons by remember(appIsDarkTheme, wallpaperDarkIcons) {
                 derivedStateOf {
                     if (isAppDrawerVisible) {
-                        // The drawer now follows the wallpaper's status bar logic
-                        // instead of forcing theme-based icon colors.
-                        wallpaperDarkIcons
+                       wallpaperDarkIcons
                     } else {
                         val pageOffset = pagerState.currentPage + pagerState.currentPageOffsetFraction
-                        val mediaDarkIcons = !appIsDarkTheme // Light theme -> Dark icons
+                        val mediaDarkIcons = !appIsDarkTheme
 
                         if (pageOffset < 1f) {
-                            // Interpolate between mediaDarkIcons and wallpaperDarkIcons
                             if (mediaDarkIcons == wallpaperDarkIcons) {
                                 mediaDarkIcons
                             } else {
-                                // Threshold transition
                                 if (pageOffset < 0.5f) mediaDarkIcons else wallpaperDarkIcons
                             }
                         } else {
@@ -371,9 +376,9 @@ class MainActivity : ComponentActivity() {
                     },
                     onFabLongPress = {
                         if (fabLongPressAction != FabAction.NONE) {
-                            val vibratorManager = getSystemService(VIBRATOR_MANAGER_SERVICE) as android.os.VibratorManager
+                            val vibratorManager = getSystemService(VIBRATOR_MANAGER_SERVICE) as VibratorManager
                             val vibrator = vibratorManager.defaultVibrator
-                            vibrator.vibrate(android.os.VibrationEffect.createOneShot(50, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
+                            vibrator.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
                         }
                         if (fabLongPressAction == FabAction.TRIGGER_ASSISTANT) {
                             showAssist(Bundle())
@@ -387,7 +392,7 @@ class MainActivity : ComponentActivity() {
                     showBootWelcome = isBooting,
                     onBootWelcomeFinished = {
                         viewModel.setBooting(false)
-                        window.clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
+                        window.clearFlags(LayoutParams.FLAG_NOT_TOUCHABLE)
                         if (sharedPreferenceManager.isFirstLaunch) {
                             startActivity(Intent(this@MainActivity, PermissionActivity::class.java))
                             finish()
@@ -442,9 +447,9 @@ class MainActivity : ComponentActivity() {
 
     private fun updateAppCompatDelegateTheme(themePref: Int) {
         if (themePref >= 0 && themePref < sharedPreferenceManager.themeFlag.size) {
-            AppCompatDelegate.setDefaultNightMode(sharedPreferenceManager.themeFlag[themePref])
+            setDefaultNightMode(sharedPreferenceManager.themeFlag[themePref])
         } else {
-            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
+            setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
         }
     }
 }
@@ -452,7 +457,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun rememberWallpaperDarkIcons(): Boolean {
     val context = LocalContext.current
-    val wallpaperManager = remember { WallpaperManager.getInstance(context) }
+    val wallpaperManager = remember { getInstance(context) }
     var darkIcons by remember { mutableStateOf(false) }
 
     DisposableEffect(wallpaperManager) {
@@ -486,12 +491,12 @@ fun LauncherScreen(
     weatherTemp: String,
     weatherCondition: String,
     notificationCount: Int,
-    notifications: List<com.xenonware.launcher.notification.LauncherNotification>,
+    notifications: List<LauncherNotification>,
     badgeType: Int,
     batteryLevel: Float,
     isCharging: Boolean,
-    calendarEvents: List<com.xenonware.launcher.viewmodel.CalendarEvent>,
-    availableCalendars: List<com.xenonware.launcher.viewmodel.CalendarInfo>,
+    calendarEvents: List<CalendarEvent>,
+    availableCalendars: List<CalendarInfo>,
     visibleCalendars: List<String>,
     showCalendarSelectionDialog: Boolean,
     showNotificationManagerDialog: Boolean,
@@ -529,14 +534,9 @@ fun LauncherScreen(
     onBootWelcomeFinished: () -> Unit = {}
 ) {
     val density = LocalDensity.current
-    // containerSize is the true window size in px; Configuration.screenWidthDp can lag
-    // multi-window / foldable resizes. Convert to dp for the breakpoint below.
     val windowInfo = LocalWindowInfo.current
     val windowWidthDp = with(density) { windowInfo.containerSize.width.toDp() }
     val hazeState = rememberHazeState()
-    // Everything on screen — pages, drawer, dock — captured as one image for the edit
-    // dialog's backdrop. Separate from hazeState because the dock consumes that one, and a
-    // hazeEffect can't sit inside the source it reads.
     val screenHazeState = rememberHazeState()
     var appToEdit by remember { mutableStateOf<AppInfo?>(null) }
     val scope = rememberCoroutineScope()
@@ -557,17 +557,11 @@ fun LauncherScreen(
     var closeSearchTrigger by remember { mutableIntStateOf(0) }
     var isDockVisibleByScroll by remember { mutableStateOf(true) }
 
-    // Non-zero only when a hardware keyboard is attached and a reply is open, so the
-    // dock stays put in the normal soft-keyboard case.
     var notificationShift by remember { mutableFloatStateOf(0f) }
 
-    // While a notification reply is open, NotificationPage does the lifting itself, so
-    // the dock must not also pad itself for the IME regardless of the user's setting.
     val replyingNotificationKey by viewModel.replyingNotificationKey.collectAsState()
     val isReplyingToNotification = replyingNotificationKey != null
 
-    // The drawer's search field raises its own IME. Close any open reply first so the
-    // notification page isn't lifted by a keyboard that has nothing to do with it.
     LaunchedEffect(isAppDrawerVisible) {
         if (isAppDrawerVisible) viewModel.setReplyingNotification(null)
     }
@@ -582,9 +576,6 @@ fun LauncherScreen(
         label = "blurProgress"
     )
 
-    // How far the pager is towards the media page, 0..1. Read only inside draw-phase lambdas:
-    // the offset changes on every frame of a swipe, and reading it here recomposed the whole
-    // LauncherScreen — and both pages with it — for each of those frames.
     val mediaProgress: () -> Float = {
         if (showBootWelcome) 0f
         else 1f - (pagerState.currentPage + pagerState.currentPageOffsetFraction).coerceIn(0f, 1f)
@@ -592,8 +583,6 @@ fun LauncherScreen(
 
     val blurAvailable = rememberBlurAvailable() && blurSetting && !showBootWelcome
 
-    // The window blur behind the launcher needs a value at composition time, so it is derived
-    // in steps of 6 px: a swipe updates the window a handful of times instead of every frame.
     val windowBlurRadiusPx by remember(showBootWelcome) {
         derivedStateOf {
             val mediaBlur = (2f * mediaProgress()).coerceIn(0f, 1f)
@@ -602,19 +591,14 @@ fun LauncherScreen(
         }
     }
 
-    // While the edit dialog is open the live content fades out and only its blurred capture
-    // stays on screen. hazeEffect only draws a blurred copy on top; it never hides what is
-    // underneath, and that capture is translucent almost everywhere (the sheet, the search
-    // bar, the dock), so without this every icon edge shows straight through it. The capture
-    // itself is unaffected: the alpha layer sits outside the hazeSource.
     val liveContentAlpha by animateFloatAsState(
         targetValue = if (appToEdit != null && blurAvailable) 0f else 1f,
         // Cross-fade in; snap back so nothing blinks when the dialog closes
         animationSpec = if (appToEdit != null) tween(durationMillis = 250) else snap(),
         label = "liveContentAlpha"
     )
-    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
-    val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     val isImeVisible = WindowInsets.ime.asPaddingValues().calculateBottomPadding() > NoSpacing
 
     val iconShape by viewModel.drawerIconShape.collectAsState()
@@ -640,9 +624,6 @@ fun LauncherScreen(
 
     DragHandler {
         Box(modifier = Modifier.fillMaxSize()) {
-            // Everything below — pages, drawer, dock — is one hazeSource, attached only
-            // while the edit dialog is open so it costs nothing otherwise. The alpha layer
-            // must stay outside it: it hides the live content, not the capture.
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -672,10 +653,6 @@ fun LauncherScreen(
                         HorizontalPager(
                             state = pagerState,
                             modifier = Modifier.fillMaxSize(),
-                            // All three pages stay composed at all times. With 1, the widget
-                            // page (2) was dropped whenever you were on the media page (0), and
-                            // swiping back to the notification page (1) rebuilt it: every
-                            // widget was inflated again, which was the ~0.5 s freeze.
                             beyondViewportPageCount = 2,
                             userScrollEnabled = !dragDropState.isDragging
                         ) { page ->
@@ -702,9 +679,6 @@ fun LauncherScreen(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .zIndex(0f)
-                                        // The parallax slides this page under the translucent
-                                        // media page; clipping to the slot keeps that strip from
-                                        // showing through it
                                         .clipToBounds()
                                         .graphicsLayer {
                                             val p = mediaProgress()
@@ -855,8 +829,6 @@ fun LauncherScreen(
                 )
             }
 
-            // EDIT APP DIALOG — a sibling of the screen source (never inside it), above the
-            // dock, so its backdrop is the whole screen blurred as one image
             appToEdit?.let { app ->
                 Box(
                     modifier = Modifier

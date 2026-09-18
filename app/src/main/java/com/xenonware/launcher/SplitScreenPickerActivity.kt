@@ -33,12 +33,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.MaterialTheme.typography
 import androidx.compose.material3.Text
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -79,7 +76,6 @@ class SplitScreenPickerActivity : ComponentActivity() {
 
         fun intent(context: Context, firstPackage: String?): Intent =
             Intent(context, SplitScreenPickerActivity::class.java).apply {
-                // CLEAR_TASK: always start fresh instead of resurfacing an old picker
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
                 if (firstPackage != null) putExtra(EXTRA_FIRST_PACKAGE, firstPackage)
             }
@@ -105,14 +101,10 @@ class SplitScreenPickerActivity : ComponentActivity() {
 
             val customFontFamily = remember(fontType, robotoSettings, googleSansSettings) {
                 createCustomFontFamily(
-                    fontType = FontType.fromId(fontType),
-                    robotoSettings = FontAxes.parseSettings(
-                        robotoSettings,
-                        FontAxes.ROBOTO_FLEX_AXES
-                    ),
-                    googleSansSettings = FontAxes.parseSettings(
-                        googleSansSettings,
-                        FontAxes.GOOGLE_SANS_AXES
+                    fontType = FontType.fromId(fontType), robotoSettings = FontAxes.parseSettings(
+                        robotoSettings, FontAxes.ROBOTO_FLEX_AXES
+                    ), googleSansSettings = FontAxes.parseSettings(
+                        googleSansSettings, FontAxes.GOOGLE_SANS_AXES
                     )
                 )
             }
@@ -121,12 +113,10 @@ class SplitScreenPickerActivity : ComponentActivity() {
                 createCustomFontFamily(
                     fontType = FontType.fromId(mainFontType),
                     robotoSettings = FontAxes.parseSettings(
-                        robotoSettings,
-                        FontAxes.ROBOTO_FLEX_AXES
+                        robotoSettings, FontAxes.ROBOTO_FLEX_AXES
                     ),
                     googleSansSettings = FontAxes.parseSettings(
-                        googleSansSettings,
-                        FontAxes.GOOGLE_SANS_AXES
+                        googleSansSettings, FontAxes.GOOGLE_SANS_AXES
                     )
                 )
             }
@@ -155,7 +145,6 @@ class SplitScreenPickerActivity : ComponentActivity() {
         val firstPackage = intent.getStringExtra(EXTRA_FIRST_PACKAGE)
         if (firstPackage != null && !firstAppLaunched) {
             firstAppLaunched = true
-            // After the first frame, so there is a visible full-screen task to split against
             window.decorView.post { launchFirstApp(firstPackage) }
         }
     }
@@ -167,8 +156,6 @@ class SplitScreenPickerActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
-        // The system didn't split (for example the first app refuses multi-window on this
-        // screen) and simply covered us: don't stay behind it as an orphan task.
         if (firstAppLaunched && !isInMultiWindowMode && !isChangingConfigurations) {
             finish()
         }
@@ -186,7 +173,6 @@ class SplitScreenPickerActivity : ComponentActivity() {
 
     private fun launchSecondApp(packageName: String) {
         val launch = packageManager.getLaunchIntentForPackage(packageName) ?: return
-        // No LAUNCH_ADJACENT: the app opens on this side and takes the picker's place
         launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         runCatching { startActivity(launch) }
         finish()
@@ -199,13 +185,12 @@ private fun SplitScreenPicker(
     showLabels: Boolean,
     hiddenApps: Set<String>,
     onAppClick: (String) -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
 ) {
     val context = LocalContext.current
     val sharedApps by LauncherViewModel.launchableApps.collectAsState()
     var fallbackApps by remember { mutableStateOf<List<AppInfo>>(emptyList()) }
 
-    // The launcher process normally has the list already; only load it here if it doesn't
     LaunchedEffect(sharedApps.isEmpty()) {
         if (sharedApps.isEmpty() && fallbackApps.isEmpty()) {
             fallbackApps = loadAppsFallback(context, hiddenApps)
@@ -234,7 +219,6 @@ private fun SplitScreenPicker(
             modifier = Modifier.padding(start = 8.dp, bottom = 12.dp)
         )
 
-        // Same pill as the drawer's search bar
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -264,7 +248,7 @@ private fun SplitScreenPicker(
                 cursorBrush = SolidColor(colorScheme.primary),
                 modifier = Modifier
                     .weight(1f)
-                    .padding(end = 56.dp), // balances the close button so the text stays centered
+                    .padding(end = 56.dp),
                 decorationBox = { inner ->
                     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                         if (query.isEmpty()) {
@@ -277,11 +261,9 @@ private fun SplitScreenPicker(
                         }
                         inner()
                     }
-                }
-            )
+                })
         }
 
-        // Adaptive columns: a split half can be anything from a narrow strip to half a tablet
         LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = 76.dp),
             contentPadding = PaddingValues(top = 16.dp, bottom = 24.dp),
@@ -291,14 +273,12 @@ private fun SplitScreenPicker(
                 .fillMaxSize()
                 .navigationBarsPadding()
         ) {
-            // Named `items =` so this resolves to the List overload, not items(count: Int, ...)
             items(items = shown, key = { app: AppInfo -> app.packageName }) { app: AppInfo ->
                 PickerAppItem(
                     app = app,
                     iconShape = iconShape,
                     showLabel = showLabels,
-                    onClick = { onAppClick(app.packageName) }
-                )
+                    onClick = { onAppClick(app.packageName) })
             }
         }
     }
@@ -309,7 +289,7 @@ private fun PickerAppItem(
     app: AppInfo,
     iconShape: IconShape?,
     showLabel: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
 ) {
     val bitmap = remember(app) { app.icon?.toBitmap()?.asImageBitmap() }
     val shape = iconShape?.getShape() ?: CircleShape
@@ -352,17 +332,13 @@ private fun PickerAppItem(
     }
 }
 
-/** Plain app list for the rare case the launcher's list isn't in memory (no icon packs). */
 private suspend fun loadAppsFallback(context: Context, hiddenApps: Set<String>): List<AppInfo> =
     withContext(Dispatchers.IO) {
         val pm = context.packageManager
         val query = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-        pm.queryIntentActivities(query, 0)
-            .asSequence()
-            .map { it.activityInfo.packageName to it }
+        pm.queryIntentActivities(query, 0).asSequence().map { it.activityInfo.packageName to it }
             .filter { (pkg, _) -> pkg != context.packageName && pkg !in hiddenApps }
-            .distinctBy { it.first }
-            .mapNotNull { (pkg, info) ->
+            .distinctBy { it.first }.mapNotNull { (pkg, info) ->
                 runCatching {
                     val label = info.loadLabel(pm).toString()
                     AppInfo(
@@ -373,7 +349,5 @@ private suspend fun loadAppsFallback(context: Context, hiddenApps: Set<String>):
                         isCustomized = false
                     )
                 }.getOrNull()
-            }
-            .sortedBy { it.label.lowercase() }
-            .toList()
+            }.sortedBy { it.label.lowercase() }.toList()
     }

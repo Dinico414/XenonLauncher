@@ -61,12 +61,12 @@ import kotlin.time.Duration.Companion.milliseconds
 enum class FabConfigMode { NONE, SINGLE, DOUBLE, LONG, SWIPE_UP }
 
 data class BackupInfo(
-    val id: String, // Firestore document ID or local filename
+    val id: String,
     val timestamp: Long,
     val date: String,
     val time: String,
     val device: String,
-    val data: String? = null, // The actual backup JSON data (if local or already fetched)
+    val data: String? = null,
 )
 
 data class PermissionStatus(

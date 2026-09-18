@@ -1,12 +1,13 @@
 package com.xenonware.launcher
 
-import android.Manifest
+import android.Manifest.permission
 import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Environment
 import android.provider.Settings
+import android.provider.Settings.Secure
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -29,12 +30,12 @@ import com.xenon.mylibrary.activity.BasePermissionActivity
 import com.xenon.mylibrary.res.AnimatedGradientBackground
 import com.xenon.mylibrary.res.PermissionScreen
 import com.xenon.mylibrary.res.XenonIcon
-import com.xenonware.launcher.ui.theme.XenonTheme
 import com.xenon.mylibrary.utils.PermissionItem
 import com.xenonware.launcher.accessibility.XenonAccessibilityService
 import com.xenonware.launcher.data.SharedPreferenceManager
 import com.xenonware.launcher.ui.theme.FontAxes
 import com.xenonware.launcher.ui.theme.FontType
+import com.xenonware.launcher.ui.theme.XenonTheme
 import com.xenonware.launcher.ui.theme.createCustomFontFamily
 import com.xenonware.launcher.util.AccessibilityUtils
 
@@ -135,7 +136,7 @@ class PermissionActivity : BasePermissionActivity() {
             name = getString(R.string.notification_access),
             description = getString(R.string.notification_access_description),
             isGranted = {
-                val enabled = Settings.Secure.getString(it.contentResolver, "enabled_notification_listeners")
+                val enabled = Secure.getString(it.contentResolver, "enabled_notification_listeners")
                 val granted = enabled?.contains(it.packageName) == true
                 if (!granted) currentPermissionName.value = getString(R.string.notification_access)
                 granted
@@ -154,7 +155,7 @@ class PermissionActivity : BasePermissionActivity() {
                 getString(R.string.accessibility_access_description),
             isGranted = {
                 val expectedComponentName = ComponentName(it, XenonAccessibilityService::class.java)
-                val enabledServices = Settings.Secure.getString(it.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+                val enabledServices = Secure.getString(it.contentResolver, Secure.ENABLED_ACCESSIBILITY_SERVICES)
                 val granted = enabledServices?.contains(expectedComponentName.flattenToString()) == true
                 if (!granted) currentPermissionName.value = getString(R.string.accessibility_access)
                 granted
@@ -173,12 +174,12 @@ class PermissionActivity : BasePermissionActivity() {
             name = getString(R.string.location_access),
             description = getString(R.string.location_access_description),
             isGranted = {
-                val granted = ContextCompat.checkSelfPermission(it, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                val granted = ContextCompat.checkSelfPermission(it, permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
                 if (!granted) currentPermissionName.value = getString(R.string.location_access)
                 granted
             },
             request = {
-                requestPermissions(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION), 101)
+                requestPermissions(arrayOf(permission.ACCESS_COARSE_LOCATION, permission.ACCESS_FINE_LOCATION), 101)
             }
         ))
 
@@ -187,12 +188,12 @@ class PermissionActivity : BasePermissionActivity() {
             name = getString(R.string.calendar_access),
             description = getString(R.string.calendar_access_description),
             isGranted = {
-                val granted = ContextCompat.checkSelfPermission(it, Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED
+                val granted = ContextCompat.checkSelfPermission(it, permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED
                 if (!granted) currentPermissionName.value = getString(R.string.calendar_access)
                 granted
             },
             request = {
-                requestPermissions(arrayOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR), 102)
+                requestPermissions(arrayOf(permission.READ_CALENDAR, permission.WRITE_CALENDAR), 102)
             }
         ))
 
@@ -201,12 +202,12 @@ class PermissionActivity : BasePermissionActivity() {
             name = getString(R.string.storage_access),
             description = getString(R.string.storage_access_description),
             isGranted = {
-                val granted = ContextCompat.checkSelfPermission(it, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED
+                val granted = ContextCompat.checkSelfPermission(it, permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED
                 if (!granted) currentPermissionName.value = getString(R.string.storage_access)
                 granted
             },
             request = {
-                requestPermissions(arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_AUDIO), 103)
+                requestPermissions(arrayOf(permission.READ_MEDIA_IMAGES, permission.READ_MEDIA_AUDIO), 103)
             }
         ))
 
@@ -215,12 +216,12 @@ class PermissionActivity : BasePermissionActivity() {
             name = getString(R.string.contacts_access),
             description = getString(R.string.contacts_access_description),
             isGranted = {
-                val granted = ContextCompat.checkSelfPermission(it, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED
+                val granted = ContextCompat.checkSelfPermission(it, permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED
                 if (!granted) currentPermissionName.value = getString(R.string.contacts_access)
                 granted
             },
             request = {
-                requestPermissions(arrayOf(Manifest.permission.READ_CONTACTS), 104)
+                requestPermissions(arrayOf(permission.READ_CONTACTS), 104)
             }
         ))
 
@@ -229,12 +230,12 @@ class PermissionActivity : BasePermissionActivity() {
             name = getString(R.string.post_notifications),
             description = getString(R.string.post_notifications_description),
             isGranted = {
-                val granted = ContextCompat.checkSelfPermission(it, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+                val granted = ContextCompat.checkSelfPermission(it, permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
                 if (!granted) currentPermissionName.value = getString(R.string.post_notifications)
                 granted
             },
             request = {
-                requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 105)
+                requestPermissions(arrayOf(permission.POST_NOTIFICATIONS), 105)
             }
         ))
 

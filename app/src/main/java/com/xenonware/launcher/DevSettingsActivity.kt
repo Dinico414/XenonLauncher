@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -59,7 +60,7 @@ class DevSettingsActivity : ComponentActivity() {
             
             val activeNightMode by mainSettingsViewModel.activeNightModeFlag.collectAsState()
             LaunchedEffect(activeNightMode) {
-                AppCompatDelegate.setDefaultNightMode(activeNightMode)
+                setDefaultNightMode(activeNightMode)
             }
 
             val themePref by mainSettingsViewModel.currentThemeIndex.collectAsState()
@@ -147,9 +148,9 @@ class DevSettingsActivity : ComponentActivity() {
 
     private fun updateAppCompatDelegateTheme(themePref: Int) {
         if (themePref >= 0 && themePref < sharedPreferenceManager.themeFlag.size) {
-            AppCompatDelegate.setDefaultNightMode(sharedPreferenceManager.themeFlag[themePref])
+            setDefaultNightMode(sharedPreferenceManager.themeFlag[themePref])
         } else {
-            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
+            setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
         }
     }
 }

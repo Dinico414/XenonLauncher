@@ -34,14 +34,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontFamily
-import com.xenon.mylibrary.theme.QuicksandTitleVariable
+import androidx.compose.ui.unit.dp
 import com.xenon.mylibrary.res.SettingsSwitchTile
 import com.xenon.mylibrary.res.SettingsTile
 import com.xenon.mylibrary.res.SettingsTileContext
 import com.xenon.mylibrary.res.XenonDialog
 import com.xenon.mylibrary.res.XenonIcon
+import com.xenon.mylibrary.theme.QuicksandTitleVariable
 import com.xenon.mylibrary.values.LargeMediumPadding
 import com.xenon.mylibrary.values.LargestBiggerSpacing
 import com.xenon.mylibrary.values.LargestPadding
@@ -49,13 +49,11 @@ import com.xenon.mylibrary.values.MediumPadding
 import com.xenon.mylibrary.values.SmallSpacing
 import com.xenonware.launcher.R
 import com.xenonware.launcher.viewmodel.DevSettingsViewModel
-import com.xenonware.launcher.viewmodel.SettingsViewModel
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.rememberHazeState
 
 @Composable
 fun DevSettingsItems(
-    settingsViewModel: SettingsViewModel,
     viewModel: DevSettingsViewModel,
     mainContextFont: FontFamily = QuicksandTitleVariable,
     subContextFont: FontFamily? = null,
