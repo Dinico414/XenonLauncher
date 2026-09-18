@@ -110,9 +110,15 @@ object ChronoDetector {
         val kindFromId = hintKind(idHint)
         val kindFromText = hintKind(textHint, localised = true)
 
-        fromMetrics(extras, now, kindFromId, kindFromText)?.let {
-            if (DEBUG) Log.d(TAG, "PATH0 (metrics): $it")
-            return it
+        val isMedia = n.category == Notification.CATEGORY_TRANSPORT ||
+                extras.containsKey(Notification.EXTRA_MEDIA_SESSION) ||
+                extras.getString(Notification.EXTRA_TEMPLATE)?.contains("MediaStyle") == true
+
+        if (!isMedia || looksLikeClockApp(sbn.packageName)) {
+            fromMetrics(extras, now, kindFromId, kindFromText)?.let {
+                if (DEBUG) Log.d(TAG, "PATH0 (metrics): $it")
+                return it
+            }
         }
 
         val showChrono = extras.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER, false)
@@ -120,7 +126,7 @@ object ChronoDetector {
         val hasCountDownKey = extras.containsKey(Notification.EXTRA_CHRONOMETER_COUNT_DOWN)
         val whenBase = normaliseToWallClock(n.`when`, now)
 
-        if (showChrono && whenBase > 0L) {
+        if (showChrono && whenBase > 0L && (!isMedia || looksLikeClockApp(sbn.packageName))) {
             val kind = when {
                 whenBase > now + 1_500L -> ChronoKind.TIMER
                 countDownFlag -> ChronoKind.TIMER
@@ -155,7 +161,7 @@ object ChronoDetector {
             else -> kindFromText
         }
 
-        if (probe?.chronoBase != null) {
+        if (probe?.chronoBase != null && (!isMedia || looksLikeClockApp(sbn.packageName))) {
             val elapsedNow = SystemClock.elapsedRealtime()
             val raw = probe.chronoBase
             val isLiveBase = abs(raw - elapsedNow) < LIVE_BASE_WINDOW_MS

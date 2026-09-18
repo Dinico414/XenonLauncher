@@ -524,11 +524,14 @@ class MediaControllerManager(context: Context) {
 
         if (t.isBlank() && id.isBlank() && res.isBlank()) return true
 
-        // These terms are almost always used in English in the internal IDs or resource names,
-        // even if the visible title is German/other.
+        // These terms are checked against internal IDs, resource names, and visible titles.
         val standardKeywords = listOf(
+            // English
             "play", "pause", "next", "prev", "previous", "skip", "stop",
-            "close", "dismiss", "exit", "cancel", "clear"
+            "close", "dismiss", "exit", "cancel", "clear", "cross", "finish", "done",
+            // German
+            "abspielen", "weiter", "zurück", "überspringen", "stoppen",
+            "schließen", "verwerfen", "beenden", "abbrechen", "löschen", "leeren", "kreuz", "fertig"
         )
 
         val isStandard = standardKeywords.any { t.contains(it) } ||
