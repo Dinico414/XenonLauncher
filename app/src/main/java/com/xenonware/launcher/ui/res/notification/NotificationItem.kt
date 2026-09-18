@@ -704,7 +704,7 @@ fun NotificationItem(
                                 .fillMaxWidth(),
                             contentAlignment = Alignment.CenterStart
                         ) {
-                            val factor = SharedPreferenceManager(context).notificationImageSizeFactor
+                            val factor = remember(context) { SharedPreferenceManager(context).notificationImageSizeFactor }
                             Image(
                                 bitmap = mediaBitmap,
                                 contentDescription = null,

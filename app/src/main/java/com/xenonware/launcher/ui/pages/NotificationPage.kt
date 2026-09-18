@@ -227,6 +227,9 @@ private object AppColorCache {
     fun get(app: AppInfo?): Color {
         val noIcon: Drawable? = null
         if (app == null) return ColorUtils.getDominantColor(noIcon)
+
+        app.color?.let { return Color(it) }
+
         val icon: Drawable = app.icon ?: return ColorUtils.getDominantColor(noIcon)
         val key = "${app.packageName}|${System.identityHashCode(icon)}"
         cache.get(key)?.let { return it }

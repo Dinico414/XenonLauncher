@@ -3,7 +3,6 @@ package com.xenonware.launcher.data
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
-import com.xenonware.launcher.model.AppMenuItem
 import com.xenonware.launcher.model.AppOverride
 import org.json.JSONObject
 
@@ -19,10 +18,6 @@ class SharedPreferenceManager(context: Context) {
     var theme: Int
         get() = prefs.getInt("theme", 2) // 2: System
         set(value) = prefs.edit { putInt("theme", value) }
-
-    var languageTag: String
-        get() = prefs.getString("language_tag", "") ?: ""
-        set(value) = prefs.edit { putString("language_tag", value) }
 
     var isFirstLaunch: Boolean
         get() = prefs.getBoolean("is_first_launch", true)
@@ -170,12 +165,12 @@ class SharedPreferenceManager(context: Context) {
 
     var appMenuOrder: List<String>
         get() {
-            val stored = prefs.getString("app_menu_order", "")
-            return if (stored.isNullOrEmpty()) {
-                AppMenuItem.DEFAULT_ORDER.map { it.id }
-            } else {
-                stored.split(",").filter { it.isNotEmpty() }
-            }
+            val default = com.xenonware.launcher.model.AppMenuItem.entries.map { it.id }
+            val saved = prefs.getString("app_menu_order", null)
+                ?.split(",")
+                ?.filter { it.isNotEmpty() }
+                ?: return default
+            return saved + default.filter { it !in saved }
         }
         set(value) = prefs.edit { putString("app_menu_order", value.joinToString(",")) }
 
@@ -240,8 +235,8 @@ class SharedPreferenceManager(context: Context) {
         set(value) = prefs.edit { putBoolean("notification_delete_single_press", value) }
 
     var notificationImageSizeFactor: Float
-        get() = prefs.getFloat("notification_image_size_factor", 1.0f)
-        set(value) = prefs.edit { putFloat("notification_image_size_factor", value) }
+        get() = prefs.getFloat("notification_image_size_factor", 1f).coerceIn(0.25f, 1f)
+        set(value) = prefs.edit { putFloat("notification_image_size_factor", value.coerceIn(0.25f, 1f)) }
 
     var notificationIndicatorType: Int
         get() = prefs.getInt("notification_indicator_type", 2) // 0: None, 1: Checkmark, 2: Trophy
@@ -375,8 +370,6 @@ class SharedPreferenceManager(context: Context) {
             remove("app_labels_enabled")
             remove("cover_display_dimension_1")
             remove("cover_display_dimension_2")
-            remove("app_menu_order")
-            remove("notification_image_size_factor")
         }
     }
 

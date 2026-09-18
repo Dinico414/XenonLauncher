@@ -7,7 +7,8 @@ data class AppInfo(
     val packageName: String,
     val icon: Drawable? = null,
     val label: String = name,
-    val isCustomized: Boolean = false
+    val isCustomized: Boolean = false,
+    val color: Int? = null
 )
 
 data class WidgetItem(

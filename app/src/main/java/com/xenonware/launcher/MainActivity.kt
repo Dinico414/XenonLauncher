@@ -405,8 +405,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        viewModel.loadAvailableCalendars()
-        viewModel.loadCalendarEvents()
+        viewModel.setForeground(true)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        viewModel.setForeground(false)
     }
 
     override fun onResume() {

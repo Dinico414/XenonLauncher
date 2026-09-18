@@ -16,6 +16,7 @@ import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
+import android.content.res.Configuration
 import android.database.ContentObserver
 import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
@@ -32,6 +33,8 @@ import android.provider.MediaStore
 import android.provider.MediaStore.Files.FileColumns
 import android.util.Log
 import android.util.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.IntSize
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
@@ -44,6 +47,7 @@ import com.google.android.gms.tasks.CancellationTokenSource
 import com.xenonware.launcher.R
 import com.xenonware.launcher.SplitScreenPickerActivity
 import com.xenonware.launcher.accessibility.XenonAccessibilityService
+import com.xenonware.launcher.data.LauncherCache
 import com.xenonware.launcher.data.SharedPreferenceManager
 import com.xenonware.launcher.media.MediaControllerManager
 import com.xenonware.launcher.media.MediaState
@@ -59,6 +63,7 @@ import com.xenonware.launcher.model.WidgetPickerItemData
 import com.xenonware.launcher.notification.NotificationManager
 import com.xenonware.launcher.notification.XenonNotificationService
 import com.xenonware.launcher.ui.res.IconShape
+import com.xenonware.launcher.util.ColorUtils
 import com.xenonware.launcher.util.generateCustomIcon
 import com.xenonware.launcher.util.getIconPackMap
 import com.xenonware.launcher.util.loadIconFromPack
@@ -68,10 +73,12 @@ import com.xenonware.launcher.util.normalizeIcon
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -85,8 +92,11 @@ import java.net.URL
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Calendar
+import java.util.Collections
 import java.util.Locale
 import java.util.TimeZone
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.resume
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
@@ -126,11 +136,19 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     companion object {
         private const val TAG = "LauncherViewModel"
 
-
         private const val DAY_MILLIS = 24 * 60 * 60 * 1000L
 
         private const val LOCATION_MAX_AGE_MS = 30L * 60 * 1000
         private const val LOCATION_FIX_TIMEOUT_MS = 10_000L
+
+        /** Weather younger than this is shown from cache without hitting the network. */
+        private const val WEATHER_TTL_MS = 15L * 60 * 1000
+
+        /** Package broadcasts come in bursts (an update = REMOVED + ADDED + CHANGED). */
+        private const val PACKAGE_EVENT_DEBOUNCE_MS = 500L
+
+        /** Many triggers (onStart, observer, provider broadcast, tick) collapse into one query. */
+        private const val CALENDAR_DEBOUNCE_MS = 250L
 
         private val sharedApps = MutableStateFlow<List<AppInfo>>(emptyList())
 
@@ -138,6 +156,45 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     }
 
     private val prefManager = SharedPreferenceManager(application)
+
+    // ---------------------------------------------------------------------------------
+    // Lifecycle / performance state.
+    // Declared BEFORE init {}: Kotlin runs initializers in textual order, so anything
+    // declared after init would be reset (or still null) while init is using it.
+    // ---------------------------------------------------------------------------------
+
+    private val cache = LauncherCache(application)
+
+    /** finishInitialization() must run exactly once per ViewModel. */
+    private val initialized = AtomicBoolean(false)
+
+    /**
+     * True between MainActivity.onStart and onStop. Everything that only matters while the
+     * launcher is visible (clock, media polling, weather, calendar, battery) pauses otherwise.
+     */
+    private val _isForeground = MutableStateFlow(false)
+
+    private var foregroundReceiversRegistered = false
+
+    /** Set when packages changed while in background; rescanned on return. */
+    @Volatile
+    private var appsDirty = false
+
+    @Volatile
+    private var calendarDirty = false
+
+    private var appsJob: Job? = null
+    private var calendarJob: Job? = null
+    private var weatherJob: Job? = null
+
+    /** In-memory icon cache: "package/activity" -> rendered app, reused while unchanged. */
+    private val appMemCache = ConcurrentHashMap<String, LauncherCache.CachedApp>()
+
+    /** Each calendar gets exactly one automatic sync-enable attempt per process. */
+    private val syncAttemptedCalendars: MutableSet<String> =
+        Collections.synchronizedSet(HashSet())
+
+    private var torchCallback: CameraManager.TorchCallback? = null
 
     private val preferenceListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         when (key) {
@@ -214,6 +271,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             "notification_indicator_type" -> _notificationIndicatorType.value = prefManager.notificationIndicatorType
             "notification_message_type" -> _notificationMessageType.value = prefManager.notificationMessageType
             "temp_unit" -> {
+                // Unit changed: the cached reading is stale, refetch right away
                 viewModelScope.launch { updateWeatherOnce() }
             }
             "font_type" -> _fontType.value = prefManager.fontType
@@ -398,11 +456,15 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val _isBooting = MutableStateFlow(false)
     val isBooting: StateFlow<Boolean> = _isBooting
 
+    /**
+     * Only toggles the welcome overlay now. Loading already started in init (the ViewModel is
+     * created by the first `viewModel` access, before setBooting(true) runs), and thanks to the
+     * disk cache there's nothing heavy left to defer. finishInitialization() is idempotent, so
+     * the second call that used to load everything twice is a no-op.
+     */
     fun setBooting(booting: Boolean) {
         _isBooting.value = booting
-        if (!booting) {
-            finishInitialization()
-        }
+        if (!booting) finishInitialization()
     }
 
     private val _coverThemeEnabled = MutableStateFlow(prefManager.coverThemeEnabled)
@@ -462,13 +524,14 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private var searchJob: Job? = null
 
-
     private val packageReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            loadApps()
+            // In background nobody sees the drawer: just remember to rescan on return
+            if (_isForeground.value) loadApps(PACKAGE_EVENT_DEBOUNCE_MS) else appsDirty = true
         }
     }
 
+    /** Registered only while in foreground (battery broadcasts fire very often). */
     private val batteryReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             val level = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
@@ -517,7 +580,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         XenonNotificationService.dismissPermanent()
     }
 
-
     private val _replyingNotificationKey = MutableStateFlow<String?>(null)
     val replyingNotificationKey: StateFlow<String?> = _replyingNotificationKey
 
@@ -525,11 +587,24 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         _replyingNotificationKey.value = key
     }
 
-    private val _currentTime = MutableStateFlow(LocalDateTime.now())
+    /**
+     * Minute precision on purpose: StateFlow drops equal values, so the whole launcher UI
+     * (which collects this at the top of setContent) recomposes once a minute instead of
+     * every second. The UI only shows HH:mm anyway.
+     */
+    private val _currentTime = MutableStateFlow(nowToMinute())
     val currentTime: StateFlow<LocalDateTime> = _currentTime
 
+    private val cachedWeather = cache.loadWeather()
+
+    @Volatile
+    private var lastWeatherFetch: Long = cachedWeather?.fetchedAt ?: 0L
+
+    @Volatile
+    private var lastWeatherKey: String? = cachedWeather?.unitKey
+
     private val _weatherState = MutableStateFlow(
-        WeatherState(
+        cachedWeather?.state ?: WeatherState(
             temperature = application.getString(R.string.no_weather_data),
             condition = ""
         )
@@ -559,7 +634,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val _visibleCalendars = MutableStateFlow(prefManager.visibleCalendars)
     val visibleCalendars: StateFlow<List<String>> = _visibleCalendars
 
-
     private val _unsyncedSelectedCalendars = MutableStateFlow<List<CalendarInfo>>(emptyList())
 
     private val _showNotificationManagerDialog = MutableStateFlow(false)
@@ -588,19 +662,11 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     }
 
     val activeTimers = NotificationManager.notifications.map { list ->
-        val timers = list.filter { it.isTimer }
-        if (timers.isNotEmpty()) {
-            Log.d(TAG, "Exposing ${timers.size} active timers to UI")
-        }
-        timers
+        list.filter { it.isTimer }
     }
 
     val activeStopwatches = NotificationManager.notifications.map { list ->
-        val stopwatches = list.filter { it.isStopwatch }
-        if (stopwatches.isNotEmpty()) {
-            Log.d(TAG, "Exposing ${stopwatches.size} active stopwatches to UI")
-        }
-        stopwatches
+        list.filter { it.isStopwatch }
     }
 
     private val alarmReceiver = object : BroadcastReceiver() {
@@ -614,8 +680,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private var calendarObserver: ContentObserver? = null
 
+    /** Registered only while in foreground: time tick, time/zone/date changes, calendar provider. */
     private val timeTickReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
+            _currentTime.value = nowToMinute()
             loadCalendarEvents()
         }
     }
@@ -627,34 +695,38 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         NotificationManager.showPermanentNotifications = prefManager.showPermanentNotifications
         NotificationManager.disableGrouping = prefManager.disableGrouping
 
+        restoreCachedCalendarEvents()
         startTimeUpdates()
 
-        if (!_isBooting.value) {
-            finishInitialization()
-        }
+        finishInitialization()
     }
 
     private fun finishInitialization() {
-        loadApps()
+        if (!initialized.compareAndSet(false, true)) return
+
+        loadApps()          // paints the disk cache first, then rescans
         loadWidgets()
         loadInstalledWidgets()
         startMediaUpdates()
         startWeatherUpdates()
         loadAvailableCalendars()
         loadCalendarEvents()
-        startCalendarUpdates()
+        setupCalendarObserver()
         updateNextAlarm()
 
         val application = getApplication<Application>()
         try {
             cameraId = cameraManager.cameraIdList.firstOrNull()
-            cameraManager.registerTorchCallback(object : CameraManager.TorchCallback() {
+            val callback = object : CameraManager.TorchCallback() {
                 override fun onTorchModeChanged(id: String, enabled: Boolean) {
                     if (id == cameraId) _isFlashlightOn.value = enabled
                 }
-            }, Handler(Looper.getMainLooper()))
+            }
+            cameraManager.registerTorchCallback(callback, Handler(Looper.getMainLooper()))
+            torchCallback = callback
         } catch (_: Exception) {}
 
+        // Always-on receivers: cheap and rare
         val packageFilter = IntentFilter().apply {
             addAction(Intent.ACTION_PACKAGE_ADDED)
             addAction(Intent.ACTION_PACKAGE_REMOVED)
@@ -662,6 +734,45 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             addDataScheme("package")
         }
         application.registerReceiver(packageReceiver, packageFilter)
+        application.registerReceiver(alarmReceiver, IntentFilter(AlarmManager.ACTION_NEXT_ALARM_CLOCK_CHANGED))
+
+        // If onStart already happened before init finished, catch up
+        if (_isForeground.value) registerForegroundReceivers()
+    }
+
+    // ---------------------------------------------------------------------------------
+    // Foreground / background
+    // ---------------------------------------------------------------------------------
+
+    /** Call from MainActivity.onStart (true) and onStop (false). */
+    fun setForeground(foreground: Boolean) {
+        if (_isForeground.value == foreground) return
+        _isForeground.value = foreground
+
+        if (foreground) {
+            _currentTime.value = nowToMinute()
+            registerForegroundReceivers()
+            updateNextAlarm()
+            loadAvailableCalendars()
+            loadCalendarEvents()
+            calendarDirty = false
+            if (appsDirty) {
+                appsDirty = false
+                loadApps()
+            }
+        } else {
+            unregisterForegroundReceivers()
+            // Stop whatever is still queued; it would only update an invisible UI
+            calendarJob?.cancel()
+            searchJob?.cancel()
+        }
+    }
+
+    private fun registerForegroundReceivers() {
+        if (foregroundReceiversRegistered || !initialized.get()) return
+        val application = getApplication<Application>()
+
+        // Sticky broadcast: registering immediately delivers the current battery state
         application.registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
 
         val timeFilter = IntentFilter().apply {
@@ -671,8 +782,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             addAction(Intent.ACTION_DATE_CHANGED)
         }
         application.registerReceiver(timeTickReceiver, timeFilter)
-
-        application.registerReceiver(alarmReceiver, IntentFilter(AlarmManager.ACTION_NEXT_ALARM_CLOCK_CHANGED))
 
         val providerFilter = IntentFilter(Intent.ACTION_PROVIDER_CHANGED).apply {
             addDataScheme("content")
@@ -684,33 +793,69 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             providerFilter,
             ContextCompat.RECEIVER_EXPORTED
         )
+        foregroundReceiversRegistered = true
+    }
+
+    private fun unregisterForegroundReceivers() {
+        if (!foregroundReceiversRegistered) return
+        val application = getApplication<Application>()
+        try { application.unregisterReceiver(batteryReceiver) } catch (_: Exception) {}
+        try { application.unregisterReceiver(timeTickReceiver) } catch (_: Exception) {}
+        foregroundReceiversRegistered = false
     }
 
     override fun onCleared() {
         prefManager.unregisterListener(preferenceListener)
-        getApplication<Application>().unregisterReceiver(packageReceiver)
-        getApplication<Application>().unregisterReceiver(batteryReceiver)
-        try {
-            getApplication<Application>().unregisterReceiver(timeTickReceiver)
-        } catch (_: Exception) {}
-        try {
-            getApplication<Application>().unregisterReceiver(alarmReceiver)
-        } catch (_: Exception) {}
+        val application = getApplication<Application>()
+        unregisterForegroundReceivers()
+        if (initialized.get()) {
+            try { application.unregisterReceiver(packageReceiver) } catch (_: Exception) {}
+            try { application.unregisterReceiver(alarmReceiver) } catch (_: Exception) {}
+        }
+        torchCallback?.let {
+            try { cameraManager.unregisterTorchCallback(it) } catch (_: Exception) {}
+        }
         calendarObserver?.let {
-            try {
-                getApplication<Application>().contentResolver.unregisterContentObserver(it)
-            } catch (_: Exception) {}
+            try { application.contentResolver.unregisterContentObserver(it) } catch (_: Exception) {}
         }
     }
 
+    // ---------------------------------------------------------------------------------
+    // Weather
+    // ---------------------------------------------------------------------------------
+
+    private fun isMetric(): Boolean = when (prefManager.tempUnit) {
+        1 -> true
+        2 -> false
+        else -> Locale.getDefault().country != "US"
+    }
+
+    /** A cached reading is only valid for the unit and language it was made with. */
+    private fun currentWeatherKey(): String =
+        "${if (isMetric()) "C" else "F"}|${Locale.getDefault().language}"
+
     private fun startWeatherUpdates() {
-        viewModelScope.launch {
+        weatherJob?.cancel()
+        weatherJob = viewModelScope.launch {
             var failures = 0
             while (true) {
+                // No network, no GPS while the launcher isn't visible
+                _isForeground.first { it }
+
+                val age = System.currentTimeMillis() - lastWeatherFetch
+                val fresh = age in 0 until WEATHER_TTL_MS && lastWeatherKey == currentWeatherKey()
+                if (fresh) {
+                    delay((WEATHER_TTL_MS - age).milliseconds)
+                    continue
+                }
+
                 val gotReading = updateWeatherOnce()
-                failures = if (gotReading) 0 else failures + 1
-                val waitMinutes = if (gotReading) 15 else minOf(15, 1 shl (failures - 1).coerceAtMost(4))
-                delay(waitMinutes.minutes)
+                if (gotReading) {
+                    failures = 0
+                } else {
+                    failures++
+                    delay(minOf(15, 1 shl (failures - 1).coerceAtMost(4)).minutes)
+                }
             }
         }
     }
@@ -723,13 +868,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         return withContext(Dispatchers.IO) {
             var connection: HttpURLConnection? = null
             try {
-                val isMetric = when (prefManager.tempUnit) {
-                    1 -> true
-                    2 -> false
-                    else -> Locale.getDefault().country != "US"
-                }
-                val tempParam = if (isMetric) "celsius" else "fahrenheit"
-                val unit = if (isMetric) "C" else "F"
+                val metric = isMetric()
+                val tempParam = if (metric) "celsius" else "fahrenheit"
+                val unit = if (metric) "C" else "F"
 
                 val url = URL(
                     "https://api.open-meteo.com/v1/forecast" +
@@ -775,13 +916,20 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                     ?.let { if (it.length() > 12) it.optInt(12, dailyCode) else dailyCode }
                     ?: dailyCode
 
-                _weatherState.value = WeatherState(
+                val state = WeatherState(
                     temperature = "$currentTempValue°$unit",
                     condition = weatherCodeToCondition(currentCode),
                     maxTemp = "$maxTempValue°$unit",
                     minTemp = "$minTempValue°$unit",
                     dailyCondition = weatherCodeToCondition(middayCode)
                 )
+                _weatherState.value = state
+
+                val now = System.currentTimeMillis()
+                val key = currentWeatherKey()
+                lastWeatherFetch = now
+                lastWeatherKey = key
+                cache.saveWeather(state, now, key)
                 true
             } catch (e: Exception) {
                 Log.w(TAG, "Weather update failed: ${e.javaClass.simpleName}: ${e.message}")
@@ -848,7 +996,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         val hasCoarse = ContextCompat.checkSelfPermission(
             context, Manifest.permission.ACCESS_COARSE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
-        if (!hasFine && !hasCoarse) return null // no permission -> wttr.in uses IP fallback
+        if (!hasFine && !hasCoarse) return null // open-meteo needs coordinates: no permission, no weather
 
         val last = withTimeoutOrNull(3_000L.milliseconds) {
             suspendCancellableCoroutine { cont ->
@@ -878,11 +1026,20 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         return result
     }
 
+    // ---------------------------------------------------------------------------------
+    // Clock & media (foreground only)
+    // ---------------------------------------------------------------------------------
+
+    private fun nowToMinute(): LocalDateTime = LocalDateTime.now().withSecond(0).withNano(0)
+
+    /** Wakes once per minute (aligned to the minute boundary), and never in background. */
     private fun startTimeUpdates() {
         viewModelScope.launch {
             while (true) {
-                _currentTime.value = LocalDateTime.now()
-                delay(1000L.milliseconds)
+                _isForeground.first { it }
+                _currentTime.value = nowToMinute()
+                val msToNextMinute = 60_000L - (System.currentTimeMillis() % 60_000L)
+                delay((msToNextMinute + 20).milliseconds)
             }
         }
     }
@@ -890,6 +1047,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private fun startMediaUpdates() {
         viewModelScope.launch {
             while (true) {
+                _isForeground.first { it }
                 mediaControllerManager.updateActiveSession()
                 delay(1000.milliseconds)
             }
@@ -962,9 +1120,33 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         getApplication<Application>().startActivity(intent)
     }
 
-    fun loadApps() {
-        viewModelScope.launch(Dispatchers.IO) {
+    // ---------------------------------------------------------------------------------
+    // Apps (cached, incremental)
+    // ---------------------------------------------------------------------------------
+
+    /**
+     * 1. Cold start: paints the app list (with icons) from disk right away.
+     * 2. Rescans the launcher activities, but only re-renders an icon when the app was
+     *    updated or an icon-affecting setting changed; everything else reuses the exact same
+     *    AppInfo object, so the StateFlows see equal lists and the UI doesn't recompose.
+     * Repeated calls cancel the previous scan (package broadcasts come in bursts).
+     */
+    fun loadApps(debounceMs: Long = 0L) {
+        appsJob?.cancel()
+        appsJob = viewModelScope.launch(Dispatchers.IO) {
+            if (debounceMs > 0) delay(debounceMs.milliseconds)
             val context = getApplication<Application>()
+
+            // 1) Instant paint after process death
+            if (appMemCache.isEmpty()) {
+                val restored = cache.loadApps()
+                restored.forEach { appMemCache[it.key] = it }
+                if (restored.isNotEmpty() && _allApps.value.isEmpty()) {
+                    publishApps(restored.map { it.info }.sortedBy { it.label.lowercase() })
+                }
+            }
+
+            // 2) Rescan
             val pm = context.packageManager
             val launcherPackage = context.packageName
             val intent = Intent(Intent.ACTION_MAIN, null).apply {
@@ -974,69 +1156,133 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             val overrides = prefManager.getAppOverrides()
             val currentShape = _drawerIconShape.value
             val globalPack = _globalIconPack.value
-            val globalPackMap = globalPack?.let { getIconPackMap(context, it) } ?: emptyMap()
+            // Parsing an icon pack's appfilter is expensive: only do it if an icon must be rebuilt
+            val globalPackMap by lazy { globalPack?.let { getIconPackMap(context, it) } ?: emptyMap() }
 
-            val resolvedInfos = pm.queryIntentActivities(intent, 0)
-            val appList = resolvedInfos.mapNotNull { it ->
-                val pkgName = it.activityInfo.packageName
+            // One binder call for every app's version instead of one per app
+            @Suppress("DEPRECATION")
+            val versions: Map<String, Long> = try {
+                pm.getInstalledPackages(0).associate { it.packageName to it.lastUpdateTime }
+            } catch (_: Exception) {
+                emptyMap()
+            }
+
+            val settingsStamp = listOf(
+                "v4", // bump to force every icon (and its color) to be rebuilt once
+                currentShape.name,
+                globalPack ?: "-",
+                globalPack?.let { versions[it] } ?: 0L,
+                Locale.getDefault().toLanguageTag(),
+                context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+            ).joinToString("|")
+
+            fun build(ri: ResolveInfo, pkgName: String, override: AppOverride?): AppInfo? = try {
+                val originalLabel = ri.loadLabel(pm).toString()
+                val originalIcon = ri.loadIcon(pm)
+
+                var finalLabel = originalLabel
+                val finalIcon: Drawable?
+                var isCustomized = false
+
+                if (override != null) {
+                    isCustomized = true
+                    override.customName?.let { finalLabel = it }
+
+                    val baseIcon = if (override.iconPackPackage != null && override.iconResourceName != null) {
+                        loadIconFromPack(context, override.iconPackPackage, override.iconResourceName) ?: originalIcon
+                    } else {
+                        originalIcon
+                    }
+                    finalIcon = generateCustomIcon(context, baseIcon, override, currentShape)
+                } else {
+                    val componentName = "ComponentInfo{${ri.activityInfo.packageName}/${ri.activityInfo.name}}"
+                    val globalIconRes = if (globalPack != null) globalPackMap[componentName] else null
+
+                    val baseIcon = if (globalPack != null && globalIconRes != null) {
+                        loadIconFromPack(context, globalPack, globalIconRes) ?: originalIcon
+                    } else {
+                        originalIcon
+                    }
+                    finalIcon = normalizeIcon(context, baseIcon)
+                }
+
+                AppInfo(
+                    name = originalLabel,
+                    packageName = pkgName,
+                    // Rendered once into a fixed-size bitmap: cacheable, and toBitmap() in
+                    // the UI becomes free instead of redrawing on every recomposition
+                    icon = finalIcon?.let { cache.rasterize(it) },
+                    label = finalLabel,
+                    isCustomized = isCustomized,
+                    // From the original icon, BEFORE flattening (flattening loses the
+                    // adaptive background layer and made X come out bright)
+                    color = finalIcon?.let { computeAppColor(it) }
+                )
+            } catch (_: Exception) {
+                null
+            }
+
+            val seenKeys = HashSet<String>()
+            val rebuilt = mutableListOf<LauncherCache.CachedApp>()
+
+            val appList = pm.queryIntentActivities(intent, 0).mapNotNull { ri ->
+                ensureActive()
+                val pkgName = ri.activityInfo.packageName
                 if (pkgName == launcherPackage) return@mapNotNull null
 
-                try {
-                    val originalLabel = it.loadLabel(pm).toString()
-                    val originalIcon = it.loadIcon(pm)
+                val key = "$pkgName/${ri.activityInfo.name}"
+                if (!seenKeys.add(key)) return@mapNotNull null
 
-                    val override = overrides[pkgName]
-                    var finalLabel = originalLabel
-                    var finalIcon: Drawable?
-                    var isCustomized = false
+                val override = overrides[pkgName]
+                val stamp = "${versions[pkgName] ?: 0L}|$settingsStamp|${override?.toString()?.hashCode() ?: 0}"
 
-                    if (override != null) {
-                        isCustomized = true
-                        override.customName?.let { finalLabel = it }
+                val cached = appMemCache[key]
+                if (cached != null && cached.stamp == stamp) return@mapNotNull cached.info
 
-                        val baseIcon = if (override.iconPackPackage != null && override.iconResourceName != null) {
-                            loadIconFromPack(context, override.iconPackPackage, override.iconResourceName) ?: originalIcon
-                        } else {
-                            originalIcon
-                        }
-
-                        finalIcon = generateCustomIcon(context, baseIcon, override, currentShape)
-                    } else {
-                        // Apply global icon pack if available
-                        val componentName = "ComponentInfo{${it.activityInfo.packageName}/${it.activityInfo.name}}"
-                        val globalIconRes = globalPackMap[componentName]
-
-                        val baseIcon = if (globalPack != null && globalIconRes != null) {
-                            loadIconFromPack(context, globalPack, globalIconRes) ?: originalIcon
-                        } else {
-                            originalIcon
-                        }
-
-                        finalIcon = normalizeIcon(context, baseIcon)
-                    }
-
-                    AppInfo(
-                        name = originalLabel,
-                        packageName = pkgName,
-                        icon = finalIcon,
-                        label = finalLabel,
-                        isCustomized = isCustomized
-                    )
-                } catch (_: Exception) {
-                    null
-                }
+                val info = build(ri, pkgName, override) ?: return@mapNotNull null
+                val entry = LauncherCache.CachedApp(key, stamp, info)
+                appMemCache[key] = entry
+                rebuilt += entry
+                info
             }.sortedBy { it.label.lowercase() }
-            _allApps.value = appList
-            _apps.value = appList.filter { it.packageName !in _hiddenApps.value }
-            sharedApps.value = _apps.value
 
-            // Restore pinned apps once the main list is loaded
-            val savedPinnedPkgs = prefManager.pinnedApps
-            _pinnedApps.value = savedPinnedPkgs.mapNotNull { pkg ->
-                appList.find { it.packageName == pkg }
+            ensureActive()
+
+            val removed = appMemCache.keys.filter { it !in seenKeys }
+            removed.forEach { appMemCache.remove(it) }
+
+            publishApps(appList)
+
+            // Persist only what changed
+            if (rebuilt.isNotEmpty() || removed.isNotEmpty()) {
+                rebuilt.forEach { cache.saveIcon(it.key, it.info.icon) }
+                removed.forEach { cache.deleteIcon(it) }
+                cache.saveApps(appMemCache.values)
             }
-            loadRecentlyOpened()
         }
+    }
+
+    /**
+     * The notification color, calculated once per app with the exact same
+     * ColorUtils.getDominantColor() logic as before — but on the ORIGINAL icon, before it is
+     * flattened. Running it on the flattened 64dp bitmap is what made X come out bright.
+     */
+    private fun computeAppColor(icon: Drawable): Int? {
+        val color = ColorUtils.getDominantColor(icon)
+        return if (color == Color.Unspecified) null else color.toArgb()
+    }
+
+    /** StateFlow skips equal values, so republishing an unchanged list costs nothing. */
+    private fun publishApps(appList: List<AppInfo>) {
+        _allApps.value = appList
+        _apps.value = appList.filter { it.packageName !in _hiddenApps.value }
+        sharedApps.value = _apps.value
+
+        val savedPinnedPkgs = prefManager.pinnedApps
+        _pinnedApps.value = savedPinnedPkgs.mapNotNull { pkg ->
+            appList.find { it.packageName == pkg }
+        }
+        loadRecentlyOpened()
     }
 
     fun updateAppOverride(packageName: String, override: AppOverride) {
@@ -1072,7 +1318,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         current.add(packageName)
         _hiddenApps.value = current
         prefManager.hiddenApps = current.toList()
-        loadApps()
+        publishApps(_allApps.value)
     }
 
     fun unhideApp(packageName: String) {
@@ -1080,7 +1326,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         current.remove(packageName)
         _hiddenApps.value = current
         prefManager.hiddenApps = current.toList()
-        loadApps()
+        publishApps(_allApps.value)
     }
 
     private fun recordLaunch(packageName: String) {
@@ -1116,9 +1362,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             .sortedByDescending { it.second }
             .map { it.first }
 
-        _recentlyOpened.value = recentApps.mapNotNull { pkg ->
-            _apps.value.find { it.packageName == pkg }
-        }
+        val byPackage = _apps.value.associateBy { it.packageName }
+        _recentlyOpened.value = recentApps.mapNotNull { byPackage[it] }
     }
 
     private fun savePinnedApps() {
@@ -1136,10 +1381,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     fun launchAppInSplitScreen(packageName: String) {
         val context = getApplication<Application>()
-
         recordLaunch(packageName)
         context.startActivity(SplitScreenPickerActivity.intent(context, firstPackage = packageName))
-        return
     }
 
     fun pinApp(packageName: String, atIndex: Int = -1) {
@@ -1207,6 +1450,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         _advancedSearchEnabled.value = enabled
         prefManager.advancedSearchEnabled = enabled
     }
+
+    // ---------------------------------------------------------------------------------
+    // Search
+    // ---------------------------------------------------------------------------------
 
     private fun loadSearchHistory(): List<SearchHistoryEntry> {
         val jsonStr = prefManager.searchHistory
@@ -1279,9 +1526,11 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             if (_advancedSearchEnabled.value) {
                 // 2. Search Contacts
                 results.addAll(searchContacts(query))
+                ensureActive()
 
                 // 3. Search Files
                 results.addAll(searchFiles(query))
+                ensureActive()
 
                 // 4. Web Search and Website suggestions
                 results.add(SearchResult.Web(query, false))
@@ -1309,10 +1558,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             Phone.NUMBER,
             Phone.PHOTO_THUMBNAIL_URI
         )
-        val selection = null
-        val selectionArgs = null
 
-        context.contentResolver.query(uri, projection, selection, selectionArgs, null)?.use { cursor ->
+        context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
             val idIdx = cursor.getColumnIndex(Phone.CONTACT_ID)
             val nameIdx = cursor.getColumnIndex(Phone.DISPLAY_NAME)
             val numberIdx = cursor.getColumnIndex(Phone.NUMBER)
@@ -1343,10 +1590,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             FileColumns.MIME_TYPE,
             FileColumns._ID
         )
-        val selection = null
-        val selectionArgs = null
 
-        context.contentResolver.query(externalUri, projection, selection, selectionArgs, null)?.use { cursor ->
+        context.contentResolver.query(externalUri, projection, null, null, null)?.use { cursor ->
             val nameIdx = cursor.getColumnIndex(FileColumns.DISPLAY_NAME)
             val dataIdx = cursor.getColumnIndex(FileColumns.DATA)
             val mimeIdx = cursor.getColumnIndex(FileColumns.MIME_TYPE)
@@ -1375,6 +1620,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         }
         return results
     }
+
+    // ---------------------------------------------------------------------------------
+    // Widgets
+    // ---------------------------------------------------------------------------------
 
     private fun loadInstalledWidgets() {
         viewModelScope.launch(Dispatchers.IO) {
@@ -1543,6 +1792,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    // ---------------------------------------------------------------------------------
+    // Calendar
+    // ---------------------------------------------------------------------------------
+
     private fun setupCalendarObserver() {
         if (calendarObserver == null) {
             val context = getApplication<Application>()
@@ -1552,50 +1805,42 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
             calendarObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
                 override fun onChange(selfChange: Boolean, uri: Uri?) {
-                    Log.d(TAG, "Calendar content changed (uri=$uri); reloading events")
-                    loadCalendarEvents()
+                    // Sync adapters write constantly in background; reload only when visible
+                    if (_isForeground.value) loadCalendarEvents() else calendarDirty = true
                 }
             }
             try {
+                // CalendarContract.CONTENT_URI with notifyForDescendants covers Events,
+                // Instances and Calendars — registering those again only multiplied callbacks.
                 context.contentResolver.registerContentObserver(
                     CalendarContract.CONTENT_URI,
                     true,
                     calendarObserver!!
                 )
-                context.contentResolver.registerContentObserver(
-                    CalendarContract.Events.CONTENT_URI,
-                    true,
-                    calendarObserver!!
-                )
-                context.contentResolver.registerContentObserver(
-                    CalendarContract.Instances.CONTENT_URI,
-                    true,
-                    calendarObserver!!
-                )
-                context.contentResolver.registerContentObserver(
-                    CalendarContract.Calendars.CONTENT_URI,
-                    true,
-                    calendarObserver!!
-                )
             } catch (e: Exception) {
-                Log.e(TAG, "Could not register calendar observers", e)
+                Log.e(TAG, "Could not register calendar observer", e)
             }
         }
     }
 
-    private fun startCalendarUpdates() {
-        setupCalendarObserver()
-        viewModelScope.launch {
-            while (true) {
-                delay(30_000L.milliseconds)
-                loadCalendarEvents()
-            }
-        }
+    private fun restoreCachedCalendarEvents() {
+        val cached = cache.loadCalendarEvents() ?: return
+        val tz = TimeZone.getDefault()
+        val bounds = computeDayBounds()
+        _calendarEvents.value = cached
+            .filter { it.isRelevant(bounds, tz) }
+            .sortedWith(
+                compareBy<CalendarEvent> { rankOf(it, bounds, tz) }
+                    .thenBy { it.localStart(tz) }
+                    .thenBy { it.localEnd(tz) }
+            )
     }
 
-    // ---------------------------------------------------------------------------------
-    // Calendar loading
-    // ---------------------------------------------------------------------------------
+    private fun publishCalendarEvents(events: List<CalendarEvent>) {
+        if (events == _calendarEvents.value) return
+        _calendarEvents.value = events
+        cache.saveCalendarEvents(events)
+    }
 
     private data class DayBounds(
         val now: Long,
@@ -1674,9 +1919,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     /**
      * Reads calendar rows into [CalendarEvent]s. A single unreadable row is skipped and
-     * logged instead of aborting the whole query — previously one bad row threw out of
-     * the loop and, because the sort order puts all-day events first, left you with only
-     * the all-day results.
+     * logged instead of aborting the whole query.
      */
     private fun readEvents(
         context: Context,
@@ -1687,7 +1930,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         bounds: DayBounds,
         tz: TimeZone
     ): List<CalendarEvent> {
-        // Instances are always read in ascending start order.
         val sortOrder = "${CalendarContract.Instances.BEGIN} ASC"
         val events = mutableListOf<CalendarEvent>()
         try {
@@ -1746,7 +1988,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         tz: TimeZone
     ): List<CalendarEvent> {
         val events = mutableListOf<CalendarEvent>()
-        val baseSelection = "${CalendarContract.Events.DELETED} = 0 AND ${CalendarContract.Events.RRULE} IS NULL"
+        val baseSelection = "${CalendarContract.Events.DELETED} = 0 AND ${CalendarContract.Events.RRULE} IS NULL" +
+                // Let the provider skip everything that ended before yesterday
+                " AND ${CalendarContract.Events.DTSTART} <= ${bounds.endOfTomorrow + DAY_MILLIS}" +
+                " AND (${CalendarContract.Events.DTEND} IS NULL OR ${CalendarContract.Events.DTEND} >= ${bounds.startOfToday - DAY_MILLIS})"
         val fullSelection = if (selection != null) {
             "$baseSelection AND $selection"
         } else {
@@ -1816,9 +2061,20 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         return events
     }
 
-
+    /**
+     * Debounced: onStart, the observer, the provider broadcast and the minute tick often fire
+     * together; they now collapse into a single query. Does nothing in background (the next
+     * onStart reloads anyway).
+     */
     fun loadCalendarEvents() {
-        viewModelScope.launch(Dispatchers.IO) {
+        if (!_isForeground.value) {
+            calendarDirty = true
+            return
+        }
+        calendarJob?.cancel()
+        calendarJob = viewModelScope.launch(Dispatchers.IO) {
+            delay(CALENDAR_DEBOUNCE_MS.milliseconds)
+
             val context = getApplication<Application>()
             if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
                 Log.w(TAG, "READ_CALENDAR not granted; skipping calendar load")
@@ -1837,7 +2093,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             var visibleCalendars = prefManager.visibleCalendars
 
             if (visibleCalendars.contains("__NONE__")) {
-                _calendarEvents.value = emptyList()
+                publishCalendarEvents(emptyList())
                 return@launch
             }
 
@@ -1867,13 +2123,18 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             val effectiveSelection = if (visibleCalendars.isEmpty()) availableIds else visibleCalendars.toSet()
             val unsynced = availableCalendars.filter { it.id in effectiveSelection && (!it.syncEvents || !it.visible) }
             _unsyncedSelectedCalendars.value = unsynced
-            if (unsynced.isNotEmpty()) {
+
+            // One attempt per calendar per process. Before, every load re-attempted and
+            // scheduled 4 more loads, which re-attempted again: an ever-growing loop whenever
+            // a calendar refused to switch on.
+            val toEnable = unsynced.filter { syncAttemptedCalendars.add(it.id) }
+            if (toEnable.isNotEmpty()) {
                 Log.w(
                     TAG,
-                    "Selected but NOT synced to device — attempting automatic sync enable: " +
-                            unsynced.joinToString { "${it.id}:'${it.name}' (${it.accountName})" }
+                    "Selected but NOT synced to device — attempting automatic sync enable once: " +
+                            toEnable.joinToString { "${it.id}:'${it.name}' (${it.accountName})" }
                 )
-                enableSyncForCalendars(context, unsynced)
+                enableSyncForCalendars(context, toEnable)
             }
 
             val builder = CalendarContract.Instances.CONTENT_URI.buildUpon()
@@ -1902,6 +2163,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             }
 
             var events = readEvents(context, uri, projection, selection, selectionArgs, bounds, tz)
+            ensureActive()
 
             // Also check Events table directly for any non-recurring events that Instances might have missed
             val directEvents = readNonRecurringEvents(context, selection, selectionArgs, bounds, tz)
@@ -1913,13 +2175,14 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
             if (selection != null && events.isEmpty()) {
                 val unfiltered = readEvents(context, uri, projection, null, null, bounds, tz)
-
-                // Keep the original safety net: if the filter matched nothing at all, show everything.
-                if (events.isEmpty() && unfiltered.isNotEmpty()) {
+                // Safety net: if the filter matched nothing at all, show everything.
+                if (unfiltered.isNotEmpty()) {
                     Log.w(TAG, "Filtered query returned 0 events; falling back to unfiltered results")
                     events = unfiltered
                 }
             }
+
+            ensureActive()
 
             val sortedEvents = events
                 .sortedWith(
@@ -1929,7 +2192,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 )
                 .take(25)
 
-            _calendarEvents.value = sortedEvents
+            publishCalendarEvents(sortedEvents)
         }
     }
 
@@ -2017,15 +2280,16 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                     putBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, true)
                 }
                 ContentResolver.requestSync(account, CalendarContract.AUTHORITY, bundle)
-                Log.d(TAG, "Force requested calendar sync for account: $accountName")
+                Log.d(TAG, "Requested calendar sync for account: $accountName")
             } catch (e: Exception) {
                 Log.e(TAG, "Could not request sync for $accountName", e)
             }
         }
         if (syncedAccounts.isNotEmpty()) {
-            viewModelScope.launch(Dispatchers.IO) {
+            viewModelScope.launch {
                 listOf(1500L, 3000L, 6000L, 10000L).forEach { delayMs ->
                     delay(delayMs.milliseconds)
+                    if (!_isForeground.value) return@launch
                     loadCalendarEvents()
                 }
             }
@@ -2087,6 +2351,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             }
         }
     }
+
+    // ---------------------------------------------------------------------------------
+    // Notification app filter
+    // ---------------------------------------------------------------------------------
 
     fun setShowNotificationManagerDialog(show: Boolean) {
         _showNotificationManagerDialog.value = show
