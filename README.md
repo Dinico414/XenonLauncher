@@ -5,9 +5,9 @@
 # Xenon Launcher 🚀
   <img src="https://img.shields.io/github/v/release/Dinico414/XenonLauncher?style=for-the-badge&color=orange&logo=github" alt="Latest Version">   <img src="https://img.shields.io/github/downloads/Dinico414/XenonLauncher/total?style=for-the-badge&color=blue&logo=github" alt="Total Downloads">
 
-[![Android](https://img.shields.io/badge/Platform-Android%2012%2B-green.svg)](https://developer.android.com)
+[![Android](https://img.shields.io/badge/Platform-Android%2014%2B-green.svg)](https://developer.android.com)
 [![Kotlin](https://img.shields.io/badge/Language-Kotlin-purple.svg)](https://kotlinlang.org)
-[![Compose](https://img.shields.io/badge/UI-Jetpack%20Compose-4285F4.svg)](https://developer.android.com/jetpack/compose)
+[![Compose](https://img.shields.io/badge/UI-Jetpack%20Compose-4285F4.svg)](https://developer.android.com)
 
 
 **Xenon Launcher** is a high-performance, minimalist home screen replacement built from the ground up with Jetpack Compose. It bridges the gap between extreme customization and clean aesthetics, offering a fluid experience that adapts to your digital life in real-time.
@@ -27,34 +27,36 @@
 
 ## 🚀 Key Features
 
-### 1. Visual Icon Management
-Stop guessing resource names. Xenon features a **native visual grid browser** for icon packs.
+### 1. Visual Icon Management & Split-Screen
+Stop guessing resource names. Xenon features a **native visual grid browser** for icon packs and advanced multitasking.
 *   **Live Preview:** See every icon in a pack before you apply it.
-*   **Smart Search:** Instantly filter thousands of icons by name to find the perfect match.
+*   **Split-Screen Multitasking:** Launch apps directly into split-screen mode from the app drawer with a dedicated app picker for the second slot.
 *   **Manual Overrides:** Long-press any app to swap its icon, adjust zoom levels, or add custom borders.
 
-### 2. The Theming Engine
-Xenon provides two layers of aesthetic control to ensure your device looks exactly how you want.
+### 2. The Theming Engine & Variable Fonts
+Xenon provides three layers of aesthetic control to ensure your device looks exactly how you want.
+*   **Typography Tweaks:** Full support for **Variable Fonts** (Roboto Flex & Google Sans Flex). Adjust weight, width, and slant with precision sliders.
 *   **Global Packs:** Apply an entire icon pack to every app with a single tap.
-*   **Persistence:** Individual app customizations are smartly preserved even when swapping global themes.
 *   **Icon Shaping:** Full support for Material adaptive shapes including `Squircle`, `Circle`, and `Teardrop`.
 
-### 3. Immersive Media Page
+### 3. Glassmorphism & Immersive Media
 A dedicated space that transforms into a beautiful, full-screen playback controller.
-*   **Dynamic Blur:** The entire page background adapts to your current track's album art using real-time blurring.
+*   **Haze Glass Effects:** High-performance frosted glass blur across the UI, powered by the Haze library.
+*   **Dynamic Blur:** The media page background adapts to your current track's album art using real-time blurring.
 *   **Color Extraction:** UI elements automatically shift their tint to match the dominant colors of the artwork.
-*   **Seamless Control:** Standard playback buttons paired with custom actions pulled directly from your favorite music apps.
 
 ### 4. Intelligent "At a Glance"
-Stay organized with a sophisticated calendar engine that does more than just list events.
-*   **Sync Monitoring:** Automatically detects if Google Calendar is actually syncing your accounts and alerts you if data is missing.
+Stay organized with a sophisticated dashboard that monitors your schedule and environmental conditions.
+*   **Live Chronometrics:** Real-time monitoring of active timers, stopwatches, and upcoming alarms directly in the header.
+*   **Dynamic Weather:** Integrated temperature and condition updates with localized forecasts.
+*   **Proactive Sync Fixer:** Automatically detects if Google Calendar is syncing and pairs the connection with a single tap.
+*   **Smart Ranking:** Prioritizes current, upcoming, and all-day events so you always see what matters most.
 *   **Multi-Account:** Aggregates events from all your signed-in calendars into one unified, clean view.
-*   **Contextual Ranking:** Prioritizes upcoming and currently running events so you always see what matters most.
 
-### 5. Cloud Continuity
-Never lose your setup again. Xenon includes a built-in **Backup & Restore** system.
-*   **Cloud Sync:** Securely save your settings and icon modifications to your personal cloud account.
-*   **Instant Migration:** Moving to a new phone? Sign in and restore your entire home screen layout in seconds.
+### 5. Cloud Continuity & Identity
+Never lose your setup again. Xenon includes a secure **Backup & Restore** system.
+*   **Credential Manager:** Seamlessly sign in and sync settings using the latest Android Identity and Google ID APIs.
+*   **Instant Migration:** Restore your entire home screen layout, icon overrides, and hidden apps in seconds on a new device.
 
 ---
 
@@ -64,12 +66,13 @@ Never lose your setup again. Xenon includes a built-in **Backup & Restore** syst
 
 | Category | Features |
 | :--- | :--- |
-| **Customization** | Adaptive Shapes, Icon Shadows, Custom Zoom, Border Width Control, Frosted Glass Blur |
+| **Customization** | Variable Fonts (Flex), Adaptive Shapes, Icon Shadows, Custom Zoom, Border Control, Haze Glass Blur |
 | **Theming** | Global Icon Packs, Manual Overrides, "Blacked Out" AMOLED Mode, Dynamic Material 3 Colors |
-| **Search** | Unified Search (Apps, Contacts, Files, Web), Search History Management |
-| **Efficiency** | Efficiency Dock, Pinned Apps, FAB Shortcuts (Double Tap/Long Press), Gesture Support |
-| **Privacy** | Hidden Apps (Hide from Drawer & Search), Local Data Processing |
-| **System** | Backup & Restore, Custom Shortcuts (Time/Date/Weather), Language Overrides |
+| **At a Glance** | Live Timers & Alarms, Real-time Weather, Calendar Sync Monitoring, Multi-Account Events |
+| **Search** | Unified Search (Apps, Contacts, Files with Previews, Web), Search History Management |
+| **Multitasking** | Native Split-Screen Launcher, Efficiency Dock, Pinned Apps, FAB Shortcuts (Swipe/Double Tap/Long Press) |
+| **Widgets** | App Widgets & Shortcuts, Separate Portrait/Landscape Layouts, Customizable Grid Size |
+| **Privacy** | Hidden Apps (Hide from Drawer & Search), Local Data Processing, Credential Manager Identity |
 
 </details>
 
@@ -79,8 +82,9 @@ Never lose your setup again. Xenon includes a built-in **Backup & Restore** syst
 
 ### How it Works
 1.  **Jetpack Compose:** The entire UI is declarative and state-driven, ensuring zero jank and fluid animations.
-2.  **Accessibility Service:** Utilizes a lightweight Accessibility Service solely to enable "Tap to Lock" functionality without requiring root or device admin.
-3.  **Scoped Storage:** Efficiently manages icon caching and thumbnails while respecting Android's latest privacy standards.
+2.  **Modern Core:** Built on **Kotlin 2.1**, **Java 21**, and targeting **Android 15 (API 37)**.
+3.  **Accessibility Service:** Utilizes a lightweight Accessibility Service solely to enable "Tap to Lock" and Split-Screen gestures.
+4.  **Scoped Storage:** Efficiently manages icon caching and file thumbnails while respecting Android's latest privacy standards.
 
 ---
 
@@ -103,4 +107,4 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 *   **Lead:** Nico (Dinico414)
 
 ---
-*Disclaimer: This app uses Accessibility Services for screen-locking functionality. It is not affiliated with Google LLC, Nova Launcher, or any other home screen provider.*
+*Disclaimer: This app uses Accessibility Services for screen-locking and multitasking functionality. It is not affiliated with Google LLC, Nova Launcher, or any other home screen provider.*
