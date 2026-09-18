@@ -7,6 +7,7 @@ import android.app.AlarmManager
 import android.app.Application
 import android.appwidget.AppWidgetManager
 import android.content.BroadcastReceiver
+import android.content.ComponentCallbacks2
 import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.ContentValues
@@ -17,6 +18,7 @@ import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import android.content.res.Configuration
+import android.content.res.Resources
 import android.database.ContentObserver
 import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
@@ -195,6 +197,26 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         Collections.synchronizedSet(HashSet())
 
     private var torchCallback: CameraManager.TorchCallback? = null
+
+    /** Language + dark mode the app labels/icons were last built for. */
+    @Volatile
+    private var lastConfigKey: String = ""
+
+    /**
+     * Fires on every configuration change of the process (system language, per-app language,
+     * dark mode), even while MainActivity is being recreated — the ViewModel survives that,
+     * so without this the drawer kept the old labels until the next package change.
+     */
+    private val configCallbacks = object : ComponentCallbacks2 {
+        override fun onConfigurationChanged(newConfig: Configuration) {
+            onConfigMaybeChanged()
+        }
+
+        @Deprecated("Deprecated in Java")
+        override fun onLowMemory() {}
+
+        override fun onTrimMemory(level: Int) {}
+    }
 
     private val preferenceListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         when (key) {
@@ -526,7 +548,17 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private val packageReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            // In background nobody sees the drawer: just remember to rescan on return
+            val pkg = intent?.data?.schemeSpecificPart
+            val replacing = intent?.getBooleanExtra(Intent.EXTRA_REPLACING, false) == true
+
+            // A real uninstall (not the REMOVED half of an update): drop it from every list
+            // right now, in foreground and background alike. It's only a list filter.
+            if (intent?.action == Intent.ACTION_PACKAGE_REMOVED && !replacing && pkg != null) {
+                removePackageNow(pkg)
+            }
+
+            // Everything else (installs, updates, enabled/disabled components) needs a rescan.
+            // In background nobody sees the drawer: just remember to rescan on return.
             if (_isForeground.value) loadApps(PACKAGE_EVENT_DEBOUNCE_MS) else appsDirty = true
         }
     }
@@ -695,6 +727,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         NotificationManager.showPermanentNotifications = prefManager.showPermanentNotifications
         NotificationManager.disableGrouping = prefManager.disableGrouping
 
+        lastConfigKey = currentConfigKey()
         restoreCachedCalendarEvents()
         startTimeUpdates()
 
@@ -735,6 +768,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         }
         application.registerReceiver(packageReceiver, packageFilter)
         application.registerReceiver(alarmReceiver, IntentFilter(AlarmManager.ACTION_NEXT_ALARM_CLOCK_CHANGED))
+        application.registerComponentCallbacks(configCallbacks)
 
         // If onStart already happened before init finished, catch up
         if (_isForeground.value) registerForegroundReceivers()
@@ -751,6 +785,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
         if (foreground) {
             _currentTime.value = nowToMinute()
+            onConfigMaybeChanged()
             registerForegroundReceivers()
             updateNextAlarm()
             loadAvailableCalendars()
@@ -811,6 +846,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         if (initialized.get()) {
             try { application.unregisterReceiver(packageReceiver) } catch (_: Exception) {}
             try { application.unregisterReceiver(alarmReceiver) } catch (_: Exception) {}
+            try { application.unregisterComponentCallbacks(configCallbacks) } catch (_: Exception) {}
         }
         torchCallback?.let {
             try { cameraManager.unregisterTorchCallback(it) } catch (_: Exception) {}
@@ -1172,8 +1208,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 currentShape.name,
                 globalPack ?: "-",
                 globalPack?.let { versions[it] } ?: 0L,
-                Locale.getDefault().toLanguageTag(),
-                context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+                currentConfigKey()
             ).joinToString("|")
 
             fun build(ri: ResolveInfo, pkgName: String, override: AppOverride?): AppInfo? = try {
@@ -1270,6 +1305,57 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private fun computeAppColor(icon: Drawable): Int? {
         val color = ColorUtils.getDominantColor(icon)
         return if (color == Color.Unspecified) null else color.toArgb()
+    }
+
+    /**
+     * System language (app labels come from the other apps' resources), the launcher's own
+     * language (weather/calendar strings) and dark mode (themed icons).
+     */
+    private fun currentConfigKey(): String {
+        val systemLocales = Resources.getSystem().configuration.locales.toLanguageTags()
+        val appLocale = Locale.getDefault().toLanguageTag()
+        val night = getApplication<Application>().resources.configuration.uiMode and
+                Configuration.UI_MODE_NIGHT_MASK
+        return "$systemLocales|$appLocale|$night"
+    }
+
+    private fun onConfigMaybeChanged() {
+        val key = currentConfigKey()
+        if (key == lastConfigKey) return
+        val languageChanged = key.substringBeforeLast('|') != lastConfigKey.substringBeforeLast('|')
+        lastConfigKey = key
+        Log.d(TAG, "Configuration changed ($key); refreshing apps")
+
+        if (!initialized.get()) return // the first scan picks up the new config anyway
+        if (_isForeground.value) loadApps() else appsDirty = true
+
+        if (languageChanged) {
+            // Weather condition text is translated: restart the loop so it refetches
+            // (it only actually runs once the launcher is visible)
+            startWeatherUpdates()
+            loadCalendarEvents() // no-op in background, onStart reloads then
+        }
+    }
+
+    /** Drops an uninstalled package from every list immediately, without a rescan. */
+    private fun removePackageNow(pkg: String) {
+        val keys = appMemCache.keys.filter { it.startsWith("$pkg/") }
+        keys.forEach { appMemCache.remove(it) }
+
+        val current = _allApps.value
+        if (current.any { it.packageName == pkg }) {
+            publishApps(current.filter { it.packageName != pkg })
+        }
+        _searchResults.value = _searchResults.value.filterNot {
+            it is SearchResult.App && it.appInfo.packageName == pkg
+        }
+
+        if (keys.isNotEmpty()) {
+            viewModelScope.launch(Dispatchers.IO) {
+                keys.forEach { cache.deleteIcon(it) }
+                cache.saveApps(appMemCache.values)
+            }
+        }
     }
 
     /** StateFlow skips equal values, so republishing an unchanged list costs nothing. */
@@ -2286,6 +2372,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             }
         }
         if (syncedAccounts.isNotEmpty()) {
+            // A few follow-up reloads while the sync lands. They can't retrigger the enable
+            // (syncAttemptedCalendars) and loadCalendarEvents() is a no-op in background.
             viewModelScope.launch {
                 listOf(1500L, 3000L, 6000L, 10000L).forEach { delayMs ->
                     delay(delayMs.milliseconds)

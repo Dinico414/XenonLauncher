@@ -89,7 +89,7 @@ fun AppPickerDialog(
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    label = { Text(stringResource(R.string.search), fontFamily = subFont ?: mainFont) },
+                    label = { Text(stringResource(R.string.search), fontFamily = subFont) },
                     modifier = Modifier
                         .fillMaxWidth(),
                     textStyle = TextStyle(fontFamily = mainFont),
