@@ -25,6 +25,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -36,6 +37,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ElectricBolt
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.rounded.Usb
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.Surface
@@ -91,12 +93,26 @@ import com.xenon.mylibrary.values.SmallestStroke
 import com.xenonware.launcher.R
 import com.xenonware.launcher.ui.res.Glancly
 import com.xenonware.launcher.ui.theme.mainFontFamily
+import com.xenonware.launcher.util.fitScale
+import com.xenonware.launcher.util.rememberUsbDataTransfer
 import kotlinx.coroutines.delay
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.time.Duration.Companion.milliseconds
+
+private val BatteryFontSize = 11.sp
+private val CounterFontSize = 10.sp
+private val CalendarFontSize = 10.5.sp
+
+private const val CIRCLE_TEXT_FRACTION = 0.7f
+
+private val DataTransferColor = Color(0xFF3B82F6)
+
+private val ChargeSettleDelay = 1500.milliseconds
+
+private val AnnouncementDuration = 1000.milliseconds
 
 @Composable
 fun StatusSection(
@@ -110,6 +126,7 @@ fun StatusSection(
     weatherCondition: String,
     progress: Float,
     isCharging: Boolean,
+    isDataTransfer: Boolean = rememberUsbDataTransfer(),
     onTimeClick: () -> Unit,
     onDateClick: () -> Unit,
     onWeatherClick: () -> Unit,
@@ -118,9 +135,13 @@ fun StatusSection(
     val context = LocalContext.current
     val buttonAlpha = dockButtonAlpha()
 
+    // The pill animates for either kind of activity; the flags only differ in color and direction
+    val isActive = isCharging || isDataTransfer
+
     val pillInteractionSource = remember { MutableInteractionSource() }
     var showBell by remember { mutableStateOf(false) }
     var showFlash by remember { mutableStateOf(false) }
+    var showUsb by remember { mutableStateOf(false) }
     var prevNotificationCount by remember { mutableIntStateOf(notificationCount) }
 
     LaunchedEffect(notificationCount) {
@@ -135,11 +156,35 @@ fun StatusSection(
         prevNotificationCount = notificationCount
     }
 
+    // The charge state as the icons see it: flapping is ignored until it holds for a moment.
+    // The ripples still read isCharging directly, so they start the instant a cable goes in.
+    var settledCharging by remember { mutableStateOf(isCharging) }
     LaunchedEffect(isCharging) {
-        if (isCharging) {
+        if (isCharging != settledCharging) {
+            delay(ChargeSettleDelay)
+            settledCharging = isCharging
+        }
+    }
+
+    var prevSettledCharging by remember { mutableStateOf(settledCharging) }
+    LaunchedEffect(settledCharging) {
+        val startedCharging = settledCharging && !prevSettledCharging
+        prevSettledCharging = settledCharging
+        if (startedCharging) {
             showFlash = true
-            delay(1000.milliseconds)
+            delay(AnnouncementDuration)
             showFlash = false
+        }
+    }
+
+    var prevDataTransfer by remember { mutableStateOf(isDataTransfer) }
+    LaunchedEffect(isDataTransfer) {
+        val linkCameUp = isDataTransfer && !prevDataTransfer
+        prevDataTransfer = isDataTransfer
+        if (linkCameUp) {
+            showUsb = true
+            delay(AnnouncementDuration)
+            showUsb = false
         }
     }
 
@@ -174,8 +219,13 @@ fun StatusSection(
         label = "rippleProgress"
     )
 
-    val strokeColor = remember(progress) {
-        when {
+    // Data runs the ripples the other way: top to bottom collapsed, end to start expanded
+    val flowProgress = if (isDataTransfer) 1f - rippleProgress else rippleProgress
+    // ...and curves them the other way, with the circle's center past the pill instead of before it
+    val arcSide = if (isDataTransfer) -1f else 1f
+
+    val strokeColor = remember(progress, isDataTransfer) {
+        if (isDataTransfer) DataTransferColor else when {
             progress <= 0.15f -> Color.Red
             progress <= 0.20f -> {
                 val fraction = (progress - 0.15f) / 0.05f
@@ -193,8 +243,8 @@ fun StatusSection(
 
     val backgroundColor by animateColorAsState(
         targetValue = when {
-            !isExpanded && isCharging -> Color.Transparent // Use brush background
-            !isExpanded && notificationCount > 0 && !isCharging -> colorScheme.primaryContainer
+            !isExpanded && isActive -> Color.Transparent // Use brush background
+            !isExpanded && notificationCount > 0 && !isActive -> colorScheme.primaryContainer
             else -> colorScheme.surfaceContainerLowest.copy(alpha = buttonAlpha)
         }, label = "statusBg"
     )
@@ -214,14 +264,14 @@ fun StatusSection(
     )
 
     val chargingAlpha by animateFloatAsState(
-        targetValue = if (isCharging) 1f else 0f,
+        targetValue = if (isActive) 1f else 0f,
         animationSpec = tween(500),
         label = "chargingAlpha"
     )
 
     val bgChargingAlpha by animateFloatAsState(
-        targetValue = if (isCharging) 1f else 0f,
-        animationSpec = if (isCharging) tween(500) else snap(),
+        targetValue = if (isActive) 1f else 0f,
+        animationSpec = if (isActive) tween(500) else snap(),
         label = "bgChargingAlpha"
     )
 
@@ -366,23 +416,25 @@ fun StatusSection(
                         }.drawBehind {
                             val color = strokeColor.copy(alpha = 0.4f * chargingAlpha)
                             val radius = if (isExpanded) size.width * 1.5f else size.height * 1.5f
-                            val p1 = rippleProgress
-                            val p2 = (rippleProgress + 0.5f) % 1f
+                            val p2 = (flowProgress + 0.5f) % 1f
 
-                            listOf(p1, p2).forEach { p ->
+                            listOf(flowProgress, p2).forEach { p ->
                                 val dimension = if (isExpanded) size.width else size.height
                                 // Extend travel range to ensure the wave enters and exits fully
                                 val travelRange = dimension + radius * 0.5f
                                 val currentPos = p * travelRange - (radius * 0.25f)
+                                // Which side of the pill the circle's center sits on, and so
+                                // which way the visible arc bows
+                                val arcShift = arcSide * radius * 0.95f
 
                                 val center = if (isExpanded) {
                                     // Moving from start to end
-                                    Offset(currentPos - radius * 0.95f, size.height / 2)
+                                    Offset(currentPos - arcShift, size.height / 2)
                                 } else {
                                     // Moving from bottom to top
                                     Offset(
                                         size.width / 2,
-                                        (size.height - currentPos) + radius * 0.95f
+                                        (size.height - currentPos) + arcShift
                                     )
                                 }
 
@@ -438,8 +490,11 @@ fun StatusSection(
                         AnimatedContent(
                             targetState = when {
                                 showBell -> StatusViewState.Bell
-                                showFlash -> StatusViewState.Flash
-                                isCharging -> StatusViewState.Battery
+                                // A PC connection is a data link first; the bolt would only
+                                // repeat what the blue ripples already say
+                                showUsb -> StatusViewState.Usb
+                                showFlash && !isDataTransfer -> StatusViewState.Flash
+                                settledCharging -> StatusViewState.Battery
                                 else -> StatusViewState.Default
                             },
                             transitionSpec = {
@@ -478,13 +533,23 @@ fun StatusSection(
                                     )
                                 }
 
-                                StatusViewState.Battery -> {
-                                    Text(
-                                        text = "${(progress * 100).toInt()}%",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 11.sp,
-                                        fontFamily = mainFontFamily
+                                StatusViewState.Usb -> {
+                                    Icon(
+                                        Icons.Rounded.Usb,
+                                        null,
+                                        modifier = Modifier
+                                            .size(SmallIconSize)
+                                            .offset {
+                                                IntOffset(
+                                                    0,
+                                                    flashOffset.dp.toPx().roundToInt()
+                                                )
+                                            }
                                     )
+                                }
+
+                                StatusViewState.Battery -> {
+                                    BatteryLabel(percent = (progress * 100).toInt())
                                 }
 
                                 StatusViewState.Default -> {
@@ -504,7 +569,50 @@ fun StatusSection(
 }
 
 private enum class StatusViewState {
-    Default, Bell, Flash, Battery
+    Default, Bell, Flash, Usb, Battery
+}
+
+/**
+ * The battery percentage in the collapsed pill. It gives up the percent sign before it gives up
+ * size, so "87%" becomes "87" and only then starts shrinking.
+ */
+@Composable
+private fun BatteryLabel(
+    percent: Int,
+    modifier: Modifier = Modifier
+) {
+    val measurer = rememberTextMeasurer()
+    val style = TextStyle(
+        fontSize = BatteryFontSize,
+        fontWeight = FontWeight.Bold,
+        fontFamily = mainFontFamily
+    )
+
+    BoxWithConstraints(modifier = modifier, contentAlignment = Alignment.Center) {
+        // A little off the edges so the digits never touch the pill's border
+        val availablePx = constraints.maxWidth * 0.9f
+        val (text, fontSize) = remember(percent, style, availablePx) {
+            val withSign = "$percent%"
+            val bare = percent.toString()
+            val signedWidth = measurer
+                .measure(withSign, style, maxLines = 1, softWrap = false).size.width
+            if (signedWidth <= availablePx) {
+                withSign to BatteryFontSize
+            } else {
+                val bareWidth = measurer
+                    .measure(bare, style, maxLines = 1, softWrap = false).size.width
+                bare to BatteryFontSize * fitScale(bareWidth.toFloat(), availablePx)
+            }
+        }
+
+        Text(
+            text = text,
+            style = style,
+            fontSize = fontSize,
+            maxLines = 1,
+            softWrap = false
+        )
+    }
 }
 
 @Composable
@@ -566,23 +674,34 @@ fun NotificationCounterBadge(
 ) {
     val plusLabel = stringResource(R.string.notification_count_plus)
     val text = if (count > 99) plusLabel else count.toString()
+    val measurer = rememberTextMeasurer()
+    val style = TextStyle(
+        fontSize = CounterFontSize,
+        fontWeight = FontWeight.Bold,
+        textAlign = TextAlign.Center,
+        fontFamily = mainFontFamily,
+        platformStyle = PlatformTextStyle(includeFontPadding = false)
+    )
+
     Surface(
         color = color,
         shape = CircleShape,
         modifier = modifier.requiredSize(ExtraLargeSpacing)
     ) {
-        Box(contentAlignment = Alignment.Center) {
+        BoxWithConstraints(contentAlignment = Alignment.Center) {
+            val availablePx = constraints.maxWidth * CIRCLE_TEXT_FRACTION
+            val fontSize = remember(text, style, availablePx) {
+                val width = measurer
+                    .measure(text, style, maxLines = 1, softWrap = false).size.width
+                CounterFontSize * fitScale(width.toFloat(), availablePx)
+            }
             Text(
                 text = text,
+                style = style,
+                fontSize = fontSize,
                 color = contentColor,
-                fontSize = if (text.length >= 3) 8.sp else 10.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                fontFamily = mainFontFamily,
-                style = TextStyle(
-                    platformStyle = PlatformTextStyle(includeFontPadding = false),
-                    textAlign = TextAlign.Center
-                )
+                maxLines = 1,
+                softWrap = false
             )
         }
     }
@@ -599,10 +718,11 @@ fun CalendarCounterIcon(
     val text = if (count > 99) plusLabel else count.toString()
     val textMeasurer = rememberTextMeasurer()
     val textStyle = TextStyle(
-        fontSize = if (text.length >= 3) 7.5.sp else if (text.length == 2) 9.sp else 10.5.sp,
+        fontSize = CalendarFontSize,
         fontWeight = FontWeight.Bold,
         color = textColor,
-        fontFamily = mainFontFamily
+        fontFamily = mainFontFamily,
+        platformStyle = PlatformTextStyle(includeFontPadding = false)
     )
 
     Canvas(
@@ -654,11 +774,21 @@ fun CalendarCounterIcon(
             blendMode = BlendMode.Clear
         )
 
-        // Measure text and draw text cutout inside date area
-        val textLayoutResult = textMeasurer.measure(
-            text = text,
-            style = textStyle
+        // Measure at the ideal size, then shrink to whatever the date area can hold
+        val idealLayout = textMeasurer.measure(text, textStyle, maxLines = 1, softWrap = false)
+        val dateAreaWidth = (w * 0.92f) - (w * 0.08f)
+        val dateAreaHeight = (h - headerY) * 0.9f
+        val scale = minOf(
+            fitScale(idealLayout.size.width.toFloat(), dateAreaWidth),
+            fitScale(idealLayout.size.height.toFloat(), dateAreaHeight)
         )
+        val textLayoutResult = if (scale >= 1f) idealLayout else textMeasurer.measure(
+            text,
+            textStyle.copy(fontSize = CalendarFontSize * scale),
+            maxLines = 1,
+            softWrap = false
+        )
+
         val textWidth = textLayoutResult.size.width
         val textHeight = textLayoutResult.size.height
 

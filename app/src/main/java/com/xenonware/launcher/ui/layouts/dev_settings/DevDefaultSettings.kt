@@ -25,6 +25,8 @@ import com.xenon.mylibrary.theme.LocalDeviceConfig
 import com.xenon.mylibrary.values.MediumPadding
 import com.xenon.mylibrary.values.NoSpacing
 import com.xenonware.launcher.R
+import com.xenonware.launcher.ui.theme.LocalMainFontFamily
+import com.xenonware.launcher.ui.theme.LocalSubFontFamily
 import com.xenonware.launcher.viewmodel.DevSettingsViewModel
 import com.xenonware.launcher.viewmodel.SettingsViewModel
 import com.xenonware.launcher.viewmodel.classes.DevSettingsItems
@@ -44,7 +46,8 @@ fun DevDefaultSettings(
 
         val hazeState = rememberHazeState()
         val context = LocalContext.current
-
+        val mainFont = LocalMainFontFamily.current
+        val subFont = LocalSubFontFamily.current
         val isCompact =
             LocalDeviceConfig.current.isCommunicator || LocalDeviceConfig.current.isMindOne
         // Window height in dp from the true container size; screenHeightDp lags resizes.
@@ -92,6 +95,8 @@ fun DevDefaultSettings(
                     )
                 }
             },
+            mainContextFont = mainFont,
+            subContextFont = subFont,
             modifier = Modifier.hazeSource(hazeState),
             content = { _ ->
                 Column(
@@ -102,6 +107,8 @@ fun DevDefaultSettings(
                     DevSettingsItems(
                         settingsViewModel = settingsViewModel,
                         viewModel = viewModel,
+                        mainContextFont = mainFont,
+                        subContextFont = subFont
                     )
                 }
             }

@@ -28,6 +28,13 @@ class XenonAccessibilityService : AccessibilityService() {
         performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS)
     }
 
+    /**
+     * Splits the current top task and lets the user pick the second app; if split screen is
+     * already active, this leaves it instead. Returns false when the system refuses.
+     */
+    fun splitScreen(): Boolean =
+        performGlobalAction(GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN)
+
     companion object {
         var instance: XenonAccessibilityService? = null
             private set
@@ -49,5 +56,8 @@ class XenonAccessibilityService : AccessibilityService() {
                 AccessibilityUtils.requestAccessibility(context)
             }
         }
+
+        /** False when the service isn't running or the system refused the action. */
+        fun toggleSplitScreen(): Boolean = instance?.splitScreen() ?: false
     }
 }

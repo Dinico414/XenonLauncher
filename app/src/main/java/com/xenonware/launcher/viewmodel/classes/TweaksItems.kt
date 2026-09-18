@@ -59,6 +59,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontFamily
+import com.xenon.mylibrary.theme.QuicksandTitleVariable
 import com.xenon.mylibrary.res.SettingsSwitchTile
 import com.xenon.mylibrary.res.SettingsSwitchTileContext
 import com.xenon.mylibrary.res.SettingsTile
@@ -103,6 +105,8 @@ fun TweaksItems(
     tileSubtitleColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     tileShapeOverride: Shape? = null,
     useGroupStyling: Boolean = true,
+    mainContextFont: FontFamily = QuicksandTitleVariable,
+    subContextFont: FontFamily? = null,
 ) {
     val actualInnerGroupRadius = if (useGroupStyling) innerGroupRadius else NoCornerRadius
     val actualOuterGroupRadius = if (useGroupStyling) outerGroupRadius else NoCornerRadius
@@ -166,7 +170,9 @@ fun TweaksItems(
                 shape = tileShapeOverride ?: topShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
-                subtitleColor = tileSubtitleColor
+                subtitleColor = tileSubtitleColor,
+                mainContextFont = mainContextFont,
+                subContextFont = subContextFont
             )
 
             Spacer(Modifier.height(actualInnerGroupSpacing))
@@ -179,6 +185,8 @@ fun TweaksItems(
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
                 subtitleColor = tileSubtitleColor,
+                mainContextFont = mainContextFont,
+                subContextFont = subContextFont,
                 enableRipple = false,
                 contextContent = {
                     XenonSingleChoiceButtonGroup(
@@ -192,7 +200,9 @@ fun TweaksItems(
                                 else -> stringResource(R.string.fahrenheit)
                             }
                         },
-                        modifier = Modifier.fillMaxWidth().padding(start = LargestPadding, end = LargestPadding, bottom = LargestPadding)
+                        modifier = Modifier.fillMaxWidth().padding(start = LargestPadding, end = LargestPadding, bottom = LargestPadding),
+                        mainContextFont = mainContextFont,
+                        subContextFont = subContextFont
                     )
                 }
             )
@@ -209,7 +219,9 @@ fun TweaksItems(
                 shape = tileShapeOverride ?: bottomShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
-                subtitleColor = tileSubtitleColor
+                subtitleColor = tileSubtitleColor,
+                mainContextFont = mainContextFont,
+                subContextFont = subContextFont
             )
         }
 
@@ -225,6 +237,8 @@ fun TweaksItems(
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
                 subtitleColor = tileSubtitleColor,
+                mainContextFont = mainContextFont,
+                subContextFont = subContextFont,
                 enableRipple = false,
                 contextContent = {
                     val entries = listOf(0, 1, 2)
@@ -347,6 +361,8 @@ fun TweaksItems(
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
                 subtitleColor = tileSubtitleColor,
+                mainContextFont = mainContextFont,
+                subContextFont = subContextFont,
                 enableRipple = false,
                 contextContent = {
                     XenonSingleChoiceButtonGroup(
@@ -360,7 +376,9 @@ fun TweaksItems(
                                 else -> stringResource(R.string.notification_message_up_to_date)
                             }
                         },
-                        modifier = Modifier.fillMaxWidth().padding(start = LargestPadding, end = LargestPadding, bottom = LargestPadding)
+                        modifier = Modifier.fillMaxWidth().padding(start = LargestPadding, end = LargestPadding, bottom = LargestPadding),
+                        mainContextFont = mainContextFont,
+                        subContextFont = subContextFont
                     )
                 }
             )
@@ -383,7 +401,9 @@ fun TweaksItems(
                 shape = tileShapeOverride ?: middleShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
-                subtitleColor = tileSubtitleColor
+                subtitleColor = tileSubtitleColor,
+                mainContextFont = mainContextFont,
+                subContextFont = subContextFont
             )
 
             Spacer(Modifier.height(actualInnerGroupSpacing))
@@ -398,7 +418,9 @@ fun TweaksItems(
                 shape = tileShapeOverride ?: middleShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
-                subtitleColor = tileSubtitleColor
+                subtitleColor = tileSubtitleColor,
+                mainContextFont = mainContextFont,
+                subContextFont = subContextFont
             )
 
             Spacer(Modifier.height(actualInnerGroupSpacing))
@@ -413,7 +435,9 @@ fun TweaksItems(
                 shape = tileShapeOverride ?: middleShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
-                subtitleColor = tileSubtitleColor
+                subtitleColor = tileSubtitleColor,
+                mainContextFont = mainContextFont,
+                subContextFont = subContextFont
             )
 
             Spacer(Modifier.height(actualInnerGroupSpacing))
@@ -428,7 +452,9 @@ fun TweaksItems(
                 shape = tileShapeOverride ?: bottomShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
-                subtitleColor = tileSubtitleColor
+                subtitleColor = tileSubtitleColor,
+                mainContextFont = mainContextFont,
+                subContextFont = subContextFont
             )
         }
 
@@ -453,6 +479,8 @@ fun TweaksItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont,
             horizontalPadding = LargestPadding,
             verticalPadding = LargestPadding
         )
@@ -470,7 +498,9 @@ fun TweaksItems(
             shape = tileShapeOverride ?: standaloneShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
-            subtitleColor = tileSubtitleColor
+            subtitleColor = tileSubtitleColor,
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont
         )
 
         Spacer(Modifier.height(actualOuterGroupSpacing))
@@ -494,6 +524,8 @@ fun TweaksItems(
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
                 subtitleColor = tileSubtitleColor,
+                mainContextFont = mainContextFont,
+                subContextFont = subContextFont,
                 showContext = hideDockScrolling && (layoutType == LayoutType.SMALL || layoutType == LayoutType.COMPACT),
                 contextContent = {
                     Box(
@@ -548,6 +580,8 @@ fun TweaksItems(
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
                 subtitleColor = tileSubtitleColor,
+                mainContextFont = mainContextFont,
+                subContextFont = subContextFont,
                 showContext = hideDockWidgets,
                 contextContent = {
                     Box(
@@ -602,6 +636,8 @@ fun TweaksItems(
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
                 subtitleColor = tileSubtitleColor,
+                mainContextFont = mainContextFont,
+                subContextFont = subContextFont,
                 showContext = hideDockMedia,
                 contextContent = {
                     Box(
@@ -655,7 +691,9 @@ fun TweaksItems(
                 shape = tileShapeOverride ?: bottomShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
-                subtitleColor = tileSubtitleColor
+                subtitleColor = tileSubtitleColor,
+                mainContextFont = mainContextFont,
+                subContextFont = subContextFont
             )
         }
     }

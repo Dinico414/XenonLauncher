@@ -50,6 +50,8 @@ import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.model.AppWidgetGroup
 import com.xenonware.launcher.model.FabAction
 import com.xenonware.launcher.model.WidgetPickerItemData
+import com.xenonware.launcher.ui.theme.LocalMainFontFamily
+import com.xenonware.launcher.ui.theme.LocalSubFontFamily
 import com.xenonware.launcher.viewmodel.FabConfigMode
 
 @Composable
@@ -89,10 +91,14 @@ fun FabActionConfigDialog(
         FabConfigMode.SWIPE_UP -> stringResource(R.string.fab_swipe_up)
         else -> ""
     }
+    val mainFont = LocalMainFontFamily.current
+    val subFont = LocalSubFontFamily.current
 
     XenonDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = true),
+        mainContextFont = mainFont,
+        subContextFont = subFont,
         title = stringResource(R.string.configure_action_format, actionType),
         confirmButtonText = stringResource(R.string.save),
         onConfirmButtonClick = {

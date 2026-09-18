@@ -35,6 +35,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.font.FontFamily
+import com.xenon.mylibrary.theme.QuicksandTitleVariable
 import com.xenon.mylibrary.res.SettingsSwitchTile
 import com.xenon.mylibrary.res.SettingsTile
 import com.xenon.mylibrary.res.SettingsTileContext
@@ -55,6 +57,8 @@ import dev.chrisbanes.haze.rememberHazeState
 fun DevSettingsItems(
     settingsViewModel: SettingsViewModel,
     viewModel: DevSettingsViewModel,
+    mainContextFont: FontFamily = QuicksandTitleVariable,
+    subContextFont: FontFamily? = null,
 ) {
     val devModeEnabled by viewModel.devModeToggleState.collectAsState()
     val crashLogExists by viewModel.crashLogExists.collectAsState()
@@ -72,7 +76,9 @@ fun DevSettingsItems(
             title = stringResource(R.string.enable_dev_mode),
             checked = devModeEnabled,
             onCheckedChange = { viewModel.setDeveloperModeEnabled(it) },
-            onClick = { viewModel.setDeveloperModeEnabled(!devModeEnabled) }
+            onClick = { viewModel.setDeveloperModeEnabled(!devModeEnabled) },
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont
         )
 
         val crashLogSubtitle = if (crashLogExists) stringResource(R.string.recent_crashes) else stringResource(R.string.no_crashes)
@@ -83,6 +89,8 @@ fun DevSettingsItems(
             icon = { XenonIcon(Icons.Rounded.BugReport).Render(Modifier) },
             showContext = true,
             modifier = Modifier.padding(top = LargestPadding),
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont,
             contextContent = {
                 Column(
                     modifier = Modifier
@@ -165,6 +173,8 @@ fun DevSettingsItems(
             icon = { XenonIcon(Icons.Rounded.MusicNote).Render(Modifier) },
             showContext = true,
             modifier = Modifier.padding(top = LargestPadding),
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont,
             contextContent = {
                 Row(
                     modifier = Modifier
@@ -192,7 +202,9 @@ fun DevSettingsItems(
             subtitle = stringResource(R.string.force_setup_flow_description),
             icon = { XenonIcon(Icons.Rounded.RestartAlt).Render(Modifier) },
             onClick = { viewModel.restartSetup() },
-            modifier = Modifier.padding(top = LargestPadding)
+            modifier = Modifier.padding(top = LargestPadding),
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont
         )
 
         if (showCrashLogDialog) {
@@ -205,7 +217,9 @@ fun DevSettingsItems(
                 onDismissRequest = { showCrashLogDialog = false },
                 title = stringResource(R.string.crash_log),
                 confirmButtonText = stringResource(R.string.close),
-                onConfirmButtonClick = { showCrashLogDialog = false }
+                onConfirmButtonClick = { showCrashLogDialog = false },
+                mainContextFont = mainContextFont,
+                subContextFont = subContextFont
             ) {
                 Text(
                     text = currentCrashLog,
@@ -224,7 +238,9 @@ fun DevSettingsItems(
                 onDismissRequest = { showMediaDumpDialog = false },
                 title = stringResource(R.string.media_state_dump),
                 confirmButtonText = stringResource(R.string.close),
-                onConfirmButtonClick = { showMediaDumpDialog = false }
+                onConfirmButtonClick = { showMediaDumpDialog = false },
+                mainContextFont = mainContextFont,
+                subContextFont = subContextFont
             ) {
                 val scrollState = rememberScrollState()
                 Box(modifier = Modifier.heightIn(max = 400.dp).verticalScroll(scrollState)) {

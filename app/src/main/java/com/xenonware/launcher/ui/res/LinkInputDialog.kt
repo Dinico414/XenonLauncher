@@ -17,6 +17,8 @@ import androidx.compose.ui.window.DialogProperties
 import com.xenon.mylibrary.res.XenonDialog
 import com.xenon.mylibrary.values.LargeMediumCornerRadius
 import com.xenonware.launcher.R
+import com.xenonware.launcher.ui.theme.LocalMainFontFamily
+import com.xenonware.launcher.ui.theme.LocalSubFontFamily
 
 @Composable
 fun LinkInputDialog(
@@ -25,10 +27,13 @@ fun LinkInputDialog(
     onSave: (String) -> Unit
 ) {
     var linkValue by remember { mutableStateOf(initialValue) }
-
+    val mainFont = LocalMainFontFamily.current
+    val subFont = LocalSubFontFamily.current
     XenonDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = true),
+        mainContextFont = mainFont,
+        subContextFont = subFont,
         title = stringResource(R.string.action_open_link),
         confirmButtonText = stringResource(R.string.ok),
         onConfirmButtonClick = {

@@ -58,14 +58,16 @@ fun ScreenEnvironment(
         }
 
         CompositionLocalProvider(
-            LocalMainFontFamily provides mainFont
+            LocalMainFontFamily provides mainFont,
+            LocalSubFontFamily provides fontFamily
         ) {
             XenonTheme(
                 darkTheme = appIsDarkTheme,
                 useBlackedOutDarkTheme = if (appIsDarkTheme) blackedOutModeEnabled else false,
                 dynamicColor = useDynamicColor,
                 isCoverMode = layoutType == LayoutType.COVER,
-                fontFamily = fontFamily
+                fontFamily = fontFamily,
+                mainContextFont = mainFont
             ) {
                 val systemUiController = rememberSystemUiController()
                 val view = LocalView.current

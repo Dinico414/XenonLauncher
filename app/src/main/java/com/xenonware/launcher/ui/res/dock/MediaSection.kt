@@ -1,7 +1,5 @@
 package com.xenonware.launcher.ui.res.dock
 
-import android.content.Context
-import android.content.Intent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -73,7 +71,6 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
-import androidx.core.net.toUri
 import coil.compose.AsyncImage
 import coil.imageLoader
 import coil.request.ImageRequest
@@ -106,6 +103,7 @@ import com.xenonware.launcher.media.MediaState
 import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
 import com.xenonware.launcher.ui.theme.mainFontFamily
 import com.xenonware.launcher.util.ColorUtils
+import com.xenonware.launcher.util.openMediaApp
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -195,13 +193,9 @@ private fun rememberMediaTheme(mediaState: MediaState): MediaTheme {
         val bitmap = when {
             albumArt != null -> albumArt
             albumArtUri != null -> {
-                val request = ImageRequest.Builder(context)
-                    .data(albumArtUri)
-                    .size(40, 40)
-                    .allowHardware(false)
-                    .build()
-                (context.imageLoader.execute(request) as? SuccessResult)
-                    ?.drawable?.toBitmap(40, 40)
+                val request = ImageRequest.Builder(context).data(albumArtUri).size(40, 40)
+                    .allowHardware(false).build()
+                (context.imageLoader.execute(request) as? SuccessResult)?.drawable?.toBitmap(40, 40)
             }
 
             else -> null
@@ -244,10 +238,7 @@ private fun rememberMediaTheme(mediaState: MediaState): MediaTheme {
 
     return remember(background, content, accent, scheme) {
         MediaTheme(
-            background = background,
-            content = content,
-            accent = accent,
-            scheme = scheme.copy(
+            background = background, content = content, accent = accent, scheme = scheme.copy(
                 primary = accent,
                 primaryContainer = accent,
                 onPrimaryContainer = content,
@@ -269,26 +260,19 @@ private fun rememberMusicNoteAnimation(isPlaying: Boolean): MusicNoteAnimation {
     val transition = rememberInfiniteTransition(label = "musicNoteAnim")
 
     val rotation by transition.animateFloat(
-        initialValue = -5f,
-        targetValue = 5f,
-        animationSpec = infiniteRepeatable(
+        initialValue = -5f, targetValue = 5f, animationSpec = infiniteRepeatable(
             animation = tween(durationMillis = 1000, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
-        ),
-        label = "musicNoteRotation"
+        ), label = "musicNoteRotation"
     )
     val scale by transition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.15f,
-        animationSpec = infiniteRepeatable(
+        initialValue = 1f, targetValue = 1.15f, animationSpec = infiniteRepeatable(
             animation = tween(durationMillis = 500, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
-        ),
-        label = "musicNoteScale"
+        ), label = "musicNoteScale"
     )
     val playingFactor by animateFloatAsState(
-        targetValue = if (isPlaying) 1f else 0f,
-        label = "musicNotePlayingFactor"
+        targetValue = if (isPlaying) 1f else 0f, label = "musicNotePlayingFactor"
     )
 
     return MusicNoteAnimation(rotation, scale, playingFactor)
@@ -350,10 +334,14 @@ private fun MediaSectionContent(
                 (mediaState.position.toFloat() / mediaState.duration.toFloat()).coerceIn(0f, 1f)
             } else 0f
 
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(ExtraBigBiggerSpacing)) {
+            Box(
+                contentAlignment = Alignment.Center, modifier = Modifier.size(ExtraBigBiggerSpacing)
+            ) {
                 CircularProgressIndicator(
                     progress = { progress },
-                    modifier = Modifier.fillMaxSize().alpha(if(mediaState.title != null) 1f else 0f),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .alpha(if (mediaState.title != null) 1f else 0f),
                     color = colorScheme.onPrimaryContainer,
                     strokeWidth = SmallerStroke,
                     trackColor = colorScheme.onSurface.copy(alpha = 0.1f),
@@ -363,8 +351,8 @@ private fun MediaSectionContent(
                         model = artModel,
                         contentDescription = stringResource(R.string.album_art),
                         modifier = Modifier
-                            .padding(if(mediaState.title != null) SmallerPadding else NoPadding)
-                            .size(if(mediaState.title != null) BiggestBiggerSpacing else ExtraBigBiggerSpacing)
+                            .padding(if (mediaState.title != null) SmallerPadding else NoPadding)
+                            .size(if (mediaState.title != null) BiggestBiggerSpacing else ExtraBigBiggerSpacing)
                             .clip(CircleShape),
                         contentScale = ContentScale.Crop
                     )
@@ -386,9 +374,7 @@ private fun MediaSectionContent(
                 }
             }
             Column(
-                modifier = Modifier
-                    .weight(1f),
-                verticalArrangement = Arrangement.Center
+                modifier = Modifier.weight(1f), verticalArrangement = Arrangement.Center
             ) {
                 val textMeasurer = rememberTextMeasurer()
                 val titleStyle = MaterialTheme.typography.bodyMedium.copy(
@@ -412,7 +398,7 @@ private fun MediaSectionContent(
                         val spacingPx = titleContainerWidth / 3f
                         val scrollDistance = titleWidth + spacingPx
                         val scrollDuration = (scrollDistance / velocityPx * 1000).toLong()
-                        
+
                         while (true) {
                             titleIsScrolling = false
                             delay(1200.milliseconds)
@@ -421,8 +407,10 @@ private fun MediaSectionContent(
                         }
                     }
                 }
-                
-                val startFadeAlpha by animateFloatAsState(if (titleIsScrolling) 1f else 0f, tween(150), label = "dockMediaStartFade")
+
+                val startFadeAlpha by animateFloatAsState(
+                    if (titleIsScrolling) 1f else 0f, tween(150), label = "dockMediaStartFade"
+                )
 
                 Text(
                     text = titleText,
@@ -442,24 +430,21 @@ private fun MediaSectionContent(
                                         0f to Color.Black.copy(alpha = 1f - startFadeAlpha),
                                         fadeWidth / size.width to Color.Black,
                                         1f to Color.Black
-                                    ),
-                                    blendMode = BlendMode.DstIn
+                                    ), blendMode = BlendMode.DstIn
                                 )
                                 // End Fade (Right)
                                 drawRect(
                                     brush = Brush.horizontalGradient(
                                         (size.width - fadeWidth) / size.width to Color.Black,
                                         1f to Color.Transparent
-                                    ),
-                                    blendMode = BlendMode.DstIn
+                                    ), blendMode = BlendMode.DstIn
                                 )
                             }
                         }
-                        .basicMarquee(iterations = Int.MAX_VALUE, repeatDelayMillis = 1200)
-                )
-                if (mediaState.title != null) {
+                        .basicMarquee(iterations = Int.MAX_VALUE, repeatDelayMillis = 1200))
+                if (!mediaState.artist.isNullOrBlank()) {
                     Text(
-                        mediaState.artist ?: stringResource(R.string.unknown_artist),
+                        mediaState.artist,
                         color = contentColor.copy(0.7f),
                         fontSize = 10.sp,
                         maxLines = 1,
@@ -475,8 +460,7 @@ private fun MediaSectionContent(
                         isPlayPressed -> MediumCornerRadius
                         mediaState.isPlaying -> LargeMediumCornerRadius
                         else -> LargestCornerRadius
-                    },
-                    label = "playRadius"
+                    }, label = "playRadius"
                 )
 
                 Surface(
@@ -499,8 +483,9 @@ private fun MediaSectionContent(
                 Spacer(Modifier.width(SmallSpacer))
 
                 IconButton(
-                    onClick = onSkipNext,
-                    modifier = Modifier.size(width = LargeMediumIconSize, height = BiggestBiggerSpacing)
+                    onClick = onSkipNext, modifier = Modifier.size(
+                        width = LargeMediumIconSize, height = BiggestBiggerSpacing
+                    )
                 ) {
                     Icon(
                         Icons.Rounded.SkipNext,
@@ -511,26 +496,5 @@ private fun MediaSectionContent(
                 }
             }
         }
-    }
-}
-
-fun openMediaApp(context: Context, mediaState: MediaState) {
-    val packageName = mediaState.packageName
-    if (!packageName.isNullOrEmpty()) {
-        val intent = context.packageManager.getLaunchIntentForPackage(packageName)
-        if (intent != null) {
-            context.startActivity(intent)
-            return
-        }
-    }
-
-    try {
-        val audioIntent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType("content://media/external/audio/media".toUri(), "audio/*")
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        val chooserIntent = Intent.createChooser(audioIntent, context.getString(R.string.select_audio_source))
-        context.startActivity(chooserIntent)
-    } catch (_: Exception) {
     }
 }

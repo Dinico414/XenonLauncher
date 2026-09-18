@@ -30,6 +30,8 @@ import com.xenon.mylibrary.values.MediumPadding
 import com.xenon.mylibrary.values.NoSpacing
 import com.xenonware.launcher.R
 import com.xenonware.launcher.ui.res.FontConfigDialog
+import com.xenonware.launcher.ui.theme.LocalMainFontFamily
+import com.xenonware.launcher.ui.theme.LocalSubFontFamily
 import com.xenonware.launcher.viewmodel.SettingsViewModel
 import com.xenonware.launcher.viewmodel.classes.TweaksItems
 import dev.chrisbanes.haze.hazeEffect
@@ -63,6 +65,9 @@ fun TweaksLayout(
 
         val hazeState = rememberHazeState()
 
+        val mainFont = LocalMainFontFamily.current
+        val subFont = LocalSubFontFamily.current
+
         ActivityScreen(
             titleText = stringResource(id = R.string.tweaks),
 
@@ -81,6 +86,8 @@ fun TweaksLayout(
             onNavigationIconClick = onNavigateBack,
             hasNavigationIconExtraContent = false,
             actions = {},
+            mainContextFont = mainFont,
+            subContextFont = subFont,
             modifier = Modifier.hazeSource(hazeState),
             content = { _ ->
                 Column(
@@ -97,7 +104,9 @@ fun TweaksLayout(
                 ) {
                     TweaksItems(
                         viewModel = viewModel,
-                        layoutType = layoutType
+                        layoutType = layoutType,
+                        mainContextFont = mainFont,
+                        subContextFont = subFont
                     )
                 }
             })

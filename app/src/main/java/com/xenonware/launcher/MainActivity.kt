@@ -85,6 +85,7 @@ import com.xenonware.launcher.ui.pages.NotificationPage
 import com.xenonware.launcher.ui.pages.WidgetPage
 import com.xenonware.launcher.ui.res.AppEditDialog
 import com.xenonware.launcher.ui.res.CalendarSelectionDialog
+import com.xenonware.launcher.ui.res.NotificationManagerDialog
 import com.xenonware.launcher.ui.res.ShortcutConfigDialog
 import com.xenonware.launcher.ui.res.dock.DockPill
 import com.xenonware.launcher.ui.theme.FontAxes
@@ -695,7 +696,6 @@ fun LauncherScreen(
                                         onSkipNext = { viewModel.skipNext() },
                                         onSkipPrevious = { viewModel.skipPrevious() },
                                         onSeek = { viewModel.seekTo(it) },
-                                        onOpenSource = { viewModel.openMediaApp() }
                                     )
                                 }
                                 1 -> Box(
@@ -903,7 +903,7 @@ fun LauncherScreen(
             }
 
             if (showNotificationManagerDialog) {
-                com.xenonware.launcher.ui.res.NotificationManagerDialog(
+                NotificationManagerDialog(
                     allApps = apps,
                     visibleApps = visibleNotificationApps,
                     onDismiss = { viewModel.setShowNotificationManagerDialog(false) },

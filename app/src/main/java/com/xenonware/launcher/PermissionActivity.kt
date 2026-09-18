@@ -29,10 +29,13 @@ import com.xenon.mylibrary.activity.BasePermissionActivity
 import com.xenon.mylibrary.res.AnimatedGradientBackground
 import com.xenon.mylibrary.res.PermissionScreen
 import com.xenon.mylibrary.res.XenonIcon
-import com.xenon.mylibrary.theme.XenonTheme
+import com.xenonware.launcher.ui.theme.XenonTheme
 import com.xenon.mylibrary.utils.PermissionItem
 import com.xenonware.launcher.accessibility.XenonAccessibilityService
 import com.xenonware.launcher.data.SharedPreferenceManager
+import com.xenonware.launcher.ui.theme.FontAxes
+import com.xenonware.launcher.ui.theme.FontType
+import com.xenonware.launcher.ui.theme.createCustomFontFamily
 import com.xenonware.launcher.util.AccessibilityUtils
 
 class PermissionActivity : BasePermissionActivity() {
@@ -51,11 +54,46 @@ class PermissionActivity : BasePermissionActivity() {
         enableEdgeToEdge()
         
         setContent {
+            val fontType = sharedPreferenceManager.fontType
+            val mainFontType = sharedPreferenceManager.mainFontType
+            val robotoSettings = sharedPreferenceManager.robotoFlexSettings
+            val googleSansSettings = sharedPreferenceManager.googleSansFlexSettings
+
+            val customFontFamily = remember(fontType, robotoSettings, googleSansSettings) {
+                createCustomFontFamily(
+                    fontType = FontType.fromId(fontType),
+                    robotoSettings = FontAxes.parseSettings(
+                        robotoSettings,
+                        FontAxes.ROBOTO_FLEX_AXES
+                    ),
+                    googleSansSettings = FontAxes.parseSettings(
+                        googleSansSettings,
+                        FontAxes.GOOGLE_SANS_AXES
+                    )
+                )
+            }
+
+            val customMainFontFamily = remember(mainFontType, robotoSettings, googleSansSettings) {
+                createCustomFontFamily(
+                    fontType = FontType.fromId(mainFontType),
+                    robotoSettings = FontAxes.parseSettings(
+                        robotoSettings,
+                        FontAxes.ROBOTO_FLEX_AXES
+                    ),
+                    googleSansSettings = FontAxes.parseSettings(
+                        googleSansSettings,
+                        FontAxes.GOOGLE_SANS_AXES
+                    )
+                )
+            }
+
             XenonTheme(
                 darkTheme = isSystemInDarkTheme(),
                 useBlackedOutDarkTheme = false,
                 isCoverMode = false,
-                dynamicColor = true
+                dynamicColor = true,
+                fontFamily = customFontFamily,
+                mainContextFont = customMainFontFamily
             ) {
                 AnimatedGradientBackground(modifier = Modifier.fillMaxSize()) {
                     Surface(
@@ -79,7 +117,9 @@ class PermissionActivity : BasePermissionActivity() {
                                     modifier = modifier.size(24.dp)
                                 )
                             },
-                            onFinish = { onPermissionsFinished() }
+                            onFinish = { onPermissionsFinished() },
+                            mainContextFont = customMainFontFamily,
+                            subContextFont = customFontFamily
                         )
                     }
                 }

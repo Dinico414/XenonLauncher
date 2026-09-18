@@ -91,6 +91,15 @@ object NotificationManager {
         }
     }
 
+    fun removeMutedOptimistically() {
+        val current = _notifications.value
+        val updated = current.filter { !(it.isMuted && !it.isOngoing) }
+        if (updated.size != current.size) {
+            _notifications.value = updated
+            _notificationCount.value = updated.size
+        }
+    }
+
     fun removeAllNotificationsOptimistically() {
         if (showPermanentNotifications) {
             val remaining = _notifications.value.filter { it.isOngoing }

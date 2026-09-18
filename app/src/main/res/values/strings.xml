@@ -340,4 +340,8 @@
     <string name="axis_figure_height">Figure Height</string>
     <string name="privacy_policy_title">Privacy Policy</string>
     <string name="privacy_policy_description">Read privacy policy here</string>
+    <string name="split_screen">Split screen</string>
+    <string name="bubble">Bubble</string>
+    <string name="split_screen_pick_app">Choose an app for the other half</string>
+    <string name="split_screen_close">Close</string>
 </resources>

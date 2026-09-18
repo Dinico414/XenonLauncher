@@ -145,6 +145,7 @@ import com.xenonware.launcher.ui.theme.mainFontFamily
 import com.xenonware.launcher.util.ColorUtils
 import com.xenonware.launcher.util.blockHorizontalPagerSwipe
 import com.xenonware.launcher.util.isSmallScreenDevice
+import com.xenonware.launcher.util.openMediaApp
 import com.xenonware.launcher.util.shouldDisableLandscapeLayout
 import kotlinx.coroutines.delay
 import java.util.Locale
@@ -161,7 +162,6 @@ fun MediaPage(
     onSkipNext: () -> Unit,
     onSkipPrevious: () -> Unit,
     onSeek: (Long) -> Unit,
-    onOpenSource: () -> Unit,
     isDockVisible: Boolean = true,
 ) {
     val context = LocalContext.current
@@ -172,6 +172,7 @@ fun MediaPage(
         configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val disableLandscape = shouldDisableLandscapeLayout(context)
     val useLandscapeLayout = isLandscape && !disableLandscape
+    val openMediaApp: () -> Unit = { openMediaApp(context, mediaState) }
 
     val theme = rememberMediaTheme(mediaState)
     val baseBgAlpha = if (isDarkTheme) 0.8f else 0.6f
@@ -255,15 +256,9 @@ fun MediaPage(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                // Progressive corner radius, 40.dp to 0.dp over the last 25% of the swipe. Applied
-                // in the draw phase so the per-frame pager offset never recomposes this page.
                 .graphicsLayer {
                     val normalized = ((progress() - 0.75f) * 4f).coerceIn(0f, 1f)
                     val eased = EaseInOut.transform(normalized)
-                    // Clip only while a corner is actually rounded. eased == 1f means radius 0 —
-                    // the page is either flat on screen or fully off it — and clipping a
-                    // full-screen, content-filled layer every settle frame (and every at-rest
-                    // frame) was the close hitch. No rounded corner, no clip, identical result.
                     if (eased < 1f) {
                         shape = RoundedCornerShape(ExtraBigSpacing * (1f - eased))
                         clip = true
@@ -386,7 +381,7 @@ fun MediaPage(
                         } else {
                             // App Name
                             Surface(
-                                onClick = onOpenSource,
+                                onClick = openMediaApp,
                                 color = contentColor.copy(alpha = 0.1f),
                                 shape = RoundedCornerShape(ExtraLargeCornerRadius),
                                 modifier = Modifier.height(ExtraBigSpacing)
@@ -638,7 +633,7 @@ fun MediaPage(
                                 horizontalArrangement = Arrangement.Start
                             ) {
                                 Surface(
-                                    onClick = onOpenSource,
+                                    onClick = openMediaApp,
                                     color = contentColor.copy(alpha = 0.1f),
                                     shape = RoundedCornerShape(ExtraLargeCornerRadius),
                                     modifier = Modifier.height(ExtraBigSpacing)
@@ -692,7 +687,7 @@ fun MediaPage(
                                 ) {
                                     // Media Source / App Info (Aligned to TOP of Album Cover)
                                     Surface(
-                                        onClick = onOpenSource,
+                                        onClick = openMediaApp,
                                         color = contentColor.copy(alpha = 0.1f),
                                         shape = RoundedCornerShape(ExtraLargeCornerRadius),
                                         modifier = Modifier.height(BiggestBiggerSpacing)

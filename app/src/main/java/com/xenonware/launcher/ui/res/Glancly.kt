@@ -6,6 +6,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -25,8 +26,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.LineHeightStyle
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
 import com.xenon.mylibrary.values.ExtraLargerSpacing
@@ -35,15 +42,29 @@ import com.xenon.mylibrary.values.MassiveCornerRadius
 import com.xenon.mylibrary.values.MediumLargePadding
 import com.xenon.mylibrary.values.MediumSmallPadding
 import com.xenon.mylibrary.values.MediumSpacer
+import com.xenon.mylibrary.values.SmallPadding
 import com.xenon.mylibrary.values.SmallSpacer
 import com.xenon.mylibrary.values.SmallerPadding
 import com.xenonware.launcher.R
 import com.xenonware.launcher.ui.res.dock.StatusCounters
 import com.xenonware.launcher.ui.theme.mainFontFamily
+import com.xenonware.launcher.util.fitScale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import kotlin.time.Duration.Companion.milliseconds
+
+/** The ideal sizes: nothing is ever drawn larger than these. */
+private val TimeFontSize = 16.sp
+private val DateFontSize = 10.sp
+private val TemperatureFontSize = 14.sp
+
+/**
+ * Line heights are pinned to the ideal font sizes rather than derived from them, so the clock
+ * and the date keep their vertical spacing no matter how far the text shrinks.
+ */
+private val TimeLineHeight = 20.sp
+private val DateLineHeight = 13.sp
 
 @Composable
 fun Glancly(
@@ -58,7 +79,7 @@ fun Glancly(
     onWeatherClick: () -> Unit,
     pillInteractionSource: MutableInteractionSource,
     modifier: Modifier = Modifier,
-    ) {
+) {
     val contentColor = LocalContentColor.current
     val scope = rememberCoroutineScope()
 
@@ -106,89 +127,210 @@ fun Glancly(
             .fillMaxHeight()
             .padding(MediumLargePadding)
     ) {
-        Column(
+        // Left half: clock and date
+        ClockColumn(
+            time = time,
+            date = date,
+            contentColor = contentColor,
+            onTimeClick = {
+                triggerPillRipple()
+                onTimeClick()
+            },
+            onDateClick = {
+                triggerPillRipple()
+                onDateClick()
+            },
             modifier = Modifier
                 .weight(1f)
-                .fillMaxHeight(),
-            verticalArrangement = Arrangement.spacedBy((-1 * MediumSpacer), Alignment.CenterVertically)
+                .fillMaxHeight()
+        )
+
+        // Right half: counters and weather, laid out from the end
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(MediumSpacer, Alignment.End),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+        ) {
+            if (notificationCount > 0 || calendarEventCount > 0) {
+                StatusCounters(
+                    notificationCount = notificationCount,
+                    calendarEventCount = calendarEventCount
+                )
+            }
+
+            WeatherRow(
+                temperature = temperature.replace("+", ""),
+                condition = condition,
+                weatherRes = weatherRes,
+                contentColor = contentColor,
+                onClick = {
+                    triggerPillRipple()
+                    onWeatherClick()
+                },
+                // fill = false so the weather keeps its natural width until space runs out
+                modifier = Modifier.weight(1f, fill = false)
+            )
+        }
+    }
+}
+
+/**
+ * The clock and the date, shrunk by a single shared factor so the two lines stay visually
+ * matched. Whichever line is wider decides the factor; while both fit, nothing changes.
+ */
+@Composable
+private fun ClockColumn(
+    time: String,
+    date: String,
+    contentColor: Color,
+    onTimeClick: () -> Unit,
+    onDateClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val measurer = rememberTextMeasurer()
+    // A fixed line height plus centred alignment keeps each line's box the same height at every
+    // font size, so shrinking the text never moves the two lines closer together.
+    val lineHeightStyle = LineHeightStyle(
+        alignment = LineHeightStyle.Alignment.Center,
+        trim = LineHeightStyle.Trim.None
+    )
+    val timeStyle = TextStyle(
+        fontSize = TimeFontSize,
+        lineHeight = TimeLineHeight,
+        fontWeight = FontWeight.Bold,
+        fontFamily = mainFontFamily,
+        platformStyle = PlatformTextStyle(includeFontPadding = false),
+        lineHeightStyle = lineHeightStyle
+    )
+    val dateStyle = TextStyle(
+        fontSize = DateFontSize,
+        lineHeight = DateLineHeight,
+        fontFamily = mainFontFamily,
+        platformStyle = PlatformTextStyle(includeFontPadding = false),
+        lineHeightStyle = lineHeightStyle
+    )
+
+    BoxWithConstraints(modifier) {
+        // Both lines carry the same horizontal padding, so it comes off the budget once
+        val availablePx = with(LocalDensity.current) {
+            (maxWidth - MediumSmallPadding * 2).coerceAtLeast(0.dp).toPx()
+        }
+        val scale = remember(time, date, availablePx, timeStyle, dateStyle) {
+            val widest = maxOf(
+                measurer.measure(time, timeStyle, maxLines = 1, softWrap = false).size.width,
+                measurer.measure(date, dateStyle, maxLines = 1, softWrap = false).size.width
+            )
+            // Text width scales with the font size, so one ratio is enough
+            fitScale(widest.toFloat(), availablePx)
+        }
+
+        Column(
+            modifier = Modifier.fillMaxHeight(),
+            verticalArrangement = Arrangement.spacedBy((-1 * SmallPadding), Alignment.CenterVertically)
         ) {
             Text(
                 time,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                fontSize = 16.sp,
+                style = timeStyle,
+                fontSize = TimeFontSize * scale,
                 color = contentColor,
-                fontFamily = mainFontFamily,
+                maxLines = 1,
+                softWrap = false,
                 modifier = Modifier
                     .clip(RoundedCornerShape(MassiveCornerRadius))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
-                        onClick = {
-                            triggerPillRipple()
-                            onTimeClick()
-                        }
+                        onClick = onTimeClick
                     )
                     .padding(horizontal = MediumSmallPadding, vertical = SmallerPadding)
             )
             Text(
                 date,
-                maxLines = 1,
-                fontSize = 10.sp,
+                style = dateStyle,
+                fontSize = DateFontSize * scale,
                 color = contentColor.copy(alpha = 0.7f),
-                fontFamily = mainFontFamily,
+                maxLines = 1,
+                softWrap = false,
                 modifier = Modifier
                     .clip(RoundedCornerShape(MassiveCornerRadius))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
-                        onClick = {
-                            triggerPillRipple()
-                            onDateClick()
-                        }
+                        onClick = onDateClick
                     )
                     .padding(horizontal = MediumSmallPadding, vertical = SmallerPadding)
             )
         }
+    }
+}
 
-        if (notificationCount > 0 || calendarEventCount > 0) {
-            StatusCounters(
-                notificationCount = notificationCount,
-                calendarEventCount = calendarEventCount
+/**
+ * The weather icon, the gap and the temperature are measured as one group and shrunk by one
+ * factor, so the icon gives up width too and the text has less to give up on its own.
+ */
+@Composable
+private fun WeatherRow(
+    temperature: String,
+    condition: String,
+    weatherRes: Int,
+    contentColor: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val measurer = rememberTextMeasurer()
+    val temperatureStyle = TextStyle(
+        fontSize = TemperatureFontSize,
+        fontFamily = mainFontFamily
+    )
+
+    BoxWithConstraints(
+        modifier = modifier
+            .clip(RoundedCornerShape(MassiveCornerRadius))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
             )
+            .padding(horizontal = MediumSmallPadding, vertical = SmallerPadding)
+    ) {
+        // The padding above is already off these constraints
+        val availablePx = constraints.maxWidth.toFloat()
+        // The shadow is the larger of the two images, so it sets the icon's width
+        val iconAndGapPx = with(LocalDensity.current) { (ExtraLargestSpacing + SmallSpacer).toPx() }
+        val scale = remember(temperature, temperatureStyle, iconAndGapPx, availablePx) {
+            val textPx = measurer
+                .measure(temperature, temperatureStyle, maxLines = 1, softWrap = false)
+                .size.width
+            fitScale(iconAndGapPx + textPx, availablePx)
         }
 
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .clip(RoundedCornerShape(MassiveCornerRadius))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = {
-                        triggerPillRipple()
-                        onWeatherClick()
-                    }
-                )
-                .padding(horizontal = MediumSmallPadding, vertical = SmallerPadding)
-        ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Box(contentAlignment = Alignment.Center) {
                 // Shadow
                 Image(
                     painter = painterResource(id = weatherRes),
                     contentDescription = null,
                     colorFilter = ColorFilter.tint(Color.Black.copy(alpha = 0.1f)),
-                    modifier = Modifier.size(ExtraLargestSpacing)
+                    modifier = Modifier.size(ExtraLargestSpacing * scale)
                 )
                 // Real icon
                 Image(
                     painter = painterResource(id = weatherRes),
                     contentDescription = condition,
-                    modifier = Modifier.size(ExtraLargerSpacing)
+                    modifier = Modifier.size(ExtraLargerSpacing * scale)
                 )
             }
-            Spacer(Modifier.width(SmallSpacer))
-            Text(temperature.replace("+", ""), color = contentColor, maxLines = 1, fontSize = 14.sp, fontFamily = mainFontFamily)
+            Spacer(Modifier.width(SmallSpacer * scale))
+            Text(
+                temperature,
+                style = temperatureStyle,
+                fontSize = TemperatureFontSize * scale,
+                color = contentColor,
+                maxLines = 1,
+                softWrap = false
+            )
         }
     }
 }

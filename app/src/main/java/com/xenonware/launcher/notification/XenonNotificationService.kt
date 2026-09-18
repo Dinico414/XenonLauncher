@@ -1,6 +1,8 @@
 package com.xenonware.launcher.notification
 
 import android.content.SharedPreferences
+import android.os.Handler
+import android.os.Looper
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
@@ -59,6 +61,26 @@ class XenonNotificationService : NotificationListenerService() {
             }
         }
 
+        /**
+         * Cancels every notification that currently matches, re-derived from the live listener
+         * state at cancel time. Dismissing by a key list the UI captured earlier loses anything
+         * that was reposted or re-keyed in between, which is what made "clear muted" drop only
+         * one item.
+         */
+        fun dismissWhere(
+            tag: String,
+            predicate: (StatusBarNotification, Ranking) -> Boolean
+        ) {
+            val svc = instance ?: return
+            svc.cancelMatching(tag, predicate, attempt = 0)
+        }
+
+        fun dismissMuted() = dismissWhere("muted") { sbn, ranking ->
+            !sbn.isOngoing && ranking.importance <= 2
+        }
+
+        fun dismissPermanent() = dismissWhere("permanent") { sbn, _ -> sbn.isOngoing }
+
         fun getInstance(): XenonNotificationService? = instance
 
         fun getNotificationForSession(token: android.media.session.MediaSession.Token): StatusBarNotification? {
@@ -77,6 +99,8 @@ class XenonNotificationService : NotificationListenerService() {
             }
         }
     }
+
+    private val retryHandler = Handler(Looper.getMainLooper())
 
     val safeActiveNotifications: Array<StatusBarNotification>?
         get() = try {
@@ -99,6 +123,55 @@ class XenonNotificationService : NotificationListenerService() {
             Log.e(TAG, "Error accessing currentRanking", e)
             null
         }
+
+    /**
+     * One batch cancel, then up to two verified retries. Each individual cancel triggers
+     * onNotificationRemoved and a full rebuild, so cancelling in a loop over a stale key list
+     * races against that rebuild; the batch API plus a survivor check does not.
+     */
+    private fun cancelMatching(
+        tag: String,
+        predicate: (StatusBarNotification, Ranking) -> Boolean,
+        attempt: Int
+    ) {
+        val active = safeActiveNotifications ?: return
+        val rankingMap = safeCurrentRanking
+
+        val keys = active.filter { sbn ->
+            val ranking = Ranking()
+            val has = try {
+                rankingMap?.getRanking(sbn.key, ranking) == true
+            } catch (_: Throwable) {
+                false
+            }
+            if (has) predicate(sbn, ranking) else false
+        }.map { it.key }
+
+        if (keys.isEmpty()) return
+
+        try {
+            cancelNotifications(keys.toTypedArray())
+        } catch (e: Throwable) {
+            Log.e(TAG, "batch cancel failed for $tag, falling back to per-key", e)
+            keys.forEach { key ->
+                try {
+                    cancelNotification(key)
+                } catch (e2: Throwable) {
+                    Log.e(TAG, "Error canceling notification: $key", e2)
+                }
+            }
+        }
+
+        if (attempt < 2) {
+            retryHandler.postDelayed({
+                val survivors = safeActiveNotifications?.count { it.key in keys } ?: 0
+                if (survivors > 0) {
+                    Log.w(TAG, "$tag: $survivors/${keys.size} survived cancel, retrying")
+                    cancelMatching(tag, predicate, attempt + 1)
+                }
+            }, 350L)
+        }
+    }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
         Log.d(TAG, "Notification posted: ${sbn?.packageName}")
@@ -158,6 +231,7 @@ class XenonNotificationService : NotificationListenerService() {
         if (::prefManager.isInitialized) {
             prefManager.unregisterListener(preferenceListener)
         }
+        retryHandler.removeCallbacksAndMessages(null)
         instance = null
         super.onListenerDisconnected()
     }
@@ -175,4 +249,3 @@ class XenonNotificationService : NotificationListenerService() {
         }
     }
 }
-

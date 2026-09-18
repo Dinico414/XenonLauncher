@@ -68,6 +68,8 @@ import com.xenonware.launcher.R
 import com.xenonware.launcher.ui.theme.AxisDef
 import com.xenonware.launcher.ui.theme.FontAxes
 import com.xenonware.launcher.ui.theme.FontType
+import com.xenonware.launcher.ui.theme.LocalMainFontFamily
+import com.xenonware.launcher.ui.theme.LocalSubFontFamily
 import com.xenonware.launcher.ui.theme.createCustomFontFamily
 import kotlin.math.roundToInt
 
@@ -141,10 +143,14 @@ fun FontConfigDialog(
             FontOptionItem(FontType.GOOGLE_SANS_FLEX, "Google Sans Flex", googleSansFont, true)
         )
     }
+    val mainFont = LocalMainFontFamily.current
+    val subFont = LocalSubFontFamily.current
 
     XenonDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = true),
+        mainContextFont = mainFont,
+        subContextFont = subFont,
         title = stringResource(R.string.font_settings),
         confirmButtonText = stringResource(R.string.save),
         onConfirmButtonClick = {
@@ -178,7 +184,9 @@ fun FontConfigDialog(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = LargeMediumPadding)
+                    .padding(bottom = LargeMediumPadding),
+                mainContextFont = mainFont,
+                subContextFont = subFont
             )
 
             LazyColumn(

@@ -21,8 +21,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.xenon.mylibrary.res.AnimatedGradientBackground
+import com.xenonware.launcher.ui.theme.XenonTheme
 import com.xenonware.launcher.ui.theme.mainFontFamily
-import com.xenon.mylibrary.theme.XenonTheme
+import com.xenonware.launcher.ui.theme.subFontFamily
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -35,7 +36,9 @@ class BootWelcomeActivity : ComponentActivity() {
                 darkTheme = isSystemInDarkTheme(),
                 useBlackedOutDarkTheme = false,
                 isCoverMode = false,
-                dynamicColor = true
+                dynamicColor = true,
+                fontFamily = subFontFamily,
+                mainContextFont = mainFontFamily
             ) {
                 val alpha = remember { Animatable(0f) }
                 val backgroundAlpha = remember { Animatable(0f) }

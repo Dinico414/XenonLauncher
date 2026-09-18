@@ -34,6 +34,8 @@ import com.xenon.mylibrary.values.MediumPadding
 import com.xenon.mylibrary.values.SmallPadding
 import com.xenonware.launcher.R
 import com.xenonware.launcher.model.AppInfo
+import com.xenonware.launcher.ui.theme.LocalMainFontFamily
+import com.xenonware.launcher.ui.theme.LocalSubFontFamily
 
 @Composable
 fun NotificationManagerDialog(
@@ -55,11 +57,16 @@ fun NotificationManagerDialog(
     val showBottomDivider by remember {
         derivedStateOf { listState.canScrollForward }
     }
+    val mainFont = LocalMainFontFamily.current
+    val subFont = LocalSubFontFamily.current
+
 
     XenonDialog(
         onDismissRequest = onDismiss,
-        title = title,
         properties = DialogProperties(usePlatformDefaultWidth = true),
+        mainContextFont = mainFont,
+        subContextFont = subFont,
+        title = title,
         confirmButtonText = stringResource(R.string.done),
         onConfirmButtonClick = onDismiss,
         actionButton1Text = stringResource(R.string.select_all),

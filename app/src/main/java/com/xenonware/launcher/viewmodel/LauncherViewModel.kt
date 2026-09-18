@@ -41,6 +41,7 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
 import com.xenonware.launcher.R
+import com.xenonware.launcher.SplitScreenPickerActivity
 import com.xenonware.launcher.accessibility.XenonAccessibilityService
 import com.xenonware.launcher.data.SharedPreferenceManager
 import com.xenonware.launcher.media.MediaControllerManager
@@ -122,16 +123,24 @@ data class CalendarEvent(
 
 class LauncherViewModel(application: Application) : AndroidViewModel(application) {
 
-    private companion object {
-        const val TAG = "LauncherViewModel"
+    companion object {
+        private const val TAG = "LauncherViewModel"
 
 
-        const val DAY_MILLIS = 24 * 60 * 60 * 1000L
+        private const val DAY_MILLIS = 24 * 60 * 60 * 1000L
 
         /** A location fix younger than this is reused for weather instead of asking for a new one. */
-        const val LOCATION_MAX_AGE_MS = 30L * 60 * 1000
+        private const val LOCATION_MAX_AGE_MS = 30L * 60 * 1000
         /** Hard cap on waiting for a fresh fix; the old request could wait forever. */
-        const val LOCATION_FIX_TIMEOUT_MS = 10_000L
+        private const val LOCATION_FIX_TIMEOUT_MS = 10_000L
+
+        private val sharedApps = MutableStateFlow<List<AppInfo>>(emptyList())
+
+        /**
+         * Process-wide copy of the visible (non-hidden) app list, so [SplitScreenPickerActivity]
+         * can show the same apps and icons without starting a second view model.
+         */
+        val launchableApps: StateFlow<List<AppInfo>> = sharedApps
     }
 
     private val prefManager = SharedPreferenceManager(application)
@@ -497,21 +506,21 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         XenonNotificationService.dismissAllNotifications()
     }
 
-    fun dismissNotifications(keys: List<String>, optimistic: Boolean = true) {
-        if (optimistic) {
-            NotificationManager.removeNotificationsOptimistically(keys)
-        }
-        XenonNotificationService.dismissNotifications(keys)
-    }
-
     fun dismissNotificationsByPackage(packageName: String) {
         NotificationManager.removeNotificationsByPackageOptimistically(packageName)
         XenonNotificationService.dismissNotificationsByPackage(packageName)
     }
 
-    // Key of the notification whose inline reply is open, or null. Lives here so the
-    // dock can freeze its IME padding and LauncherScreen can close it when the app
-    // drawer opens.
+    fun dismissMutedNotifications() {
+        NotificationManager.removeMutedOptimistically()
+        XenonNotificationService.dismissMuted()
+    }
+
+    fun dismissPermanentNotifications() {
+        XenonNotificationService.dismissPermanent()
+    }
+
+
     private val _replyingNotificationKey = MutableStateFlow<String?>(null)
     val replyingNotificationKey: StateFlow<String?> = _replyingNotificationKey
 
@@ -914,33 +923,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun skipNext() = mediaControllerManager.skipNext()
     fun skipPrevious() = mediaControllerManager.skipPrevious()
     fun seekTo(position: Long) = mediaControllerManager.seekTo(position)
-    fun sendCustomAction(action: String) = mediaControllerManager.sendCustomAction(action)
-
-    fun openMediaApp() {
-        val pkg = mediaState.packageName
-        val context = getApplication<Application>()
-        if (!pkg.isNullOrEmpty()) {
-            val pm = context.packageManager
-            val intent = pm.getLaunchIntentForPackage(pkg)
-            if (intent != null) {
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                context.startActivity(intent)
-                return
-            }
-        }
-
-        try {
-            val audioIntent = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType("content://media/external/audio/media".toUri(), "audio/*")
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            val chooserIntent = Intent.createChooser(audioIntent, context.getString(R.string.select_audio_source)).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            context.startActivity(chooserIntent)
-        } catch (_: Exception) {
-        }
-    }
 
     val isMediaPermissionGranted: Boolean get() = mediaControllerManager.isPermissionGranted
 
@@ -1069,6 +1051,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             }.sortedBy { it.label.lowercase() }
             _allApps.value = appList
             _apps.value = appList.filter { it.packageName !in _hiddenApps.value }
+            sharedApps.value = _apps.value
 
             // Restore pinned apps once the main list is loaded
             val savedPinnedPkgs = prefManager.pinnedApps
@@ -1172,6 +1155,14 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             recordLaunch(packageName)
             getApplication<Application>().startActivity(launchIntent)
         }
+    }
+
+    fun launchAppInSplitScreen(packageName: String) {
+        val context = getApplication<Application>()
+
+        recordLaunch(packageName)
+        context.startActivity(SplitScreenPickerActivity.intent(context, firstPackage = packageName))
+        return
     }
 
     fun pinApp(packageName: String, atIndex: Int = -1) {

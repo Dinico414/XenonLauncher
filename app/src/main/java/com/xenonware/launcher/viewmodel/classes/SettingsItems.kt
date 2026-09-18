@@ -74,6 +74,8 @@ import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.compose.ui.text.font.FontFamily
+import com.xenon.mylibrary.theme.QuicksandTitleVariable
 import com.xenon.mylibrary.res.SettingsGoogleTile
 import com.xenon.mylibrary.res.SettingsSwitchMenuTile
 import com.xenon.mylibrary.res.SettingsSwitchTile
@@ -141,7 +143,9 @@ fun SettingsItems(
     onSignOutClick: () -> Unit,
     onShowHiddenApps: () -> Unit,
     onNavigateToDeveloperOptions: () -> Unit,
-    onConfigShortcut: (LauncherViewModel.ShortcutType) -> Unit
+    onConfigShortcut: (LauncherViewModel.ShortcutType) -> Unit,
+    mainContextFont: FontFamily = QuicksandTitleVariable,
+    subContextFont: FontFamily? = null,
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
@@ -240,6 +244,8 @@ fun SettingsItems(
         backgroundColor = Color.Transparent,
         contentColor = tileContentColor,
         subtitleColor = tileSubtitleColor,
+        mainContextFont = mainContextFont,
+        subContextFont = subContextFont ?: mainContextFont,
         iconContentDescription = stringResource(id = R.string.profile_picture)
     )
     Spacer(Modifier.height(actualOuterGroupSpacing))
@@ -256,7 +262,8 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsTile(
@@ -271,7 +278,8 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsTile(
@@ -283,7 +291,8 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont
         )
         Spacer(Modifier.height(actualOuterGroupSpacing))
     } else {
@@ -299,7 +308,8 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsTile(
@@ -311,7 +321,8 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont
         )
         Spacer(Modifier.height(actualOuterGroupSpacing))
     }
@@ -327,7 +338,8 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsSwitchTile(
@@ -341,6 +353,8 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont,
             switchColors = switchColorsOverride ?: defaultSwitchColors
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
@@ -355,6 +369,8 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont,
             switchColors = switchColorsOverride ?: defaultSwitchColors
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
@@ -369,6 +385,8 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont,
             switchColors = switchColorsOverride ?: defaultSwitchColors
         )
     }
@@ -384,8 +402,8 @@ fun SettingsItems(
         backgroundColor = tileBackgroundColor,
         contentColor = tileContentColor,
         subtitleColor = tileSubtitleColor,
-//        horizontalPadding = tileHorizontalPadding,
-//        verticalPadding = tileVerticalPadding
+        mainContextFont = mainContextFont,
+        subContextFont = subContextFont
     )
     Spacer(Modifier.height(actualOuterGroupSpacing))
 
@@ -402,6 +420,8 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont,
             switchColors = switchColorsOverride ?: defaultSwitchColors
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
@@ -417,7 +437,8 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
         // Icon Shape Selector
@@ -428,6 +449,8 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont,
             enableRipple = false,
             contextContent = {
                 val entries = IconShape.entries
@@ -529,6 +552,8 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont,
             switchColors = switchColorsOverride ?: defaultSwitchColors
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
@@ -543,6 +568,8 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont,
             switchColors = switchColorsOverride ?: defaultSwitchColors
         )
     }
@@ -561,6 +588,8 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont,
             switchColors = switchColorsOverride ?: defaultSwitchColors
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
@@ -575,6 +604,8 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont,
             switchColors = switchColorsOverride ?: defaultSwitchColors
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
@@ -589,6 +620,8 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont,
             switchColors = switchColorsOverride ?: defaultSwitchColors,
             showContext = dockSafeDrawIme && (layoutType == LayoutType.SMALL || layoutType == LayoutType.COMPACT),
             contextContent = {
@@ -642,6 +675,8 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont,
             switchColors = switchColorsOverride ?: defaultSwitchColors,
             showContext = openKeyboard && (layoutType == LayoutType.SMALL || layoutType == LayoutType.COMPACT),
             contextContent = {
@@ -698,8 +733,8 @@ fun SettingsItems(
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
                 subtitleColor = tileSubtitleColor,
-//                horizontalPadding = tileHorizontalPadding,
-//                verticalPadding = tileVerticalPadding
+                mainContextFont = mainContextFont,
+                subContextFont = subContextFont
             )
             Spacer(Modifier.height(actualInnerGroupSpacing))
             SettingsTile(
@@ -711,8 +746,8 @@ fun SettingsItems(
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
                 subtitleColor = tileSubtitleColor,
-//                horizontalPadding = tileHorizontalPadding,
-//                verticalPadding = tileVerticalPadding
+                mainContextFont = mainContextFont,
+                subContextFont = subContextFont
             )
             Spacer(Modifier.height(actualInnerGroupSpacing))
             SettingsTile(
@@ -724,8 +759,8 @@ fun SettingsItems(
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
                 subtitleColor = tileSubtitleColor,
-//                horizontalPadding = tileHorizontalPadding,
-//                verticalPadding = tileVerticalPadding
+                mainContextFont = mainContextFont,
+                subContextFont = subContextFont
             )
             val fabSwipeUpAction by viewModel.fabSwipeUpAction.collectAsState()
             val fabSwipeUpValue by viewModel.fabSwipeUpValue.collectAsState()
@@ -739,8 +774,8 @@ fun SettingsItems(
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
                 subtitleColor = tileSubtitleColor,
-//                horizontalPadding = tileHorizontalPadding,
-//                verticalPadding = tileVerticalPadding
+                mainContextFont = mainContextFont,
+                subContextFont = subContextFont
             )
         }
         Spacer(Modifier.height(actualOuterGroupSpacing))
@@ -757,7 +792,8 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsTile(
@@ -769,7 +805,8 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsTileContext(
@@ -779,6 +816,8 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont,
             enableRipple = false,
             contextContent = {
                 XenonSingleChoiceButtonGroup(
@@ -793,6 +832,8 @@ fun SettingsItems(
                             else -> ""
                         }
                     },
+                    mainContextFont = mainContextFont,
+                    subContextFont = subContextFont,
                     unselectedIcon = { type ->
                         Icon(
                             imageVector = when (type) {
@@ -825,8 +866,8 @@ fun SettingsItems(
         backgroundColor = tileBackgroundColor,
         contentColor = tileContentColor,
         subtitleColor = tileSubtitleColor,
-//        horizontalPadding = tileHorizontalPadding,
-//        verticalPadding = tileVerticalPadding
+        mainContextFont = mainContextFont,
+        subContextFont = subContextFont
     )
     Spacer(Modifier.height(actualOuterGroupSpacing))
 
@@ -841,7 +882,8 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsTile(
@@ -853,7 +895,8 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsTile(
@@ -865,7 +908,8 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont
         )
     }
     Spacer(Modifier.height(actualOuterGroupSpacing))
@@ -881,7 +925,8 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsTile(
@@ -893,7 +938,8 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsTile(
@@ -905,7 +951,8 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsTile(
@@ -920,7 +967,8 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsTile(
@@ -933,7 +981,8 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont
         )
         Spacer(Modifier.height(actualOuterGroupSpacing))
         SettingsTile(
@@ -948,7 +997,8 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont
         )
     }
 
@@ -964,7 +1014,8 @@ fun SettingsItems(
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
-
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont
         )
     }
 }

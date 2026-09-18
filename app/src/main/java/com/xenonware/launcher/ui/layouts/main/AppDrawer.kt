@@ -68,6 +68,7 @@ import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.VerticalSplit
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.HorizontalDivider
@@ -128,6 +129,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalViewConfiguration
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.ViewConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -183,6 +185,7 @@ import com.xenonware.launcher.ui.res.notification.NotificationBadge
 import com.xenonware.launcher.ui.res.search.SearchHistoryItem
 import com.xenonware.launcher.ui.res.search.SearchResultItem
 import com.xenonware.launcher.ui.theme.mainFontFamily
+import com.xenonware.launcher.ui.theme.subFontFamily
 import com.xenonware.launcher.util.LocalDragDropState
 import com.xenonware.launcher.util.matches
 import com.xenonware.launcher.viewmodel.LauncherViewModel
@@ -232,7 +235,7 @@ fun AppDrawer(
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
-    val windowInfo = androidx.compose.ui.platform.LocalWindowInfo.current
+    val windowInfo = LocalWindowInfo.current
     val windowWidthDp = with(density) { windowInfo.containerSize.width.toDp() }
     val isWideScreen = windowWidthDp >= 640.dp
     val focusManager = LocalFocusManager.current
@@ -338,8 +341,6 @@ fun AppDrawer(
         menuCard = app to Rect(root.positionOnScreen() - drawerOrigin, root.size.toSize())
     }
 
-    // The area the disc may occupy: clear of the system bars and any cutout, in drawer
-    // coordinates
     val safeDrawing = WindowInsets.safeDrawing.asPaddingValues()
     val layoutDirection = LocalLayoutDirection.current
     val windowView = LocalView.current
@@ -489,6 +490,24 @@ fun AppDrawer(
 
     val onUnhideApp: (String) -> Unit = { packageName ->
         viewModel.unhideApp(packageName)
+    }
+
+    // Launch-mode entries shared by both app context menus: split screen on every version,
+    // bubble only on Android 17 (API 37) and only once the launcher is able to request one.
+    val splitScreenLabel = stringResource(R.string.split_screen)
+
+    fun launchModeItems(app: AppInfo, closeMenu: () -> Unit): List<MenuItem> = buildList {
+        add(
+            MenuItem(
+                text = splitScreenLabel,
+                onClick = {
+                    closeMenu()
+                    viewModel.launchAppInSplitScreen(app.packageName)
+                    onDismiss()
+                },
+                leadingIcon = { Icon(Icons.Rounded.VerticalSplit, null) }
+            )
+        )
     }
 
 
@@ -1182,12 +1201,14 @@ fun AppDrawer(
                                     },
                                     leadingIcon = { Icon(if (isHidden) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff, null) }
                                 )
-                            ),
+                            ) + launchModeItems(app) { searchResultMenuApp = null },
                             hazeState = if (blurEnabled) hazeState else null,
                             offsetX = with(density) { searchResultPressOffset.x.toDp() },
                             offsetY = with(density) { searchResultPressOffset.y.toDp() },
                             anchorPos = Offset.Zero,
-                            alignment = Alignment.Center
+                            alignment = Alignment.Center,
+                            mainContextFont = mainFontFamily,
+                            subContextFont = subFontFamily
                         )
                     }
 
@@ -1242,6 +1263,8 @@ fun AppDrawer(
                                     },
                                     icon = { _, _ -> },
                                     buttonHeight = BiggestBiggerSpacing,
+                                    mainContextFont = mainFontFamily,
+                                    subContextFont = subFontFamily,
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(top = MediumPadding)
@@ -1375,7 +1398,9 @@ fun AppDrawer(
                                     hazeState = if (blurEnabled) hazeState else null,
                                     anchorPos = searchBarAnchor,
                                     offsetY = MediumSpacer,
-                                    alignment = Alignment.TopEnd
+                                    alignment = Alignment.TopEnd,
+                                    mainContextFont = mainFontFamily,
+                                    subContextFont = subFontFamily
                                 )
                             }
                         }
@@ -1419,12 +1444,14 @@ fun AppDrawer(
                             )
                         }
                     )
-                ),
+                ) + launchModeItems(app) { appMenuInfo = null },
                 hazeState = if (blurEnabled) hazeState else null,
                 offsetX = with(density) { offset.x.toDp() },
                 offsetY = with(density) { offset.y.toDp() },
                 anchorPos = Offset.Zero,
-                alignment = Alignment.Center
+                alignment = Alignment.Center,
+                mainContextFont = mainFontFamily,
+                subContextFont = subFontFamily
             )
         }
 

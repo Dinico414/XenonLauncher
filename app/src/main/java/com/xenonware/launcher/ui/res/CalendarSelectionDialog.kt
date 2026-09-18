@@ -41,6 +41,8 @@ import com.xenon.mylibrary.values.LargestSpacing
 import com.xenon.mylibrary.values.MediumPadding
 import com.xenon.mylibrary.values.SmallPadding
 import com.xenonware.launcher.R
+import com.xenonware.launcher.ui.theme.LocalMainFontFamily
+import com.xenonware.launcher.ui.theme.LocalSubFontFamily
 import com.xenonware.launcher.viewmodel.CalendarInfo
 
 @Composable
@@ -59,10 +61,14 @@ fun CalendarSelectionDialog(
     val showBottomDivider by remember {
         derivedStateOf { listState.canScrollForward }
     }
+    val mainFont = LocalMainFontFamily.current
+    val subFont = LocalSubFontFamily.current
 
     XenonDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = true),
+        mainContextFont = mainFont,
+        subContextFont = subFont,
         title = stringResource(R.string.select_calendars),
         confirmButtonText = stringResource(R.string.done),
         onConfirmButtonClick = onDismiss,

@@ -21,6 +21,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontFamily
 import androidx.core.graphics.ColorUtils
 import androidx.core.view.WindowCompat
+import com.xenon.mylibrary.theme.QuicksandTitleVariable
 
 data class ExtendedMaterialColorScheme(
     val inverseError: Color,
@@ -158,6 +159,7 @@ fun XenonTheme(
     isCoverMode: Boolean = false,
     dynamicColor: Boolean = true,
     fontFamily: FontFamily = FontFamily.Default,
+    mainContextFont: FontFamily = QuicksandTitleVariable,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
@@ -213,8 +215,8 @@ fun XenonTheme(
         }
     }
 
-    val appTypography = remember(fontFamily) {
-        createTypography(fontFamily)
+    val appTypography = remember(fontFamily, mainContextFont) {
+        createTypography(mainFont = mainContextFont, secondaryFont = fontFamily)
     }
 
     CompositionLocalProvider(

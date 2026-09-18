@@ -122,5 +122,12 @@ val LocalMainFontFamily = staticCompositionLocalOf {
     QuicksandTitleVariable
 }
 
+val LocalSubFontFamily = staticCompositionLocalOf<FontFamily> {
+    FontFamily.Default
+}
+
 val mainFontFamily: FontFamily
     @Composable @ReadOnlyComposable get() = LocalMainFontFamily.current
+
+val subFontFamily: FontFamily
+    @Composable @ReadOnlyComposable get() = LocalSubFontFamily.current

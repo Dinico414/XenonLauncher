@@ -29,6 +29,8 @@ import com.xenon.mylibrary.values.LargestPadding
 import com.xenon.mylibrary.values.NoPadding
 import com.xenon.mylibrary.values.SmallSpacer
 import com.xenonware.launcher.R
+import com.xenonware.launcher.ui.theme.LocalMainFontFamily
+import com.xenonware.launcher.ui.theme.LocalSubFontFamily
 import com.xenonware.launcher.viewmodel.PermissionStatus
 
 @Composable
@@ -38,10 +40,14 @@ fun PermissionsDialog(
     onOpenPermission: (String) -> Unit
 ) {
     val listState = rememberLazyListState()
+    val mainFont = LocalMainFontFamily.current
+    val subFont = LocalSubFontFamily.current
 
     XenonDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = true),
+        mainContextFont = mainFont,
+        subContextFont = subFont,
         title = stringResource(R.string.permissions),
         confirmButtonText = stringResource(R.string.close),
         onConfirmButtonClick = onDismiss,

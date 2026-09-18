@@ -50,6 +50,8 @@ import com.xenon.mylibrary.values.LargeMediumSpacer
 import com.xenon.mylibrary.values.LargestSpacer
 import com.xenon.mylibrary.values.MediumSpacing
 import com.xenonware.launcher.R
+import com.xenonware.launcher.ui.theme.LocalMainFontFamily
+import com.xenonware.launcher.ui.theme.LocalSubFontFamily
 import com.xenonware.launcher.viewmodel.BackupInfo
 import com.xenonware.launcher.viewmodel.SettingsViewModel
 
@@ -72,13 +74,17 @@ fun BackupRestoreDialog(
         ),
         label = "sync_rotation"
     )
+    val mainFont = LocalMainFontFamily.current
+    val subFont = LocalSubFontFamily.current
 
     XenonDialog(
         onDismissRequest = onDismiss,
         title = stringResource(R.string.backup_and_restore),
         properties = DialogProperties(usePlatformDefaultWidth = true),
         confirmButtonText = null,
-        contentManagesScrolling = true
+        contentManagesScrolling = true,
+        mainContextFont = mainFont,
+        subContextFont = subFont,
     ) {
         Column(
             modifier = Modifier

@@ -149,6 +149,8 @@ import com.xenonware.launcher.ui.res.WidgetSelectorDialog
 import com.xenonware.launcher.util.InteractiveAppWidgetHostView
 import com.xenonware.launcher.util.rememberWidgetHost
 import com.xenonware.launcher.viewmodel.LauncherViewModel
+import com.xenonware.launcher.ui.theme.mainFontFamily
+import com.xenonware.launcher.ui.theme.subFontFamily
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.delay
@@ -858,7 +860,9 @@ fun WidgetPage(
                         offsetX = with(density) { dropDownOffset.x.toDp() },
                         offsetY = with(density) { dropDownOffset.y.toDp() },
                         anchorPos = Offset.Zero,
-                        alignment = Alignment.Center
+                        alignment = Alignment.Center,
+                        mainContextFont = mainFontFamily,
+                        subContextFont = subFontFamily
                     )
                 }
             }

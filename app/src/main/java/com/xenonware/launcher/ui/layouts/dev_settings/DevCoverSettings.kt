@@ -21,6 +21,8 @@ import com.xenon.mylibrary.ActivityScreen
 import com.xenon.mylibrary.values.MediumPadding
 import com.xenon.mylibrary.values.NoSpacing
 import com.xenonware.launcher.R
+import com.xenonware.launcher.ui.theme.LocalMainFontFamily
+import com.xenonware.launcher.ui.theme.LocalSubFontFamily
 import com.xenonware.launcher.viewmodel.DevSettingsViewModel
 import com.xenonware.launcher.viewmodel.SettingsViewModel
 import com.xenonware.launcher.viewmodel.classes.DevSettingsItems
@@ -35,6 +37,8 @@ fun DevCoverSettings(
 ) {
     val hazeState = rememberHazeState()
     val context = LocalContext.current
+    val mainFont = LocalMainFontFamily.current
+    val subFont = LocalSubFontFamily.current
 
     ActivityScreen(
         titleText = stringResource(id = R.string.developer_options_title),
@@ -68,6 +72,8 @@ fun DevCoverSettings(
                 )
             }
         },
+        mainContextFont = mainFont,
+        subContextFont = subFont,
         modifier = Modifier.hazeSource(hazeState),
         content = { _ ->
             Column(
@@ -78,6 +84,8 @@ fun DevCoverSettings(
                 DevSettingsItems(
                     settingsViewModel = settingsViewModel,
                     viewModel = viewModel,
+                    mainContextFont = mainFont,
+                    subContextFont = subFont
                 )
             }
         }

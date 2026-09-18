@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.graphics.drawable.toBitmap
@@ -62,6 +63,8 @@ import com.xenon.mylibrary.values.SmallerSpacer
 import com.xenonware.launcher.R
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.model.AppOverride
+import com.xenonware.launcher.ui.theme.LocalMainFontFamily
+import com.xenonware.launcher.ui.theme.LocalSubFontFamily
 import com.xenonware.launcher.util.generateCustomIcon
 import com.xenonware.launcher.util.loadIconFromPack
 import com.xenonware.launcher.viewmodel.LauncherViewModel
@@ -121,6 +124,8 @@ fun AppEditDialog(
     }
 
     var showIconPackPicker by remember { mutableStateOf(false) }
+    val mainFont = LocalMainFontFamily.current
+    val subFont = LocalSubFontFamily.current
 
     XenonDialog(
         onDismissRequest = onDismiss,
@@ -153,7 +158,9 @@ fun AppEditDialog(
             iconResName = null
         },
         actionButton1ContentColor = MaterialTheme.colorScheme.primary,
-        contentManagesScrolling = false
+        contentManagesScrolling = false,
+        mainContextFont = mainFont,
+        subContextFont = subFont
     ) {
         Column(
             modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally
@@ -242,7 +249,10 @@ fun AppEditDialog(
                     bgColor = bgColor ?: Color.White,
                     onBgColorChange = { bgColor = it },
                     borderColor = borderColor,
-                    onBorderColorChange = { borderColor = it })
+                    onBorderColorChange = { borderColor = it },
+                    mainContextFont = mainFont,
+                    subContextFont = subFont
+                )
             }
         }
     }
@@ -262,6 +272,8 @@ fun ColorSelectionSection(
     onBgColorChange: (Color) -> Unit,
     borderColor: Color,
     onBorderColorChange: (Color) -> Unit,
+    mainContextFont: FontFamily,
+    subContextFont: FontFamily?,
 ) {
     var editingBorderColor by remember { mutableStateOf(false) }
 
@@ -319,7 +331,9 @@ fun ColorSelectionSection(
         key(editingBorderColor) {
             XenonColorPicker(
                 color = if (editingBorderColor) borderColor else bgColor,
-                onColorChanged = if (editingBorderColor) onBorderColorChange else onBgColorChange
+                onColorChanged = if (editingBorderColor) onBorderColorChange else onBgColorChange,
+                mainContextFont = mainContextFont,
+                subContextFont = subContextFont
             )
         }
     }

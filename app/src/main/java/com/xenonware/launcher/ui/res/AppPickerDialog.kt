@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
@@ -39,6 +40,8 @@ import com.xenon.mylibrary.values.MediumSpacer
 import com.xenon.mylibrary.values.SmallSpacer
 import com.xenonware.launcher.R
 import com.xenonware.launcher.model.AppInfo
+import com.xenonware.launcher.ui.theme.LocalMainFontFamily
+import com.xenonware.launcher.ui.theme.LocalSubFontFamily
 
 @Composable
 fun AppPickerDialog(
@@ -58,10 +61,14 @@ fun AppPickerDialog(
     val showBottomDivider by remember {
         derivedStateOf { listState.canScrollForward }
     }
+    val mainFont = LocalMainFontFamily.current
+    val subFont = LocalSubFontFamily.current
 
     XenonDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = true),
+        mainContextFont = mainFont,
+        subContextFont = subFont,
         title = stringResource(R.string.action_open_app),
         confirmButtonText = stringResource(R.string.ok),
         onConfirmButtonClick = {
@@ -82,9 +89,10 @@ fun AppPickerDialog(
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    label = { Text(stringResource(R.string.search)) },
+                    label = { Text(stringResource(R.string.search), fontFamily = subFont ?: mainFont) },
                     modifier = Modifier
                         .fillMaxWidth(),
+                    textStyle = TextStyle(fontFamily = mainFont),
                     singleLine = true,
                     shape = RoundedCornerShape(LargeMediumCornerRadius)
                 )
@@ -120,7 +128,8 @@ fun AppPickerDialog(
                         text = app.label,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = if (isAppSelected) FontWeight.Bold else FontWeight.Normal,
-                        color = if (isAppSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                        color = if (isAppSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+                        fontFamily = mainFont
                     )
                 }
             }

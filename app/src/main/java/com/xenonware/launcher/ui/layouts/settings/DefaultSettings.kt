@@ -55,6 +55,8 @@ import com.xenonware.launcher.ui.res.GlobalIconPackPicker
 import com.xenonware.launcher.ui.res.NotificationManagerDialog
 import com.xenonware.launcher.ui.res.PermissionsDialog
 import com.xenonware.launcher.ui.res.ShortcutConfigDialog
+import com.xenonware.launcher.ui.theme.LocalMainFontFamily
+import com.xenonware.launcher.ui.theme.LocalSubFontFamily
 import com.xenonware.launcher.viewmodel.FabConfigMode
 import com.xenonware.launcher.viewmodel.LauncherViewModel
 import com.xenonware.launcher.viewmodel.SettingsViewModel
@@ -187,6 +189,9 @@ fun DefaultSettings(
 
         val hazeState = rememberHazeState()
 
+        val mainFont = LocalMainFontFamily.current
+        val subFont = LocalSubFontFamily.current
+
         ActivityScreen(
             titleText = stringResource(id = R.string.settings),
 
@@ -205,6 +210,8 @@ fun DefaultSettings(
             onNavigationIconClick = onNavigateBack,
             hasNavigationIconExtraContent = false,
             actions = {},
+            mainContextFont = mainFont,
+            subContextFont = subFont,
             modifier = Modifier.hazeSource(hazeState),
             content = { _ ->
                 Column(
@@ -232,7 +239,9 @@ fun DefaultSettings(
                         onSignInClick = onSignInClick,
                         onSignOutClick = onSignOutClick,
                         onShowHiddenApps = { viewModel.setShowHiddenApps(true) },
-                        onConfigShortcut = { viewModel.setConfigShortcut(it) }
+                        onConfigShortcut = { viewModel.setConfigShortcut(it) },
+                        mainContextFont = mainFont,
+                        subContextFont = subFont
                     )
                 }
             })
@@ -263,7 +272,9 @@ fun DefaultSettings(
                     onDismiss = { viewModel.dismissThemeDialog() },
                     onConfirm = { viewModel.applySelectedTheme() },
                     dialogTitle = stringResource(id = R.string.theme),
-                    confirmText = stringResource(id = R.string.ok)
+                    confirmText = stringResource(id = R.string.ok),
+                    mainContextFont = mainFont,
+                    subContextFont = subFont
                 )
             }
         }
@@ -283,7 +294,9 @@ fun DefaultSettings(
                     dialogTitle = stringResource(id = R.string.cover_screen_mode),
                     confirmText = stringResource(id = R.string.yes),
                     action2Text = stringResource(id = R.string.no),
-                    descriptionText = stringResource(id = R.string.cover_screen_mode_description)
+                    descriptionText = stringResource(id = R.string.cover_screen_mode_description),
+                    mainContextFont = mainFont,
+                    subContextFont = subFont
                 )
             }
         }
@@ -298,7 +311,9 @@ fun DefaultSettings(
                     onDismiss = { viewModel.dismissClearDataDialog() },
                     dialogTitle = stringResource(id = R.string.clear_data),
                     confirmText = stringResource(id = R.string.confirm),
-                    descriptionText = stringResource(id = R.string.clear_data_description)
+                    descriptionText = stringResource(id = R.string.clear_data_description),
+                    mainContextFont = mainFont,
+                    subContextFont = subFont
                 )
             }
         }
@@ -313,7 +328,9 @@ fun DefaultSettings(
                     onDismiss = { viewModel.dismissResetSettingsDialog() },
                     dialogTitle = stringResource(id = R.string.reset_settings),
                     confirmText = stringResource(id = R.string.confirm),
-                    descriptionText = stringResource(id = R.string.reset_all_settings_description)
+                    descriptionText = stringResource(id = R.string.reset_all_settings_description),
+                    mainContextFont = mainFont,
+                    subContextFont = subFont
                 )
             }
         }
@@ -332,7 +349,9 @@ fun DefaultSettings(
                     xenonUiString = stringResource(id = R.string.xenon_ui_version),
                     xenonUIVersion = xenonUIVersion,
                     xenonCommonsString = stringResource(id = R.string.xenon_commons_version),
-                    xenonCommonsVersion = xenonCommonsVersion
+                    xenonCommonsVersion = xenonCommonsVersion,
+                    mainContextFont = mainFont,
+                    subContextFont = subFont
                 )
             }
         }
@@ -347,7 +366,9 @@ fun DefaultSettings(
                     onDismiss = { viewModel.dismissSignOutDialog() },
                     dialogTitle = stringResource(id = R.string.sign_out),
                     confirmText = stringResource(id = R.string.confirm),
-                    descriptionText = stringResource(id = R.string.sign_out_description)
+                    descriptionText = stringResource(id = R.string.sign_out_description),
+                    mainContextFont = mainFont,
+                    subContextFont = subFont
                 )
             }
         }

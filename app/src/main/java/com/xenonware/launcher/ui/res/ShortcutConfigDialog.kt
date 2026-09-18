@@ -43,6 +43,8 @@ import com.xenon.mylibrary.values.MediumPadding
 import com.xenon.mylibrary.values.MediumSpacer
 import com.xenonware.launcher.R
 import com.xenonware.launcher.model.AppInfo
+import com.xenonware.launcher.ui.theme.LocalMainFontFamily
+import com.xenonware.launcher.ui.theme.LocalSubFontFamily
 import com.xenonware.launcher.viewmodel.LauncherViewModel
 
 @Composable
@@ -89,10 +91,14 @@ fun ShortcutConfigDialog(
         LauncherViewModel.ShortcutType.DATE -> stringResource(R.string.date)
         LauncherViewModel.ShortcutType.WEATHER -> stringResource(R.string.weather)
     }
+    val mainFont = LocalMainFontFamily.current
+    val subFont = LocalSubFontFamily.current
 
     XenonDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = true),
+        mainContextFont = mainFont,
+        subContextFont = subFont,
         title = stringResource(R.string.configure_shortcut_format, typeName),
         confirmButtonText = stringResource(R.string.save),
         onConfirmButtonClick = {

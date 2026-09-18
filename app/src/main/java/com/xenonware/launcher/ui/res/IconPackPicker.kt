@@ -51,6 +51,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
@@ -72,6 +74,8 @@ import com.xenon.mylibrary.values.SmallPadding
 import com.xenon.mylibrary.values.SmallSpacer
 import com.xenon.mylibrary.values.SmallerStroke
 import com.xenonware.launcher.R
+import com.xenonware.launcher.ui.theme.LocalMainFontFamily
+import com.xenonware.launcher.ui.theme.LocalSubFontFamily
 import com.xenonware.launcher.util.getAllIconPackIcons
 import com.xenonware.launcher.util.loadIconFromPack
 import com.xenonware.launcher.viewmodel.LauncherViewModel
@@ -92,6 +96,8 @@ fun IconPackPicker(
 
     val listState = rememberLazyListState()
     val gridState = rememberLazyGridState()
+    val mainFont = LocalMainFontFamily.current
+    val subFont = LocalSubFontFamily.current
 
     XenonDialog(
         onDismissRequest = onDismiss,
@@ -115,6 +121,8 @@ fun IconPackPicker(
         contentManagesScrolling = true,
         externalShowTopDivider = if (selectedPack == null) listState.canScrollBackward else gridState.canScrollBackward,
         externalShowBottomDivider = if (selectedPack == null) listState.canScrollForward else gridState.canScrollForward,
+        mainContextFont = mainFont,
+        subContextFont = subFont
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             if (selectedPack == null) {
@@ -157,7 +165,7 @@ fun IconPackPicker(
                                 overlineContent = null,
                                 supportingContent = null,
                                 colors = ListItemDefaults.colors(),
-                                content = { Text(pack.loadLabel(pm).toString()) },
+                                content = { Text(pack.loadLabel(pm).toString(), fontFamily = mainFont) },
                             )
                         }
                     }
@@ -168,7 +176,9 @@ fun IconPackPicker(
                     selectedIconResName = selectedIconResName,
                     onIconResNameSelect = { selectedIconResName = it },
                     state = gridState,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    mainContextFont = mainFont,
+                    subContextFont = subFont
                 )
             }
         }
@@ -185,10 +195,14 @@ fun GlobalIconPackPicker(
     val context = LocalContext.current
     val pm = context.packageManager
     val listState = rememberLazyListState()
+    val mainFont = LocalMainFontFamily.current
+    val subFont = LocalSubFontFamily.current
 
     XenonDialog(
         properties = DialogProperties(usePlatformDefaultWidth = true),
         onDismissRequest = onDismiss,
+        mainContextFont = mainFont,
+        subContextFont = subFont,
         title = stringResource(R.string.select_icon_pack),
         confirmButtonText = stringResource(R.string.get_more),
         onConfirmButtonClick = {
@@ -224,7 +238,7 @@ fun GlobalIconPackPicker(
                     leadingContent = {
                         Icon(Icons.Rounded.Block, null, modifier = Modifier.size(ExtraLargeIconSize))
                     },
-                    content = { Text(stringResource(R.string.system_default)) },
+                    content = { Text(stringResource(R.string.system_default), fontFamily = mainFont) },
                     overlineContent = null,
                     supportingContent = null,
                     trailingContent = null,
@@ -269,7 +283,7 @@ fun GlobalIconPackPicker(
                                 )
                             }
                         },
-                        content = { Text(pack.loadLabel(pm).toString()) },
+                        content = { Text(pack.loadLabel(pm).toString(), fontFamily = mainFont) },
                         overlineContent = null,
                         supportingContent = null,
                         colors = ListItemDefaults.colors(),
@@ -288,6 +302,8 @@ fun IconGrid(
     onIconResNameSelect: (String) -> Unit,
     state: LazyGridState,
     modifier: Modifier = Modifier,
+    mainContextFont: FontFamily,
+    subContextFont: FontFamily?,
 ) {
     val context = LocalContext.current
     val allIcons = remember { mutableStateListOf<String>() }
@@ -325,8 +341,9 @@ fun IconGrid(
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    label = { Text(stringResource(R.string.search_icons)) },
+                    label = { Text(stringResource(R.string.search_icons), fontFamily = subContextFont ?: mainContextFont) },
                     modifier = Modifier.fillMaxWidth(),
+                    textStyle = TextStyle(fontFamily = mainContextFont),
                     singleLine = true,
                     shape = RoundedCornerShape(LargeMediumCornerRadius)
                 )

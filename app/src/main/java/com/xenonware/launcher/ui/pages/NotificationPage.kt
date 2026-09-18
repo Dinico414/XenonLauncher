@@ -193,6 +193,7 @@ import com.xenonware.launcher.ui.res.notification.ChronoCluster
 import com.xenonware.launcher.ui.res.notification.NotificationItem
 import com.xenonware.launcher.ui.res.notification.NotificationTabButton
 import com.xenonware.launcher.ui.theme.mainFontFamily
+import com.xenonware.launcher.ui.theme.subFontFamily
 import com.xenonware.launcher.util.ColorUtils
 import com.xenonware.launcher.util.PerfLog
 import com.xenonware.launcher.util.blockHorizontalPagerSwipe
@@ -852,7 +853,9 @@ fun NotificationPage(
                 ),
                 hazeState = if (blurSetting) hazeState else null,
                 anchorPos = dropDownOffset,
-                alignment = Alignment.Center
+                alignment = Alignment.Center,
+                mainContextFont = mainFontFamily,
+                subContextFont = subFontFamily
             )
         }
 
@@ -883,7 +886,9 @@ fun NotificationPage(
                 ),
                 hazeState = if (blurSetting) hazeState else null,
                 anchorPos = dropDownOffset,
-                alignment = Alignment.Center
+                alignment = Alignment.Center,
+                mainContextFont = mainFontFamily,
+                subContextFont = subFontFamily
             )
         }
     }
@@ -1213,6 +1218,94 @@ fun Modifier.drawVerticalScrollbar(
     }
 }
 
+/**
+ * Single-line text that scrolls only when it doesn't fit. The right edge fades whenever the text
+ * overflows, the left edge only while it is moving, like the event titles.
+ */
+@Composable
+private fun FadingMarqueeText(
+    text: String,
+    fontSize: TextUnit,
+    color: Color,
+    modifier: Modifier = Modifier,
+    fontWeight: FontWeight = FontWeight.Normal
+) {
+    val textMeasurer = rememberTextMeasurer()
+    val textStyle = MaterialTheme.typography.bodyLarge.copy(
+        fontSize = fontSize,
+        fontWeight = fontWeight,
+        fontFamily = mainFontFamily
+    )
+    val textWidth = remember(text, textStyle) {
+        textMeasurer.measure(text, textStyle, maxLines = 1).size.width
+    }
+    var containerWidthPx by remember { mutableIntStateOf(0) }
+    val needsMarquee = containerWidthPx in 1..<textWidth
+
+    var isScrolling by remember { mutableStateOf(false) }
+    val density = LocalDensity.current
+    LaunchedEffect(text, textWidth, containerWidthPx, needsMarquee) {
+        isScrolling = false
+        if (!needsMarquee) return@LaunchedEffect
+        // Follows basicMarquee's cycle so the left fade only shows while the text moves
+        val velocityPx = with(density) { BiggerSpacing.toPx() }
+        val scrollDistance = textWidth + containerWidthPx / 3f
+        val scrollDuration = (scrollDistance / velocityPx * 1000).toLong()
+        while (true) {
+            isScrolling = false
+            delay(1200.milliseconds)
+            isScrolling = true
+            delay(scrollDuration.milliseconds)
+        }
+    }
+
+    val startFadeAlpha by animateFloatAsState(
+        targetValue = if (isScrolling) 1f else 0f,
+        animationSpec = tween(150),
+        label = "marqueeStartFade"
+    )
+    val endFadeAlpha by animateFloatAsState(
+        targetValue = if (needsMarquee) 1f else 0f,
+        animationSpec = tween(150),
+        label = "marqueeEndFade"
+    )
+
+    Text(
+        text = text,
+        style = textStyle,
+        color = color,
+        maxLines = 1,
+        modifier = modifier
+            .fillMaxWidth()
+            .onGloballyPositioned { containerWidthPx = it.size.width }
+            .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+            .drawWithContent {
+                drawContent()
+                if (!needsMarquee) return@drawWithContent
+                val fadeWidth = BiggestSpacing.toPx()
+                // Start Fade (Left)
+                drawRect(
+                    brush = Brush.horizontalGradient(
+                        0f to Color.Black.copy(alpha = 1f - startFadeAlpha),
+                        fadeWidth / size.width to Color.Black,
+                        1f to Color.Black
+                    ),
+                    blendMode = BlendMode.DstIn
+                )
+                // End Fade (Right)
+                drawRect(
+                    brush = Brush.horizontalGradient(
+                        0f to Color.Black,
+                        (size.width - fadeWidth * endFadeAlpha) / size.width to Color.Black,
+                        1f to Color.Transparent
+                    ),
+                    blendMode = BlendMode.DstIn
+                )
+            }
+            .basicMarquee(iterations = Int.MAX_VALUE, repeatDelayMillis = 1200)
+    )
+}
+
 private enum class WeatherViewMode { NOW, TODAY }
 
 @Composable
@@ -1471,19 +1564,16 @@ fun AtAGlance(
                                                 } else {
                                                     "$nowLabel ${weatherState.temperature.replace("+", "")}"
                                                 }
-                                                Text(
+                                                FadingMarqueeText(
                                                     text = tempText,
                                                     fontSize = eventTitleFontSize,
                                                     fontWeight = FontWeight.Bold,
-                                                    color = baseColor,
-                                                    fontFamily = mainFontFamily,
-                                                    maxLines = 1
+                                                    color = baseColor
                                                 )
-                                                Text(
+                                                FadingMarqueeText(
                                                     text = conditionText,
                                                     fontSize = subtitleFontSize,
-                                                    color = baseColor.copy(alpha = 0.7f),
-                                                    fontFamily = mainFontFamily
+                                                    color = baseColor.copy(alpha = 0.7f)
                                                 )
                                             }
                                         }
@@ -1539,84 +1629,11 @@ fun AtAGlance(
                                             verticalArrangement = Arrangement.Center,
                                             modifier = Modifier.weight(1f)
                                         ) {
-                                            val textMeasurer = rememberTextMeasurer()
-                                            val textStyle = MaterialTheme.typography.bodyLarge.copy(
-                                                fontSize = eventTitleFontSize,
-                                                fontWeight = FontWeight.Bold,
-                                                fontFamily = mainFontFamily
-                                            )
-                                            val textWidth = remember(event.title, textStyle) {
-                                                textMeasurer.measure(event.title, textStyle).size.width
-                                            }
-                                            var containerWidthPx by remember { mutableIntStateOf(0) }
-                                            val needsMarquee = containerWidthPx in 1..<textWidth
-
-                                            var isScrolling by remember { mutableStateOf(false) }
-
-                                            if (needsMarquee) {
-                                                val densityValue = LocalDensity.current
-                                                LaunchedEffect(event.title, containerWidthPx) {
-                                                    val velocityPx = with(densityValue) { BiggerSpacing.toPx() }
-                                                    val spacingPx = containerWidthPx / 3f
-                                                    val scrollDistance = textWidth + spacingPx
-                                                    val scrollDuration = (scrollDistance / velocityPx * 1000).toLong()
-
-                                                    while (true) {
-                                                        isScrolling = false
-                                                        delay(1200.milliseconds)
-                                                        isScrolling = true
-                                                        delay(scrollDuration.milliseconds)
-                                                    }
-                                                }
-                                            }
-
-                                            val startFadeAlpha by animateFloatAsState(
-                                                targetValue = if (isScrolling) 1f else 0f,
-                                                animationSpec = tween(150),
-                                                label = "marqueeStartFade"
-                                            )
-                                            val endFadeAlpha by animateFloatAsState(
-                                                targetValue = if (needsMarquee) 1f else 0f,
-                                                animationSpec = tween(150),
-                                                label = "marqueeEndFade"
-                                            )
-
-                                            Text(
+                                            FadingMarqueeText(
                                                 text = event.title,
                                                 fontSize = eventTitleFontSize,
                                                 fontWeight = FontWeight.Bold,
-                                                color = baseColor,
-                                                fontFamily = mainFontFamily,
-                                                maxLines = 1,
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .onGloballyPositioned { containerWidthPx = it.size.width }
-                                                    .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                                                    .drawWithContent {
-                                                        drawContent()
-                                                        val fadeWidth = BiggestSpacing.toPx()
-                                                        if (needsMarquee) {
-                                                            // Start Fade (Left)
-                                                            drawRect(
-                                                                brush = Brush.horizontalGradient(
-                                                                    0f to Color.Black.copy(alpha = 1f - startFadeAlpha),
-                                                                    fadeWidth / size.width to Color.Black,
-                                                                    1f to Color.Black
-                                                                ),
-                                                                blendMode = BlendMode.DstIn
-                                                            )
-                                                            // End Fade (Right)
-                                                            drawRect(
-                                                                brush = Brush.horizontalGradient(
-                                                                    0f to Color.Black,
-                                                                    (size.width - fadeWidth * endFadeAlpha) / size.width to Color.Black,
-                                                                    1f to Color.Transparent
-                                                                ),
-                                                                blendMode = BlendMode.DstIn
-                                                            )
-                                                        }
-                                                    }
-                                                    .basicMarquee(iterations = Int.MAX_VALUE, repeatDelayMillis = 1200)
+                                                color = baseColor
                                             )
                                             val todayLabel = stringResource(R.string.today)
                                             val tomorrowLabel = stringResource(R.string.tomorrow)
@@ -1792,36 +1809,36 @@ fun NotificationTabs(
 
         LaunchedEffect(sortedAppPackages) {
             val currentSet = sortedAppPackages.toSet()
-
-            // 1. Mark items no longer in sortedAppPackages as leaving,
-            // and UNMARK items that have returned.
-            displayedPackages.forEach { pkg ->
-                if (pkg !in currentSet && leavingPackages[pkg] != true) {
-                    leavingPackages[pkg] = true
-                } else if (pkg in currentSet && leavingPackages[pkg] == true) {
-                    leavingPackages[pkg] = false
-                }
-            }
-
-            // 2. Update displayedPackages preserving order
-            // Special tabs (__MUTED__, __PERMANENT__) MUST always be last.
             val special = listOf("__MUTED__", "__PERMANENT__")
 
-            // Start with active normal apps in their sorted order
-            val newDisplayed = sortedAppPackages.filter { it !in special }.toMutableList()
-
-            // Add leaving normal apps
+            // 1. Mark removed tabs as leaving; forget tabs that came back.
             displayedPackages.forEach { pkg ->
-                if (pkg !in currentSet && leavingPackages[pkg] == true && pkg !in special) {
-                    newDisplayed.add(pkg)
+                if (pkg in currentSet) {
+                    leavingPackages.remove(pkg)
+                } else if (leavingPackages[pkg] != true) {
+                    leavingPackages[pkg] = true
                 }
             }
 
-            // Add special tabs (active or leaving) at the absolute end
-            special.forEach { sPkg ->
-                if (sPkg in currentSet || leavingPackages[sPkg] == true) {
-                    newDisplayed.add(sPkg)
+            // 2. Start from the live order (special tabs are already last there) and put every
+            //    leaving tab back where it was, so it collapses in place instead of jumping.
+            val newDisplayed = sortedAppPackages.toMutableList()
+            var anchor: String? = null
+            for (pkg in displayedPackages) {
+                if (pkg in currentSet) {
+                    anchor = pkg
+                    continue
                 }
+                val insertAt = if (pkg in special) {
+                    // Keep special tabs after all normal tabs and in their fixed order
+                    val order = special.indexOf(pkg)
+                    newDisplayed.indexOfFirst { it in special && special.indexOf(it) > order }
+                        .takeIf { it >= 0 } ?: newDisplayed.size
+                } else {
+                    anchor?.let { newDisplayed.indexOf(it) + 1 } ?: 0
+                }
+                newDisplayed.add(insertAt, pkg)
+                anchor = pkg
             }
 
             displayedPackages = newDisplayed
@@ -2019,8 +2036,8 @@ fun NotificationTabs(
                                     onClick = { onPackageSelected(if (isSelected) null else pkg) },
                                     onDismiss = {
                                         when {
-                                            isMutedTab -> viewModel.dismissNotifications(mutedNotifications.map { it.key })
-                                            isPermanentTab -> viewModel.dismissNotifications(permanentNotifications.map { it.key }, optimistic = false)
+                                            isMutedTab -> viewModel.dismissMutedNotifications()
+                                            isPermanentTab -> viewModel.dismissPermanentNotifications()
                                             isAllTab -> onDismissAllNotifications()
                                             else -> viewModel.dismissNotificationsByPackage(pkg)
                                         }
@@ -2088,6 +2105,7 @@ fun NotificationTabs(
         }
     }
 }
+
 private fun eventTimeText(
     event: CalendarEvent,
     timeFormatter: SimpleDateFormat,

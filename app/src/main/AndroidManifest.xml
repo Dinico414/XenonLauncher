@@ -77,6 +77,15 @@
             android:label="@string/developer_options_title"
             android:theme="@style/Theme.Xenon" />
 
+        <activity
+            android:name=".SplitScreenPickerActivity"
+            android:exported="false"
+            android:taskAffinity="${applicationId}.splitpicker"
+            android:excludeFromRecents="true"
+            android:resizeableActivity="true"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|keyboardHidden"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
+
         <service
             android:name=".notification.XenonNotificationService"
             android:label="Xenon Notification Listener"
