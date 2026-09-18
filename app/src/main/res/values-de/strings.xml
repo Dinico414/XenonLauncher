@@ -342,4 +342,6 @@
     <string name="bubble">Bubble</string>
     <string name="split_screen_pick_app">App für die andere Hälfte wählen</string>
     <string name="split_screen_close">Schließen</string>
+    <string name="app_menu_order">Reihenfolge des App-Menüs</string>
+    <string name="app_menu_order_description">Ordne die Einträge im App-Kontextmenü (langes Drücken) neu an.</string>
 </resources>

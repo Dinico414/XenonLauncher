@@ -177,6 +177,7 @@ import com.xenon.mylibrary.values.SmallSpacer
 import com.xenon.mylibrary.values.SmallerSpacing
 import com.xenonware.launcher.R
 import com.xenonware.launcher.model.AppInfo
+import com.xenonware.launcher.model.AppMenuItem
 import com.xenonware.launcher.model.SearchHistoryEntry
 import com.xenonware.launcher.model.SearchHistoryType
 import com.xenonware.launcher.model.SearchResult
@@ -503,20 +504,112 @@ fun AppDrawer(
     // Launch-mode entries shared by both app context menus: split screen on every version,
     // bubble only on Android 17 (API 37) and only once the launcher is able to request one.
     val splitScreenLabel = stringResource(R.string.split_screen)
+    val uninstallLabel = stringResource(R.string.uninstall)
+    val appInfoLabel = stringResource(R.string.app_info)
+    val editLabel = stringResource(R.string.edit)
+    val unhideLabel = stringResource(R.string.unhide)
+    val hideLabel = stringResource(R.string.hide)
 
-    fun launchModeItems(app: AppInfo, closeMenu: () -> Unit): List<MenuItem> = buildList {
-        add(
-            MenuItem(
-                text = splitScreenLabel,
-                onClick = {
-                    closeMenu()
-                    viewModel.launchAppInSplitScreen(app.packageName)
-                    onDismiss()
-                },
-                leadingIcon = { Icon(Icons.Rounded.VerticalSplit, null) }
-            )
-        )
+    val appMenuOrder by viewModel.appMenuOrder.collectAsState()
+
+    @Composable
+    fun buildAppMenuItems(app: AppInfo, isSearch: Boolean, closeMenu: () -> Unit): List<MenuItem> {
+        val errorColor = colorScheme.error
+        val errorContainerColor = errorColor.copy(alpha = if (isSearch) 0.15f else 0.25f)
+        
+        return remember(app, isSearch, appMenuOrder, hiddenApps) {
+            val list = mutableListOf<MenuItem>()
+            appMenuOrder.forEach { itemId ->
+                when (AppMenuItem.fromId(itemId)) {
+                    AppMenuItem.UNINSTALL -> {
+                        list.add(
+                            MenuItem(
+                                text = uninstallLabel,
+                                onClick = {
+                                    onUninstallApp(app.packageName)
+                                    closeMenu()
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Rounded.Delete,
+                                        null,
+                                        menuCardReporter(app)
+                                    )
+                                },
+                                textColor = errorColor,
+                                containerColor = errorContainerColor
+                            )
+                        )
+                    }
+
+                    AppMenuItem.APP_INFO -> {
+                        list.add(
+                            MenuItem(
+                                text = appInfoLabel,
+                                onClick = {
+                                    onAppInfo(app.packageName)
+                                    closeMenu()
+                                },
+                                leadingIcon = { Icon(Icons.Rounded.Info, null) }
+                            )
+                        )
+                    }
+
+                    AppMenuItem.EDIT -> {
+                        list.add(
+                            MenuItem(
+                                text = editLabel,
+                                onClick = {
+                                    onEditApp(app)
+                                    closeMenu()
+                                },
+                                leadingIcon = { Icon(Icons.Rounded.Edit, null) }
+                            )
+                        )
+                    }
+
+                    AppMenuItem.HIDE -> {
+                        val isHidden = app.packageName in hiddenApps
+                        list.add(
+                            MenuItem(
+                                text = if (isHidden) unhideLabel else hideLabel,
+                                onClick = {
+                                    if (isHidden) onUnhideApp(app.packageName)
+                                    else onHideApp(app.packageName)
+                                    closeMenu()
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        if (isHidden) Icons.Rounded.Visibility
+                                        else Icons.Rounded.VisibilityOff, null
+                                    )
+                                }
+                            )
+                        )
+                    }
+
+                    AppMenuItem.SPLIT_SCREEN -> {
+                        list.add(
+                            MenuItem(
+                                text = splitScreenLabel,
+                                onClick = {
+                                    closeMenu()
+                                    viewModel.launchAppInSplitScreen(app.packageName)
+                                    onDismiss()
+                                },
+                                leadingIcon = { Icon(Icons.Rounded.VerticalSplit, null) }
+                            )
+                        )
+                    }
+
+                    null -> {}
+                }
+            }
+            list
+        }
     }
+
+    fun launchModeItems(app: AppInfo, closeMenu: () -> Unit): List<MenuItem> = emptyList()
 
 
     val scope = rememberCoroutineScope()
@@ -1188,38 +1281,10 @@ fun AppDrawer(
                     }
 
                     searchResultMenuApp?.let { app ->
-                        val isHidden = app.packageName in hiddenApps
-
                         XenonDropDown(
                             expanded = searchResultMenuApp != null,
                             onDismissRequest = { searchResultMenuApp = null },
-                            items = listOf(
-                                MenuItem(
-                                    text = stringResource(R.string.uninstall),
-                                    onClick = { onUninstallApp(app.packageName) },
-                                    leadingIcon = { Icon(Icons.Rounded.Delete, null, menuCardReporter(app)) },
-                                    textColor = colorScheme.error,
-                                    containerColor = colorScheme.error.copy(alpha = 0.15f)
-                                ),
-                                MenuItem(
-                                    text = stringResource(R.string.app_info),
-                                    onClick = { onAppInfo(app.packageName) },
-                                    leadingIcon = { Icon(Icons.Rounded.Info, null) }
-                                ),
-                                MenuItem(
-                                    text = stringResource(R.string.edit),
-                                    onClick = { onEditApp(app) },
-                                    leadingIcon = { Icon(Icons.Rounded.Edit, null) }
-                                ),
-                                MenuItem(
-                                    text = if (isHidden) stringResource(R.string.unhide) else stringResource(R.string.hide),
-                                    onClick = {
-                                        if (isHidden) onUnhideApp(app.packageName)
-                                        else onHideApp(app.packageName)
-                                    },
-                                    leadingIcon = { Icon(if (isHidden) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff, null) }
-                                )
-                            ) + launchModeItems(app) { searchResultMenuApp = null },
+                            items = buildAppMenuItems(app, isSearch = true) { searchResultMenuApp = null },
                             hazeState = if (blurEnabled) hazeState else null,
                             offsetX = with(density) { searchResultPressOffset.x.toDp() },
                             offsetY = with(density) { searchResultPressOffset.y.toDp() },
@@ -1431,38 +1496,7 @@ fun AppDrawer(
             XenonDropDown(
                 expanded = true,
                 onDismissRequest = { appMenuInfo = null },
-                items = listOf(
-                    MenuItem(
-                        text = stringResource(R.string.uninstall),
-                        onClick = { onUninstallApp(app.packageName) },
-                        leadingIcon = { Icon(Icons.Rounded.Delete, null, menuCardReporter(app)) },
-                        textColor = colorScheme.error,
-                        containerColor = colorScheme.error.copy(alpha = 0.25f)
-                    ),
-                    MenuItem(
-                        text = stringResource(R.string.app_info),
-                        onClick = { onAppInfo(app.packageName) },
-                        leadingIcon = { Icon(Icons.Rounded.Info, null) }
-                    ),
-                    MenuItem(
-                        text = stringResource(R.string.edit),
-                        onClick = { onEditApp(app) },
-                        leadingIcon = { Icon(Icons.Rounded.Edit, null) }
-                    ),
-                    MenuItem(
-                        text = if (app.packageName in hiddenApps) stringResource(R.string.unhide) else stringResource(R.string.hide),
-                        onClick = {
-                            if (app.packageName in hiddenApps) onUnhideApp(app.packageName)
-                            else onHideApp(app.packageName)
-                        },
-                        leadingIcon = {
-                            Icon(
-                                if (app.packageName in hiddenApps) Icons.Rounded.Visibility
-                                else Icons.Rounded.VisibilityOff, null
-                            )
-                        }
-                    )
-                ) + launchModeItems(app) { appMenuInfo = null },
+                items = buildAppMenuItems(app, isSearch = false) { appMenuInfo = null },
                 hazeState = if (blurEnabled) hazeState else null,
                 offsetX = with(density) { offset.x.toDp() },
                 offsetY = with(density) { offset.y.toDp() },

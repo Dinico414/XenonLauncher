@@ -29,6 +29,7 @@ import com.xenon.mylibrary.values.LargestPadding
 import com.xenon.mylibrary.values.MediumPadding
 import com.xenon.mylibrary.values.NoSpacing
 import com.xenonware.launcher.R
+import com.xenonware.launcher.ui.res.AppMenuOrderDialog
 import com.xenonware.launcher.ui.res.FontConfigDialog
 import com.xenonware.launcher.ui.theme.LocalMainFontFamily
 import com.xenonware.launcher.ui.theme.LocalSubFontFamily
@@ -112,6 +113,7 @@ fun TweaksLayout(
             })
 
         val showFontConfigDialog by viewModel.showFontConfigDialog.collectAsState()
+        val showAppMenuOrderDialog by viewModel.showAppMenuOrderDialog.collectAsState()
         val fontType by viewModel.fontType.collectAsState()
         val mainFontType by viewModel.mainFontType.collectAsState()
         val robotoFlexSettings by viewModel.robotoFlexSettings.collectAsState()
@@ -135,6 +137,24 @@ fun TweaksLayout(
                         viewModel.setRobotoFlexSettings(roboto)
                         viewModel.setGoogleSansFlexSettings(googleSans)
                         viewModel.setShowFontConfigDialog(false)
+                    }
+                )
+            }
+        }
+
+        if (showAppMenuOrderDialog) {
+            val currentOrder by viewModel.appMenuOrder.collectAsState()
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .hazeEffect(hazeState)
+            ) {
+                AppMenuOrderDialog(
+                    initialOrder = currentOrder,
+                    onDismiss = { viewModel.setShowAppMenuOrderDialog(false) },
+                    onSave = { newOrder ->
+                        viewModel.setAppMenuOrder(newOrder)
+                        viewModel.setShowAppMenuOrderDialog(false)
                     }
                 )
             }

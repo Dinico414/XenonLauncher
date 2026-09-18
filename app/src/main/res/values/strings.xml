@@ -344,4 +344,6 @@
     <string name="bubble">Bubble</string>
     <string name="split_screen_pick_app">Choose an app for the other half</string>
     <string name="split_screen_close">Close</string>
+    <string name="app_menu_order">App Menu Order</string>
+    <string name="app_menu_order_description">Rearrange the items in the app long-press menu.</string>
 </resources>

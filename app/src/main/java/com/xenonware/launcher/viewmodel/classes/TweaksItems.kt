@@ -505,6 +505,24 @@ fun TweaksItems(
 
         Spacer(Modifier.height(actualOuterGroupSpacing))
 
+        // --- App Menu Tweaks ---
+        SettingsTile(
+            title = stringResource(R.string.app_menu_order),
+            subtitle = stringResource(R.string.app_menu_order_description),
+            icon = { Icon(Icons.Rounded.TableRows, null, tint = tileSubtitleColor) },
+            onClick = { viewModel.setShowAppMenuOrderDialog(true) },
+            shape = tileShapeOverride ?: standaloneShape,
+            backgroundColor = tileBackgroundColor,
+            contentColor = tileContentColor,
+            subtitleColor = tileSubtitleColor,
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont,
+            horizontalPadding = LargestPadding,
+            verticalPadding = LargestPadding
+        )
+
+        Spacer(Modifier.height(actualOuterGroupSpacing))
+
         // --- Dock Tweaks ---
         Column {
             SettingsSwitchTileContext(

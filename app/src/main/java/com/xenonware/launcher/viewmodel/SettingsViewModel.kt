@@ -34,6 +34,7 @@ import com.xenonware.launcher.R
 import com.xenonware.launcher.accessibility.XenonAccessibilityService
 import com.xenonware.launcher.data.SharedPreferenceManager
 import com.xenonware.launcher.model.AppInfo
+import com.xenonware.launcher.model.AppMenuItem
 import com.xenonware.launcher.model.AppWidgetGroup
 import com.xenonware.launcher.model.FabAction
 import com.xenonware.launcher.model.WidgetPickerItemData
@@ -368,11 +369,31 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _googleSansFlexSettings = MutableStateFlow(sharedPreferenceManager.googleSansFlexSettings)
     val googleSansFlexSettings: StateFlow<String> = _googleSansFlexSettings.asStateFlow()
 
+    private val _appMenuOrder = MutableStateFlow(sharedPreferenceManager.appMenuOrder)
+    val appMenuOrder: StateFlow<List<String>> = _appMenuOrder.asStateFlow()
+
+    fun setAppMenuOrder(order: List<String>) {
+        sharedPreferenceManager.appMenuOrder = order
+        _appMenuOrder.value = order
+    }
+
+    fun resetAppMenuOrder() {
+        val default = AppMenuItem.DEFAULT_ORDER.map { it.id }
+        setAppMenuOrder(default)
+    }
+
     private val _showFontConfigDialog = MutableStateFlow(false)
     val showFontConfigDialog: StateFlow<Boolean> = _showFontConfigDialog.asStateFlow()
 
     fun setShowFontConfigDialog(show: Boolean) {
         _showFontConfigDialog.value = show
+    }
+
+    private val _showAppMenuOrderDialog = MutableStateFlow(false)
+    val showAppMenuOrderDialog: StateFlow<Boolean> = _showAppMenuOrderDialog.asStateFlow()
+
+    fun setShowAppMenuOrderDialog(show: Boolean) {
+        _showAppMenuOrderDialog.value = show
     }
 
     private val _persistedThemeIndexFlow = MutableStateFlow(sharedPreferenceManager.theme)
@@ -498,6 +519,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             "main_font_type" -> _mainFontType.value = sharedPreferenceManager.mainFontType
             "roboto_flex_settings" -> _robotoFlexSettings.value = sharedPreferenceManager.robotoFlexSettings
             "google_sans_flex_settings" -> _googleSansFlexSettings.value = sharedPreferenceManager.googleSansFlexSettings
+            "app_menu_order" -> _appMenuOrder.value = sharedPreferenceManager.appMenuOrder
         }
     }
 
@@ -977,6 +999,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         _appLabelsEnabled.value = true
         _drawerIconShape.value = IconShape.Circle
         _drawerIconShadow.value = false
+        _appMenuOrder.value = AppMenuItem.DEFAULT_ORDER.map { it.id }
         // Re-start app to apply all resets
         restartApplication(getApplication())
     }

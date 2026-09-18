@@ -220,6 +220,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             "main_font_type" -> _mainFontType.value = prefManager.mainFontType
             "roboto_flex_settings" -> _robotoFlexSettings.value = prefManager.robotoFlexSettings
             "google_sans_flex_settings" -> _googleSansFlexSettings.value = prefManager.googleSansFlexSettings
+            "app_menu_order" -> _appMenuOrder.value = prefManager.appMenuOrder
         }
     }
 
@@ -383,6 +384,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private val _googleSansFlexSettings = MutableStateFlow(prefManager.googleSansFlexSettings)
     val googleSansFlexSettings: StateFlow<String> = _googleSansFlexSettings
+
+    private val _appMenuOrder = MutableStateFlow(prefManager.appMenuOrder)
+    val appMenuOrder: StateFlow<List<String>> = _appMenuOrder
 
     fun setAppDrawerVisible(visible: Boolean) {
         _isAppDrawerVisible.value = visible

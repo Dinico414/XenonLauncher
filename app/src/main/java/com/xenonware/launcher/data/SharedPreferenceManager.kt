@@ -3,6 +3,7 @@ package com.xenonware.launcher.data
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
+import com.xenonware.launcher.model.AppMenuItem
 import com.xenonware.launcher.model.AppOverride
 import org.json.JSONObject
 
@@ -166,6 +167,17 @@ class SharedPreferenceManager(context: Context) {
     var fabSwipeUpValue: String
         get() = prefs.getString("fab_swipe_up_value", "") ?: ""
         set(value) = prefs.edit { putString("fab_swipe_up_value", value) }
+
+    var appMenuOrder: List<String>
+        get() {
+            val stored = prefs.getString("app_menu_order", "")
+            return if (stored.isNullOrEmpty()) {
+                AppMenuItem.DEFAULT_ORDER.map { it.id }
+            } else {
+                stored.split(",").filter { it.isNotEmpty() }
+            }
+        }
+        set(value) = prefs.edit { putString("app_menu_order", value.joinToString(",")) }
 
     var appLabelsEnabled: Boolean
         get() = prefs.getBoolean("app_labels_enabled", true)
@@ -359,6 +371,7 @@ class SharedPreferenceManager(context: Context) {
             remove("app_labels_enabled")
             remove("cover_display_dimension_1")
             remove("cover_display_dimension_2")
+            remove("app_menu_order")
         }
     }
 
