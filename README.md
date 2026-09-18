@@ -82,7 +82,7 @@ Never lose your setup again. Xenon includes a secure **Backup & Restore** system
 
 ### How it Works
 1.  **Jetpack Compose:** The entire UI is declarative and state-driven, ensuring zero jank and fluid animations.
-2.  **Modern Core:** Built on **Kotlin 2.1**, **Java 21**, and targeting **Android 15 (API 37)**.
+2.  **Modern Core:** Built on **Kotlin 2.1**, **Java 21**, and targeting **Android 17 (API 37)**.
 3.  **Accessibility Service:** Utilizes a lightweight Accessibility Service solely to enable "Tap to Lock" and Split-Screen gestures.
 4.  **Scoped Storage:** Efficiently manages icon caching and file thumbnails while respecting Android's latest privacy standards.
 
