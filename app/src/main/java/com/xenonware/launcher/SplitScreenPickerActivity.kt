@@ -48,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -129,7 +130,9 @@ class SplitScreenPickerActivity : ComponentActivity() {
                 fontFamily = customFontFamily,
                 mainContextFont = customMainFontFamily
             ) {
+                val firstPackage = intent.getStringExtra(EXTRA_FIRST_PACKAGE)
                 SplitScreenPicker(
+                    firstPackage = firstPackage,
                     iconShape = iconShape,
                     showLabels = showLabels,
                     hiddenApps = hiddenApps,
@@ -197,6 +200,7 @@ class SplitScreenPickerActivity : ComponentActivity() {
 
 @Composable
 private fun SplitScreenPicker(
+    firstPackage: String?,
     iconShape: IconShape?,
     showLabels: Boolean,
     hiddenApps: Set<String>,
@@ -290,11 +294,15 @@ private fun SplitScreenPicker(
                 .navigationBarsPadding()
         ) {
             items(items = shown, key = { app: AppInfo -> "${app.packageName}/${app.className}" }) { app: AppInfo ->
+                val appKey = if (app.className.isNotEmpty()) "${app.packageName}/${app.className}" else app.packageName
+                val isEnabled = firstPackage != appKey && firstPackage != app.packageName
+
                 PickerAppItem(
                     app = app,
                     iconShape = iconShape,
                     showLabel = showLabels,
-                    onClick = { onAppClick(if (app.className.isNotEmpty()) "${app.packageName}/${app.className}" else app.packageName) })
+                    enabled = isEnabled,
+                    onClick = { onAppClick(appKey) })
             }
         }
     }
@@ -305,6 +313,7 @@ private fun PickerAppItem(
     app: AppInfo,
     iconShape: IconShape?,
     showLabel: Boolean,
+    enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
     val bitmap = remember(app) { app.icon?.toBitmap()?.asImageBitmap() }
@@ -314,8 +323,9 @@ private fun PickerAppItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
-            .clickable(onClick = onClick)
+            .clickable(enabled = enabled, onClick = onClick)
             .padding(vertical = 8.dp)
+            .graphicsLayer { alpha = if (enabled) 1f else 0.4f }
     ) {
         if (bitmap != null) {
             Image(
