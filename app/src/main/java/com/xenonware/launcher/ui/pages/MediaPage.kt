@@ -141,7 +141,9 @@ import com.xenonware.launcher.media.AudioSpectrumAnalyzer
 import com.xenonware.launcher.media.MediaAction
 import com.xenonware.launcher.media.MediaControllerManager
 import com.xenonware.launcher.media.MediaState
-import com.xenonware.launcher.ui.components.GeminiMusicVisualizer
+import com.xenonware.launcher.ui.components.MusicVisualizer
+import com.xenonware.launcher.ui.components.VisualizerConfig
+import com.xenonware.launcher.ui.components.rememberVisualizerPalette
 import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
 import com.xenonware.launcher.ui.theme.mainFontFamily
 import com.xenonware.launcher.util.ColorUtils
@@ -181,6 +183,16 @@ fun MediaPage(
     val openMediaApp: () -> Unit = { openMediaApp(context, mediaState) }
 
     val theme = rememberMediaTheme(mediaState)
+
+    // Captured before the album-tinted MaterialTheme below, so "Material You" = the app's scheme
+    val systemColorScheme = colorScheme
+    val visualizerColors = rememberVisualizerPalette(
+        profile = VisualizerConfig.colorProfile,
+        systemScheme = systemColorScheme,
+        albumArt = mediaState.albumArt,
+        albumArtUri = mediaState.albumArtUri,
+    )
+
     val baseBgAlpha = if (isDarkTheme) 0.8f else 0.6f
 
     MaterialTheme(colorScheme = theme.scheme) {
@@ -306,17 +318,25 @@ fun MediaPage(
                 }
             }
 
-            // Gemini-style liquid visualizer: behind all content, band sits partly behind the dock
+            // Gemini-style visualizer: behind all content, anchored to the bottom-right screen edge
             if (isPermissionGranted) {
-                GeminiMusicVisualizer(
+                // Landscape & tablet split UI: right side only; phone portrait: full width
+                val isTablet = configuration.smallestScreenWidthDp >= 600
+                val visualizerWidth = if (useLandscapeLayout || isTablet) {
+                    VisualizerConfig.widthFractionSplit.coerceIn(0.1f, 1f)
+                } else {
+                    1f
+                }
+                MusicVisualizer(
                     isPlaying = mediaState.isPlaying,
                     isActive = isVisible,
                     analyzer = audioAnalyzer,
+                    colors = visualizerColors,
+                    leftFade = if (visualizerWidth < 1f) VisualizerConfig.leftFadeWidth else 0.dp,
                     modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
+                        .align(Alignment.BottomEnd)   // edge to edge: no insets, no padding
+                        .fillMaxWidth(visualizerWidth)
                         .fillMaxHeight(0.5f)
-                        .padding(bottom = (dockAreaHeight - 28.dp).coerceAtLeast(0.dp))
                 )
             }
 
