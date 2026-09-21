@@ -215,7 +215,7 @@ fun FixedAppSection(
 
     val isDragging = dragDropState.isDragging
 
-    val orderKey = remember(apps) { apps.joinToString("|") { it.packageName } }
+    val orderKey = remember(apps) { apps.joinToString("|") { "${it.packageName}/${it.className}" } }
     var commit by remember { mutableStateOf<DropCommit?>(null) }
 
     val activeCommit = commit?.takeIf { it.orderKey == orderKey }
@@ -475,7 +475,7 @@ fun FixedAppSection(
 
                                         when {
                                             isOutside ->
-                                                if (sourceIdx != -1) currentOnUnpinApp(app.packageName)
+                                                if (sourceIdx != -1) currentOnUnpinApp(if (app.className.isNotEmpty()) "${app.packageName}/${app.className}" else app.packageName)
 
                                             sourceIdx == -1 ->
                                                 if (targetIdx != -1) currentOnPinApp(
@@ -539,13 +539,15 @@ fun FixedAppSection(
                     verticalAlignment = Alignment.CenterVertically,
                     contentPadding = PaddingValues(horizontal = MediumLargePadding)
                 ) {
-                    itemsIndexed(apps, key = { _, app -> app.packageName }) { index, app ->
-                        val iconBitmap = remember(app.packageName, app.icon) {
+                    itemsIndexed(apps, key = { _, app -> "${app.packageName}/${app.className}" }) { index, app ->
+                        val iconBitmap = remember(app.packageName, app.className, app.icon) {
                             app.icon?.toBitmap()?.asImageBitmap()
                         }
 
-                        val isBeingDragged = isDragging &&
-                                app.packageName == dragDropState.draggedApp?.packageName
+                        val appKey = if (app.className.isNotEmpty()) "${app.packageName}/${app.className}" else app.packageName
+                        val draggedKey = dragDropState.draggedApp?.let { if (it.className.isNotEmpty()) "${it.packageName}/${it.className}" else it.packageName }
+
+                        val isBeingDragged = isDragging && appKey == draggedKey
 
                         val targetShift: Float
                         val targetAlpha: Float
@@ -617,9 +619,9 @@ fun FixedAppSection(
                                             modifier = Modifier
                                                 .fillMaxSize()
                                                 .clip(CircleShape)
-                                                .pointerInput(app.packageName) {
+                                                .pointerInput("${app.packageName}/${app.className}") {
                                                     detectTapGestures(
-                                                        onTap = { onAppClick(app.packageName) }
+                                                        onTap = { onAppClick(if (app.className.isNotEmpty()) "${app.packageName}/${app.className}" else app.packageName) }
                                                     )
                                                 },
                                             contentScale = ContentScale.Fit

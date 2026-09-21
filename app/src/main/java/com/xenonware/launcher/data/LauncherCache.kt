@@ -121,7 +121,8 @@ class LauncherCache(context: Context) {
                         icon = icon,
                         label = o.optString("label", name),
                         isCustomized = o.optBoolean("customized", false),
-                        color = if (o.has("color")) o.getInt("color") else null
+                        color = if (o.has("color")) o.getInt("color") else null,
+                        className = o.optString("class", if (key.contains("/")) key.substringAfter("/") else "")
                     )
                 )
             }
@@ -143,6 +144,7 @@ class LauncherCache(context: Context) {
                 put("label", entry.info.label)
                 put("customized", entry.info.isCustomized)
                 put("hasIcon", entry.info.icon != null)
+                put("class", entry.info.className)
                 entry.info.color?.let { put("color", it) }
             })
         }

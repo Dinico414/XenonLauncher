@@ -3,8 +3,15 @@
 package com.xenonware.launcher.viewmodel
 
 import android.app.Application
+import android.app.Notification
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.drawable.Icon
 import android.net.Uri
+import android.os.Bundle
 import android.widget.Toast
 import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
@@ -13,11 +20,14 @@ import com.xenonware.launcher.PermissionActivity
 import com.xenonware.launcher.R
 import com.xenonware.launcher.data.SharedPreferenceManager
 import com.xenonware.launcher.media.MediaControllerManager
+import com.xenonware.launcher.notification.NotificationManager
+import com.xenonware.launcher.notification.XenonNotificationService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.io.File
+import java.lang.reflect.Array
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -141,6 +151,111 @@ class DevSettingsViewModel(application: Application) : AndroidViewModel(applicat
     fun dumpMediaControls(): String {
         val manager = MediaControllerManager.instance
         return manager?.dumpMediaState() ?: getApplication<Application>().getString(R.string.media_manager_not_found)
+    }
+
+    fun dumpNotifications(): String {
+        val service = XenonNotificationService.getInstance()
+        val active = service?.safeActiveNotifications
+        if (active.isNullOrEmpty()) return "No active notifications found in XenonNotificationService."
+
+        val processed = NotificationManager.notifications.value
+
+        val sb = StringBuilder()
+        sb.append("--- NOTIFICATION DUMP (${active.size} items) ---\n")
+        
+        active.forEachIndexed { index, sbn ->
+            val launcherNotif = processed.find { it.key == sbn.key }
+            sb.append("\n[$index] Package: ${sbn.packageName}\n")
+            sb.append("Key: ${sbn.key}\n")
+            sb.append("ID: ${sbn.id}, Tag: ${sbn.tag}\n")
+            sb.append("Post Time: ${sbn.postTime}\n")
+            sb.append("Ongoing: ${sbn.isOngoing}, Clearable: ${sbn.isClearable}\n")
+            
+            val n = sbn.notification
+            sb.append("Category: ${n.category}, Channel: ${n.channelId}, Template: ${n.extras.getString(
+                Notification.EXTRA_TEMPLATE)}\n")
+            
+            sb.append("Flags: ${n.flags} (")
+            if ((n.flags and Notification.FLAG_GROUP_SUMMARY) != 0) sb.append("GROUP_SUMMARY ")
+            if ((n.flags and Notification.FLAG_ONGOING_EVENT) != 0) sb.append("ONGOING ")
+            if ((n.flags and Notification.FLAG_NO_CLEAR) != 0) sb.append("NO_CLEAR ")
+            if ((n.flags and Notification.FLAG_FOREGROUND_SERVICE) != 0) sb.append("FOREGROUND_SERVICE ")
+            sb.append(")\n")
+
+            sb.append("Extras (Recursive):\n")
+            dumpBundle(n.extras, sb, 2)
+
+            sb.append("Actions:\n")
+            n.actions?.forEachIndexed { aIndex, action ->
+                sb.append("  - Action $aIndex: Title: ${action.title}, Intent: ${action.actionIntent != null}\n")
+                sb.append("    Semantic Action: ${action.semanticAction}\n")
+                if (action.extras != null && !action.extras.isEmpty) {
+                    sb.append("    Action Extras:\n")
+                    dumpBundle(action.extras, sb, 6)
+                }
+                action.remoteInputs?.forEach { ri ->
+                    sb.append("    RemoteInput: Label=${ri.label}, ResultKey=${ri.resultKey}\n")
+                }
+            }
+            
+            sb.append("Icons:\n")
+            sb.append("  - Small Icon: ${n.smallIcon}\n")
+            sb.append("  - Large Icon: ${n.getLargeIcon()}\n")
+
+            if (n.contentView != null) sb.append("Has contentView (RemoteViews)\n")
+            if (n.bigContentView != null) sb.append("Has bigContentView (RemoteViews)\n")
+            if (n.headsUpContentView != null) sb.append("Has headsUpContentView (RemoteViews)\n")
+            
+            sb.append("------------------------------------------\n")
+        }
+
+        return sb.toString()
+    }
+
+    private fun dumpBundle(bundle: Bundle, sb: StringBuilder, indent: Int) {
+        val pad = " ".repeat(indent)
+        try {
+            val keys = bundle.keySet()
+            keys.forEach { key ->
+                try {
+                    val value = bundle.get(key)
+                    when {
+                        value is Bundle -> {
+                            sb.append("$pad- $key: Bundle (size=${value.size()})\n")
+                            dumpBundle(value, sb, indent + 2)
+                        }
+                        value != null && value.javaClass.isArray -> {
+                            val length = Array.getLength(value)
+                            sb.append("$pad- $key: Array (length=$length)\n")
+                            for (i in 0 until length) {
+                                val item = Array.get(value, i)
+                                if (item is Bundle) {
+                                    sb.append("$pad  [$i]: Bundle\n")
+                                    dumpBundle(item, sb, indent + 4)
+                                } else {
+                                    sb.append("$pad  [$i]: $item\n")
+                                }
+                            }
+                        }
+                        value is Bitmap -> sb.append("$pad- $key: Bitmap(${value.width}x${value.height}, ${value.byteCount} bytes)\n")
+                        value is Icon -> sb.append("$pad- $key: Icon($value)\n")
+                        else -> sb.append("$pad- $key: $value\n")
+                    }
+                } catch (e: Exception) {
+                    sb.append("$pad- $key: [Error getting value: ${e.message}]\n")
+                }
+            }
+        } catch (e: Exception) {
+            sb.append("$pad- [Error dumping bundle keys: ${e.message}]\n")
+        }
+    }
+
+    fun copyToClipboard(text: String) {
+        val context = getApplication<Application>()
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clip = ClipData.newPlainText("Xenon Debug Dump", text)
+        clipboard.setPrimaryClip(clip)
+        Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
     }
 
     fun triggerExampleDevActionThatRequiresRestart() {

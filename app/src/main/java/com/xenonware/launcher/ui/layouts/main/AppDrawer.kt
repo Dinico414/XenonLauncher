@@ -426,16 +426,13 @@ fun AppDrawer(
         }
     }
 
-    // Deduplicated by package: a package can expose several launcher activities, and lazy keys
-    // must be unique. Launching goes through getLaunchIntentForPackage anyway, so duplicates
-    // would all open the same thing.
+    // Unique by package and class name so each activity gets its own launcher item.
     val filteredApps = remember(apps, allApps, searchQuery, showHiddenAppsInSearch) {
-        val list = if (searchQuery.isBlank()) apps
+        if (searchQuery.isBlank()) apps
         else {
             val source = if (showHiddenAppsInSearch) allApps else apps
             source.filter { it.matches(searchQuery) }
         }
-        list.distinctBy { it.packageName }
     }
 
     val openFileLabel = stringResource(R.string.open_file)
@@ -443,7 +440,7 @@ fun AppDrawer(
         viewModel.addToSearchHistory(result)
         when (result) {
             is SearchResult.App -> {
-                onAppClick(result.appInfo.packageName)
+                onAppClick(if (result.appInfo.className.isNotEmpty()) "${result.appInfo.packageName}/${result.appInfo.className}" else result.appInfo.packageName)
                 onDismiss()
             }
             is SearchResult.Contact -> {
@@ -594,7 +591,7 @@ fun AppDrawer(
                                 text = splitScreenLabel,
                                 onClick = {
                                     closeMenu()
-                                    viewModel.launchAppInSplitScreen(app.packageName)
+                                    viewModel.launchAppInSplitScreen(if (app.className.isNotEmpty()) "${app.packageName}/${app.className}" else app.packageName)
                                     onDismiss()
                                 },
                                 leadingIcon = { Icon(Icons.Rounded.VerticalSplit, null) }
@@ -904,8 +901,8 @@ fun AppDrawer(
                                                     )
                                                 ) {
                                                     recentApps.forEach { app ->
-                                                        // Keyed so a removed app's slot is never reused for the next one
-                                                        key(app.packageName) {
+                                                        // Keyed by package and class so a removed app's slot is never reused for the next one
+                                                        key("${app.packageName}/${app.className}") {
                                                             Box(
                                                                 modifier = Modifier.weight(1f),
                                                                 contentAlignment = Alignment.Center
@@ -951,14 +948,14 @@ fun AppDrawer(
                                 }
                             }
 
-                            // Keyed by package so each item's state and gesture handlers follow
+                            // Keyed by package and class so each item's state and gesture handlers follow
                             // their app instead of staying at a list position
-                            items(filteredApps, key = { it.packageName }) { app ->
+                            items(filteredApps, key = { "${it.packageName}/${it.className}" }) { app ->
                                 AppDrawerGridLayout(
                                     app = app,
                                     notificationCount = groupedNotifications[app.packageName]?.size ?: 0,
                                     badgeType = badgeType,
-                                    onAppClick = onAppClick,
+                                    onAppClick = { _ -> onAppClick(if (app.className.isNotEmpty()) "${app.packageName}/${app.className}" else app.packageName) },
                                     onDismiss = onDismiss,
                                     onPinApp = onPinApp,
                                     dragDropState = dragDropState,
@@ -1023,8 +1020,8 @@ fun AppDrawer(
                                                         )
                                                     ) {
                                                         recentApps.forEach { app ->
-                                                            // Keyed so a removed app's slot is never reused for the next one
-                                                            key(app.packageName) {
+                                                            // Keyed by package and class so a removed app's slot is never reused for the next one
+                                                            key("${app.packageName}/${app.className}") {
                                                                 Box(
                                                                     modifier = Modifier.weight(1f),
                                                                     contentAlignment = Alignment.Center
@@ -1074,9 +1071,9 @@ fun AppDrawer(
                                     }
                                 }
 
-                                // Keyed by package so itemPos/pressOffset and the gesture
+                                // Keyed by package and class so itemPos/pressOffset and the gesture
                                 // handlers below always belong to the app shown in the row
-                                items(filteredApps, key = { it.packageName }) { app ->
+                                items(filteredApps, key = { "${it.packageName}/${it.className}" }) { app ->
                                     var itemPos by remember { mutableStateOf(Offset.Zero) }
                                     var pressOffset by remember { mutableStateOf(Offset.Zero) }
                                     var isActualDrag by remember { mutableStateOf(false) }
@@ -1097,14 +1094,14 @@ fun AppDrawer(
                                                 .fillMaxWidth()
                                                 .clip(RoundedCornerShape(LargestCornerRadius))
                                                 .onGloballyPositioned { itemPos = it.positionInRoot() }
-                                                .pointerInput(app.packageName) {
+                                                .pointerInput("${app.packageName}/${app.className}") {
                                                     detectTapGestures(
                                                         onTap = {
-                                                            onAppClick(app.packageName)
+                                                            onAppClick(if (app.className.isNotEmpty()) "${app.packageName}/${app.className}" else app.packageName)
                                                             onDismiss()
                                                         })
                                                 }
-                                                .pointerInput(app.packageName) {
+                                                .pointerInput("${app.packageName}/${app.className}") {
                                                     var totalDragDistance = 0f
                                                     detectDragGesturesAfterLongPress(onDragStart = { offset ->
                                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)

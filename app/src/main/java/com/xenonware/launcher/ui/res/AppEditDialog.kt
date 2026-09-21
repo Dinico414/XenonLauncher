@@ -1,6 +1,7 @@
 package com.xenonware.launcher.ui.res
 
 //import com.xenon.mylibrary.res.XenonDialog
+import android.content.ComponentName
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -78,8 +79,9 @@ fun AppEditDialog(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
+    val appKey = if (app.className.isNotEmpty()) "${app.packageName}/${app.className}" else app.packageName
     val currentOverride =
-        remember(app.packageName) { viewModel.getAppOverride(app.packageName) ?: AppOverride() }
+        remember(appKey) { viewModel.getAppOverride(appKey) ?: viewModel.getAppOverride(app.packageName) ?: AppOverride() }
     val currentShape by viewModel.drawerIconShape.collectAsState()
 
     var name by remember { mutableStateOf(app.label) }
@@ -96,9 +98,13 @@ fun AppEditDialog(
     var iconResName by remember { mutableStateOf(currentOverride.iconResourceName) }
 
     val pm = context.packageManager
-    val originalIcon = remember(app.packageName) {
+    val originalIcon = remember(appKey) {
         try {
-            pm.getActivityIcon(pm.getLaunchIntentForPackage(app.packageName)!!.component!!)
+            if (app.className.isNotEmpty()) {
+                pm.getActivityIcon(ComponentName(app.packageName, app.className))
+            } else {
+                pm.getActivityIcon(pm.getLaunchIntentForPackage(app.packageName)!!.component!!)
+            }
         } catch (_: Exception) {
             app.icon
         }
@@ -134,7 +140,7 @@ fun AppEditDialog(
         confirmButtonText = stringResource(R.string.save),
         onConfirmButtonClick = {
             viewModel.updateAppOverride(
-                app.packageName, AppOverride(
+                appKey, AppOverride(
                     customName = if (name == app.name) null else name,
                     iconPackPackage = iconPackPackage,
                     iconResourceName = iconResName,
@@ -148,7 +154,8 @@ fun AppEditDialog(
         },
         actionButton1Text = stringResource(R.string.reset),
         onActionButton1Click = {
-            viewModel.resetAppOverride(app.packageName)
+            viewModel.resetAppOverride(appKey)
+            if (appKey != app.packageName) viewModel.resetAppOverride(app.packageName)
             name = app.name
             zoom = 1.0f
             bgColor = null

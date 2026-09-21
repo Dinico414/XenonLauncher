@@ -1204,7 +1204,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             }
 
             val settingsStamp = listOf(
-                "v4", // bump to force every icon (and its color) to be rebuilt once
+                "v6", // bump to force every icon (and its color) to be rebuilt once
                 currentShape.name,
                 globalPack ?: "-",
                 globalPack?.let { versions[it] } ?: 0L,
@@ -1212,7 +1212,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             ).joinToString("|")
 
             fun build(ri: ResolveInfo, pkgName: String, override: AppOverride?): AppInfo? = try {
-                val originalLabel = ri.loadLabel(pm).toString()
+                val originalLabel = ri.activityInfo.loadLabel(pm).toString()
                 val originalIcon = ri.loadIcon(pm)
 
                 var finalLabel = originalLabel
@@ -1221,7 +1221,11 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
                 if (override != null) {
                     isCustomized = true
-                    override.customName?.let { finalLabel = it }
+                    val key = "$pkgName/${ri.activityInfo.name}"
+                    val isSpecific = overrides.containsKey(key)
+                    if (isSpecific || ri.activityInfo.name == pm.getLaunchIntentForPackage(pkgName)?.component?.className) {
+                        override.customName?.let { finalLabel = it }
+                    }
 
                     val baseIcon = if (override.iconPackPackage != null && override.iconResourceName != null) {
                         loadIconFromPack(context, override.iconPackPackage, override.iconResourceName) ?: originalIcon
@@ -1251,7 +1255,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                     isCustomized = isCustomized,
                     // From the original icon, BEFORE flattening (flattening loses the
                     // adaptive background layer and made X come out bright)
-                    color = finalIcon?.let { computeAppColor(it) }
+                    color = finalIcon?.let { computeAppColor(it) },
+                    className = ri.activityInfo.name
                 )
             } catch (_: Exception) {
                 null
@@ -1268,7 +1273,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 val key = "$pkgName/${ri.activityInfo.name}"
                 if (!seenKeys.add(key)) return@mapNotNull null
 
-                val override = overrides[pkgName]
+                val override = overrides[key] ?: overrides[pkgName]
                 val stamp = "${versions[pkgName] ?: 0L}|$settingsStamp|${override?.toString()?.hashCode() ?: 0}"
 
                 val cached = appMemCache[key]
@@ -1365,24 +1370,28 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         sharedApps.value = _apps.value
 
         val savedPinnedPkgs = prefManager.pinnedApps
-        _pinnedApps.value = savedPinnedPkgs.mapNotNull { pkg ->
-            appList.find { it.packageName == pkg }
+        _pinnedApps.value = savedPinnedPkgs.mapNotNull { key ->
+            appList.find { app ->
+                val appKey = if (app.className.isNotEmpty()) "${app.packageName}/${app.className}" else app.packageName
+                appKey == key
+            } ?: appList.find { it.packageName == key && it.className.isEmpty() }
+            ?: appList.find { it.packageName == key } // Last resort fallback
         }
         loadRecentlyOpened()
     }
 
-    fun updateAppOverride(packageName: String, override: AppOverride) {
-        prefManager.saveAppOverride(packageName, override)
+    fun updateAppOverride(key: String, override: AppOverride) {
+        prefManager.saveAppOverride(key, override)
         loadApps()
     }
 
-    fun resetAppOverride(packageName: String) {
-        prefManager.resetAppOverride(packageName)
+    fun resetAppOverride(key: String) {
+        prefManager.resetAppOverride(key)
         loadApps()
     }
 
-    fun getAppOverride(packageName: String): AppOverride? {
-        return prefManager.getAppOverrides()[packageName]
+    fun getAppOverride(key: String): AppOverride? {
+        return prefManager.getAppOverrides()[key]
     }
 
     fun getInstalledIconPacks(): List<ResolveInfo> {
@@ -1415,11 +1424,11 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         publishApps(_allApps.value)
     }
 
-    private fun recordLaunch(packageName: String) {
+    private fun recordLaunch(key: String) {
         val now = System.currentTimeMillis()
         val usageStr = prefManager.appUsage
         val entries = usageStr.split(",").filter { it.isNotEmpty() }.toMutableList()
-        entries.add("$packageName|$now")
+        entries.add("$key|$now")
 
         val oneDayAgo = now - DAY_MILLIS
         val filteredEntries = entries.filter {
@@ -1448,19 +1457,31 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             .sortedByDescending { it.second }
             .map { it.first }
 
-        val byPackage = _apps.value.associateBy { it.packageName }
-        _recentlyOpened.value = recentApps.mapNotNull { byPackage[it] }
+        val byKey = _apps.value.associateBy { if (it.className.isNotEmpty()) "${it.packageName}/${it.className}" else it.packageName }
+        _recentlyOpened.value = recentApps.mapNotNull { byKey[it] ?: _apps.value.find { app -> app.packageName == it } }
     }
 
     private fun savePinnedApps() {
-        prefManager.pinnedApps = _pinnedApps.value.map { it.packageName }
+        prefManager.pinnedApps = _pinnedApps.value.map { if (it.className.isNotEmpty()) "${it.packageName}/${it.className}" else it.packageName }
     }
 
-    fun launchApp(packageName: String) {
+    fun launchApp(packageName: String, className: String = "") {
         val pm = getApplication<Application>().packageManager
-        val launchIntent = pm.getLaunchIntentForPackage(packageName)
+        val finalPkg = if (packageName.contains("/")) packageName.split("/")[0] else packageName
+        val finalCls = if (packageName.contains("/")) packageName.split("/")[1] else className
+
+        val launchIntent = if (finalCls.isNotEmpty()) {
+            Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_LAUNCHER)
+                setClassName(finalPkg, finalCls)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+        } else {
+            pm.getLaunchIntentForPackage(finalPkg)
+        }
+
         if (launchIntent != null) {
-            recordLaunch(packageName)
+            recordLaunch(if (finalCls.isNotEmpty()) "$finalPkg/$finalCls" else finalPkg)
             getApplication<Application>().startActivity(launchIntent)
         }
     }
@@ -1472,14 +1493,23 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun pinApp(packageName: String, atIndex: Int = -1) {
-        val app = _apps.value.find { it.packageName == packageName } ?: return
+        val app = _apps.value.find {
+            val key = if (it.className.isNotEmpty()) "${it.packageName}/${it.className}" else it.packageName
+            key == packageName
+        } ?: return
         val currentPinned = _pinnedApps.value.toMutableList()
 
-        val alreadyPinned = currentPinned.any { it.packageName == packageName }
+        val alreadyPinned = currentPinned.any {
+            val key = if (it.className.isNotEmpty()) "${it.packageName}/${it.className}" else it.packageName
+            key == packageName
+        }
         if (!alreadyPinned && currentPinned.size >= 6) return
 
         // Remove if already exists to avoid duplicates
-        currentPinned.removeAll { it.packageName == packageName }
+        currentPinned.removeAll {
+            val key = if (it.className.isNotEmpty()) "${it.packageName}/${it.className}" else it.packageName
+            key == packageName
+        }
 
         if (atIndex == -1 || atIndex >= currentPinned.size) {
             currentPinned.add(app)
@@ -1491,7 +1521,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun unpinApp(packageName: String) {
-        _pinnedApps.value = _pinnedApps.value.filter { it.packageName != packageName }
+        _pinnedApps.value = _pinnedApps.value.filter {
+            val key = if (it.className.isNotEmpty()) "${it.packageName}/${it.className}" else it.packageName
+            key != packageName
+        }
         savePinnedApps()
     }
 
@@ -1567,7 +1600,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     fun addToSearchHistory(result: SearchResult) {
         val entry = when (result) {
-            is SearchResult.App -> SearchHistoryEntry(SearchHistoryType.APP, result.appInfo.packageName, result.appInfo.label, result.appInfo.packageName)
+            is SearchResult.App -> {
+                val appVal = if (result.appInfo.className.isNotEmpty()) "${result.appInfo.packageName}/${result.appInfo.className}" else result.appInfo.packageName
+                SearchHistoryEntry(SearchHistoryType.APP, appVal, result.appInfo.label, result.appInfo.packageName)
+            }
             is SearchResult.Contact -> SearchHistoryEntry(SearchHistoryType.CONTACT, result.id, result.name, result.phoneNumber, result.photoUri?.toString())
             is SearchResult.File -> SearchHistoryEntry(SearchHistoryType.FILE, result.uri.toString(), result.name, result.path, result.mimeType)
             is SearchResult.Web -> SearchHistoryEntry(SearchHistoryType.WEB, result.query, result.query)

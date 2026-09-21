@@ -266,6 +266,11 @@
     <string name="media_manager_not_found">MediaControllerManager instance not found.</string>
     <string name="restart_required">To apply changes, restart the app.</string>
     <string name="restart_app">Restart App</string>
+    <string name="notification_debug">Notification Debug</string>
+    <string name="notification_debug_description">Dump all active notification details including extras and actions.</string>
+    <string name="dump_notifications">Dump Notifications</string>
+    <string name="notification_dump">Notification Dump</string>
+    <string name="copy">Copy</string>
 
     <!-- Search -->
     <string name="open_website">Open Website</string>

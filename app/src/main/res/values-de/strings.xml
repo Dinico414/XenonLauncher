@@ -264,6 +264,11 @@
     <string name="media_manager_not_found">MediaControllerManager-Instanz nicht gefunden.</string>
     <string name="restart_required">Um Änderungen zu übernehmen, starten Sie die App neu.</string>
     <string name="restart_app">App neustarten</string>
+    <string name="notification_debug">Benachrichtigungs-Debug</string>
+    <string name="notification_debug_description">Alle aktiven Benachrichtigungsdetails einschließlich Extras und Aktionen ausgeben.</string>
+    <string name="dump_notifications">Benachrichtigungen ausgeben</string>
+    <string name="notification_dump">Benachrichtigungs-Dump</string>
+    <string name="copy">Kopieren</string>
 
     <!-- Search -->
     <string name="open_website">Website öffnen</string>

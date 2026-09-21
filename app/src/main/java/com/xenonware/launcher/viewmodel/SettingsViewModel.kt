@@ -588,9 +588,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             val resolvedApps = pm.queryIntentActivities(mainIntent, 0)
             val appList = resolvedApps.map { resolveInfo ->
                 AppInfo(
-                    name = resolveInfo.loadLabel(pm).toString(),
+                    name = resolveInfo.activityInfo.loadLabel(pm).toString(),
                     packageName = resolveInfo.activityInfo.packageName,
-                    icon = resolveInfo.loadIcon(pm)
+                    icon = resolveInfo.loadIcon(pm),
+                    className = resolveInfo.activityInfo.name
                 )
             }.sortedBy { it.label.lowercase() }
             _apps.value = appList

@@ -13,10 +13,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BugReport
+import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Email
 import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.Button
@@ -66,6 +68,10 @@ fun DevSettingsItems(
 
     var showMediaDumpDialog by remember { mutableStateOf(false) }
     var currentMediaDump by remember { mutableStateOf("") }
+    
+    var showNotificationDumpDialog by remember { mutableStateOf(false) }
+    var currentNotificationDump by remember { mutableStateOf("") }
+
     val hazeState = rememberHazeState()
 
 
@@ -195,6 +201,36 @@ fun DevSettingsItems(
             }
         )
 
+        SettingsTileContext(
+            title = stringResource(R.string.notification_debug),
+            subtitle = stringResource(R.string.notification_debug_description),
+            icon = { XenonIcon(Icons.Rounded.Notifications).Render(Modifier) },
+            showContext = true,
+            modifier = Modifier.padding(top = LargestPadding),
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont,
+            contextContent = {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = MediumPadding),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    TextButton(
+                        onClick = {
+                            currentNotificationDump = viewModel.dumpNotifications()
+                            showNotificationDumpDialog = true
+                        }
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            XenonIcon(Icons.Rounded.Description).Render(Modifier)
+                            Text(stringResource(R.string.dump_notifications))
+                        }
+                    }
+                }
+            }
+        )
+
         SettingsTile(
             title = stringResource(R.string.force_setup_flow),
             subtitle = stringResource(R.string.force_setup_flow_description),
@@ -241,14 +277,62 @@ fun DevSettingsItems(
                 subContextFont = subContextFont
             ) {
                 val scrollState = rememberScrollState()
-                Box(modifier = Modifier.heightIn(max = 400.dp).verticalScroll(scrollState)) {
-                    Text(
-                        text = currentMediaDump,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(MediumPadding)
-                    )
+                Column {
+                    TextButton(
+                        onClick = { viewModel.copyToClipboard(currentMediaDump) },
+                        modifier = Modifier.align(Alignment.End).padding(end = MediumPadding)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            XenonIcon(Icons.Rounded.ContentCopy).Render(Modifier.size(18.dp))
+                            Text(stringResource(R.string.copy))
+                        }
+                    }
+                    Box(modifier = Modifier.heightIn(max = 400.dp).verticalScroll(scrollState)) {
+                        Text(
+                            text = currentMediaDump,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(MediumPadding)
+                        )
+                    }
                 }
             }
+            }
+        }
+
+        if (showNotificationDumpDialog) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .hazeEffect(hazeState)
+            ) {
+                XenonDialog(
+                    onDismissRequest = { showNotificationDumpDialog = false },
+                    title = stringResource(R.string.notification_dump),
+                    confirmButtonText = stringResource(R.string.close),
+                    onConfirmButtonClick = { showNotificationDumpDialog = false },
+                    mainContextFont = mainContextFont,
+                    subContextFont = subContextFont
+                ) {
+                    val scrollState = rememberScrollState()
+                    Column {
+                        TextButton(
+                            onClick = { viewModel.copyToClipboard(currentNotificationDump) },
+                            modifier = Modifier.align(Alignment.End).padding(end = MediumPadding)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                XenonIcon(Icons.Rounded.ContentCopy).Render(Modifier.size(18.dp))
+                                Text(stringResource(R.string.copy))
+                            }
+                        }
+                        Box(modifier = Modifier.heightIn(max = 400.dp).verticalScroll(scrollState)) {
+                            Text(
+                                text = currentNotificationDump,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(MediumPadding)
+                            )
+                        }
+                    }
+                }
             }
         }
     }

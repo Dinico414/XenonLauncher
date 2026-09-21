@@ -98,8 +98,9 @@ fun AppPickerDialog(
                 )
             }
             val filteredApps = apps.filter { it.label.contains(searchQuery, ignoreCase = true) }
-            items(filteredApps) { app ->
-                val isAppSelected = currentSelection == app.packageName
+            items(filteredApps, key = { "${it.packageName}/${it.className}" }) { app ->
+                val appKey = if (app.className.isNotEmpty()) "${app.packageName}/${app.className}" else app.packageName
+                val isAppSelected = currentSelection == appKey
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
@@ -107,7 +108,7 @@ fun AppPickerDialog(
                         .clip(RoundedCornerShape(MassiveCornerRadius))
                         .background(if (isAppSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
                         .clickable {
-                            currentSelection = app.packageName
+                            currentSelection = appKey
                         }
                         .padding(horizontal = LargeMediumPadding, vertical = MediumPadding),
                     horizontalArrangement = Arrangement.spacedBy(MediumSpacer)
@@ -115,7 +116,7 @@ fun AppPickerDialog(
                     RadioButton(
                         selected = isAppSelected,
                         onClick = {
-                            currentSelection = app.packageName
+                            currentSelection = appKey
                         }
                     )
                     AppIcon(

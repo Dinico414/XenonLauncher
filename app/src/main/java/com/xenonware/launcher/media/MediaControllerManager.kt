@@ -1,5 +1,6 @@
 package com.xenonware.launcher.media
 
+import android.app.Notification
 import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Context
@@ -459,26 +460,85 @@ class MediaControllerManager(context: Context) {
             val pkgCtx = try { context.createPackageContext(controller.packageName, 0) } catch (_: Exception) { null }
 
             val sb = StringBuilder()
+            sb.append("--- MEDIA CONTROLLER DUMP ---\n")
             sb.append("Package: ${controller.packageName}\n")
-            sb.append("Title: ${metadata?.getString(MediaMetadata.METADATA_KEY_TITLE)}\n")
-            sb.append("Artist: ${metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST)}\n")
-            sb.append("PlaybackState: ${playbackState?.state}\n")
+            sb.append("Session Token: ${controller.sessionToken}\n")
+            sb.append("Session Extras: ${controller.extras}\n")
+            sb.append("Rating Type: ${controller.ratingType}\n")
+            sb.append("Volume Control: ${controller.playbackInfo.volumeControl}\n")
+            
+            sb.append("\n[PlaybackState]\n")
+            sb.append("State: ${playbackState?.state} (${playbackState?.stateName})\n")
+            sb.append("Position: ${playbackState?.position}ms\n")
+            sb.append("Buffered Position: ${playbackState?.bufferedPosition}ms\n")
+            sb.append("Speed: ${playbackState?.playbackSpeed}\n")
+            sb.append("Actions Flag: ${playbackState?.actions} (")
+            playbackState?.let { ps ->
+                if ((ps.actions and PlaybackState.ACTION_PLAY) != 0L) sb.append("PLAY ")
+                if ((ps.actions and PlaybackState.ACTION_PAUSE) != 0L) sb.append("PAUSE ")
+                if ((ps.actions and PlaybackState.ACTION_SKIP_TO_NEXT) != 0L) sb.append("NEXT ")
+                if ((ps.actions and PlaybackState.ACTION_SKIP_TO_PREVIOUS) != 0L) sb.append("PREV ")
+                if ((ps.actions and PlaybackState.ACTION_STOP) != 0L) sb.append("STOP ")
+                if ((ps.actions and PlaybackState.ACTION_SEEK_TO) != 0L) sb.append("SEEK ")
+            }
+            sb.append(")\n")
+            sb.append("Error Message: ${playbackState?.errorMessage}\n")
+            sb.append("Active Item ID: ${playbackState?.activeQueueItemId}\n")
+            sb.append("Extras: ${playbackState?.extras}\n")
+
+            sb.append("\n[Metadata]\n")
+            metadata?.let { md ->
+                val keys = md.keySet()
+                keys.forEach { key ->
+                    try {
+                        val value = when {
+                            key.contains("bitmap", true) || key.contains("art", true) -> {
+                                val bmp = md.getBitmap(key)
+                                if (bmp != null) "Bitmap(${bmp.width}x${bmp.height}, ${bmp.byteCount} bytes)" else "null"
+                            }
+                            key.contains("duration", true) || key.contains("year", true) || key.contains("track", true) || key.contains("num", true) -> md.getLong(key).toString()
+                            key.contains("rating", true) -> md.getRating(key).toString()
+                            else -> md.getString(key) ?: md.getText(key)?.toString() ?: "null/unknown"
+                        }
+                        sb.append("$key: $value\n")
+                    } catch (e: Exception) {
+                        sb.append("$key: [Error: ${e.message}]\n")
+                    }
+                }
+                
+                // Explicitly check for standard IDs if not in keySet
+                val mediaId = md.getString(MediaMetadata.METADATA_KEY_MEDIA_ID)
+                val mediaUri = md.getString(MediaMetadata.METADATA_KEY_MEDIA_URI)
+                if (mediaId != null) sb.append("STDLIB_MEDIA_ID: $mediaId\n")
+                if (mediaUri != null) sb.append("STDLIB_MEDIA_URI: $mediaUri\n")
+            } ?: sb.append("Metadata is null\n")
 
             sb.append("\n[PlaybackState Custom Actions]\n")
             playbackState?.customActions?.forEach { ca ->
                 val resourceName = getResourceEntryName(pkgCtx, ca.icon)
-                sb.append("- Action: ${ca.action}, Name: ${ca.name}, IconRes: ${ca.icon} ($resourceName)\n")
+                sb.append("- Action: ${ca.action}, Name: ${ca.name}, IconRes: ${ca.icon} ($resourceName), Extras: ${ca.extras}\n")
             }
 
-            sb.append("\n[Notification Actions]\n")
-            val compactActionIndices = notification?.notification?.extras?.getIntArray(android.app.Notification.EXTRA_COMPACT_ACTIONS) ?: intArrayOf()
-            sb.append("Compact Action Indices: ${compactActionIndices.joinToString()}\n")
-            notification?.notification?.actions?.forEachIndexed { index, action ->
-                val resourceName = resourceNameFromIcon(pkgCtx, action.getIcon())
-                sb.append("- Index $index: Title: ${action.title}, Icon: ${action.getIcon()} ($resourceName), Intent: ${action.actionIntent != null}\n")
+            sb.append("\n[Notification Info]\n")
+            if (notification != null) {
+                val n = notification.notification
+                sb.append("Notification Key: ${notification.key}\n")
+                sb.append("Notification Channel: ${n.channelId}\n")
+                sb.append("Notification Template: ${n.extras.getString(Notification.EXTRA_TEMPLATE)}\n")
+                sb.append("Notification Category: ${n.category}\n")
+                
+                sb.append("\n[Notification Actions (Unfiltered)]\n")
+                val compactActionIndices = n.extras.getIntArray(Notification.EXTRA_COMPACT_ACTIONS) ?: intArrayOf()
+                sb.append("Compact Action Indices: ${compactActionIndices.joinToString()}\n")
+                n.actions?.forEachIndexed { index, action ->
+                    val resourceName = resourceNameFromIcon(pkgCtx, action.getIcon())
+                    sb.append("- Index $index: Title: ${action.title}, Icon: ${action.getIcon()} ($resourceName), Intent: ${action.actionIntent != null}\n")
+                }
+            } else {
+                sb.append("No linked notification found.\n")
             }
 
-            sb.append("\n[Resolved actions]\n")
+            sb.append("\n[Resolved actions in Xenon]\n")
             mediaState.actions.forEach {
                 sb.append("- ${it.title}: icon=${it.iconBitmap != null}, custom=${it.customAction}\n")
             }
@@ -487,9 +547,26 @@ class MediaControllerManager(context: Context) {
             Log.d(TAG, "Media State Dump:\n$log")
             log
         } catch (e: Throwable) {
-            "Error dumping media state: ${e.message}"
+            "Error dumping media state: ${e.message}\n${Log.getStackTraceString(e)}"
         }
     }
+
+    private val PlaybackState.stateName: String
+        get() = when (state) {
+            PlaybackState.STATE_NONE -> "NONE"
+            PlaybackState.STATE_STOPPED -> "STOPPED"
+            PlaybackState.STATE_PAUSED -> "PAUSED"
+            PlaybackState.STATE_PLAYING -> "PLAYING"
+            PlaybackState.STATE_FAST_FORWARDING -> "FAST_FORWARDING"
+            PlaybackState.STATE_REWINDING -> "REWINDING"
+            PlaybackState.STATE_BUFFERING -> "BUFFERING"
+            PlaybackState.STATE_ERROR -> "ERROR"
+            PlaybackState.STATE_CONNECTING -> "CONNECTING"
+            PlaybackState.STATE_SKIPPING_TO_PREVIOUS -> "SKIPPING_TO_PREVIOUS"
+            PlaybackState.STATE_SKIPPING_TO_NEXT -> "SKIPPING_TO_NEXT"
+            PlaybackState.STATE_SKIPPING_TO_QUEUE_ITEM -> "SKIPPING_TO_QUEUE_ITEM"
+            else -> "UNKNOWN ($state)"
+        }
 
     /**
      * Best-effort resource-entry name for an Icon backed by a resource; null otherwise. Uses only

@@ -162,7 +162,15 @@ class SplitScreenPickerActivity : ComponentActivity() {
     }
 
     private fun launchFirstApp(packageName: String) {
-        val launch = packageManager.getLaunchIntentForPackage(packageName)
+        val launch = if (packageName.contains("/")) {
+            val parts = packageName.split("/")
+            Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_LAUNCHER)
+                setClassName(parts[0], parts[1])
+            }
+        } else {
+            packageManager.getLaunchIntentForPackage(packageName)
+        }
         if (launch == null) {
             finish()
             return
@@ -172,7 +180,15 @@ class SplitScreenPickerActivity : ComponentActivity() {
     }
 
     private fun launchSecondApp(packageName: String) {
-        val launch = packageManager.getLaunchIntentForPackage(packageName) ?: return
+        val launch = if (packageName.contains("/")) {
+            val parts = packageName.split("/")
+            Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_LAUNCHER)
+                setClassName(parts[0], parts[1])
+            }
+        } else {
+            packageManager.getLaunchIntentForPackage(packageName)
+        } ?: return
         launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         runCatching { startActivity(launch) }
         finish()
@@ -273,12 +289,12 @@ private fun SplitScreenPicker(
                 .fillMaxSize()
                 .navigationBarsPadding()
         ) {
-            items(items = shown, key = { app: AppInfo -> app.packageName }) { app: AppInfo ->
+            items(items = shown, key = { app: AppInfo -> "${app.packageName}/${app.className}" }) { app: AppInfo ->
                 PickerAppItem(
                     app = app,
                     iconShape = iconShape,
                     showLabel = showLabels,
-                    onClick = { onAppClick(app.packageName) })
+                    onClick = { onAppClick(if (app.className.isNotEmpty()) "${app.packageName}/${app.className}" else app.packageName) })
             }
         }
     }
@@ -338,15 +354,16 @@ private suspend fun loadAppsFallback(context: Context, hiddenApps: Set<String>):
         val query = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
         pm.queryIntentActivities(query, 0).asSequence().map { it.activityInfo.packageName to it }
             .filter { (pkg, _) -> pkg != context.packageName && pkg !in hiddenApps }
-            .distinctBy { it.first }.mapNotNull { (pkg, info) ->
+            .mapNotNull { (pkg, info) ->
                 runCatching {
-                    val label = info.loadLabel(pm).toString()
+                    val label = info.activityInfo.loadLabel(pm).toString()
                     AppInfo(
                         name = label,
                         packageName = pkg,
                         icon = info.loadIcon(pm),
                         label = label,
-                        isCustomized = false
+                        isCustomized = false,
+                        className = info.activityInfo.name
                     )
                 }.getOrNull()
             }.sortedBy { it.label.lowercase() }.toList()

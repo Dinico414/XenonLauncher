@@ -88,7 +88,7 @@ fun AppDrawerGridLayout(
                 .pointerInput(Unit) {
                     detectTapGestures(
                         onTap = {
-                            onAppClick(app.packageName)
+                            onAppClick(if (app.className.isNotEmpty()) "${app.packageName}/${app.className}" else app.packageName)
                             onDismiss()
                         }
                     )
@@ -133,7 +133,7 @@ fun AppDrawerGridLayout(
                             val hitThreshold = with(density) { HugestSpacing.toPx() }
 
                             if (dragDropState.dockBounds.contains(finalPos) || verticalDist < hitThreshold) {
-                                onPinApp(app.packageName, dragDropState.targetIndex)
+                                onPinApp(if (app.className.isNotEmpty()) "${app.packageName}/${app.className}" else app.packageName, dragDropState.targetIndex)
                             }
                         } else {
                             // User let go after long press without dragging -> Show menu
