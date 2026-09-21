@@ -29,7 +29,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -44,7 +44,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.VerticalPager
@@ -55,15 +54,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.AspectRatio
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Wallpaper
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialTheme.colorScheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -76,6 +76,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -94,6 +95,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.withSaveLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -122,15 +124,12 @@ import com.xenon.mylibrary.res.MenuItem
 import com.xenon.mylibrary.res.XenonDropDown
 import com.xenon.mylibrary.values.BiggestPadding
 import com.xenon.mylibrary.values.ExtraBigSpacing
-import com.xenon.mylibrary.values.ExtraLargeCornerRadius
 import com.xenon.mylibrary.values.ExtraLargeIconSize
 import com.xenon.mylibrary.values.ExtraLargeSpacing
 import com.xenon.mylibrary.values.ExtraLargerCornerRadius
-import com.xenon.mylibrary.values.ExtraLargerPadding
 import com.xenon.mylibrary.values.HugeBiggerSpacing
 import com.xenon.mylibrary.values.HugeSpacing
 import com.xenon.mylibrary.values.HugestSpacing
-import com.xenon.mylibrary.values.LargeMediumPadding
 import com.xenon.mylibrary.values.LargestElevation
 import com.xenon.mylibrary.values.LargestPadding
 import com.xenon.mylibrary.values.MediumCornerRadius
@@ -146,11 +145,15 @@ import com.xenonware.launcher.R
 import com.xenonware.launcher.model.WidgetItem
 import com.xenonware.launcher.ui.res.WidgetEditBorder
 import com.xenonware.launcher.ui.res.WidgetSelectorDialog
-import com.xenonware.launcher.util.InteractiveAppWidgetHostView
-import com.xenonware.launcher.util.rememberWidgetHost
-import com.xenonware.launcher.viewmodel.LauncherViewModel
 import com.xenonware.launcher.ui.theme.mainFontFamily
 import com.xenonware.launcher.ui.theme.subFontFamily
+import com.xenonware.launcher.util.InteractiveAppWidgetHostView
+import com.xenonware.launcher.util.WidgetConfig
+import com.xenonware.launcher.util.findActivity
+import com.xenonware.launcher.util.isReconfigurable
+import com.xenonware.launcher.util.needsConfigOnAdd
+import com.xenonware.launcher.util.rememberWidgetHost
+import com.xenonware.launcher.viewmodel.LauncherViewModel
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.delay
@@ -177,6 +180,7 @@ fun WidgetPage(
     isDockVisible: Boolean = true
 ) {
     val context = LocalContext.current
+    val activity = remember(context) { context.findActivity() }
     val configuration = LocalConfiguration.current
     val haptic = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
@@ -264,6 +268,9 @@ fun WidgetPage(
     var edgeScrollDir by remember { mutableIntStateOf(0) }
 
     var pendingWidgetId by remember { mutableIntStateOf(-1) }
+
+    // Widget id whose setup screen is open. Saveable: the launcher may be recreated meanwhile.
+    var pendingConfigId by rememberSaveable { mutableIntStateOf(-1) }
 
     val hazeState = rememberHazeState()
 
@@ -394,26 +401,62 @@ fun WidgetPage(
         }
     }
 
+    // ---------------------------------------------------------------------------------
+    // Adding widgets: bind -> (optional) setup screen -> place
+    // ---------------------------------------------------------------------------------
+
+    fun placeWidget(appWidgetId: Int, info: AppWidgetProviderInfo?) {
+        val (w, h) = defaultSpanFor(info)
+        val (page, x, y) = findFirstAvailableSpace(w, h, pagerState.currentPage)
+            ?: Triple(pagerState.currentPage, 0, 0)
+        viewModel.addWidget(appWidgetId, page, x, y, w, h)
+        scope.launch { pagerState.animateScrollToPage(page) }
+    }
+
+    /** Called once the id is bound: runs the provider's setup screen first if it needs one. */
+    fun onWidgetBound(appWidgetId: Int, info: AppWidgetProviderInfo?) {
+        if (info != null && info.needsConfigOnAdd() && activity != null) {
+            pendingConfigId = appWidgetId
+            if (widgetHost.startConfigureActivity(activity, appWidgetId, WidgetConfig.REQUEST_CONFIGURE)) {
+                return // placed (or deleted) when the result comes back
+            }
+            pendingConfigId = -1
+            // Couldn't open it: place it anyway, most widgets fall back to defaults.
+        }
+        placeWidget(appWidgetId, info)
+    }
+
+    val configResult by WidgetConfig.results.collectAsState()
+    LaunchedEffect(configResult) {
+        val result = configResult ?: return@LaunchedEffect
+        WidgetConfig.consume()
+
+        // Reconfigure: nothing to do, the provider pushes new RemoteViews itself
+        // (the host picks up pending updates on startListening when we come back).
+        if (result.requestCode != WidgetConfig.REQUEST_CONFIGURE) return@LaunchedEffect
+
+        val id = pendingConfigId
+        pendingConfigId = -1
+        if (id == -1) return@LaunchedEffect
+
+        if (result.resultCode == Activity.RESULT_OK) {
+            placeWidget(id, runCatching { appWidgetManager.getAppWidgetInfo(id) }.getOrNull())
+        } else {
+            widgetHost.deleteWidget(id) // setup cancelled: free the id, don't place it
+        }
+    }
+
     val pickWidgetLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            val data = result.data
-            val appWidgetId = data?.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1) ?: -1
+            val appWidgetId = result.data
+                ?.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, pendingWidgetId)
+                ?: pendingWidgetId
             if (appWidgetId != -1) {
-                val info = appWidgetManager.getAppWidgetInfo(appWidgetId)
-                val (w, h) = defaultSpanFor(info)
-                val space = findFirstAvailableSpace(w, h, pagerState.currentPage)
-                if (space != null) {
-                    viewModel.addWidget(appWidgetId, space.first, space.second, space.third, w, h)
-                    scope.launch {
-                        pagerState.animateScrollToPage(space.first)
-                    }
-                } else {
-                    viewModel.addWidget(appWidgetId, pagerState.currentPage, 0, 0, w, h)
-                }
-                pendingWidgetId = -1
+                onWidgetBound(appWidgetId, appWidgetManager.getAppWidgetInfo(appWidgetId))
             }
+            pendingWidgetId = -1
         } else {
             if (pendingWidgetId != -1) {
                 widgetHost.deleteWidget(pendingWidgetId)
@@ -1243,22 +1286,46 @@ fun WidgetPage(
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 120.dp)
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Button(
-                        onClick = { selectedWidgetId = -1 },
-                        colors = ButtonDefaults.buttonColors(
+                // Provider info of the selected widget (null for shortcuts / nothing selected)
+                val selectedWidgetInfo = remember(selectedWidgetId, widgets) {
+                    widgets.firstOrNull { it.id == selectedWidgetId && it.type != "shortcut" }
+                        ?.let { runCatching { appWidgetManager.getAppWidgetInfo(it.id) }.getOrNull() }
+                }
+                val hasSelection = selectedWidgetId != -1 && selectedWidgetId != -2
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(MediumSpacer),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    EditActionButton(
+                        icon = Icons.Rounded.Check,
+                        contentDescription = stringResource(R.string.done),
+                        containerColor = colorScheme.secondaryContainer,
+                        contentColor = colorScheme.onSecondaryContainer,
+                        onClick = { selectedWidgetId = -1 }
+                    )
+
+                    if (selectedWidgetInfo?.isReconfigurable() == true && activity != null) {
+                        EditActionButton(
+                            icon = Icons.Rounded.Tune,
+                            contentDescription = stringResource(R.string.widget_settings),
                             containerColor = colorScheme.secondaryContainer,
-                            contentColor = colorScheme.onSecondaryContainer
-                        ),
-                        elevation = ButtonDefaults.buttonElevation(defaultElevation = MediumSmallElevation),
-                        shape = RoundedCornerShape(ExtraLargeCornerRadius),
-                        modifier = Modifier.padding(bottom = MediumPadding)
-                    ) {
-                        Text(stringResource(R.string.done), fontWeight = FontWeight.SemiBold)
+                            contentColor = colorScheme.onSecondaryContainer,
+                            onClick = {
+                                widgetHost.startConfigureActivity(
+                                    activity, selectedWidgetId, WidgetConfig.REQUEST_RECONFIGURE
+                                )
+                                selectedWidgetId = -1
+                            }
+                        )
                     }
 
-                    if (selectedWidgetId != -1 && selectedWidgetId != -2) {
-                        Button(
+                    if (hasSelection) {
+                        EditActionButton(
+                            icon = Icons.Rounded.Delete,
+                            contentDescription = stringResource(R.string.remove),
+                            containerColor = colorScheme.errorContainer,
+                            contentColor = colorScheme.onErrorContainer,
                             onClick = {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 val target = widgets.firstOrNull { it.id == selectedWidgetId }
@@ -1267,19 +1334,8 @@ fun WidgetPage(
                                 }
                                 viewModel.removeWidget(selectedWidgetId)
                                 selectedWidgetId = -1
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = colorScheme.errorContainer,
-                                contentColor = colorScheme.onErrorContainer
-                            ),
-                            elevation = ButtonDefaults.buttonElevation(defaultElevation = MediumSmallElevation),
-                            shape = RoundedCornerShape(ExtraLargeCornerRadius),
-                            contentPadding = PaddingValues(horizontal = ExtraLargerPadding, vertical = LargeMediumPadding)
-                        ) {
-                            Icon(Icons.Rounded.Delete, null, modifier = Modifier.size(ExtraLargeSpacing))
-                            Spacer(Modifier.width(MediumSpacer))
-                            Text(stringResource(R.string.remove), fontWeight = FontWeight.SemiBold)
-                        }
+                            }
+                        )
                     }
                 }
             }
@@ -1309,19 +1365,8 @@ fun WidgetPage(
                     val success =
                         appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)
 
-                    val (w, h) = defaultSpanFor(info)
-                    val space = findFirstAvailableSpace(w, h, pagerState.currentPage)
-                    val (targetPage, targetX, targetY) = space ?: Triple(
-                        pagerState.currentPage,
-                        0,
-                        0
-                    )
-
                     if (success) {
-                        viewModel.addWidget(appWidgetId, targetPage, targetX, targetY, w, h)
-                        scope.launch {
-                            pagerState.animateScrollToPage(targetPage)
-                        }
+                        onWidgetBound(appWidgetId, info)
                     } else {
                         pendingWidgetId = appWidgetId
                         val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_BIND).apply {
@@ -1453,6 +1498,28 @@ private fun PageIndicator(
                     .size(dotSize)
                     .background(Color.White.copy(alpha = alpha), CircleShape)
             )
+        }
+    }
+}
+
+@Composable
+private fun EditActionButton(
+    icon: ImageVector,
+    contentDescription: String,
+    containerColor: Color,
+    contentColor: Color,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        shape = CircleShape,
+        color = containerColor,
+        contentColor = contentColor,
+        shadowElevation = MediumSmallElevation,
+        modifier = Modifier.size(56.dp)
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription, modifier = Modifier.size(ExtraLargeSpacing))
         }
     }
 }

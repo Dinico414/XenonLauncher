@@ -352,4 +352,5 @@
     <string name="split_screen_close">Close</string>
     <string name="app_menu_order">App Menu Order</string>
     <string name="app_menu_order_description">Rearrange the items in the app long-press menu.</string>
+    <string name="widget_settings">Widget settings</string>
 </resources>

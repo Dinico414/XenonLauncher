@@ -1,9 +1,11 @@
 package com.xenonware.launcher.util
 
+import android.app.Activity
 import android.appwidget.AppWidgetHostView
 import android.appwidget.AppWidgetProviderInfo
 import android.content.Context
 import android.os.Bundle
+import android.util.Log
 import android.util.SizeF
 import android.view.View
 import android.view.ViewGroup
@@ -71,6 +73,18 @@ class WidgetHostHolder(private val context: Context) {
 
     fun allocateAppWidgetId(): Int = host.allocateAppWidgetId()
 
+    /**
+     * Opens the provider's configuration activity. Goes through the system, so it also works
+     * when the provider didn't export that activity (most don't). The result is delivered to
+     * the Activity's onActivityResult with [requestCode].
+     */
+    fun startConfigureActivity(activity: Activity, appWidgetId: Int, requestCode: Int): Boolean =
+        runCatching {
+            host.startAppWidgetConfigureActivityForResult(activity, appWidgetId, 0, requestCode, null)
+        }.onFailure {
+            Log.w(TAG, "Could not open configure activity for $appWidgetId", it)
+        }.isSuccess
+
     /** Removes the widget permanently: drops its view and frees the id. */
     fun deleteWidget(appWidgetId: Int) {
         forget(appWidgetId)
@@ -107,6 +121,7 @@ class WidgetHostHolder(private val context: Context) {
 
     companion object {
         const val HOST_ID = 1024
+        private const val TAG = "WidgetHostHolder"
     }
 }
 

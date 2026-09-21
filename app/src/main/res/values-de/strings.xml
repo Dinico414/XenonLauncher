@@ -350,4 +350,5 @@
     <string name="split_screen_close">Schließen</string>
     <string name="app_menu_order">Reihenfolge des App-Menüs</string>
     <string name="app_menu_order_description">Ordne die Einträge im App-Kontextmenü (langes Drücken) neu an.</string>
+    <string name="widget_settings">Widget-Einstellungen</string>
 </resources>

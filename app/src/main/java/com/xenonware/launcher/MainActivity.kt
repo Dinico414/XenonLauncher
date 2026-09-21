@@ -102,6 +102,7 @@ import com.xenonware.launcher.ui.theme.createCustomFontFamily
 import com.xenonware.launcher.ui.theme.mainFontFamily
 import com.xenonware.launcher.util.DragHandler
 import com.xenonware.launcher.util.PerfLog
+import com.xenonware.launcher.util.WidgetConfig
 import com.xenonware.launcher.util.WindowBlurBehind
 import com.xenonware.launcher.util.rememberBlurAvailable
 import com.xenonware.launcher.viewmodel.CalendarEvent
@@ -195,7 +196,7 @@ class MainActivity : ComponentActivity() {
             val statusBarDarkIcons by remember(appIsDarkTheme, wallpaperDarkIcons) {
                 derivedStateOf {
                     if (isAppDrawerVisible) {
-                       wallpaperDarkIcons
+                        wallpaperDarkIcons
                     } else {
                         val pageOffset = pagerState.currentPage + pagerState.currentPageOffsetFraction
                         val mediaDarkIcons = !appIsDarkTheme
@@ -411,6 +412,22 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         super.onStop()
         viewModel.setForeground(false)
+    }
+
+    /**
+     * AppWidgetHost.startAppWidgetConfigureActivityForResult() uses the classic
+     * startActivityForResult, so the widget config result lands here, not in an
+     * ActivityResultLauncher. super first: ComponentActivity hands its own
+     * (random, large) request codes to the Activity Result registry.
+     */
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == WidgetConfig.REQUEST_CONFIGURE ||
+            requestCode == WidgetConfig.REQUEST_RECONFIGURE
+        ) {
+            WidgetConfig.deliver(requestCode, resultCode)
+        }
     }
 
     override fun onResume() {
