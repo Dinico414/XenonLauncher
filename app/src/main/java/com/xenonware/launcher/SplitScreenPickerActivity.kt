@@ -6,9 +6,12 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,7 +22,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -29,9 +34,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.MaterialTheme.typography
@@ -40,25 +42,39 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.core.graphics.drawable.toBitmap
+import com.xenon.mylibrary.values.BiggerCornerRadius
+import com.xenon.mylibrary.values.IconSizeMedium
 import com.xenonware.launcher.data.SharedPreferenceManager
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.ui.res.IconShape
+import com.xenonware.launcher.ui.res.MorphingBackCloseIcon
 import com.xenonware.launcher.ui.theme.FontAxes
 import com.xenonware.launcher.ui.theme.FontType
 import com.xenonware.launcher.ui.theme.XenonTheme
@@ -66,8 +82,14 @@ import com.xenonware.launcher.ui.theme.createCustomFontFamily
 import com.xenonware.launcher.ui.theme.mainFontFamily
 import com.xenonware.launcher.util.matches
 import com.xenonware.launcher.viewmodel.LauncherViewModel
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
+import dev.chrisbanes.haze.materials.HazeMaterials
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlin.math.roundToInt
 
 class SplitScreenPickerActivity : ComponentActivity() {
 
@@ -198,6 +220,7 @@ class SplitScreenPickerActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
 private fun SplitScreenPicker(
     firstPackage: String?,
@@ -208,6 +231,8 @@ private fun SplitScreenPicker(
     onClose: () -> Unit,
 ) {
     val context = LocalContext.current
+    val density = LocalDensity.current
+    val focusManager = LocalFocusManager.current
     val sharedApps by LauncherViewModel.launchableApps.collectAsState()
     var fallbackApps by remember { mutableStateOf<List<AppInfo>>(emptyList()) }
 
@@ -219,78 +244,49 @@ private fun SplitScreenPicker(
 
     val apps = sharedApps.ifEmpty { fallbackApps }
     var query by remember { mutableStateOf("") }
+    var isSearchFocused by remember { mutableStateOf(false) }
+
     val shown = remember(apps, query) {
         if (query.isBlank()) apps else apps.filter { it.matches(query) }
     }
 
-    Column(
+    val hazeState = remember { HazeState() }
+    var barSize by remember { mutableStateOf(IntSize.Zero) }
+    var barTop by remember { mutableFloatStateOf(0f) }
+
+    val isSearchActive = query.isNotEmpty()
+    val isSearchUIActive = isSearchActive || isSearchFocused
+    val iconMorphProgress by animateFloatAsState(
+        targetValue = if (isSearchUIActive) 0f else 1f,
+        animationSpec = tween(300),
+        label = "iconMorph"
+    )
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(colorScheme.surface)
             .statusBarsPadding()
-            .padding(horizontal = 16.dp)
+            .imePadding()
     ) {
-        Spacer(Modifier.height(12.dp))
-
-        Text(
-            text = stringResource(R.string.split_screen_pick_app),
-            style = typography.titleMedium.copy(fontFamily = mainFontFamily),
-            color = colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = 8.dp, bottom = 12.dp)
-        )
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(CircleShape)
-                .background(colorScheme.surfaceContainer),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onClose, modifier = Modifier.padding(4.dp)) {
-                Icon(
-                    Icons.Rounded.Close,
-                    contentDescription = stringResource(R.string.split_screen_close),
-                    tint = colorScheme.onSurface
-                )
-            }
-            val textStyle = typography.titleLarge.merge(
-                TextStyle(
-                    fontFamily = mainFontFamily,
-                    textAlign = TextAlign.Center,
-                    color = colorScheme.onSurface
-                )
-            )
-            BasicTextField(
-                value = query,
-                onValueChange = { query = it },
-                singleLine = true,
-                textStyle = textStyle,
-                cursorBrush = SolidColor(colorScheme.primary),
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(end = 56.dp),
-                decorationBox = { inner ->
-                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        if (query.isEmpty()) {
-                            Text(
-                                text = stringResource(R.string.search),
-                                style = textStyle,
-                                color = colorScheme.onSurface.copy(alpha = 0.6f),
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                        inner()
-                    }
-                })
-        }
-
         LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = 76.dp),
-            contentPadding = PaddingValues(top = 16.dp, bottom = 24.dp),
+            contentPadding = PaddingValues(
+                top = with(density) { barSize.height.toDp() } + 16.dp,
+                bottom = 24.dp
+            ),
             verticalArrangement = Arrangement.spacedBy(if (showLabels) 16.dp else 12.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier
                 .fillMaxSize()
+                .padding(horizontal = 16.dp)
+                .graphicsLayer {
+                    clip = true
+                    shape = RoundedCornerShape(topStart = BiggerCornerRadius, topEnd = BiggerCornerRadius)
+                    translationY = barTop
+                }
+                .offset { IntOffset(0, -barTop.roundToInt()) }
+                .hazeSource(hazeState)
                 .navigationBarsPadding()
         ) {
             items(items = shown, key = { app: AppInfo -> "${app.packageName}/${app.className}" }) { app: AppInfo ->
@@ -303,6 +299,76 @@ private fun SplitScreenPicker(
                     showLabel = showLabels,
                     enabled = isEnabled,
                     onClick = { onAppClick(appKey) })
+            }
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .onSizeChanged { barSize = it }
+                .padding(horizontal = 16.dp)
+                .zIndex(1f)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onGloballyPositioned { barTop = it.positionInParent().y }
+                    .shadow(elevation = 12.dp, shape = CircleShape)
+                    .clip(CircleShape)
+                    .hazeEffect(state = hazeState, style = HazeMaterials.ultraThin())
+                    .background(colorScheme.surfaceContainer.copy(alpha = 0.4f))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        // Consume clicks
+                    },
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = {
+                    if (isSearchUIActive) {
+                        query = ""
+                        isSearchFocused = false
+                        focusManager.clearFocus()
+                    } else onClose()
+                }, modifier = Modifier.padding(4.dp)) {
+                    MorphingBackCloseIcon(
+                        progress = iconMorphProgress,
+                        color = colorScheme.onSurface,
+                        modifier = Modifier.size(IconSizeMedium)
+                    )
+                }
+
+                val textStyle = typography.titleLarge.merge(
+                    TextStyle(
+                        fontFamily = mainFontFamily,
+                        textAlign = TextAlign.Center,
+                        color = colorScheme.onSurface
+                    )
+                )
+                BasicTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    singleLine = true,
+                    textStyle = textStyle,
+                    cursorBrush = SolidColor(colorScheme.primary),
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 56.dp)
+                        .onFocusChanged { isSearchFocused = it.isFocused },
+                    decorationBox = { inner ->
+                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            if (query.isEmpty() && !isSearchFocused) {
+                                Text(
+                                    text = stringResource(R.string.search),
+                                    style = textStyle,
+                                    color = colorScheme.onSurface.copy(alpha = 0.6f),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                            inner()
+                        }
+                    })
             }
         }
     }

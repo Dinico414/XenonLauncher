@@ -83,8 +83,10 @@
             android:taskAffinity="${applicationId}.splitpicker"
             android:excludeFromRecents="true"
             android:resizeableActivity="true"
+            android:icon="@mipmap/ic_launcher"
+            android:roundIcon="@mipmap/ic_launcher_round"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|keyboardHidden"
-            android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
+            android:theme="@style/Theme.Xenon.Launcher" />
 
         <service
             android:name=".notification.XenonNotificationService"
