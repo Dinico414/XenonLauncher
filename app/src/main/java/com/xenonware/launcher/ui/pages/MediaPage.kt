@@ -1,6 +1,9 @@
 package com.xenonware.launcher.ui.pages
 
+import android.app.WallpaperColors
 import android.content.res.Configuration
+import android.graphics.Bitmap
+import android.os.Build
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.EaseInOut
 import androidx.compose.animation.core.RepeatMode
@@ -64,7 +67,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
@@ -78,7 +80,6 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -99,6 +100,8 @@ import coil.compose.AsyncImage
 import coil.imageLoader
 import coil.request.ImageRequest
 import coil.request.SuccessResult
+import com.materialkolor.PaletteStyle
+import com.materialkolor.dynamicColorScheme
 import com.xenon.mylibrary.values.BiggerElevation
 import com.xenon.mylibrary.values.BiggerSpacing
 import com.xenon.mylibrary.values.BiggestBiggerSpacing
@@ -151,7 +154,9 @@ import com.xenonware.launcher.util.blockHorizontalPagerSwipe
 import com.xenonware.launcher.util.isSmallScreenDevice
 import com.xenonware.launcher.util.openMediaApp
 import com.xenonware.launcher.util.shouldDisableLandscapeLayout
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import java.util.Locale
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -282,62 +287,68 @@ fun MediaPage(
                         clip = true
                     }
                 }
-                .background(backgroundTint.copy(alpha = baseBgAlpha * bgProgress))
         ) {
-            // Background Album Art
-            artModel?.let { model ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer {
-                            alpha = bgProgress
-                            compositingStrategy = if (progress() > 0.01f) {
-                                CompositingStrategy.Offscreen
-                            } else {
-                                CompositingStrategy.Auto
-                            }
-                        }
-                ) {
-                    AsyncImage(
-                        model = model,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .blur(BiggerElevation),
-                        contentScale = ContentScale.Crop,
-                        colorFilter = ColorFilter.tint(
-                            dynamicBackground.copy(alpha = 0.4f), blendMode = BlendMode.SrcAtop
-                        )
-                    )
-                    // Darken/Lighten the background for better readability
+            // Background layers: tint, album art, visualizer
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(backgroundTint.copy(alpha = baseBgAlpha * bgProgress))
+            ) {
+                // Background Album Art
+                artModel?.let { model ->
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(overlayColor)
+                            .graphicsLayer {
+                                alpha = bgProgress
+                                compositingStrategy = if (progress() > 0.01f) {
+                                    CompositingStrategy.Offscreen
+                                } else {
+                                    CompositingStrategy.Auto
+                                }
+                            }
+                    ) {
+                        AsyncImage(
+                            model = model,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .blur(BiggerElevation),
+                            contentScale = ContentScale.Crop,
+                            colorFilter = ColorFilter.tint(
+                                dynamicBackground.copy(alpha = 0.4f), blendMode = BlendMode.SrcAtop
+                            )
+                        )
+                        // Darken/Lighten the background for better readability
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(overlayColor)
+                        )
+                    }
+                }
+
+                // Music visualizer: behind all content, anchored to the bottom-right screen edge
+                if (isPermissionGranted) {
+                    // Landscape & tablet split UI: right side only; phone portrait: full width
+                    val isTablet = configuration.smallestScreenWidthDp >= 600
+                    val visualizerWidth = if (useLandscapeLayout || isTablet) {
+                        VisualizerConfig.widthFractionSplit.coerceIn(0.1f, 1f)
+                    } else {
+                        1f
+                    }
+                    MusicVisualizer(
+                        isPlaying = mediaState.isPlaying,
+                        isActive = isVisible,
+                        analyzer = audioAnalyzer,
+                        colors = visualizerColors,
+                        leftFade = if (visualizerWidth < 1f) VisualizerConfig.leftFadeWidth else 0.dp,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)   // edge to edge: no insets, no padding
+                            .fillMaxWidth(visualizerWidth)
+                            .fillMaxHeight(0.5f)
                     )
                 }
-            }
-
-            // Gemini-style visualizer: behind all content, anchored to the bottom-right screen edge
-            if (isPermissionGranted) {
-                // Landscape & tablet split UI: right side only; phone portrait: full width
-                val isTablet = configuration.smallestScreenWidthDp >= 600
-                val visualizerWidth = if (useLandscapeLayout || isTablet) {
-                    VisualizerConfig.widthFractionSplit.coerceIn(0.1f, 1f)
-                } else {
-                    1f
-                }
-                MusicVisualizer(
-                    isPlaying = mediaState.isPlaying,
-                    isActive = isVisible,
-                    analyzer = audioAnalyzer,
-                    colors = visualizerColors,
-                    leftFade = if (visualizerWidth < 1f) VisualizerConfig.leftFadeWidth else 0.dp,
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)   // edge to edge: no insets, no padding
-                        .fillMaxWidth(visualizerWidth)
-                        .fillMaxHeight(0.5f)
-                )
             }
 
             if (useLandscapeLayout) {
@@ -1131,13 +1142,16 @@ private fun Modifier.fadingEdges(
         }
     }
 
+/** Opacity of the drop shadow under the transport / action icons (was effectively 0.15). */
+private const val ICON_SHADOW_ALPHA = 0.55f
+
 @Composable
 private fun ShadowedIcon(
     imageVector: ImageVector,
     contentDescription: String?,
     modifier: Modifier = Modifier,
     tint: Color,
-    shadowColor: Color = Color.Black.copy(alpha = 0.3f),
+    shadowColor: Color = Color.Black.copy(alpha = ICON_SHADOW_ALPHA),
     offset: Dp = SmallerSpacer,
 ) {
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
@@ -1147,8 +1161,7 @@ private fun ShadowedIcon(
             modifier = Modifier
                 .fillMaxSize()
                 .offset(y = offset)
-                .blur(offset)
-                .alpha(0.5f),
+                .blur(offset),
             tint = shadowColor
         )
         Icon(
@@ -1167,7 +1180,7 @@ private fun ShadowedBitmapIcon(
     contentDescription: String?,
     modifier: Modifier = Modifier,
     tint: Color,
-    shadowColor: Color = Color.Black.copy(alpha = 0.3f),
+    shadowColor: Color = Color.Black.copy(alpha = ICON_SHADOW_ALPHA),
     offset: Dp = SmallerSpacer,
 ) {
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
@@ -1177,8 +1190,7 @@ private fun ShadowedBitmapIcon(
             modifier = Modifier
                 .fillMaxSize()
                 .offset(y = offset)
-                .blur(offset)
-                .alpha(0.5f),
+                .blur(offset),
             tint = shadowColor
         )
         Icon(
@@ -1270,6 +1282,25 @@ private fun rememberMusicNoteAnimation(isPlaying: Boolean): MusicNoteAnimation {
     return MusicNoteAnimation(rotation, scale, playingFactor)
 }
 
+/**
+ * Source color of the album cover, picked the way Material You picks it from a wallpaper
+ * (WallpaperColors' primary color), with the dominant color as fallback.
+ */
+private fun albumSeedColor(bitmap: Bitmap): Color? {
+    val soft = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+        bitmap.config == Bitmap.Config.HARDWARE
+    ) bitmap.copy(Bitmap.Config.ARGB_8888, false) else bitmap
+    val small = if (soft.width > 112 || soft.height > 112) {
+        Bitmap.createScaledBitmap(soft, 112, 112, true)
+    } else soft
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+        runCatching { WallpaperColors.fromBitmap(small).primaryColor.toArgb() }
+            .getOrNull()?.let { return Color(it) }
+    }
+    return ColorUtils.getDominantColor(small).takeIf { it != Color.Unspecified }
+}
+
 @Immutable
 private data class MediaTheme(
     val background: Color,
@@ -1278,78 +1309,73 @@ private data class MediaTheme(
     val scheme: ColorScheme,
 )
 
+/**
+ * The media page's theme. Every color keeps its role exactly as without a cover
+ * (surfaceContainerLowest background, onSurface content, primaryContainer accent, …); only the
+ * SOURCE changes: with an album cover, a full Material You scheme is generated from the cover's
+ * source color (same algorithm as system dynamic color), otherwise the app's scheme is used.
+ */
 @Composable
 private fun rememberMediaTheme(mediaState: MediaState): MediaTheme {
     val context = LocalContext.current
     val isDark = LocalIsDarkTheme.current
-    val scheme = colorScheme
-    val surfaceContainerLowest = scheme.surfaceContainerLowest
-    val onSurface = scheme.onSurface
+    val systemScheme = colorScheme
 
     val albumArt = mediaState.albumArt
     val albumArtUri = mediaState.albumArtUri
 
-    val defaultTheme = remember(scheme, surfaceContainerLowest, onSurface) {
-        Triple(surfaceContainerLowest, onSurface, scheme.primaryContainer)
-    }
-    var base by remember { mutableStateOf(defaultTheme) }
+    var albumScheme by remember { mutableStateOf<ColorScheme?>(null) }
 
-    LaunchedEffect(albumArt, albumArtUri, isDark, scheme) {
+    LaunchedEffect(albumArt, albumArtUri, isDark) {
         val bitmap = when {
             albumArt != null -> albumArt
             albumArtUri != null -> {
                 val request = ImageRequest.Builder(context)
                     .data(albumArtUri)
-                    .size(40, 40)
+                    .size(112, 112)
                     .allowHardware(false)
                     .build()
                 (context.imageLoader.execute(request) as? SuccessResult)
-                    ?.drawable?.toBitmap(40, 40)
+                    ?.drawable?.toBitmap(112, 112)
             }
             else -> null
         }
 
         if (bitmap != null) {
-            base = try {
-                val seed = ColorUtils.getDominantColor(bitmap)
-
-                // More vibrant lerp for the page background
-                val bg = if (isDark) {
-                    lerp(seed, surfaceContainerLowest, 0.35f)
-                } else {
-                    lerp(seed, surfaceContainerLowest, 0.7f)
+            albumScheme = withContext(Dispatchers.Default) {
+                try {
+                    albumSeedColor(bitmap)?.let { seed ->
+                        dynamicColorScheme(
+                            seedColor = seed,
+                            isDark = isDark,
+                            isAmoled = false,
+                            style = PaletteStyle.TonalSpot, // the style Android uses for wallpapers
+                        )
+                    }
+                } catch (_: Exception) {
+                    null
                 }
-                val text = if (isDark) {
-                    lerp(seed, onSurface, 0.85f)
-                } else {
-                    lerp(seed, onSurface, 0.7f)
-                }
-                val accent = if (isDark) {
-                    lerp(seed, Color.Black, 0.3f).copy(alpha = 0.6f)
-                } else {
-                    lerp(seed, Color.White, 0.15f).copy(alpha = 0.3f)
-                }
-
-                Triple(bg, text, accent)
-            } catch (_: Exception) {
-                defaultTheme
             }
         } else {
+            // Debounce returning to the app scheme to prevent flickering during track changes
             delay(500.milliseconds)
-            base = defaultTheme
+            albumScheme = null
         }
     }
 
-    val background by animateColorAsState(base.first, tween(500), label = "mediaBg")
-    val content by animateColorAsState(base.second, tween(500), label = "mediaText")
-    val accent by animateColorAsState(base.third, tween(500), label = "mediaPc")
+    val source = albumScheme ?: systemScheme
 
-    return remember(background, content, accent, scheme) {
+    // Same roles as always, just from the album-generated scheme when there is a cover
+    val background by animateColorAsState(source.surfaceContainerLowest, tween(500), label = "mediaBg")
+    val content by animateColorAsState(source.onSurface, tween(500), label = "mediaText")
+    val accent by animateColorAsState(source.primaryContainer, tween(500), label = "mediaPc")
+
+    return remember(background, content, accent, source) {
         MediaTheme(
             background = background,
             content = content,
             accent = accent,
-            scheme = scheme.copy(
+            scheme = source.copy(
                 primary = accent,
                 primaryContainer = accent,
                 onPrimaryContainer = content,

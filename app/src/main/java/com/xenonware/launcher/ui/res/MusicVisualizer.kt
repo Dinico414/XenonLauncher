@@ -135,13 +135,13 @@ object VisualizerConfig {
     var reactivity = VisualizerReactivity.SPECTRUM
 
     /** See [GeometricStyle]. */
-    var geometricStyle = GeometricStyle.GRID
+    var geometricStyle = GeometricStyle.FLOATING
 
     /** 0 = off, 1 = flowing blurred color waves at the bottom. */
     var waves = 1
 
     /** See [ColorProfile]. */
-    var colorProfile = ColorProfile.ALBUM
+    var colorProfile = ColorProfile.COLORFUL
 
     /**
      * Landscape & tablet (50/50 split UI): share of the width the visualizer covers, anchored to
