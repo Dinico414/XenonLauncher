@@ -51,6 +51,7 @@ import com.xenonware.launcher.SplitScreenPickerActivity
 import com.xenonware.launcher.accessibility.XenonAccessibilityService
 import com.xenonware.launcher.data.LauncherCache
 import com.xenonware.launcher.data.SharedPreferenceManager
+import com.xenonware.launcher.media.AudioSpectrumAnalyzer
 import com.xenonware.launcher.media.MediaControllerManager
 import com.xenonware.launcher.media.MediaState
 import com.xenonware.launcher.model.AppInfo
@@ -197,6 +198,19 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         Collections.synchronizedSet(HashSet())
 
     private var torchCallback: CameraManager.TorchCallback? = null
+
+    /**
+     * FFT of the global audio output for the media visualizer. Only captures while the launcher
+     * is in foreground, the media page is visible, RECORD_AUDIO is granted and media is playing
+     * (see syncAudioAnalyzer). Declared before init: the media loop started from init uses it.
+     */
+    val audioAnalyzer = AudioSpectrumAnalyzer()
+
+    private val _audioPermissionGranted = MutableStateFlow(hasAudioPermission())
+    val audioPermissionGranted: StateFlow<Boolean> = _audioPermissionGranted
+
+    private val _isMediaPageVisible = MutableStateFlow(false)
+    val isMediaPageVisible: StateFlow<Boolean> = _isMediaPageVisible
 
     /** Language + dark mode the app labels/icons were last built for. */
     @Volatile
@@ -795,8 +809,13 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 appsDirty = false
                 loadApps()
             }
+            // The permission may have been granted in PermissionActivity or the system settings
+            _audioPermissionGranted.value = hasAudioPermission()
+            syncAudioAnalyzer()
         } else {
             unregisterForegroundReceivers()
+            // No FFT capture while the launcher is invisible
+            audioAnalyzer.stop()
             // Stop whatever is still queued; it would only update an invisible UI
             calendarJob?.cancel()
             searchJob?.cancel()
@@ -843,6 +862,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         prefManager.unregisterListener(preferenceListener)
         val application = getApplication<Application>()
         unregisterForegroundReceivers()
+        audioAnalyzer.stop()
         if (initialized.get()) {
             try { application.unregisterReceiver(packageReceiver) } catch (_: Exception) {}
             try { application.unregisterReceiver(alarmReceiver) } catch (_: Exception) {}
@@ -1085,6 +1105,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             while (true) {
                 _isForeground.first { it }
                 mediaControllerManager.updateActiveSession()
+                // Picks up play/pause changes for the visualizer (≤ 1 s latency; the
+                // visualizer shows its synthetic pulse until the real capture kicks in)
+                syncAudioAnalyzer()
                 delay(1000.milliseconds)
             }
         }
@@ -1096,6 +1119,44 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun seekTo(position: Long) = mediaControllerManager.seekTo(position)
 
     val isMediaPermissionGranted: Boolean get() = mediaControllerManager.isPermissionGranted
+
+    // ---------------------------------------------------------------------------------
+    // Media visualizer (foreground + media page visible + playing only)
+    // ---------------------------------------------------------------------------------
+
+    private fun hasAudioPermission(): Boolean =
+        ContextCompat.checkSelfPermission(
+            getApplication(), Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
+
+    /** Starts/stops the FFT capture. Idempotent, so it's safe to call from several places. */
+    private fun syncAudioAnalyzer() {
+        val shouldRun = _isForeground.value &&
+                _isMediaPageVisible.value &&
+                _audioPermissionGranted.value &&
+                mediaState.isPlaying
+        if (shouldRun) {
+            audioAnalyzer.start()
+        } else if (audioAnalyzer.isRunning) {
+            audioAnalyzer.stop()
+        }
+    }
+
+    /** Call from the pager whenever the media page becomes (in)visible. */
+    fun setMediaPageVisible(visible: Boolean) {
+        if (_isMediaPageVisible.value == visible) return
+        _isMediaPageVisible.value = visible
+        syncAudioAnalyzer()
+    }
+
+    /**
+     * Call from the RECORD_AUDIO permission launcher's result callback. The system dialog
+     * only pauses MainActivity (no onStop/onStart), so setForeground won't notice the grant.
+     */
+    fun onAudioPermissionResult() {
+        _audioPermissionGranted.value = hasAudioPermission()
+        syncAudioAnalyzer()
+    }
 
     fun toggleFlashlight() {
         try {

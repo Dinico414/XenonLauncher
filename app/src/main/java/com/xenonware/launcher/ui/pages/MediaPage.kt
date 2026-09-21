@@ -137,9 +137,11 @@ import com.xenon.mylibrary.values.SmallPadding
 import com.xenon.mylibrary.values.SmallSpacing
 import com.xenon.mylibrary.values.SmallerSpacer
 import com.xenonware.launcher.R
+import com.xenonware.launcher.media.AudioSpectrumAnalyzer
 import com.xenonware.launcher.media.MediaAction
 import com.xenonware.launcher.media.MediaControllerManager
 import com.xenonware.launcher.media.MediaState
+import com.xenonware.launcher.ui.components.GeminiMusicVisualizer
 import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
 import com.xenonware.launcher.ui.theme.mainFontFamily
 import com.xenonware.launcher.util.ColorUtils
@@ -163,6 +165,10 @@ fun MediaPage(
     onSkipPrevious: () -> Unit,
     onSeek: (Long) -> Unit,
     isDockVisible: Boolean = true,
+    /** LauncherViewModel.audioAnalyzer when RECORD_AUDIO is granted, else null (synthetic pulse). */
+    audioAnalyzer: AudioSpectrumAnalyzer? = null,
+    /** Whether this page is the current pager page; pauses the visualizer's frame loop otherwise. */
+    isVisible: Boolean = true,
 ) {
     val context = LocalContext.current
     val pm = remember { context.packageManager }
@@ -298,6 +304,20 @@ fun MediaPage(
                             .background(overlayColor)
                     )
                 }
+            }
+
+            // Gemini-style liquid visualizer: behind all content, band sits partly behind the dock
+            if (isPermissionGranted) {
+                GeminiMusicVisualizer(
+                    isPlaying = mediaState.isPlaying,
+                    isActive = isVisible,
+                    analyzer = audioAnalyzer,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .fillMaxHeight(0.5f)
+                        .padding(bottom = (dockAreaHeight - 28.dp).coerceAtLeast(0.dp))
+                )
             }
 
             if (useLandscapeLayout) {
