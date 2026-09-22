@@ -35,6 +35,7 @@ import androidx.compose.material.icons.rounded.NotificationsPaused
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.TableRows
 import androidx.compose.material.icons.rounded.TravelExplore
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material.icons.rounded.WatchLater
 import androidx.compose.material.icons.rounded.Widgets
@@ -56,18 +57,18 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.text.font.FontFamily
-import com.xenon.mylibrary.theme.QuicksandTitleVariable
 import com.xenon.mylibrary.res.SettingsSwitchTile
 import com.xenon.mylibrary.res.SettingsSwitchTileContext
 import com.xenon.mylibrary.res.SettingsTile
 import com.xenon.mylibrary.res.SettingsTileContext
 import com.xenon.mylibrary.res.XenonSingleChoiceButtonGroup
 import com.xenon.mylibrary.theme.LayoutType
+import com.xenon.mylibrary.theme.QuicksandTitleVariable
 import com.xenon.mylibrary.values.BiggestCornerRadius
 import com.xenon.mylibrary.values.ExtraLargeCornerRadius
 import com.xenon.mylibrary.values.ExtraLargeSpacing
@@ -750,5 +751,23 @@ fun TweaksItems(
                 subContextFont = subContextFont
             )
         }
+
+        Spacer(Modifier.height(actualOuterGroupSpacing))
+
+        // --- Music Visualizer Tweaks ---
+        SettingsTile(
+            title = "Music Visualizer",
+            subtitle = "Customize the appearance and behavior of the music visualizer",
+            icon = { Icon(Icons.Rounded.Tune, null, tint = tileSubtitleColor) },
+            onClick = { viewModel.setShowVisualizerConfigDialog(true) },
+            shape = tileShapeOverride ?: standaloneShape,
+            backgroundColor = tileBackgroundColor,
+            contentColor = tileContentColor,
+            subtitleColor = tileSubtitleColor,
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont,
+            horizontalPadding = LargestPadding,
+            verticalPadding = LargestPadding
+        )
     }
 }

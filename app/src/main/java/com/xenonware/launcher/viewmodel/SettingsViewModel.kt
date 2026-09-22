@@ -399,6 +399,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         _showAppMenuOrderDialog.value = show
     }
 
+    private val _showVisualizerConfigDialog = MutableStateFlow(false)
+    val showVisualizerConfigDialog: StateFlow<Boolean> = _showVisualizerConfigDialog.asStateFlow()
+
+    fun setShowVisualizerConfigDialog(show: Boolean) {
+        _showVisualizerConfigDialog.value = show
+    }
+
     private val _persistedThemeIndexFlow = MutableStateFlow(sharedPreferenceManager.theme)
 
     private val _fabSingleTapAction = MutableStateFlow(FabAction.fromString(sharedPreferenceManager.fabSingleTapAction))

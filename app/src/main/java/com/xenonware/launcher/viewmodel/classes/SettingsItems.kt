@@ -55,7 +55,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -75,12 +77,14 @@ import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.xenon.mylibrary.res.MenuItem
 import com.xenon.mylibrary.res.SettingsGoogleTile
 import com.xenon.mylibrary.res.SettingsSwitchMenuTile
 import com.xenon.mylibrary.res.SettingsSwitchTile
 import com.xenon.mylibrary.res.SettingsSwitchTileContext
 import com.xenon.mylibrary.res.SettingsTile
 import com.xenon.mylibrary.res.SettingsTileContext
+import com.xenon.mylibrary.res.XenonDropDown
 import com.xenon.mylibrary.res.XenonSingleChoiceButtonGroup
 import com.xenon.mylibrary.theme.LayoutType
 import com.xenon.mylibrary.theme.QuicksandTitleVariable
@@ -111,6 +115,7 @@ import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.model.FabAction
 import com.xenonware.launcher.presentation.sign_in.SignInState
 import com.xenonware.launcher.ui.res.IconShape
+import com.xenonware.launcher.ui.res.VisualizerConfig
 import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
 import com.xenonware.launcher.viewmodel.FabConfigMode
 import com.xenonware.launcher.viewmodel.LauncherViewModel

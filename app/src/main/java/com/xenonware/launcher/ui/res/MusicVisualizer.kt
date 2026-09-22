@@ -1,5 +1,6 @@
-package com.xenonware.launcher.ui.components
+package com.xenonware.launcher.ui.res
 
+import android.app.WallpaperColors
 import android.content.Context
 import android.graphics.Bitmap
 import android.os.Build
@@ -12,6 +13,8 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -81,11 +84,8 @@ object VisualizerStyle {
     /** Smooth filled curve with a bright outline. */
     const val SPECTRUM = 4
 
-    /** Radial spikes around a pulsing ring, mirrored left/right. */
-    const val CIRCLE = 5
-
     /** The real audio waveform as a glowing line (ignores [VisualizerReactivity]). */
-    const val OSCILLOSCOPE = 6
+    const val OSCILLOSCOPE = 5
 }
 
 /** What layer 1 reacts to. */
@@ -129,28 +129,98 @@ object ColorProfile {
 
 object VisualizerConfig {
     /** See [VisualizerStyle]. */
-    var visualizerStyle = VisualizerStyle.GLOW
+    var visualizerStyle by mutableIntStateOf(VisualizerStyle.GLOW)
 
     /** See [VisualizerReactivity]. */
-    var reactivity = VisualizerReactivity.SPECTRUM
+    var reactivity by mutableIntStateOf(VisualizerReactivity.SPECTRUM)
 
     /** See [GeometricStyle]. */
-    var geometricStyle = GeometricStyle.FLOATING
+    var geometricStyle by mutableIntStateOf(GeometricStyle.GRID)
 
     /** 0 = off, 1 = flowing blurred color waves at the bottom. */
-    var waves = 1
+    var waves by mutableIntStateOf(1)
 
     /** See [ColorProfile]. */
-    var colorProfile = ColorProfile.COLORFUL
+    var colorProfile by mutableIntStateOf(ColorProfile.COLORFUL)
 
     /**
      * Landscape & tablet (50/50 split UI): share of the width the visualizer covers, anchored to
      * the right edge, with a soft left fade. Phone portrait always uses the full width.
      */
-    var widthFractionSplit = 0.52f
+    var widthFractionSplit by mutableFloatStateOf(0.52f)
 
     /** Width of the soft left edge (alpha + blur) when the visualizer isn't full width. */
-    var leftFadeWidth: Dp = 48.dp
+    var leftFadeWidth: Dp by mutableStateOf(48.dp)
+
+    fun load(context: Context) {
+        val prefs = context.getSharedPreferences("launcher_prefs", Context.MODE_PRIVATE)
+        visualizerStyle = prefs.getInt("visualizer_style", VisualizerStyle.GLOW).coerceIn(0, 5)
+        reactivity = prefs.getInt("visualizer_reactivity", VisualizerReactivity.SPECTRUM).coerceIn(0, 4)
+        geometricStyle = prefs.getInt("visualizer_geometric_style", GeometricStyle.GRID).coerceIn(0, 2)
+        waves = prefs.getInt("visualizer_waves", 1).coerceIn(0, 1)
+        colorProfile = prefs.getInt("visualizer_color_profile", ColorProfile.COLORFUL).coerceIn(0, 2)
+    }
+
+    fun save(context: Context) {
+        val prefs = context.getSharedPreferences("launcher_prefs", Context.MODE_PRIVATE)
+        prefs.edit().apply {
+            putInt("visualizer_style", visualizerStyle)
+            putInt("visualizer_reactivity", reactivity)
+            putInt("visualizer_geometric_style", geometricStyle)
+            putInt("visualizer_waves", waves)
+            putInt("visualizer_color_profile", colorProfile)
+            apply()
+        }
+    }
+
+    fun getStyleName(style: Int) = when (style) {
+        VisualizerStyle.OFF -> "Off"
+        VisualizerStyle.GLOW -> "Glow"
+        VisualizerStyle.BARS -> "Bars"
+        VisualizerStyle.MIRRORED_BARS -> "Mirrored Bars"
+        VisualizerStyle.SPECTRUM -> "Spectrum"
+        VisualizerStyle.OSCILLOSCOPE -> "Oscilloscope"
+        else -> "Unknown"
+    }
+
+    fun getReactivityName(react: Int) = when (react) {
+        VisualizerReactivity.SPECTRUM -> "Spectrum"
+        VisualizerReactivity.AMPLITUDE -> "Amplitude"
+        VisualizerReactivity.BASS -> "Bass"
+        VisualizerReactivity.BEAT -> "Beat"
+        VisualizerReactivity.MELODY -> "Melody"
+        else -> "Unknown"
+    }
+
+    fun getGeometryName(geom: Int) = when (geom) {
+        GeometricStyle.OFF -> "Off"
+        GeometricStyle.FLOATING -> "Floating"
+        GeometricStyle.GRID -> "Grid"
+        else -> "Unknown"
+    }
+
+    fun getColorProfileName(prof: Int) = when (prof) {
+        ColorProfile.MATERIAL_YOU -> "Material You"
+        ColorProfile.ALBUM -> "Album"
+        ColorProfile.COLORFUL -> "Colorful"
+        else -> "Unknown"
+    }
+
+    fun nextStyle() {
+        visualizerStyle = (visualizerStyle + 1) % 6
+    }
+
+    fun nextReactivity() {
+        reactivity = (reactivity + 1) % 5
+    }
+
+    fun nextGeometry() {
+        geometricStyle = (geometricStyle + 1) % 3
+    }
+
+    fun nextColorProfile() {
+        colorProfile = (colorProfile + 1) % 3
+    }
 }
 
 /** Sampled cyclically, so the colors keep flowing through each other. */
@@ -233,7 +303,7 @@ private suspend fun extractAlbumPalette(context: Context, albumArt: Bitmap?, alb
             } else soft
 
             val seeds = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-                val wc = android.app.WallpaperColors.fromBitmap(small)
+                val wc = WallpaperColors.fromBitmap(small)
                 listOfNotNull(wc.primaryColor, wc.secondaryColor, wc.tertiaryColor)
                     .map { Color(it.toArgb()) }
             } else {
@@ -251,7 +321,7 @@ private suspend fun extractAlbumPalette(context: Context, albumArt: Bitmap?, alb
     }
 }
 
-/** Boosts saturation/brightness so the color glows; greys stay grey (just brighter). */
+/** Boosts saturation/brightness so the color glows; grays stay gray (just brighter). */
 private fun vivid(c: Color): Color {
     val hsv = FloatArray(3)
     android.graphics.Color.colorToHSV(c.toArgb(), hsv)
@@ -493,7 +563,6 @@ private fun DrawScope.drawGlow(engine: GlowEngine, colors: List<Color>, bandPx: 
 // =============================================================================================
 
 private const val BAR_COUNT = 48
-private const val SPOKES = 96
 private const val CURVE_POINTS = 96
 
 /** [bloom] = true: soft copy inside the blurred glow. false: the crisp version on top. */
@@ -510,7 +579,6 @@ private fun DrawScope.drawVisualizer(
         VisualizerStyle.BARS -> drawBars(engine, colors, bandPx, mirrored = false, bloom = bloom)
         VisualizerStyle.MIRRORED_BARS -> drawBars(engine, colors, bandPx, mirrored = true, bloom = bloom)
         VisualizerStyle.SPECTRUM -> drawSpectrumCurve(engine, colors, bandPx, bloom)
-        VisualizerStyle.CIRCLE -> drawCircleSpectrum(engine, colors, bandPx, bloom)
         VisualizerStyle.OSCILLOSCOPE -> drawOscilloscope(engine, colors, bandPx, bloom)
         else -> Unit // OFF
     }
@@ -619,58 +687,6 @@ private fun DrawScope.drawSpectrumCurve(engine: GlowEngine, colors: List<Color>,
                 endX = w
             ),
             style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
-        )
-    }
-}
-
-private fun DrawScope.drawCircleSpectrum(engine: GlowEngine, colors: List<Color>, bandPx: Float, bloom: Boolean) {
-    val w = size.width
-    val baseY = engine.baseY(size, bandPx)
-    val rise = engine.maxRise(size, bandPx)
-    val unit = min(w, rise)
-    val cx = w / 2f
-    val cy = baseY - rise * 0.5f
-    val radius = unit * 0.2f * (1f + 0.25f * engine.bass)
-    val spikeMax = unit * 0.24f
-    val strokeW = (2f * PI.toFloat() * radius / SPOKES) * 0.6f * (if (bloom) 2.2f else 1f)
-
-    for (k in 0 until SPOKES) {
-        // Mirrored left/right: index 0 at the bottom, the end of the range at the top
-        val t = abs(k / (SPOKES / 2f) - 1f)
-        val angle = -PI.toFloat() / 2f + k / SPOKES.toFloat() * 2f * PI.toFloat()
-        val len = max(strokeW, engine.specAt(1f - t) * spikeMax)
-        val ca = cos(angle)
-        val sa = sin(angle)
-        drawLine(
-            color = samplePalette(colors, engine.colorPhase + k / SPOKES.toFloat()),
-            start = Offset(cx + radius * ca, cy + radius * sa),
-            end = Offset(cx + (radius + len) * ca, cy + (radius + len) * sa),
-            strokeWidth = strokeW,
-            cap = StrokeCap.Round,
-            alpha = if (bloom) 0.9f else 1f,
-            blendMode = if (bloom) BlendMode.Screen else BlendMode.SrcOver
-        )
-    }
-
-    if (bloom) {
-        drawCircle(
-            brush = Brush.radialGradient(
-                0f to samplePalette(colors, engine.colorPhase).copy(alpha = 0.3f + 0.5f * engine.bass.coerceIn(0f, 1f)),
-                1f to Color.Transparent,
-                center = Offset(cx, cy),
-                radius = radius * 1.4f
-            ),
-            radius = radius * 1.4f,
-            center = Offset(cx, cy),
-            blendMode = BlendMode.Screen
-        )
-    } else {
-        drawCircle(
-            color = Color.White,
-            radius = radius * 0.92f,
-            center = Offset(cx, cy),
-            alpha = 0.6f,
-            style = Stroke(width = 2.dp.toPx())
         )
     }
 }
@@ -1166,7 +1182,7 @@ private class GlowEngine {
         var s = 0f
         var n = 0
         for (i in srcBands.indices) {
-            if (srcCenters[i] >= fromHz && srcCenters[i] < toHz) {
+            if (srcCenters[i] in fromHz..<toHz) {
                 s += srcBands[i]
                 n++
             }
@@ -1398,7 +1414,7 @@ private class GlowEngine {
 private fun synthCenterHz(i: Int): Float =
     30f * (14_000f / 30f).pow((i + 0.5f) / SRC_BANDS)
 
-/** Cyclic palette lookup: t wraps around, neighbours are blended. */
+/** Cyclic palette lookup: t wraps around, neighbors are blended. */
 private fun samplePalette(colors: List<Color>, t: Float): Color {
     val n = colors.size
     if (n == 1) return colors[0]

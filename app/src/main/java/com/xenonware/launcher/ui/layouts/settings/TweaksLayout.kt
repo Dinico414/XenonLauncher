@@ -31,6 +31,7 @@ import com.xenon.mylibrary.values.NoSpacing
 import com.xenonware.launcher.R
 import com.xenonware.launcher.ui.res.AppMenuOrderDialog
 import com.xenonware.launcher.ui.res.FontConfigDialog
+import com.xenonware.launcher.ui.res.VisualizerConfigDialog
 import com.xenonware.launcher.ui.theme.LocalMainFontFamily
 import com.xenonware.launcher.ui.theme.LocalSubFontFamily
 import com.xenonware.launcher.viewmodel.SettingsViewModel
@@ -156,6 +157,20 @@ fun TweaksLayout(
                         viewModel.setAppMenuOrder(newOrder)
                         viewModel.setShowAppMenuOrderDialog(false)
                     }
+                )
+            }
+        }
+
+        val showVisualizerConfigDialog by viewModel.showVisualizerConfigDialog.collectAsState()
+
+        if (showVisualizerConfigDialog) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .hazeEffect(hazeState)
+            ) {
+                VisualizerConfigDialog(
+                    onDismiss = { viewModel.setShowVisualizerConfigDialog(false) }
                 )
             }
         }

@@ -37,9 +37,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -102,6 +104,8 @@ import coil.request.ImageRequest
 import coil.request.SuccessResult
 import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamicColorScheme
+import com.xenon.mylibrary.res.MenuItem
+import com.xenon.mylibrary.res.XenonDropDown
 import com.xenon.mylibrary.values.BiggerElevation
 import com.xenon.mylibrary.values.BiggerSpacing
 import com.xenon.mylibrary.values.BiggestBiggerSpacing
@@ -144,9 +148,9 @@ import com.xenonware.launcher.media.AudioSpectrumAnalyzer
 import com.xenonware.launcher.media.MediaAction
 import com.xenonware.launcher.media.MediaControllerManager
 import com.xenonware.launcher.media.MediaState
-import com.xenonware.launcher.ui.components.MusicVisualizer
-import com.xenonware.launcher.ui.components.VisualizerConfig
-import com.xenonware.launcher.ui.components.rememberVisualizerPalette
+import com.xenonware.launcher.ui.res.MusicVisualizer
+import com.xenonware.launcher.ui.res.VisualizerConfig
+import com.xenonware.launcher.ui.res.rememberVisualizerPalette
 import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
 import com.xenonware.launcher.ui.theme.mainFontFamily
 import com.xenonware.launcher.util.ColorUtils
@@ -154,6 +158,9 @@ import com.xenonware.launcher.util.blockHorizontalPagerSwipe
 import com.xenonware.launcher.util.isSmallScreenDevice
 import com.xenonware.launcher.util.openMediaApp
 import com.xenonware.launcher.util.shouldDisableLandscapeLayout
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -177,7 +184,11 @@ fun MediaPage(
     /** Whether this page is the current pager page; pauses the visualizer's frame loop otherwise. */
     isVisible: Boolean = true,
 ) {
+    val hazeState = rememberHazeState()
     val context = LocalContext.current
+    LaunchedEffect(Unit) {
+        VisualizerConfig.load(context)
+    }
     val pm = remember { context.packageManager }
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
@@ -279,6 +290,7 @@ fun MediaPage(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .hazeSource(hazeState)
                 .graphicsLayer {
                     val normalized = ((progress() - 0.75f) * 4f).coerceIn(0f, 1f)
                     val eased = EaseInOut.transform(normalized)
@@ -431,36 +443,43 @@ fun MediaPage(
                             }
                         } else {
                             // App Name
-                            Surface(
-                                onClick = openMediaApp,
-                                color = contentColor.copy(alpha = 0.1f),
-                                shape = RoundedCornerShape(ExtraLargeCornerRadius),
-                                modifier = Modifier.height(ExtraBigSpacing)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = MediumPadding, vertical = MediumPadding),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(MediumSpacer)
+                                Surface(
+                                    onClick = openMediaApp,
+                                    color = contentColor.copy(alpha = 0.1f),
+                                    shape = RoundedCornerShape(ExtraLargeCornerRadius),
+                                    modifier = Modifier.height(ExtraBigSpacing)
                                 ) {
-                                    if (appIcon != null) {
-                                        AsyncImage(
-                                            model = appIcon,
-                                            contentDescription = null,
-                                            modifier = Modifier
-                                                .size(ExtraLargerSpacing)
-                                                .clip(RoundedCornerShape(LargeMediumCornerRadius))
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = MediumPadding, vertical = MediumPadding),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(MediumSpacer)
+                                    ) {
+                                        if (appIcon != null) {
+                                            AsyncImage(
+                                                model = appIcon,
+                                                contentDescription = null,
+                                                modifier = Modifier
+                                                    .size(ExtraLargerSpacing)
+                                                    .clip(RoundedCornerShape(LargeMediumCornerRadius))
+                                            )
+                                        }
+                                        Text(
+                                            text = appName,
+                                            color = contentColor,
+                                            style = MaterialTheme.typography.labelLarge.copy(fontFamily = mainFontFamily),
+                                            fontWeight = FontWeight.Medium,
+                                            modifier = Modifier.padding(
+                                                start = if (appName == appNameLabel) SmallPadding else NoPadding, end = SmallPadding
+                                            )
                                         )
                                     }
-                                    Text(
-                                        text = appName,
-                                        color = contentColor,
-                                        style = MaterialTheme.typography.labelLarge.copy(fontFamily = mainFontFamily),
-                                        fontWeight = FontWeight.Medium,
-                                        modifier = Modifier.padding(
-                                            start = if (appName == appNameLabel) SmallPadding else NoPadding, end = SmallPadding
-                                        )
-                                    )
                                 }
+                                VisualizerSettingsDropdown(contentColor, hazeState)
                             }
 
                             Spacer(Modifier.weight(1f))
@@ -681,7 +700,8 @@ fun MediaPage(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth(),
-                                horizontalArrangement = Arrangement.Start
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Surface(
                                     onClick = openMediaApp,
@@ -714,6 +734,7 @@ fun MediaPage(
                                         )
                                     }
                                 }
+                                VisualizerSettingsDropdown(contentColor, hazeState)
                             }
                         }
 
@@ -737,36 +758,43 @@ fun MediaPage(
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
                                     // Media Source / App Info (Aligned to TOP of Album Cover)
-                                    Surface(
-                                        onClick = openMediaApp,
-                                        color = contentColor.copy(alpha = 0.1f),
-                                        shape = RoundedCornerShape(ExtraLargeCornerRadius),
-                                        modifier = Modifier.height(BiggestBiggerSpacing)
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Row(
-                                            modifier = Modifier.padding(horizontal = MediumPadding, vertical = MediumSmallPadding),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(MediumSmallSpacer)
+                                        Surface(
+                                            onClick = openMediaApp,
+                                            color = contentColor.copy(alpha = 0.1f),
+                                            shape = RoundedCornerShape(ExtraLargeCornerRadius),
+                                            modifier = Modifier.height(BiggestBiggerSpacing)
                                         ) {
-                                            if (appIcon != null) {
-                                                AsyncImage(
-                                                    model = appIcon,
-                                                    contentDescription = null,
-                                                    modifier = Modifier
-                                                        .size(ExtraLargeSpacing)
-                                                        .clip(RoundedCornerShape(MediumLargeCornerRadius))
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = MediumPadding, vertical = MediumSmallPadding),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(MediumSmallSpacer)
+                                            ) {
+                                                if (appIcon != null) {
+                                                    AsyncImage(
+                                                        model = appIcon,
+                                                        contentDescription = null,
+                                                        modifier = Modifier
+                                                            .size(ExtraLargeSpacing)
+                                                            .clip(RoundedCornerShape(MediumLargeCornerRadius))
+                                                    )
+                                                }
+                                                Text(
+                                                    text = appName,
+                                                    color = contentColor,
+                                                    style = MaterialTheme.typography.labelMedium.copy(fontFamily = mainFontFamily),
+                                                    fontWeight = FontWeight.Medium,
+                                                    modifier = Modifier.padding(
+                                                        start = if (appName == appNameLabel) SmallPadding else NoPadding, end = SmallPadding
+                                                    )
                                                 )
                                             }
-                                            Text(
-                                                text = appName,
-                                                color = contentColor,
-                                                style = MaterialTheme.typography.labelMedium.copy(fontFamily = mainFontFamily),
-                                                fontWeight = FontWeight.Medium,
-                                                modifier = Modifier.padding(
-                                                    start = if (appName == appNameLabel) SmallPadding else NoPadding, end = SmallPadding
-                                                )
-                                            )
                                         }
+                                        VisualizerSettingsDropdown(contentColor, hazeState)
                                     }
 
                                     // Track Title & Artist (Centered between Media Source and bottom of Album Cover)
@@ -1384,6 +1412,86 @@ private fun rememberMediaTheme(mediaState: MediaState): MediaTheme {
                 surface = background,
                 surfaceVariant = background
             )
+        )
+    }
+}
+
+@Composable
+private fun VisualizerSettingsDropdown(contentColor: Color, hazeState: HazeState) {
+    var menuExpanded by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
+    Box(modifier = Modifier.wrapContentSize(Alignment.TopStart)) {
+        IconButton(
+            onClick = {
+                menuExpanded = true
+            },
+            modifier = Modifier.size(ExtraBigSpacing)
+        ) {
+            ShadowedIcon(
+                imageVector = Icons.Rounded.MoreVert,
+                contentDescription = "Visualizer Settings",
+                tint = contentColor,
+                modifier = Modifier.size(LargeMediumIconSize)
+            )
+        }
+
+        val menuItems = remember(VisualizerConfig.visualizerStyle, VisualizerConfig.reactivity, VisualizerConfig.geometricStyle, VisualizerConfig.waves, VisualizerConfig.colorProfile) {
+            listOf(
+                MenuItem(
+                    text = "Style: ${VisualizerConfig.getStyleName(VisualizerConfig.visualizerStyle)}",
+                    onClick = {
+                        VisualizerConfig.nextStyle()
+                        VisualizerConfig.save(context)
+                    },
+                    dismissOnClick = false
+                ),
+                MenuItem(
+                    text = "Reactivity: ${VisualizerConfig.getReactivityName(VisualizerConfig.reactivity)}",
+                    onClick = {
+                        VisualizerConfig.nextReactivity()
+                        VisualizerConfig.save(context)
+                    },
+                    dismissOnClick = false
+                ),
+                MenuItem(
+                    text = "Geometry: ${VisualizerConfig.getGeometryName(VisualizerConfig.geometricStyle)}",
+                    onClick = {
+                        VisualizerConfig.nextGeometry()
+                        VisualizerConfig.save(context)
+                    },
+                    dismissOnClick = false
+                ),
+                MenuItem(
+                    text = "Waves: ${if (VisualizerConfig.waves == 1) "On" else "Off"}",
+                    onClick = {
+                        VisualizerConfig.waves = if (VisualizerConfig.waves == 1) 0 else 1
+                        VisualizerConfig.save(context)
+                    },
+                    dismissOnClick = false
+                ),
+                MenuItem(
+                    text = "Color Profile: ${VisualizerConfig.getColorProfileName(VisualizerConfig.colorProfile)}",
+                    onClick = {
+                        VisualizerConfig.nextColorProfile()
+                        VisualizerConfig.save(context)
+                    },
+                    dismissOnClick = false
+                )
+            )
+        }
+
+        XenonDropDown(
+            expanded = menuExpanded,
+            onDismissRequest = { menuExpanded = false },
+            items = menuItems,
+            hazeState = hazeState,
+            offsetY = 48.dp,
+            offsetX = 48.dp,
+            widthMin = 210.dp,
+            widthMax = 210.dp,
+            alignment = Alignment.TopEnd,
+            mainContextFont = mainFontFamily
         )
     }
 }
