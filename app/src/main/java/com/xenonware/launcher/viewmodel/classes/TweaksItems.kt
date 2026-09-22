@@ -480,7 +480,8 @@ fun TweaksItems(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = LargestPadding, vertical = LargeMediumPadding),
+                            .padding(horizontal = LargestPadding)
+                            .padding(bottom = LargeMediumPadding),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Slider(

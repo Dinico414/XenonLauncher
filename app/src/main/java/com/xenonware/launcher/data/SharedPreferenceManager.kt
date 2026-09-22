@@ -235,7 +235,14 @@ class SharedPreferenceManager(context: Context) {
         set(value) = prefs.edit { putBoolean("notification_delete_single_press", value) }
 
     var notificationImageSizeFactor: Float
-        get() = prefs.getFloat("notification_image_size_factor", 1f).coerceIn(0.25f, 1f)
+        get() {
+            val value = prefs.all["notification_image_size_factor"]
+            return when (value) {
+                is Float -> value
+                is Int -> value.toFloat()
+                else -> 1f
+            }.coerceIn(0.25f, 1f)
+        }
         set(value) = prefs.edit { putFloat("notification_image_size_factor", value.coerceIn(0.25f, 1f)) }
 
     var notificationIndicatorType: Int

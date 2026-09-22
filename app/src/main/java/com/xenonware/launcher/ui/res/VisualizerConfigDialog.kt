@@ -64,67 +64,77 @@ fun VisualizerConfigDialog(
         contentManagesScrolling = true
     ) {
         val standaloneShape = RoundedCornerShape(ExtraLargerCornerRadius)
-        Column(
-            modifier = Modifier.fillMaxWidth(),
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth().heightIn(max = 450.dp),
             verticalArrangement = Arrangement.spacedBy(MediumSpacer)
         ) {
-            SettingsTile(
-                title = "Visualizer Style",
-                subtitle = VisualizerConfig.getStyleName(VisualizerConfig.visualizerStyle),
-                onClick = { pickingStyle = true },
-                shape = standaloneShape,
-                backgroundColor = MaterialTheme.colorScheme.surfaceBright,
-                mainContextFont = mainFont,
-                subContextFont = subFont
-            )
+            item {
+                SettingsTile(
+                    title = "Visualizer Style",
+                    subtitle = VisualizerConfig.getStyleName(VisualizerConfig.visualizerStyle),
+                    onClick = { pickingStyle = true },
+                    shape = standaloneShape,
+                    backgroundColor = MaterialTheme.colorScheme.surfaceBright,
+                    mainContextFont = mainFont,
+                    subContextFont = subFont
+                )
+            }
 
-            SettingsTile(
-                title = "Visualizer Reactivity",
-                subtitle = VisualizerConfig.getReactivityName(VisualizerConfig.reactivity),
-                onClick = { pickingReactivity = true },
-                shape = standaloneShape,
-                backgroundColor = MaterialTheme.colorScheme.surfaceBright,
-                mainContextFont = mainFont,
-                subContextFont = subFont
-            )
+            item {
+                SettingsTile(
+                    title = "Visualizer Reactivity",
+                    subtitle = VisualizerConfig.getReactivityName(VisualizerConfig.reactivity),
+                    onClick = { pickingReactivity = true },
+                    shape = standaloneShape,
+                    backgroundColor = MaterialTheme.colorScheme.surfaceBright,
+                    mainContextFont = mainFont,
+                    subContextFont = subFont
+                )
+            }
 
-            SettingsTile(
-                title = "Geometric Style",
-                subtitle = VisualizerConfig.getGeometryName(VisualizerConfig.geometricStyle),
-                onClick = { pickingGeometry = true },
-                shape = standaloneShape,
-                backgroundColor = MaterialTheme.colorScheme.surfaceBright,
-                mainContextFont = mainFont,
-                subContextFont = subFont
-            )
+            item {
+                SettingsTile(
+                    title = "Geometric Style",
+                    subtitle = VisualizerConfig.getGeometryName(VisualizerConfig.geometricStyle),
+                    onClick = { pickingGeometry = true },
+                    shape = standaloneShape,
+                    backgroundColor = MaterialTheme.colorScheme.surfaceBright,
+                    mainContextFont = mainFont,
+                    subContextFont = subFont
+                )
+            }
 
-            SettingsSwitchTile(
-                title = "Visualizer Waves",
-                subtitle = if (VisualizerConfig.waves == 1) "Enabled" else "Disabled",
-                checked = VisualizerConfig.waves == 1,
-                onCheckedChange = { 
-                    VisualizerConfig.waves = if (it) 1 else 0
-                    VisualizerConfig.save(context)
-                },
-                onClick = {
-                    VisualizerConfig.waves = if (VisualizerConfig.waves == 1) 0 else 1
-                    VisualizerConfig.save(context)
-                },
-                shape = standaloneShape,
-                backgroundColor = MaterialTheme.colorScheme.surfaceBright,
-                mainContextFont = mainFont,
-                subContextFont = subFont
-            )
+            item {
+                SettingsSwitchTile(
+                    title = "Visualizer Waves",
+                    subtitle = if (VisualizerConfig.waves == 1) "Enabled" else "Disabled",
+                    checked = VisualizerConfig.waves == 1,
+                    onCheckedChange = { 
+                        VisualizerConfig.waves = if (it) 1 else 0
+                        VisualizerConfig.save(context)
+                    },
+                    onClick = {
+                        VisualizerConfig.waves = if (VisualizerConfig.waves == 1) 0 else 1
+                        VisualizerConfig.save(context)
+                    },
+                    shape = standaloneShape,
+                    backgroundColor = MaterialTheme.colorScheme.surfaceBright,
+                    mainContextFont = mainFont,
+                    subContextFont = subFont
+                )
+            }
 
-            SettingsTile(
-                title = "Color Profile",
-                subtitle = VisualizerConfig.getColorProfileName(VisualizerConfig.colorProfile),
-                onClick = { pickingColorProfile = true },
-                shape = standaloneShape,
-                backgroundColor = MaterialTheme.colorScheme.surfaceBright,
-                mainContextFont = mainFont,
-                subContextFont = subFont
-            )
+            item {
+                SettingsTile(
+                    title = "Color Profile",
+                    subtitle = VisualizerConfig.getColorProfileName(VisualizerConfig.colorProfile),
+                    onClick = { pickingColorProfile = true },
+                    shape = standaloneShape,
+                    backgroundColor = MaterialTheme.colorScheme.surfaceBright,
+                    mainContextFont = mainFont,
+                    subContextFont = subFont
+                )
+            }
         }
     }
 
@@ -207,42 +217,46 @@ private fun VisualizerOptionPickerDialog(
         onConfirmButtonClick = onDismiss,
         contentManagesScrolling = true
     ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp),
-            verticalArrangement = Arrangement.spacedBy(MediumLargeSpacing)
-        ) {
-            items(options) { option ->
-                val isSelected = option == selectedOption
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(LargestCornerRadius))
-                        .background(
-                            if (isSelected) MaterialTheme.colorScheme.primaryContainer
-                            else MaterialTheme.colorScheme.surfaceBright
+        Column(modifier = Modifier.fillMaxWidth()) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 380.dp),
+                verticalArrangement = Arrangement.spacedBy(MediumLargeSpacing)
+            ) {
+                items(options) { option ->
+                    val isSelected = option == selectedOption
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(LargestCornerRadius))
+                            .background(
+                                if (isSelected) MaterialTheme.colorScheme.primaryContainer
+                                else MaterialTheme.colorScheme.surfaceBright
+                            )
+                            .clickable { 
+                                onSelect(option)
+                                onDismiss()
+                            }
+                            .padding(12.dp)
+                    ) {
+                        RadioButton(
+                            selected = isSelected,
+                            onClick = { 
+                                onSelect(option)
+                                onDismiss()
+                            }
                         )
-                        .clickable { 
-                            onSelect(option)
-                            onDismiss()
-                        }
-                        .padding(12.dp)
-                ) {
-                    RadioButton(
-                        selected = isSelected,
-                        onClick = { 
-                            onSelect(option)
-                            onDismiss()
-                        }
-                    )
-                    Spacer(Modifier.size(MediumSpacer))
-                    Text(
-                        text = getName(option),
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
-                        else MaterialTheme.colorScheme.onSurface
-                    )
+                        Spacer(Modifier.size(MediumSpacer))
+                        Text(
+                            text = getName(option),
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
+                            else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
             }
         }
