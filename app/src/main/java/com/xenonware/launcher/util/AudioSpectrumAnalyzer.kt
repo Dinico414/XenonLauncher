@@ -1,14 +1,7 @@
-package com.xenonware.launcher.media
+package com.xenonware.launcher.util
 
-import android.Manifest
-import android.content.pm.PackageManager
 import android.media.audiofx.Visualizer
 import android.os.SystemClock
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
-import androidx.core.content.ContextCompat
 import kotlin.math.floor
 import kotlin.math.hypot
 import kotlin.math.ln
@@ -22,7 +15,7 @@ import kotlin.math.sqrt
  *
  * - [bands]: [bandCount] logarithmic bands, 0..1, low → high, auto-gained per band.
  *   Bands narrower than one FFT bin (the lowest ones) are interpolated between bins, so
- *   neighbouring bass bands still differ instead of repeating the same value.
+ *   neighboring bass bands still differ instead of repeating the same value.
  * - [bass] / [mid] / [high]: group values 0..1.
  * - [volume]: overall loudness (RMS of the waveform), 0..1, auto-gained.
  * - [waveform]: 256 samples of the current audio waveform, -1..1 (for oscilloscope styles).
@@ -72,9 +65,9 @@ class AudioSpectrumAnalyzer(val bandCount: Int = 48) {
         var v: Visualizer? = null
         return try {
             v = Visualizer(0)
-            v.setEnabled(false)
-            v.setCaptureSize(Visualizer.getCaptureSizeRange()[1])
-            v.setScalingMode(Visualizer.SCALING_MODE_NORMALIZED)
+            v.enabled = false
+            v.captureSize = Visualizer.getCaptureSizeRange()[1]
+            v.scalingMode = Visualizer.SCALING_MODE_NORMALIZED
             computeBins(v.captureSize, v.samplingRate / 1000f) // samplingRate is in mHz
             v.setDataCaptureListener(
                 object : Visualizer.OnDataCaptureListener {
@@ -90,7 +83,7 @@ class AudioSpectrumAnalyzer(val bandCount: Int = 48) {
                 true,
                 true
             )
-            v.setEnabled(true)
+            v.enabled = true
             visualizer = v
             lastStartFailureAt = 0L
             true
@@ -213,24 +206,4 @@ class AudioSpectrumAnalyzer(val bandCount: Int = 48) {
         const val RETRY_BACKOFF_MS = 10_000L
         val LN_MAX_MAG = ln(129f)
     }
-}
-
-/**
- * Standalone helper for use outside the launcher. NOTE: only stops when leaving the composition,
- * not on Activity.onStop — in the launcher, LauncherViewModel.audioAnalyzer is used instead.
- */
-@Composable
-fun rememberAudioSpectrumAnalyzer(active: Boolean): AudioSpectrumAnalyzer? {
-    val context = LocalContext.current
-    val granted = ContextCompat.checkSelfPermission(
-        context, Manifest.permission.RECORD_AUDIO
-    ) == PackageManager.PERMISSION_GRANTED
-    if (!granted) return null
-
-    val analyzer = remember { AudioSpectrumAnalyzer() }
-    DisposableEffect(analyzer, active) {
-        if (active) analyzer.start()
-        onDispose { analyzer.stop() }
-    }
-    return analyzer
 }

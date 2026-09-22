@@ -51,7 +51,6 @@ import com.xenonware.launcher.SplitScreenPickerActivity
 import com.xenonware.launcher.accessibility.XenonAccessibilityService
 import com.xenonware.launcher.data.LauncherCache
 import com.xenonware.launcher.data.SharedPreferenceManager
-import com.xenonware.launcher.media.AudioSpectrumAnalyzer
 import com.xenonware.launcher.media.MediaControllerManager
 import com.xenonware.launcher.media.MediaState
 import com.xenonware.launcher.model.AppInfo
@@ -66,6 +65,7 @@ import com.xenonware.launcher.model.WidgetPickerItemData
 import com.xenonware.launcher.notification.NotificationManager
 import com.xenonware.launcher.notification.XenonNotificationService
 import com.xenonware.launcher.ui.res.IconShape
+import com.xenonware.launcher.util.AudioSpectrumAnalyzer
 import com.xenonware.launcher.util.ColorUtils
 import com.xenonware.launcher.util.generateCustomIcon
 import com.xenonware.launcher.util.getIconPackMap
@@ -207,10 +207,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     val audioAnalyzer = AudioSpectrumAnalyzer()
 
     private val _audioPermissionGranted = MutableStateFlow(hasAudioPermission())
-    val audioPermissionGranted: StateFlow<Boolean> = _audioPermissionGranted
 
     private val _isMediaPageVisible = MutableStateFlow(false)
-    val isMediaPageVisible: StateFlow<Boolean> = _isMediaPageVisible
 
     /** Language + dark mode the app labels/icons were last built for. */
     @Volatile
@@ -1140,22 +1138,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         } else if (audioAnalyzer.isRunning) {
             audioAnalyzer.stop()
         }
-    }
-
-    /** Call from the pager whenever the media page becomes (in)visible. */
-    fun setMediaPageVisible(visible: Boolean) {
-        if (_isMediaPageVisible.value == visible) return
-        _isMediaPageVisible.value = visible
-        syncAudioAnalyzer()
-    }
-
-    /**
-     * Call from the RECORD_AUDIO permission launcher's result callback. The system dialog
-     * only pauses MainActivity (no onStop/onStart), so setForeground won't notice the grant.
-     */
-    fun onAudioPermissionResult() {
-        _audioPermissionGranted.value = hasAudioPermission()
-        syncAudioAnalyzer()
     }
 
     fun toggleFlashlight() {
@@ -2469,7 +2451,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             }
         }
         if (syncedAccounts.isNotEmpty()) {
-            // A few follow-up reloads while the sync lands. They can't retrigger the enable
+            // A few follow-up reloads while the sync lands. They can't retrigger to enable
             // (syncAttemptedCalendars) and loadCalendarEvents() is a no-op in background.
             viewModelScope.launch {
                 listOf(1500L, 3000L, 6000L, 10000L).forEach { delayMs ->

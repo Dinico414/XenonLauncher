@@ -3,7 +3,6 @@ package com.xenonware.launcher.ui.res
 import android.app.WallpaperColors
 import android.content.Context
 import android.graphics.Bitmap
-import android.os.Build
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -47,8 +46,7 @@ import androidx.core.graphics.drawable.toBitmap
 import coil.imageLoader
 import coil.request.ImageRequest
 import coil.request.SuccessResult
-import com.xenonware.launcher.media.AudioSpectrumAnalyzer
-import com.xenonware.launcher.util.ColorUtils
+import com.xenonware.launcher.util.AudioSpectrumAnalyzer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.PI
@@ -115,7 +113,7 @@ object GeometricStyle {
     /** Grid of rounded squares that waves, zooms on the beat and lights up. */
     const val GRID = 2
 
-    /** Finer grid of small diamonds (rhombi) in diagonal, staggered rows. Same wave/zoom/light-up. */
+    /** Finer grid of small diamonds (rhomboid) in diagonal, staggered rows. Same wave/zoom/light-up. */
     const val DIAMONDS = 3
 }
 
@@ -297,21 +295,17 @@ private suspend fun extractAlbumPalette(context: Context, albumArt: Bitmap?, alb
 
     return withContext(Dispatchers.Default) {
         try {
-            val soft = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-                source.config == Bitmap.Config.HARDWARE
-            ) {
+            val soft = if (source.config == Bitmap.Config.HARDWARE) {
                 source.copy(Bitmap.Config.ARGB_8888, false)
             } else source
             val small = if (soft.width > 112 || soft.height > 112) {
                 Bitmap.createScaledBitmap(soft, 112, 112, true)
             } else soft
 
-            val seeds = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            val seeds = run {
                 val wc = WallpaperColors.fromBitmap(small)
                 listOfNotNull(wc.primaryColor, wc.secondaryColor, wc.tertiaryColor)
                     .map { Color(it.toArgb()) }
-            } else {
-                listOf(ColorUtils.getDominantColor(small))
             }.filter { it != Color.Unspecified }
             if (seeds.isEmpty()) return@withContext null
 
@@ -353,7 +347,6 @@ private fun shiftHue(c: Color, degrees: Float): Color {
  *  3. Geometric canvas (crisp): [geometricStyle].
  *
  * With everything off nothing is drawn and the frame loop doesn't run.
- * Blur needs API 31+; below that the glow is soft (gradients) but not blurred.
  */
 @Composable
 fun MusicVisualizer(
@@ -821,7 +814,7 @@ private const val DIAMOND_MAX_FILL = 0.3f
 
 /**
  * Fine diamond (rhombus) grid in diagonal rows: every row is shifted by half a cell and rows
- * are half a cell apart, so the diamonds line up along both diagonals. Same behaviour as
+ * are half a cell apart, so the diamonds line up along both diagonals. Same behavior as
  * [drawGrid]: the wave runs through it, it zooms on the beat, and diamonds above the visualizer
  * light up and grow. There are thousands of diamonds, so they're collected into a few paths
  * per alpha level instead of being drawn one by one.

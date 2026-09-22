@@ -3,7 +3,6 @@ package com.xenonware.launcher.ui.pages
 import android.app.WallpaperColors
 import android.content.res.Configuration
 import android.graphics.Bitmap
-import android.os.Build
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.EaseInOut
 import androidx.compose.animation.core.RepeatMode
@@ -144,7 +143,6 @@ import com.xenon.mylibrary.values.SmallPadding
 import com.xenon.mylibrary.values.SmallSpacing
 import com.xenon.mylibrary.values.SmallerSpacer
 import com.xenonware.launcher.R
-import com.xenonware.launcher.media.AudioSpectrumAnalyzer
 import com.xenonware.launcher.media.MediaAction
 import com.xenonware.launcher.media.MediaControllerManager
 import com.xenonware.launcher.media.MediaState
@@ -153,6 +151,7 @@ import com.xenonware.launcher.ui.res.VisualizerConfig
 import com.xenonware.launcher.ui.res.rememberVisualizerPalette
 import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
 import com.xenonware.launcher.ui.theme.mainFontFamily
+import com.xenonware.launcher.util.AudioSpectrumAnalyzer
 import com.xenonware.launcher.util.ColorUtils
 import com.xenonware.launcher.util.blockHorizontalPagerSwipe
 import com.xenonware.launcher.util.isSmallScreenDevice
@@ -1315,17 +1314,15 @@ private fun rememberMusicNoteAnimation(isPlaying: Boolean): MusicNoteAnimation {
  * (WallpaperColors' primary color), with the dominant color as fallback.
  */
 private fun albumSeedColor(bitmap: Bitmap): Color? {
-    val soft = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-        bitmap.config == Bitmap.Config.HARDWARE
-    ) bitmap.copy(Bitmap.Config.ARGB_8888, false) else bitmap
+    val soft = if (bitmap.config == Bitmap.Config.HARDWARE) {
+        bitmap.copy(Bitmap.Config.ARGB_8888, false)
+    } else bitmap
     val small = if (soft.width > 112 || soft.height > 112) {
         Bitmap.createScaledBitmap(soft, 112, 112, true)
     } else soft
 
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-        runCatching { WallpaperColors.fromBitmap(small).primaryColor.toArgb() }
-            .getOrNull()?.let { return Color(it) }
-    }
+    runCatching { WallpaperColors.fromBitmap(small).primaryColor.toArgb() }
+        .getOrNull()?.let { return Color(it) }
     return ColorUtils.getDominantColor(small).takeIf { it != Color.Unspecified }
 }
 
