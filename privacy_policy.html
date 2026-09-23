@@ -119,7 +119,7 @@
 <div class="container">
     <div class="card">
         <h1>Privacy Policy</h1>
-        <p><strong>Last Updated: August 31, 2026</strong></p>
+        <p><strong>Last Updated: September 23, 2026</strong></p>
         <p>This privacy policy applies to the <strong>Xenon Launcher</strong> application for Android devices. We believe in absolute transparency and value your privacy above everything else.</p>
 
         <div class="highlight-box">
@@ -172,6 +172,10 @@
                 <strong>Purpose:</strong> Enables optional calendar/agenda widgets to fetch and show upcoming schedule events directly on your home screen.
             </li>
             <li class="permission-item">
+                <span class="permission-name">android.permission.RECORD_AUDIO / android.permission.MODIFY_AUDIO_SETTINGS</span>
+                <strong>Purpose:</strong> Required by the Android OS for the real-time audio spectrum analyzer and music visualizer on the media player page and dock. Although classified under audio recording permissions by Android system security, <strong>no microphone voice audio is recorded, saved to files, or transmitted</strong>. Audio frequency data is analyzed strictly in temporary memory in real time solely to render visualizer wave/bar graphics.
+            </li>
+            <li class="permission-item">
                 <span class="permission-name">android.permission.EXPAND_STATUS_BAR</span>
                 <strong>Purpose:</strong> Used to trigger expanding the status bar notifications tray programmatically when a swipe-down gesture is performed on the home screen.
             </li>
@@ -185,21 +189,29 @@
             </li>
             <li class="permission-item">
                 <span class="permission-name">android.permission.INTERNET</span>
-                <strong>Purpose:</strong> Included for standard network capabilities (e.g., if you choose to fetch weather updates from public data feeds). No app usage telemetry, device statistics, or layout data is ever sent across the network.
+                <strong>Purpose:</strong> Included for standard network capabilities such as fetching weather updates from public data feeds and optional user-initiated Google Authentication for Cloud Backup & Restore. No app usage telemetry, device statistics, or layout tracking data is ever sent across the network.
             </li>
         </ul>
 
-        <h2>2. Data Security &amp; Storage</h2>
-        <p>Because all data stays local to the sandbox allocated to the application on your device, your data's security relies entirely on the built-in security features of the Android operating system. Xenon Launcher does not employ any remote database, third-party analytics SDKs (such as Firebase Analytics, Flurry, or Mixpanel), or advertisement trackers.</p>
+        <h2>2. Optional Cloud Backup &amp; Authentication</h2>
+        <p>Xenon Launcher provides an <strong>optional</strong> Cloud Backup &amp; Restore feature:</p>
+        <ul>
+            <li>If you choose to sign in with your Google account via Firebase Authentication, your identity is verified using standard Google ID tokens.</li>
+            <li>Cloud Backup strictly stores your user-configured launcher layout, preferences, and icon settings under your account so you can restore them on other devices.</li>
+            <li>Account sign-in is entirely optional. If you do not sign in, no data leaves your local device.</li>
+        </ul>
 
-        <h2>3. Changes to This Privacy Policy</h2>
-        <p>We may update our Privacy Policy from time to time. Since no user data is collected or synchronized remotely, any updates to this policy will simply be posted within the application package or repository. You are advised to review this page periodically for any changes.</p>
+        <h2>3. Data Security &amp; Storage</h2>
+        <p>Because all primary launcher data stays local to the sandbox allocated to the application on your device, your data's security relies on the built-in security features of the Android operating system. Xenon Launcher does not employ any third-party analytics SDKs (such as Firebase Analytics, Flurry, or Mixpanel) or advertisement trackers.</p>
 
-        <h2>4. Contact Us</h2>
+        <h2>4. Changes to This Privacy Policy</h2>
+        <p>We may update our Privacy Policy from time to time as new features are added. Any updates to this policy will be posted within the application repository and official release documentation. You are advised to review this page periodically for any changes.</p>
+
+        <h2>5. Contact Us</h2>
         <p>If you have any questions, suggestions, or bug reports regarding this Privacy Policy or the security of the application, please feel free to reach out:</p>
         <ul>
             <li><strong>Developer Name:</strong> Lead: Nico (Dinico414) / Company: Xenonware</li>
-            <li><strong>Contact Email:</strong> dinicokustom@gmail.com</li>
+            <li><strong>Contact Email:</strong> <a href="mailto:dinicokustom@gmail.com">dinicokustom@gmail.com</a></li>
         </ul>
     </div>
     <div class="footer">

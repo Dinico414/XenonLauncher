@@ -1,6 +1,6 @@
 # Privacy Policy
 
-**Last Updated:** August 31, 2026
+**Last Updated:** September 23, 2026
 
 This privacy policy applies to the **Xenon Launcher** application for Android devices. We believe in absolute transparency and value your privacy above everything else.
 
@@ -43,29 +43,42 @@ To function effectively as a home screen replacement, Xenon Launcher requires ce
 * **`android.permission.READ_CALENDAR` / `android.permission.WRITE_CALENDAR`**  
   *Purpose:* Enables optional calendar/agenda widgets to fetch and show upcoming schedule events directly on your home screen.
 
-### ⚙️ Utilities
+### 🎵 Audio & Visualizer
+* **`android.permission.RECORD_AUDIO` / `android.permission.MODIFY_AUDIO_SETTINGS`**  
+  *Purpose:* Required by the Android OS for the real-time audio spectrum analyzer and music visualizer on the media player page and dock. Although classified under audio recording permissions by Android system security, **no microphone voice audio is recorded, saved to files, or transmitted**. Audio frequency data is analyzed strictly in temporary memory in real time solely to render visualizer wave/bar graphics.
+
+### ⚙️ Utilities & Network
 * **`android.permission.POST_NOTIFICATIONS`**  
   *Purpose:* Allows the launcher to issue system notifications when critical or user-requested operations are running.
 * **`android.permission.VIBRATE`**  
   *Purpose:* Provides haptic/vibrational feedback when long-pressing, rearranging icons, or invoking gestures.
 * **`android.permission.INTERNET`**  
-  *Purpose:* Included for standard network capabilities (e.g., if you choose to fetch weather updates from public data feeds). No app usage telemetry, device statistics, or layout data is ever sent across the network.
+  *Purpose:* Included for standard network capabilities such as fetching weather updates from public data feeds and optional user-initiated Google Authentication for Cloud Backup & Restore. No app usage telemetry, device statistics, or layout tracking data is ever sent across the network.
 
 ---
 
-## 2. Data Security & Storage
+## 2. Optional Cloud Backup & Authentication
 
-Because all data stays local to the sandbox allocated to the application on your device, your data's security relies entirely on the built-in security features of the Android operating system. Xenon Launcher does not employ any remote database, third-party analytics SDKs (such as Firebase Analytics, Flurry, or Mixpanel), or advertisement trackers.
-
----
-
-## 3. Changes to This Privacy Policy
-
-We may update our Privacy Policy from time to time. Since no user data is collected or synchronized remotely, any updates to this policy will simply be posted within the application package or repository. You are advised to review this page periodically for any changes.
+Xenon Launcher provides an **optional** Cloud Backup & Restore feature:
+- If you choose to sign in with your Google account via Firebase Authentication, your identity is verified using standard Google ID tokens.
+- Cloud Backup strictly stores your user-configured launcher layout, preferences, and icon settings under your account so you can restore them on other devices.
+- Account sign-in is entirely optional. If you do not sign in, no data leaves your local device.
 
 ---
 
-## 4. Contact Us
+## 3. Data Security & Storage
+
+Because all primary launcher data stays local to the sandbox allocated to the application on your device, your data's security relies on the built-in security features of the Android operating system. Xenon Launcher does not employ any third-party analytics SDKs (such as Firebase Analytics, Flurry, or Mixpanel) or advertisement trackers.
+
+---
+
+## 4. Changes to This Privacy Policy
+
+We may update our Privacy Policy from time to time as new features are added. Any updates to this policy will be posted within the application repository and official release documentation. You are advised to review this page periodically for any changes.
+
+---
+
+## 5. Contact Us
 
 If you have any questions, suggestions, or bug reports regarding this Privacy Policy or the security of the application, please feel free to reach out:
 

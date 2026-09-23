@@ -136,6 +136,8 @@
     <string name="calendar_access_description">Wird verwendet, um deine anstehenden Ereignisse auf dem Startbildschirm anzuzeigen.</string>
     <string name="storage_access">Speicherzugriff</string>
     <string name="storage_access_description">Wird verwendet, um auf Hintergrundbilder und Mediendateien zuzugreifen.</string>
+    <string name="microphone_access">Mikrofon- / Audiozugriff</string>
+    <string name="microphone_access_description">Wird für den Echtzeit-Audiospektrum-Analysator und Musik-Visualisierereffekte verwendet. Es werden keine Audiodaten aufgenommen oder gespeichert.</string>
     <string name="contacts_access">Kontaktezugriff</string>
     <string name="contacts_access_description">Wird verwendet, um Kontakte direkt zu suchen und zu starten.</string>
     <string name="post_notifications">Benachrichtigungen senden</string>

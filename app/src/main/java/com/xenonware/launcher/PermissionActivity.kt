@@ -211,6 +211,20 @@ class PermissionActivity : BasePermissionActivity() {
             }
         ))
 
+        // Microphone / Audio Access (Visualizer)
+        add(PermissionItem(
+            name = getString(R.string.microphone_access),
+            description = getString(R.string.microphone_access_description),
+            isGranted = {
+                val granted = ContextCompat.checkSelfPermission(it, permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+                if (!granted) currentPermissionName.value = getString(R.string.microphone_access)
+                granted
+            },
+            request = {
+                requestPermissions(arrayOf(permission.RECORD_AUDIO), 106)
+            }
+        ))
+
         // Contacts Access
         add(PermissionItem(
             name = getString(R.string.contacts_access),

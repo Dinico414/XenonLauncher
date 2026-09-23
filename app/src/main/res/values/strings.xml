@@ -137,6 +137,8 @@
     <string name="calendar_access_description">Used to display your upcoming events on the home screen.</string>
     <string name="storage_access">Storage Access</string>
     <string name="storage_access_description">Used to access wallpapers and media files.</string>
+    <string name="microphone_access">Microphone / Audio Access</string>
+    <string name="microphone_access_description">Used for real-time audio spectrum analyzer and music visualizer effects. No audio is recorded or stored.</string>
     <string name="contacts_access">Contacts Access</string>
     <string name="contacts_access_description">Used to search and launch contacts directly.</string>
     <string name="post_notifications">Post Notifications</string>
