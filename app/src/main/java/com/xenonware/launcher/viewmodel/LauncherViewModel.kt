@@ -813,7 +813,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         } else {
             unregisterForegroundReceivers()
             // No FFT capture while the launcher is invisible
-            audioAnalyzer.stop()
+            viewModelScope.launch(Dispatchers.IO) {
+                audioAnalyzer.stop()
+            }
             // Stop whatever is still queued; it would only update an invisible UI
             calendarJob?.cancel()
             searchJob?.cancel()
@@ -1133,10 +1135,12 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 _isMediaPageVisible.value &&
                 _audioPermissionGranted.value &&
                 mediaState.isPlaying
-        if (shouldRun) {
-            audioAnalyzer.start()
-        } else if (audioAnalyzer.isRunning) {
-            audioAnalyzer.stop()
+        viewModelScope.launch(Dispatchers.IO) {
+            if (shouldRun) {
+                audioAnalyzer.start()
+            } else if (audioAnalyzer.isRunning) {
+                audioAnalyzer.stop()
+            }
         }
     }
 

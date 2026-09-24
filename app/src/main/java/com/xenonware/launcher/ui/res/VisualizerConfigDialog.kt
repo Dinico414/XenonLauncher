@@ -23,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -80,11 +81,13 @@ fun VisualizerConfigDialog(
                 )
             }
 
+            val isOscilloscope = VisualizerConfig.visualizerStyle == VisualizerStyle.OSCILLOSCOPE
             item {
                 SettingsTile(
+                    modifier = if (isOscilloscope) Modifier.alpha(0.38f) else Modifier,
                     title = "Visualizer Reactivity",
-                    subtitle = VisualizerConfig.getReactivityName(VisualizerConfig.reactivity),
-                    onClick = { pickingReactivity = true },
+                    subtitle = if (isOscilloscope) "Ignored by Oscilloscope" else VisualizerConfig.getReactivityName(VisualizerConfig.reactivity),
+                    onClick = if (isOscilloscope) null else { { pickingReactivity = true } },
                     shape = standaloneShape,
                     backgroundColor = MaterialTheme.colorScheme.surfaceBright,
                     mainContextFont = mainFont,

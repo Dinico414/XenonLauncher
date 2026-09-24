@@ -57,6 +57,7 @@ class AudioSpectrumAnalyzer(val bandCount: Int = 48) {
     fun hasFreshSignal(): Boolean =
         SystemClock.uptimeMillis() - lastSignalAt < SIGNAL_TIMEOUT_MS
 
+    @Synchronized
     fun start(): Boolean {
         if (visualizer != null) return true
         if (lastStartFailureAt != 0L &&
@@ -94,6 +95,7 @@ class AudioSpectrumAnalyzer(val bandCount: Int = 48) {
         }
     }
 
+    @Synchronized
     fun stop() {
         visualizer?.let {
             runCatching { it.setEnabled(false) }

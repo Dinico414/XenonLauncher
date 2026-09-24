@@ -35,7 +35,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.toArgb
@@ -133,7 +133,7 @@ object VisualizerConfig {
     var visualizerStyle by mutableIntStateOf(VisualizerStyle.GLOW)
 
     /** See [VisualizerReactivity]. */
-    var reactivity by mutableIntStateOf(VisualizerReactivity.SPECTRUM)
+    var reactivity by mutableIntStateOf(VisualizerReactivity.MELODY)
 
     /** See [GeometricStyle]. */
     var geometricStyle by mutableIntStateOf(GeometricStyle.GRID)
@@ -362,7 +362,7 @@ fun MusicVisualizer(
     blurRadius: Dp = 40.dp,
     gridSpacing: Dp = 18.dp,
     /** Spacing of the diamond grid ([GeometricStyle.DIAMONDS]); smaller = finer. */
-    diamondSpacing: Dp = 12.dp,
+    diamondSpacing: Dp = 28.dp,
     /** Soft fade-out towards the left edge: alpha ramp + crisp layers dissolving into blur. 0 = off. */
     leftFade: Dp = 0.dp,
     /** How blurry the crisp layers get inside [leftFade]. */
@@ -395,7 +395,7 @@ fun MusicVisualizer(
         while (true) {
             withFrameNanos { now ->
                 val dt = if (lastNanos == 0L) 1f / 60f
-                else ((now - lastNanos) / 1_000_000_000f).coerceIn(0.001f, 0.05f)
+                else ((now - lastNanos) / 1_000_000_000f).coerceIn(0.001f, 0.025f)
                 lastNanos = now
                 engine.step(
                     dt, currentAnalyzer, currentPlaying, currentIntensity,
@@ -411,12 +411,17 @@ fun MusicVisualizer(
         // 1) Glow — heavily blurred. The left fade is applied before the blur, so the edge
         //    dissolves softly instead of being cut.
         if (glowOn) {
-            Canvas(
+            val glowModifier = if (leftFade > 0.dp) {
                 Modifier
                     .matchParentSize()
                     .blur(blurRadius, BlurredEdgeTreatment.Unbounded)
                     .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-            ) {
+            } else {
+                Modifier
+                    .matchParentSize()
+                    .blur(blurRadius, BlurredEdgeTreatment.Unbounded)
+            }
+            Canvas(glowModifier) {
                 drawGlow(engine, colors, bandThickness.toPx(), visualizerStyle, wavesOn)
                 if (leftFade > 0.dp) fadeLeftEdge(leftFade.toPx(), GLOW_FADE)
             }
@@ -754,27 +759,42 @@ private fun DrawScope.drawGrid(engine: GlowEngine, spacingPx: Float, bandPx: Flo
     val amp = spacingPx * (0.2f + 0.9f * engine.mid)
     val phase = engine.gridPhase
     val tilt = 10f * engine.mid
+    val invSpacing25 = 1f / (spacingPx * 2.5f)
+    val flashComponent = engine.flash * 0.3f
+    val maxFieldRise = 1.3f * rise
 
     for (r in 0 until rows) {
         val baseY = h - r * spacingPx
         val heightAbove = h - baseY
         val vFade = 1f - smoothstep(h * 0.3f, h * 0.95f, heightAbove)
         if (vFade <= 0f) continue
+
+        val topMax = bandPx * 0.6f + maxFieldRise
+        val maxLitInRow = ((if (heightAbove <= topMax) 1f else exp(-(heightAbove - topMax) * invSpacing25)) +
+                flashComponent).coerceAtMost(1f)
+        if (vFade * (0.14f + 0.6f * maxLitInRow) < 0.01f) continue
+
+        val rPhase = phase - r * 0.45f
+        val yCosTerm = TWO_PI * (baseY / h * 1.1f) + phase * 0.8f
+        val heightScale = (1f - heightAbove / h).coerceIn(0f, 1f)
+
         for (c in 0 until cols) {
             val baseX = startX + c * spacingPx
-            val field = engine.fieldAt((baseX / w).coerceIn(0f, 1f))
+            val normX = (baseX / w).coerceIn(0f, 1f)
+            val field = engine.fieldAt(normX)
 
-            val wv = sin(TWO_PI * (baseX / w * 1.4f) + phase - r * 0.45f)
-            var x = baseX + amp * 0.35f * cos(TWO_PI * (baseY / h * 1.1f) + phase * 0.8f + c * 0.3f)
-            var y = baseY + amp * wv - field * rise * 0.18f * (1f - heightAbove / h).coerceIn(0f, 1f)
+            val wv = sin(TWO_PI * (normX * 1.4f) + rPhase)
+            var x = baseX + amp * 0.35f * cos(yCosTerm + c * 0.3f)
+            var y = baseY + amp * wv - field * rise * 0.18f * heightScale
 
             // Zoom around the bottom center
             x = pivotX + (x - pivotX) * zoom
             y = h + (y - h) * zoom
 
             val top = bandPx * 0.6f + field * rise
-            val lit = ((if (heightAbove <= top) 1f else exp(-(heightAbove - top) / (spacingPx * 2.5f))) +
-                    engine.flash * 0.3f).coerceAtMost(1f)
+            val dist = (heightAbove - top) * invSpacing25
+            val decay = if (dist <= 0f) 1f else if (dist > 4.5f) 0f else exp(-dist)
+            val lit = (decay + flashComponent).coerceAtMost(1f)
 
             val alpha = vFade * (0.14f + 0.6f * lit)
             if (alpha < 0.01f) continue
@@ -783,7 +803,29 @@ private fun DrawScope.drawGrid(engine: GlowEngine, spacingPx: Float, bandPx: Flo
             val center = Offset(x, y)
             val topLeft = Offset(x - half, y - half)
             val corner = CornerRadius(s * 0.28f)
-            withTransform({ rotate(wv * tilt, pivot = center) }) {
+
+            val rotAngle = wv * tilt
+            if (abs(rotAngle) > 0.01f) {
+                rotate(rotAngle, pivot = center) {
+                    if (lit > 0.3f) {
+                        drawRoundRect(
+                            color = Color.White,
+                            topLeft = topLeft,
+                            size = Size(s, s),
+                            cornerRadius = corner,
+                            alpha = alpha * 0.25f * lit
+                        )
+                    }
+                    drawRoundRect(
+                        color = Color.White,
+                        topLeft = topLeft,
+                        size = Size(s, s),
+                        cornerRadius = corner,
+                        alpha = alpha,
+                        style = Stroke(width = strokePx)
+                    )
+                }
+            } else {
                 if (lit > 0.3f) {
                     drawRoundRect(
                         color = Color.White,
@@ -806,18 +848,11 @@ private fun DrawScope.drawGrid(engine: GlowEngine, spacingPx: Float, bandPx: Flo
     }
 }
 
-/** Alpha levels the diamonds are batched into (one path per level instead of one draw per diamond). */
-private const val DIAMOND_BUCKETS = 10
-
-/** Fill alpha never exceeds this, so its buckets cover 0..DIAMOND_MAX_FILL. */
-private const val DIAMOND_MAX_FILL = 0.3f
-
 /**
  * Fine diamond (rhombus) grid in diagonal rows: every row is shifted by half a cell and rows
  * are half a cell apart, so the diamonds line up along both diagonals. Same behavior as
  * [drawGrid]: the wave runs through it, it zooms on the beat, and diamonds above the visualizer
- * light up and grow. There are thousands of diamonds, so they're collected into a few paths
- * per alpha level instead of being drawn one by one.
+ * light up and grow.
  */
 private fun DrawScope.drawDiamondGrid(engine: GlowEngine, spacingPx: Float, bandPx: Float, strokePx: Float) {
     engine.observeFrame()
@@ -835,72 +870,82 @@ private fun DrawScope.drawDiamondGrid(engine: GlowEngine, spacingPx: Float, band
     val amp = spacingPx * (0.25f + 1.0f * engine.mid)
     val phase = engine.gridPhase
     val tiltRad = 12f * engine.mid * DEG
+    val pad4dp = 4.dp.toPx()
 
-    val strokes = engine.diamondStrokePaths
-    val fills = engine.diamondFillPaths
-    strokes.forEach { it.reset() }
-    fills.forEach { it.reset() }
+    val invSpacing25 = 1f / (spacingPx * 2.5f)
+    val flashComponent = engine.flash * 0.3f
+    val maxFieldRise = 1.3f * rise
+    val strokeStyle = Stroke(width = strokePx, join = StrokeJoin.Round)
+    val path = engine.scratchPath(0)
 
     for (r in 0 until rows) {
         val baseY = h - r * rowStep
         val heightAbove = h - baseY
         val vFade = 1f - smoothstep(h * 0.3f, h * 0.95f, heightAbove)
         if (vFade <= 0f) continue
+
+        val topMax = bandPx * 0.6f + maxFieldRise
+        val maxLitInRow = ((if (heightAbove <= topMax) 1f else exp(-(heightAbove - topMax) * invSpacing25)) +
+                flashComponent).coerceAtMost(1f)
+        if (vFade * (0.12f + 0.6f * maxLitInRow) < 0.02f) continue
+
         val shift = if (r % 2 == 1) spacingPx / 2f else 0f
+        val rPhaseTerm = phase - r * 0.22f
+        val yCosTerm = TWO_PI * (baseY / h * 1.1f) + phase * 0.8f
+        val heightScale = (1f - heightAbove / h).coerceIn(0f, 1f)
+
         for (c in 0 until cols) {
             val baseX = startX + c * spacingPx + shift
-            val field = engine.fieldAt((baseX / w).coerceIn(0f, 1f))
+            val normX = (baseX / w).coerceIn(0f, 1f)
+            val field = engine.fieldAt(normX)
 
             // Wave travels along the diagonal
-            val wv = sin(TWO_PI * (baseX / w * 1.4f) + phase - r * 0.22f)
-            var x = baseX + amp * 0.35f * cos(TWO_PI * (baseY / h * 1.1f) + phase * 0.8f + c * 0.3f)
-            var y = baseY + amp * wv - field * rise * 0.18f * (1f - heightAbove / h).coerceIn(0f, 1f)
+            val wv = sin(TWO_PI * (normX * 1.4f) + rPhaseTerm)
+            var x = baseX + amp * 0.35f * cos(yCosTerm + c * 0.3f)
+            var y = baseY + amp * wv - field * rise * 0.18f * heightScale
 
             // Zoom around the bottom center
             x = pivotX + (x - pivotX) * zoom
             y = h + (y - h) * zoom
 
             val top = bandPx * 0.6f + field * rise
-            val lit = ((if (heightAbove <= top) 1f else exp(-(heightAbove - top) / (spacingPx * 2.5f))) +
-                    engine.flash * 0.3f).coerceAtMost(1f)
+            val dist = (heightAbove - top) * invSpacing25
+            val decay = if (dist <= 0f) 1f else if (dist > 4.5f) 0f else exp(-dist)
+            val lit = (decay + flashComponent).coerceAtMost(1f)
 
             val alpha = vFade * (0.12f + 0.6f * lit)
             if (alpha < 0.02f) continue
 
-            // Rhombus: a bit taller than wide, tilting with the wave
-            val s = spacingPx * zoom * (0.38f + 0.28f * lit + 0.1f * engine.bass)
-            val hw = s * 0.4f
-            val hh = s * 0.5f
-            val a = wv * tiltRad
-            val ca = cos(a)
-            val sa = sin(a)
+            // The bigger the diamond, the bigger the padding (4.dp more padding when lit/bigger)
+            val extraPadding = pad4dp * lit
+            val s = (spacingPx * zoom * (0.34f + 0.26f * lit + 0.1f * engine.bass) - extraPadding).coerceAtLeast(2.dp.toPx())
+            val hw = s * 0.38f
+            val hh = s * 0.52f
 
-            val bucket = (alpha * DIAMOND_BUCKETS).toInt().coerceIn(0, DIAMOND_BUCKETS - 1)
-            strokes[bucket].addDiamond(x, y, hw, hh, ca, sa)
+            path.reset()
+            val a = wv * tiltRad
+            if (a == 0f) {
+                path.moveTo(x, y - hh)
+                path.lineTo(x + hw, y)
+                path.lineTo(x, y + hh)
+                path.lineTo(x - hw, y)
+                path.close()
+            } else {
+                val ca = cos(a)
+                val sa = sin(a)
+                path.moveTo(x + hh * sa, y - hh * ca)
+                path.lineTo(x + hw * ca, y + hw * sa)
+                path.lineTo(x - hh * sa, y + hh * ca)
+                path.lineTo(x - hw * ca, y - hw * sa)
+                path.close()
+            }
 
             if (lit > 0.3f) {
-                val fillAlpha = alpha * 0.25f * lit
-                val fb = (fillAlpha / DIAMOND_MAX_FILL * DIAMOND_BUCKETS).toInt().coerceIn(0, DIAMOND_BUCKETS - 1)
-                fills[fb].addDiamond(x, y, hw, hh, ca, sa)
+                drawPath(path, Color.White, alpha = alpha * 0.25f * lit)
             }
+            drawPath(path, Color.White, alpha = alpha, style = strokeStyle)
         }
     }
-
-    val stroke = Stroke(width = strokePx, join = StrokeJoin.Round)
-    for (b in 0 until DIAMOND_BUCKETS) {
-        drawPath(fills[b], Color.White, alpha = (b + 0.5f) / DIAMOND_BUCKETS * DIAMOND_MAX_FILL)
-        drawPath(strokes[b], Color.White, alpha = (b + 0.5f) / DIAMOND_BUCKETS, style = stroke)
-    }
-}
-
-/** Adds a rhombus centered at (cx, cy) with half-width [hw] / half-height [hh], rotated by (ca, sa). */
-private fun Path.addDiamond(cx: Float, cy: Float, hw: Float, hh: Float, ca: Float, sa: Float) {
-    // top (0, -hh), right (hw, 0), bottom (0, hh), left (-hw, 0), each rotated
-    moveTo(cx + hh * sa, cy - hh * ca)
-    lineTo(cx + hw * ca, cy + hw * sa)
-    lineTo(cx - hh * sa, cy + hh * ca)
-    lineTo(cx - hw * ca, cy - hw * sa)
-    close()
 }
 
 private fun DrawScope.drawShapes(engine: GlowEngine, colors: List<Color>, bandPx: Float) {
@@ -1076,10 +1121,6 @@ private class GlowEngine {
     private val plumePaths = Array(PLUMES) { Path() }
     private val scratchPaths = Array(2) { Path() }
 
-    /** Batched diamond paths (GeometricStyle.DIAMONDS), one per alpha level. */
-    val diamondStrokePaths = Array(DIAMOND_BUCKETS) { Path() }
-    val diamondFillPaths = Array(DIAMOND_BUCKETS) { Path() }
-
     fun step(
         dt: Float,
         analyzer: AudioSpectrumAnalyzer?,
@@ -1191,12 +1232,16 @@ private class GlowEngine {
 
         // 5) Springs (sub-stepped for stability)
         val zoomTarget = ZOOM_AMOUNT * bass
+        val powTarget = FloatArray(SPEC_N) { k ->
+            val lvl = specLevel[k]
+            if (lvl <= 0f) 0f else lvl.pow(1.2f) * specGain[k]
+        }
         var remaining = dt
         while (remaining > 0f) {
             val h = min(remaining, 1f / 240f)
             remaining -= h
             for (k in 0 until SPEC_N) {
-                val target = specLevel[k].pow(1.2f) * specGain[k]
+                val target = powTarget[k]
                 val a = specK[k] * (target - specH[k]) - specD[k] * specV[k]
                 specV[k] += a * h
                 specH[k] += specV[k] * h
@@ -1232,15 +1277,17 @@ private class GlowEngine {
             field[s] = when (style) {
                 VisualizerStyle.BARS, VisualizerStyle.SPECTRUM -> specAt(xn)
                 VisualizerStyle.MIRRORED_BARS -> specAt(abs(xn - 0.5f) * 2f)
-                VisualizerStyle.GLOW -> {
+                VisualizerStyle.GLOW, VisualizerStyle.OFF -> {
                     var f = 0f
                     for (j in 0 until PLUMES) {
                         val d = (xn - plumeX[j]) / plumeSigma[j]
-                        f += plumeH[j] * exp(-d * d)
+                        if (abs(d) < 3f) {
+                            f += plumeH[j] * exp(-d * d)
+                        }
                     }
                     f
                 }
-                else -> { // OFF, OSCILLOSCOPE
+                else -> { // OSCILLOSCOPE
                     val d = (xn - 0.5f) / 0.25f
                     0.8f * bass * exp(-d * d) + 0.3f * mid
                 }
@@ -1567,8 +1614,10 @@ private fun smoothstep(edge0: Float, edge1: Float, x: Float): Float {
 }
 
 private fun follow(current: Float, target: Float, attack: Float, release: Float, dt: Float): Float {
+    val diff = target - current
+    if (abs(diff) < 0.0001f) return target
     val tau = if (target > current) attack else release
-    return current + (target - current) * (1f - exp(-dt / tau))
+    return current + diff * (1f - exp(-dt / tau))
 }
 
 private fun hash(n: Int): Float {

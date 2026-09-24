@@ -148,6 +148,7 @@ import com.xenonware.launcher.media.MediaControllerManager
 import com.xenonware.launcher.media.MediaState
 import com.xenonware.launcher.ui.res.MusicVisualizer
 import com.xenonware.launcher.ui.res.VisualizerConfig
+import com.xenonware.launcher.ui.res.VisualizerStyle
 import com.xenonware.launcher.ui.res.rememberVisualizerPalette
 import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
 import com.xenonware.launcher.ui.theme.mainFontFamily
@@ -1433,6 +1434,7 @@ private fun VisualizerSettingsDropdown(contentColor: Color, hazeState: HazeState
             )
         }
 
+        val isOscilloscope = VisualizerConfig.visualizerStyle == VisualizerStyle.OSCILLOSCOPE
         val menuItems = remember(VisualizerConfig.visualizerStyle, VisualizerConfig.reactivity, VisualizerConfig.geometricStyle, VisualizerConfig.waves, VisualizerConfig.colorProfile) {
             listOf(
                 MenuItem(
@@ -1444,11 +1446,14 @@ private fun VisualizerSettingsDropdown(contentColor: Color, hazeState: HazeState
                     dismissOnClick = false
                 ),
                 MenuItem(
-                    text = "Reactivity: ${VisualizerConfig.getReactivityName(VisualizerConfig.reactivity)}",
-                    onClick = {
-                        VisualizerConfig.nextReactivity()
-                        VisualizerConfig.save(context)
+                    text = if (isOscilloscope) "Reactivity: Ignored by Oscilloscope" else "Reactivity: ${VisualizerConfig.getReactivityName(VisualizerConfig.reactivity)}",
+                    onClick = if (isOscilloscope) { {} } else {
+                        {
+                            VisualizerConfig.nextReactivity()
+                            VisualizerConfig.save(context)
+                        }
                     },
+                    textColor = if (isOscilloscope) Color.Gray.copy(alpha = 0.5f) else null,
                     dismissOnClick = false
                 ),
                 MenuItem(
