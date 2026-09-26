@@ -48,6 +48,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.res.stringResource
+import com.xenon.mylibrary.values.IconSizeMedium
+import com.xenonware.launcher.util.getFileTypeInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
@@ -134,19 +136,10 @@ fun SearchResultItem(
                     }
                 }
                 is SearchResult.File -> {
-                    val isTextFile = result.mimeType.startsWith("text/")
-                    val isPdf = result.mimeType == "application/pdf"
-                    val fileTypeInfo = when {
-                        result.mimeType.startsWith("image/") -> Icons.Rounded.Image to Color(0xFFB39DDB)
-                        result.mimeType.startsWith("video/") -> Icons.Rounded.Movie to Color(0xFFEF5350)
-                        result.mimeType.startsWith("audio/") -> Icons.Rounded.AudioFile to Color(0xFFFFB74D)
-                        result.mimeType == "application/vnd.android.package-archive" -> Icons.Rounded.Android to Color(0xFF3DDC84)
-                        isPdf -> Icons.Rounded.Description to Color(0xFFD32F2F)
-                        isTextFile -> Icons.Rounded.Description to Color(0xFF81D4FA)
-                        result.mimeType.contains("zip") || result.mimeType.contains("rar") || result.mimeType.contains("7z") -> Icons.Rounded.FolderZip to Color(0xFF9E9E9E)
-                        else -> Icons.AutoMirrored.Rounded.InsertDriveFile to colorScheme.surfaceContainerHighest
-                    }
-                    val (fileIcon, bgColor) = fileTypeInfo
+                    val fileTypeInfo = getFileTypeInfo(result.mimeType, result.name)
+                    val fileIcon = fileTypeInfo.icon
+                    val bgColor = fileTypeInfo.color
+                    val isTextFile = result.mimeType.startsWith("text/") || result.name.endsWith(".txt") || result.name.endsWith(".md")
 
                     Surface(
                         modifier = Modifier.size(ExtraBiggerSpacing),
@@ -183,8 +176,8 @@ fun SearchResultItem(
                                 Icon(
                                     fileIcon,
                                     contentDescription = null,
-                                    modifier = Modifier.size(BigSpacing),
-                                    tint = if (bgColor == colorScheme.surfaceContainerHighest) colorScheme.onSurfaceVariant else Color.White
+                                    modifier = Modifier.size(IconSizeMedium),
+                                    tint = Color.White
                                 )
                             }
                         }

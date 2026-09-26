@@ -44,6 +44,7 @@ import com.xenon.mylibrary.values.MediumLargeCornerRadius
 import com.xenonware.launcher.model.SearchHistoryEntry
 import com.xenonware.launcher.model.SearchHistoryType
 import com.xenonware.launcher.ui.res.ContactAvatar
+import com.xenonware.launcher.util.getFileTypeInfo
 
 @Composable
 fun SearchHistoryItem(entry: SearchHistoryEntry, onClick: (SearchHistoryEntry) -> Unit) {
@@ -79,17 +80,9 @@ fun SearchHistoryItem(entry: SearchHistoryEntry, onClick: (SearchHistoryEntry) -
                     }
                     SearchHistoryType.FILE -> {
                         val mimeType = entry.iconUri ?: ""
-                        val isTextFile = mimeType.startsWith("text/")
-                        val fileTypeInfo = when {
-                            mimeType.startsWith("image/") -> Icons.Rounded.Image to Color(0xFFB39DDB)
-                            mimeType.startsWith("video/") -> Icons.Rounded.Movie to Color(0xFFEF5350)
-                            mimeType.startsWith("audio/") -> Icons.Rounded.AudioFile to Color(0xFFFFB74D)
-                            mimeType == "application/vnd.android.package-archive" -> Icons.Rounded.Android to Color(0xFF3DDC84)
-                            mimeType == "application/pdf" || isTextFile -> Icons.Rounded.Description to Color(0xFF81D4FA)
-                            mimeType.contains("zip") || mimeType.contains("rar") || mimeType.contains("7z") -> Icons.Rounded.FolderZip to Color(0xFF9E9E9E)
-                            else -> Icons.AutoMirrored.Rounded.InsertDriveFile to colorScheme.surfaceContainerHighest
-                        }
-                        val (fileIcon, bgColor) = fileTypeInfo
+                        val fileTypeInfo = getFileTypeInfo(mimeType, entry.label)
+                        val fileIcon = fileTypeInfo.icon
+                        val bgColor = fileTypeInfo.color
 
                         Surface(
                             modifier = Modifier.size(ExtraBigSpacing),
@@ -101,7 +94,7 @@ fun SearchHistoryItem(entry: SearchHistoryEntry, onClick: (SearchHistoryEntry) -
                                     fileIcon,
                                     contentDescription = null,
                                     modifier = Modifier.size(IconSizeMedium),
-                                    tint = if (bgColor == colorScheme.surfaceContainerHighest) colorScheme.onSurfaceVariant else Color.White
+                                    tint = Color.White
                                 )
                             }
                         }
