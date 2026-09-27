@@ -330,6 +330,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _hideDockMediaLandscapeOnly = MutableStateFlow(sharedPreferenceManager.hideDockMediaLandscapeOnly)
     val hideDockMediaLandscapeOnly: StateFlow<Boolean> = _hideDockMediaLandscapeOnly.asStateFlow()
 
+    private val _hideDockInAppDrawer = MutableStateFlow(sharedPreferenceManager.hideDockInAppDrawer)
+    val hideDockInAppDrawer: StateFlow<Boolean> = _hideDockInAppDrawer.asStateFlow()
+
     private val _hideActionButton = MutableStateFlow(sharedPreferenceManager.hideActionButton)
     val hideActionButton: StateFlow<Boolean> = _hideActionButton.asStateFlow()
 
@@ -516,6 +519,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             "hide_dock_widgets_landscape_only" -> _hideDockWidgetsLandscapeOnly.value = sharedPreferenceManager.hideDockWidgetsLandscapeOnly
             "hide_dock_media" -> _hideDockMedia.value = sharedPreferenceManager.hideDockMedia
             "hide_dock_media_landscape_only" -> _hideDockMediaLandscapeOnly.value = sharedPreferenceManager.hideDockMediaLandscapeOnly
+            "hide_dock_app_drawer" -> _hideDockInAppDrawer.value = sharedPreferenceManager.hideDockInAppDrawer
             "hide_action_button" -> _hideActionButton.value = sharedPreferenceManager.hideActionButton
             "move_web_search" -> _moveWebSearch.value = sharedPreferenceManager.moveWebSearch
             "show_mute_notifications" -> _showMuteNotifications.value = sharedPreferenceManager.showMuteNotifications
@@ -719,6 +723,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setHideDockMediaLandscapeOnly(enabled: Boolean) {
         sharedPreferenceManager.hideDockMediaLandscapeOnly = enabled
         _hideDockMediaLandscapeOnly.value = enabled
+    }
+
+    fun setHideDockInAppDrawer(enabled: Boolean) {
+        sharedPreferenceManager.hideDockInAppDrawer = enabled
+        _hideDockInAppDrawer.value = enabled
     }
 
     fun setHideActionButton(enabled: Boolean) {

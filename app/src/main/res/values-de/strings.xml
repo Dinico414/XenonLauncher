@@ -295,6 +295,10 @@
     <string name="hide_dock_widgets_description">Blendet das Dock aus, wenn die Widget-Seite angezeigt wird</string>
     <string name="hide_dock_media">Dock auf der Medien-Seite ausblenden</string>
     <string name="hide_dock_media_description">Blendet das Dock aus, wenn die Media-Player-Seite angezeigt wird</string>
+    <string name="hide_dock_app_drawer">Dock im App-Drawer ausblenden</string>
+    <string name="hide_dock_app_drawer_description">Blendet das Dock im App-Drawer aus, außer beim Ziehen und Ablegen</string>
+    <string name="app_removed_from_dock">%1$s vom Dock entfernt</string>
+    <string name="undo">Rückgängig</string>
     <string name="hide_dock_only_landscape">Nur im Querformat</string>
     <string name="hide_dock_only_landscape_description">Dock auf dieser Seite nur ausblenden, wenn sich das Gerät im Querformat befindet</string>
     <string name="hide_action_button">Aktions-Button ausblenden</string>

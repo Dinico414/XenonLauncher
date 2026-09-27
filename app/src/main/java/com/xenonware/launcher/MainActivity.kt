@@ -39,12 +39,20 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
+import com.xenon.mylibrary.res.XenonSnackbar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -100,7 +108,9 @@ import com.xenonware.launcher.ui.theme.FontType
 import com.xenonware.launcher.ui.theme.ScreenEnvironment
 import com.xenonware.launcher.ui.theme.createCustomFontFamily
 import com.xenonware.launcher.ui.theme.mainFontFamily
+import com.xenonware.launcher.ui.theme.subFontFamily
 import com.xenonware.launcher.util.DragHandler
+import com.xenonware.launcher.util.LocalDragDropState
 import com.xenonware.launcher.util.PerfLog
 import com.xenonware.launcher.util.WidgetConfig
 import com.xenonware.launcher.util.WindowBlurBehind
@@ -293,6 +303,7 @@ class MainActivity : ComponentActivity() {
                 val hideDockWidgetsLandscapeOnly by viewModel.hideDockWidgetsLandscapeOnly.collectAsState()
                 val hideDockMedia by viewModel.hideDockMedia.collectAsState()
                 val hideDockMediaLandscapeOnly by viewModel.hideDockMediaLandscapeOnly.collectAsState()
+                val hideDockInAppDrawer by viewModel.hideDockInAppDrawer.collectAsState()
                 val hideActionButton by viewModel.hideActionButton.collectAsState()
                 val moveWebSearch by viewModel.moveWebSearch.collectAsState()
                 val notificationIndicatorType by viewModel.notificationIndicatorType.collectAsState()
@@ -346,6 +357,7 @@ class MainActivity : ComponentActivity() {
                     hideDockWidgetsLandscapeOnly = hideDockWidgetsLandscapeOnly,
                     hideDockMedia = hideDockMedia,
                     hideDockMediaLandscapeOnly = hideDockMediaLandscapeOnly,
+                    hideDockInAppDrawer = hideDockInAppDrawer,
                     hideActionButton = hideActionButton,
                     moveWebSearch = moveWebSearch,
                     notificationIndicatorType = notificationIndicatorType,
@@ -549,6 +561,7 @@ fun LauncherScreen(
     hideDockWidgetsLandscapeOnly: Boolean = false,
     hideDockMedia: Boolean = false,
     hideDockMediaLandscapeOnly: Boolean = false,
+    hideDockInAppDrawer: Boolean = false,
     hideActionButton: Boolean = false,
     moveWebSearch: Boolean = false,
     showBootWelcome: Boolean = false,
@@ -561,6 +574,22 @@ fun LauncherScreen(
     val screenHazeState = rememberHazeState()
     var appToEdit by remember { mutableStateOf<AppInfo?>(null) }
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+    val dragDropState = LocalDragDropState.current
+
+    LaunchedEffect(Unit) {
+        viewModel.unpinEvent.collect { event ->
+            val result = snackbarHostState.showSnackbar(
+                message = context.getString(R.string.app_removed_from_dock, event.appLabel),
+                actionLabel = context.getString(R.string.undo),
+                duration = SnackbarDuration.Short
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                viewModel.pinApp(event.appKey, event.originalIndex)
+            }
+        }
+    }
 
     BackHandler(enabled = true) {
         if (isAppDrawerVisible) {
@@ -670,7 +699,7 @@ fun LauncherScreen(
                                 }
                             )
                     ) {
-                        val dragDropState = com.xenonware.launcher.util.LocalDragDropState.current
+                        val dragDropState = LocalDragDropState.current
                         HorizontalPager(
                             state = pagerState,
                             modifier = Modifier.fillMaxSize(),
@@ -774,6 +803,7 @@ fun LauncherScreen(
                             hideDockScrolling = hideDockScrolling,
                             onDockVisibilityChange = { isDockVisibleByScroll = it },
                             moveWebSearch = moveWebSearch,
+                            hideDockInAppDrawer = hideDockInAppDrawer,
                             onEditApp = { appToEdit = it }
                         )
                     }
@@ -794,11 +824,37 @@ fun LauncherScreen(
                 val isOnMediaPage = pagerState.currentPage == 0
 
                 val isDockHiddenByPage = (isOnWidgetPage && isDockHiddenByWidgetPage) || (isOnMediaPage && isDockHiddenByMediaPage)
+                val isDockHiddenByAppDrawer = hideDockInAppDrawer && isAppDrawerVisible && !dragDropState.isDragging
+                val isDockHidden = isDockHiddenByPage || isDockHiddenByAppDrawer
 
                 val dockYOffset by animateDpAsState(
-                    targetValue = if (isDockVisibleByScroll && !isDockHiddenByPage || !isAppDrawerVisible && !isDockHiddenByPage || !shouldAnimateDockOff && !isDockHiddenByPage) 0.dp else 120.dp,
+                    targetValue = if (!isDockHidden && (if (isAppDrawerVisible) (isDockVisibleByScroll || !shouldAnimateDockOff) else true)) 0.dp else 120.dp,
                     animationSpec = spring(stiffness = Spring.StiffnessLow),
                     label = "dockYOffset"
+                )
+
+                val navBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                val snackbarBottomPadding = if (isAppDrawerVisible || isDockHiddenByAppDrawer) {
+                    navBarHeight + 24.dp
+                } else {
+                    navBarHeight + 88.dp
+                }
+
+                SnackbarHost(
+                    hostState = snackbarHostState,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(horizontal = 16.dp)
+                        .widthIn(max = 560.dp)
+                        .padding(bottom = snackbarBottomPadding)
+                        .zIndex(10f),
+                    snackbar = { snackbarData ->
+                        XenonSnackbar(
+                            snackbarData = snackbarData,
+                            mainContextFont = mainFontFamily,
+                            subContextFont = subFontFamily
+                        )
+                    }
                 )
 
                 DockPill(

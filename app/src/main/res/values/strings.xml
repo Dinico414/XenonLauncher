@@ -297,6 +297,10 @@
     <string name="hide_dock_widgets_description">Hide the dock when viewing the widget page</string>
     <string name="hide_dock_media">Hide dock on media page</string>
     <string name="hide_dock_media_description">Hide the dock when viewing the media player page</string>
+    <string name="hide_dock_app_drawer">Hide dock in app drawer</string>
+    <string name="hide_dock_app_drawer_description">Hide the dock when the app drawer is open, showing it only during drag and drop</string>
+    <string name="app_removed_from_dock">%1$s removed from dock</string>
+    <string name="undo">Undo</string>
     <string name="hide_dock_only_landscape">Only in landscape</string>
     <string name="hide_dock_only_landscape_description">Only hide the dock on this page when the device is in landscape orientation</string>
     <string name="hide_action_button">Hide Action Button</string>

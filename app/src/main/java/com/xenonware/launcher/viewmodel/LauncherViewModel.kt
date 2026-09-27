@@ -81,6 +81,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -132,6 +133,12 @@ data class CalendarEvent(
     val isAllDay: Boolean,
     val calendarId: String,
     val color: Int? = null
+)
+
+data class UnpinnedAppEvent(
+    val appKey: String,
+    val appLabel: String,
+    val originalIndex: Int
 )
 
 class LauncherViewModel(application: Application) : AndroidViewModel(application) {
@@ -287,6 +294,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             "hide_dock_widgets_landscape_only" -> _hideDockWidgetsLandscapeOnly.value = prefManager.hideDockWidgetsLandscapeOnly
             "hide_dock_media" -> _hideDockMedia.value = prefManager.hideDockMedia
             "hide_dock_media_landscape_only" -> _hideDockMediaLandscapeOnly.value = prefManager.hideDockMediaLandscapeOnly
+            "hide_dock_app_drawer" -> _hideDockInAppDrawer.value = prefManager.hideDockInAppDrawer
             "hide_action_button" -> _hideActionButton.value = prefManager.hideActionButton
             "move_web_search" -> _moveWebSearch.value = prefManager.moveWebSearch
             "show_mute_notifications" -> {
@@ -440,6 +448,12 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private val _hideDockMediaLandscapeOnly = MutableStateFlow(prefManager.hideDockMediaLandscapeOnly)
     val hideDockMediaLandscapeOnly: StateFlow<Boolean> = _hideDockMediaLandscapeOnly
+
+    private val _hideDockInAppDrawer = MutableStateFlow(prefManager.hideDockInAppDrawer)
+    val hideDockInAppDrawer: StateFlow<Boolean> = _hideDockInAppDrawer
+
+    private val _unpinEvent = MutableSharedFlow<UnpinnedAppEvent>(extraBufferCapacity = 1)
+    val unpinEvent: SharedFlow<UnpinnedAppEvent> = _unpinEvent.asSharedFlow()
 
     private val _hideActionButton = MutableStateFlow(prefManager.hideActionButton)
     val hideActionButton: StateFlow<Boolean> = _hideActionButton
@@ -1568,11 +1582,18 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun unpinApp(packageName: String) {
-        _pinnedApps.value = _pinnedApps.value.filter {
+        val currentList = _pinnedApps.value
+        val index = currentList.indexOfFirst {
             val key = if (it.className.isNotEmpty()) "${it.packageName}/${it.className}" else it.packageName
-            key != packageName
+            key == packageName || it.packageName == packageName
         }
-        savePinnedApps()
+        if (index != -1) {
+            val app = currentList[index]
+            val key = if (app.className.isNotEmpty()) "${app.packageName}/${app.className}" else app.packageName
+            _pinnedApps.value = currentList.filterIndexed { i, _ -> i != index }
+            savePinnedApps()
+            _unpinEvent.tryEmit(UnpinnedAppEvent(key, app.label, index))
+        }
     }
 
     fun reorderPinnedApp(fromIndex: Int, toIndex: Int) {

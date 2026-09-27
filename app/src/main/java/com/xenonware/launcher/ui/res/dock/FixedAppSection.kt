@@ -191,7 +191,6 @@ fun FixedAppSection(
     val currentOnPinApp by rememberUpdatedState(onPinApp)
     val currentOnReorderApp by rememberUpdatedState(onReorderApp)
     val currentOnUnpinApp by rememberUpdatedState(onUnpinApp)
-    val currentIsAppDrawerVisible by rememberUpdatedState(isAppDrawerVisible)
 
     val groupedNotifications = remember(notifications) {
         notifications.groupBy { it.packageName }
@@ -297,7 +296,7 @@ fun FixedAppSection(
                 finger.y > bounds.bottom -> finger.y - bounds.bottom
                 else -> 0f
             }
-            val pulledOut = verticalDist > unpinThresholdPx && currentIsAppDrawerVisible
+            val pulledOut = verticalDist > unpinThresholdPx
 
             val x = (finger.x - bounds.left).coerceIn(0f, bounds.width)
 
@@ -455,7 +454,7 @@ fun FixedAppSection(
                                             finalPos.y > dock.bottom -> finalPos.y - dock.bottom
                                             else -> 0f
                                         }
-                                        val isOutside = verticalDist > unpinThresholdPx && currentIsAppDrawerVisible
+                                        val isOutside = verticalDist > unpinThresholdPx
 
                                         restoreScrollPx =
                                             if (listState.canScrollForward || listState.canScrollBackward) {

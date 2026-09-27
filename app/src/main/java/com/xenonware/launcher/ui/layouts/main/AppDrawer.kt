@@ -45,6 +45,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -231,9 +232,13 @@ fun AppDrawer(
     hideDockScrolling: Boolean = false,
     onDockVisibilityChange: (Boolean) -> Unit = {},
     moveWebSearch: Boolean = false,
+    hideDockInAppDrawer: Boolean = false,
     onEditApp: (AppInfo) -> Unit
 ) {
     val dragDropState = LocalDragDropState.current
+    val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val isDockHiddenInDrawer = hideDockInAppDrawer && !dragDropState.isDragging
+    val drawerBottomPadding = if (isDockHiddenInDrawer) navBottom + 24.dp else 120.dp
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
@@ -879,7 +884,7 @@ fun AppDrawer(
                                 .then(if (blurEnabled) Modifier.hazeSource(hazeState) else Modifier)
                                 .clip(RoundedCornerShape(topStart = BiggerCornerRadius, topEnd = BiggerCornerRadius)),
                             contentPadding = PaddingValues(
-                                top = contentTopPadding, bottom = 120.dp
+                                top = contentTopPadding, bottom = drawerBottomPadding
                             ),
                             verticalArrangement = Arrangement.spacedBy(if (showLabels) ExtraLargerSpacer else LargestSpacer),
                             horizontalArrangement = Arrangement.spacedBy(LargestSpacer)
@@ -997,7 +1002,7 @@ fun AppDrawer(
                                 .then(if (blurEnabled) Modifier.hazeSource(hazeState) else Modifier)
                                 .clip(RoundedCornerShape(topStart = BiggerCornerRadius, topEnd = BiggerCornerRadius)),
                             contentPadding = PaddingValues(
-                                top = contentTopPadding, bottom = 120.dp
+                                top = contentTopPadding, bottom = drawerBottomPadding
                             ),
                             verticalArrangement = Arrangement.spacedBy(MediumSpacer),
                             horizontalArrangement = Arrangement.spacedBy(LargestSpacer)

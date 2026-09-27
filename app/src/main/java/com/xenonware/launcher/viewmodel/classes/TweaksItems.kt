@@ -151,6 +151,7 @@ fun TweaksItems(
     val hideDockWidgetsLandscapeOnly by viewModel.hideDockWidgetsLandscapeOnly.collectAsState()
     val hideDockMedia by viewModel.hideDockMedia.collectAsState()
     val hideDockMediaLandscapeOnly by viewModel.hideDockMediaLandscapeOnly.collectAsState()
+    val hideDockInAppDrawer by viewModel.hideDockInAppDrawer.collectAsState()
     val hideActionButton by viewModel.hideActionButton.collectAsState()
     val moveWebSearch by viewModel.moveWebSearch.collectAsState()
     val showMuteNotifications by viewModel.showMuteNotifications.collectAsState()
@@ -733,6 +734,23 @@ fun TweaksItems(
                         }
                     }
                 }
+            )
+
+            Spacer(Modifier.height(actualInnerGroupSpacing))
+
+            SettingsSwitchTile(
+                title = stringResource(R.string.hide_dock_app_drawer),
+                subtitle = stringResource(R.string.hide_dock_app_drawer_description),
+                checked = hideDockInAppDrawer,
+                onCheckedChange = { viewModel.setHideDockInAppDrawer(it) },
+                onClick = { viewModel.setHideDockInAppDrawer(!hideDockInAppDrawer) },
+                icon = { Icon(Icons.Rounded.KeyboardDoubleArrowDown, null, tint = tileSubtitleColor) },
+                shape = tileShapeOverride ?: middleShape,
+                backgroundColor = tileBackgroundColor,
+                contentColor = tileContentColor,
+                subtitleColor = tileSubtitleColor,
+                mainContextFont = mainContextFont,
+                subContextFont = subContextFont
             )
 
             Spacer(Modifier.height(actualInnerGroupSpacing))

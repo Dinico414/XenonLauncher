@@ -210,6 +210,10 @@ class SharedPreferenceManager(context: Context) {
         get() = prefs.getBoolean("hide_dock_media_landscape_only", false)
         set(value) = prefs.edit { putBoolean("hide_dock_media_landscape_only", value) }
 
+    var hideDockInAppDrawer: Boolean
+        get() = prefs.getBoolean("hide_dock_app_drawer", false)
+        set(value) = prefs.edit { putBoolean("hide_dock_app_drawer", value) }
+
     var hideActionButton: Boolean
         get() = prefs.getBoolean("hide_action_button", false)
         set(value) = prefs.edit { putBoolean("hide_action_button", value) }
