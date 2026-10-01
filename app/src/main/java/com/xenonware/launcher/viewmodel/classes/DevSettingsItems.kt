@@ -61,6 +61,7 @@ fun DevSettingsItems(
     subContextFont: FontFamily? = null,
 ) {
     val devModeEnabled by viewModel.devModeToggleState.collectAsState()
+    val experimentalOptionsEnabled by viewModel.experimentalOptionsEnabled.collectAsState()
     val crashLogExists by viewModel.crashLogExists.collectAsState()
     
     var showCrashLogDialog by remember { mutableStateOf(false) }
@@ -81,6 +82,17 @@ fun DevSettingsItems(
             checked = devModeEnabled,
             onCheckedChange = { viewModel.setDeveloperModeEnabled(it) },
             onClick = { viewModel.setDeveloperModeEnabled(!devModeEnabled) },
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont
+        )
+
+        SettingsSwitchTile(
+            title = stringResource(R.string.experimental_options),
+            subtitle = stringResource(R.string.experimental_options_description),
+            checked = experimentalOptionsEnabled,
+            onCheckedChange = { viewModel.setExperimentalOptionsEnabled(it) },
+            onClick = { viewModel.setExperimentalOptionsEnabled(!experimentalOptionsEnabled) },
+            modifier = Modifier.padding(top = LargestPadding),
             mainContextFont = mainContextFont,
             subContextFont = subContextFont
         )

@@ -263,6 +263,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             "drawer_icon_shadow" -> _drawerIconShadow.value = prefManager.drawerIconShadow
             "app_labels_enabled" -> _appLabelsEnabled.value = prefManager.appLabelsEnabled
             "blur_enabled" -> _blurEnabled.value = prefManager.blurEnabled
+            "experimental_widget_adjustments_enabled" -> _experimentalWidgetAdjustmentsEnabled.value = prefManager.experimentalWidgetAdjustmentsEnabled
             "app_overrides" -> loadApps()
             "visible_calendars" -> {
                 _visibleCalendars.value = prefManager.visibleCalendars
@@ -347,6 +348,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private val _blurEnabled = MutableStateFlow(prefManager.blurEnabled)
     val blurEnabled: StateFlow<Boolean> = _blurEnabled
+
+    private val _experimentalWidgetAdjustmentsEnabled = MutableStateFlow(prefManager.experimentalWidgetAdjustmentsEnabled)
+    val experimentalWidgetAdjustmentsEnabled: StateFlow<Boolean> = _experimentalWidgetAdjustmentsEnabled
 
     private val _globalIconPack = MutableStateFlow(prefManager.globalIconPack)
 
@@ -1636,6 +1640,11 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun setAdvancedSearchEnabled(enabled: Boolean) {
         _advancedSearchEnabled.value = enabled
         prefManager.advancedSearchEnabled = enabled
+    }
+
+    fun setExperimentalWidgetAdjustmentsEnabled(enabled: Boolean) {
+        _experimentalWidgetAdjustmentsEnabled.value = enabled
+        prefManager.experimentalWidgetAdjustmentsEnabled = enabled
     }
 
     // ---------------------------------------------------------------------------------

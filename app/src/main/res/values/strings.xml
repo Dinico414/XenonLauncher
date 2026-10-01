@@ -98,6 +98,11 @@
     <string name="reset">Reset</string>
     <string name="done">Done</string>
     <string name="remove">Remove</string>
+    <string name="experimental_options">Experimental Options</string>
+    <string name="experimental_options_description">Enables experimental settings and features.</string>
+    <string name="experimental_widget_adjustments">Experimental Widget Adjustments</string>
+    <string name="experimental_widget_adjustments_description">Remove widget padding and enable 3-finger long press reset.</string>
+    <string name="experimental_widget_reset">Experimental widget settings reset &amp; disabled.</string>
     <string name="open_file">Open File</string>
     <string name="search_history">Search History</string>
     <string name="no_apps_found">No apps found</string>
@@ -281,6 +286,8 @@
     <string name="buy_me_a_coffee_description">Support the developer of Xenon Launcher</string>
     <string name="contact_developer">Contact Dev</string>
     <string name="contact_developer_description">Send crash logs and feedback to the developer via email.</string>
+    <string name="customization">Customization</string>
+    <string name="customization_description">Advanced customization options</string>
     <string name="tweaks">Tweaks</string>
     <string name="tweaks_description">Advanced customization options</string>
     <string name="show_clock_at_a_glance">Show Clock in At a Glance</string>

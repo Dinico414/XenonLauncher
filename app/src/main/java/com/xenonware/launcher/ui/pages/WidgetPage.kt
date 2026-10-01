@@ -9,6 +9,7 @@ import android.content.res.Configuration
 import android.content.res.Resources
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -43,7 +44,6 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.VerticalPager
@@ -98,6 +98,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.withSaveLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventTimeoutCancellationException
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -180,6 +182,8 @@ fun WidgetPage(
     isDockVisible: Boolean = true
 ) {
     val context = LocalContext.current
+    val experimentalWidgetAdjustments by viewModel.experimentalWidgetAdjustmentsEnabled.collectAsState()
+    val resetToastText = stringResource(R.string.experimental_widget_reset)
     val activity = remember(context) { context.findActivity() }
     val configuration = LocalConfiguration.current
     val haptic = LocalHapticFeedback.current
@@ -191,8 +195,12 @@ fun WidgetPage(
     val windowWidthDp = with(density) { windowInfo.containerSize.width.toDp() }
     val windowHeightDp = with(density) { windowInfo.containerSize.height.toDp() }
 
-    val horizontalPadding = LargestPadding
-    val topGridPadding = MediumPadding
+    // Horizontal: experimental removes the side padding (wider cells).
+    // Vertical: experimental with the dock hidden uses only the safe drawing insets;
+    // the standard layout keeps its own padding. The row count is always derived
+    // from the standard layout, so toggling never changes rows, only cell size.
+    val horizontalPadding = if (experimentalWidgetAdjustments) 0.dp else LargestPadding
+    val minEdgePadding = 16.dp
     val bottomGridPadding = MediumPadding
 
     val cellInsetHorizontal = SmallerPadding
@@ -202,34 +210,55 @@ fun WidgetPage(
     val edgeTurnIntervalMs = 420L
     val edgeTurnRowBite = 0.5f
 
-    val horizontalSafePadding = WindowInsets.safeDrawing.asPaddingValues().run {
-        calculateLeftPadding(LayoutDirection.Ltr) + calculateRightPadding(
-            LayoutDirection.Ltr
-        )
-    }
+    val safeDrawingPadding = WindowInsets.safeDrawing.asPaddingValues()
+    val horizontalSafePadding = safeDrawingPadding.calculateLeftPadding(LayoutDirection.Ltr) +
+            safeDrawingPadding.calculateRightPadding(LayoutDirection.Ltr)
+    val safeDrawingTop = safeDrawingPadding.calculateTopPadding()
+    val safeDrawingBottom = safeDrawingPadding.calculateBottomPadding()
 
+    // Actual grid width (changes with the experimental toggle)
     val screenWidth =
         windowWidthDp - (horizontalPadding * 2) - horizontalSafePadding
 
-    val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    // Grid width with standard padding, used for the row count.
+    val standardScreenWidth =
+        windowWidthDp - (LargestPadding * 2) - horizontalSafePadding
+
     val navBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
-    val totalDockAreaHeight = if (isDockVisible) navBarHeight + HugeBiggerSpacing + MediumPadding else navBarHeight + LargestPadding
+    // Height of the dock itself (without the system inset below it).
+    val dockHeight = HugeBiggerSpacing + MediumPadding
 
     val widgetColumns by viewModel.widgetColumns.collectAsState()
     val widgets by viewModel.widgets.collectAsState()
     val blurSetting by viewModel.blurEnabled.collectAsState()
 
-    val gridTopOffset = statusBarHeight + topGridPadding
-    val gridBottomOffset = totalDockAreaHeight + bottomGridPadding
+    // Standard layout:
+    //  top    = safe drawing, at least 16dp (dock on or off)
+    //  bottom = dock visible -> nav bar + dock + MediumPadding
+    //           dock hidden  -> safe drawing, at least 16dp
+    val standardTopOffset = safeDrawingTop.coerceAtLeast(minEdgePadding)
+    val standardBottomOffset =
+        if (isDockVisible) navBarHeight + dockHeight + bottomGridPadding
+        else safeDrawingBottom.coerceAtLeast(minEdgePadding)
+    val standardAreaHeight = windowHeightDp - standardTopOffset - standardBottomOffset
+
+    // Experimental layout with the dock hidden: only the safe drawing insets
+    // (0dp stays 0dp). With the dock visible the standard padding is kept, so the
+    // widgets keep their gap to the dock.
+    val useEdgeToEdgeVertical = experimentalWidgetAdjustments && !isDockVisible
+
+    val gridTopOffset = if (useEdgeToEdgeVertical) safeDrawingTop else standardTopOffset
+    val gridBottomOffset = if (useEdgeToEdgeVertical) safeDrawingBottom else standardBottomOffset
 
     val gridAreaHeight = windowHeightDp - gridTopOffset - gridBottomOffset
 
-    val getRowCountForColumns = remember(gridAreaHeight, screenWidth) {
+    val getRowCountForColumns = remember(standardAreaHeight, standardScreenWidth) {
         { cols: Int ->
-            val cellWidth = screenWidth / cols
-            val maxPossibleRows = (gridAreaHeight / (cellWidth * 0.75f)).toInt()
-            (if (maxPossibleRows % 2 == 0) maxPossibleRows else maxPossibleRows - 1).coerceAtLeast(2)
+            val standardCellWidth = standardScreenWidth / cols
+            val maxPossibleRows = (standardAreaHeight / (standardCellWidth * 0.75f)).toInt()
+            (if (maxPossibleRows % 2 == 0) maxPossibleRows else maxPossibleRows - 1)
+                .coerceAtLeast(2)
         }
     }
 
@@ -277,7 +306,9 @@ fun WidgetPage(
     val isEditing = selectedWidgetId != -1
     val isDraggingBody = drag != null
 
-    val defaultSpanFor = remember(cellWidthDp, cellHeightDp, widgetColumns, rowCount, density) {
+    val defaultSpanFor = remember(
+        cellWidthDp, cellHeightDp, widgetColumns, rowCount, density, experimentalWidgetAdjustments
+    ) {
         { info: AppWidgetProviderInfo? ->
             if (info == null) {
                 Pair(2.coerceAtMost(widgetColumns), 2.coerceAtMost(rowCount))
@@ -289,9 +320,12 @@ fun WidgetPage(
             } else {
                 val w = ceil(info.minWidth.pxToDp(density) / cellWidthDp.value).toInt()
                 val h = ceil(info.minHeight.pxToDp(density) / cellHeightDp.value).toInt()
+                // Only the width minimum depends on the experimental toggle.
+                val minSpanW = if (experimentalWidgetAdjustments) 1 else 2
+                val minSpanH = 2
                 Pair(
-                    w.coerceAtLeast(2).coerceIn(1, widgetColumns),
-                    h.coerceAtLeast(2).coerceIn(1, rowCount)
+                    w.coerceAtLeast(minSpanW).coerceIn(1, widgetColumns),
+                    h.coerceAtLeast(minSpanH).coerceIn(1, rowCount)
                 )
             }
         }
@@ -507,6 +541,54 @@ fun WidgetPage(
         modifier = Modifier
             .fillMaxSize()
             .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
+            .then(if (experimentalWidgetAdjustments) {
+                Modifier.pointerInput(experimentalWidgetAdjustments) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                            val pressedChanges = event.changes.filter { it.pressed }
+                            if (pressedChanges.size == 3) {
+                                var cancelled = false
+                                try {
+                                    withTimeout(600L) {
+                                        while (true) {
+                                            val nextEvent = awaitPointerEvent(PointerEventPass.Initial)
+                                            val currentPressed = nextEvent.changes.filter { it.pressed }
+                                            if (currentPressed.size != 3) {
+                                                cancelled = true
+                                                break
+                                            }
+                                            if (nextEvent.changes.any { change ->
+                                                    val initial = pressedChanges.find { it.id == change.id }
+                                                    initial != null && (change.position - initial.position).getDistance() > 80f
+                                                }) {
+                                                cancelled = true
+                                                break
+                                            }
+                                        }
+                                    }
+                                } catch (_: PointerEventTimeoutCancellationException) {
+                                    // 3 finger long press timed out -> successfully held for 600ms!
+                                }
+
+                                if (!cancelled) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    viewModel.setExperimentalWidgetAdjustmentsEnabled(false)
+                                    Toast.makeText(context, resetToastText, Toast.LENGTH_SHORT).show()
+                                    event.changes.forEach { it.consume() }
+                                    try {
+                                        while (true) {
+                                            val upEvent = awaitPointerEvent(PointerEventPass.Initial)
+                                            upEvent.changes.forEach { it.consume() }
+                                            if (upEvent.changes.none { it.pressed }) break
+                                        }
+                                    } catch (_: Exception) {}
+                                }
+                            }
+                        }
+                    }
+                }
+            } else Modifier)
             .then(if (blurSetting) Modifier.hazeSource(hazeState) else Modifier)
             .pointerInput(Unit) {
                 detectTapGestures(

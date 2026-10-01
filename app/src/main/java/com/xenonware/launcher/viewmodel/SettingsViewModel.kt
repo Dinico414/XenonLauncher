@@ -92,6 +92,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _blackedOutModeEnabled = MutableStateFlow(sharedPreferenceManager.blackedOutModeEnabled)
     val blackedOutModeEnabled: StateFlow<Boolean> = _blackedOutModeEnabled.asStateFlow()
 
+    private val _experimentalOptionsEnabled = MutableStateFlow(sharedPreferenceManager.experimentalOptionsEnabled)
+    val experimentalOptionsEnabled: StateFlow<Boolean> = _experimentalOptionsEnabled.asStateFlow()
+
+    private val _experimentalWidgetAdjustmentsEnabled = MutableStateFlow(sharedPreferenceManager.experimentalWidgetAdjustmentsEnabled)
+    val experimentalWidgetAdjustmentsEnabled: StateFlow<Boolean> = _experimentalWidgetAdjustmentsEnabled.asStateFlow()
+
     private val _blurEnabled = MutableStateFlow(sharedPreferenceManager.blurEnabled)
     val blurEnabled: StateFlow<Boolean> = _blurEnabled.asStateFlow()
 
@@ -254,6 +260,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     private val _showNotificationManagerDialog = MutableStateFlow(false)
     val showNotificationManagerDialog: StateFlow<Boolean> = _showNotificationManagerDialog.asStateFlow()
+
+    private val _showNotificationMessageDialog = MutableStateFlow(false)
+    val showNotificationMessageDialog: StateFlow<Boolean> = _showNotificationMessageDialog.asStateFlow()
 
     private val _visibleNotificationApps = MutableStateFlow(sharedPreferenceManager.visibleNotificationApps)
     val visibleNotificationApps: StateFlow<List<String>> = _visibleNotificationApps.asStateFlow()
@@ -484,6 +493,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val preferenceListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         when (key) {
             "blacked_out_mode_enabled" -> _blackedOutModeEnabled.value = sharedPreferenceManager.blackedOutModeEnabled
+            "experimental_options_enabled" -> _experimentalOptionsEnabled.value = sharedPreferenceManager.experimentalOptionsEnabled
+            "experimental_widget_adjustments_enabled" -> _experimentalWidgetAdjustmentsEnabled.value = sharedPreferenceManager.experimentalWidgetAdjustmentsEnabled
             "blur_enabled" -> _blurEnabled.value = sharedPreferenceManager.blurEnabled
             "is_grid_layout" -> _isGridLayout.value = sharedPreferenceManager.isGridLayout
             "open_keyboard" -> _openKeyboard.value = sharedPreferenceManager.openKeyboard
@@ -617,6 +628,16 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setBlackedOutEnabled(enabled: Boolean) {
         sharedPreferenceManager.blackedOutModeEnabled = enabled
         _blackedOutModeEnabled.value = enabled
+    }
+
+    fun setExperimentalOptionsEnabled(enabled: Boolean) {
+        sharedPreferenceManager.experimentalOptionsEnabled = enabled
+        _experimentalOptionsEnabled.value = enabled
+    }
+
+    fun setExperimentalWidgetAdjustmentsEnabled(enabled: Boolean) {
+        sharedPreferenceManager.experimentalWidgetAdjustmentsEnabled = enabled
+        _experimentalWidgetAdjustmentsEnabled.value = enabled
     }
 
     fun setBlurEnabled(enabled: Boolean) {
@@ -864,6 +885,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun setShowNotificationManagerDialog(show: Boolean) {
         _showNotificationManagerDialog.value = show
+    }
+
+    fun setShowNotificationMessageDialog(show: Boolean) {
+        _showNotificationMessageDialog.value = show
     }
 
     fun setVisibleNotificationApps(apps: List<String>) {

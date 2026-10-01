@@ -69,9 +69,9 @@
             android:theme="@style/Theme.Xenon" />
 
         <activity
-            android:name=".TweaksActivity"
+            android:name=".CustomizationActivity"
             android:exported="true"
-            android:label="@string/tweaks"
+            android:label="@string/customization"
             android:theme="@style/Theme.Xenon" />
 
         <activity

@@ -1,5 +1,10 @@
 package com.xenonware.launcher.ui.layouts.settings
 
+import android.app.Activity
+import android.content.ComponentName
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
@@ -16,7 +21,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -29,19 +37,25 @@ import com.xenon.mylibrary.values.LargestPadding
 import com.xenon.mylibrary.values.MediumPadding
 import com.xenon.mylibrary.values.NoSpacing
 import com.xenonware.launcher.R
+import com.xenonware.launcher.model.FabAction
 import com.xenonware.launcher.ui.res.AppMenuOrderDialog
+import com.xenonware.launcher.ui.res.FabActionConfigDialog
 import com.xenonware.launcher.ui.res.FontConfigDialog
+import com.xenonware.launcher.ui.res.GlobalIconPackPicker
+import com.xenonware.launcher.ui.res.NotificationManagerDialog
+import com.xenonware.launcher.ui.res.NotificationMessageDialog
 import com.xenonware.launcher.ui.res.VisualizerConfigDialog
 import com.xenonware.launcher.ui.theme.LocalMainFontFamily
 import com.xenonware.launcher.ui.theme.LocalSubFontFamily
+import com.xenonware.launcher.viewmodel.FabConfigMode
 import com.xenonware.launcher.viewmodel.SettingsViewModel
-import com.xenonware.launcher.viewmodel.classes.TweaksItems
+import com.xenonware.launcher.viewmodel.classes.CustomizationItems
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 
 @Composable
-fun TweaksLayout(
+fun CustomizationLayout(
     onNavigateBack: () -> Unit,
     viewModel: SettingsViewModel,
     layoutType: LayoutType,
@@ -52,9 +66,8 @@ fun TweaksLayout(
 
         val isCompact =
             LocalDeviceConfig.current.isCommunicator || LocalDeviceConfig.current.isMindOne
-        // Window height in dp from the true container size; screenHeightDp lags resizes.
-        val windowInfo = androidx.compose.ui.platform.LocalWindowInfo.current
-        val density = androidx.compose.ui.platform.LocalDensity.current
+        val windowInfo = LocalWindowInfo.current
+        val density = LocalDensity.current
         val appHeight = with(density) { windowInfo.containerSize.height.toDp() }
 
         val isAppBarExpandable = when (layoutType) {
@@ -71,7 +84,7 @@ fun TweaksLayout(
         val subFont = LocalSubFontFamily.current
 
         ActivityScreen(
-            titleText = stringResource(id = R.string.tweaks),
+            titleText = stringResource(id = R.string.customization),
 
             expandable = isAppBarExpandable,
 
@@ -104,11 +117,12 @@ fun TweaksLayout(
                                 .calculateBottomPadding() + LargestPadding
                         )
                 ) {
-                    TweaksItems(
+                    CustomizationItems(
                         viewModel = viewModel,
                         layoutType = layoutType,
                         mainContextFont = mainFont,
-                        subContextFont = subFont
+                        subContextFont = subFont,
+                        onShowHiddenApps = { viewModel.setShowHiddenApps(true) }
                     )
                 }
             })
@@ -119,6 +133,26 @@ fun TweaksLayout(
         val mainFontType by viewModel.mainFontType.collectAsState()
         val robotoFlexSettings by viewModel.robotoFlexSettings.collectAsState()
         val googleSansFlexSettings by viewModel.googleSansFlexSettings.collectAsState()
+
+        val globalIconPack by viewModel.globalIconPack.collectAsState()
+        val showGlobalIconPackDialog by viewModel.showGlobalIconPackDialog.collectAsState()
+
+        val showHiddenAppsDialog by viewModel.showHiddenAppsDialog.collectAsState()
+        val hiddenApps by viewModel.hiddenApps.collectAsState()
+        val apps by viewModel.apps.collectAsState()
+        val iconShape by viewModel.drawerIconShape.collectAsState()
+        val showShadow by viewModel.drawerIconShadow.collectAsState()
+
+        val fabSingleTapAction by viewModel.fabSingleTapAction.collectAsState()
+        val fabDoubleTapAction by viewModel.fabDoubleTapAction.collectAsState()
+        val fabLongPressAction by viewModel.fabLongPressAction.collectAsState()
+        val fabSwipeUpAction by viewModel.fabSwipeUpAction.collectAsState()
+        val fabSingleTapValue by viewModel.fabSingleTapValue.collectAsState()
+        val fabDoubleTapValue by viewModel.fabDoubleTapValue.collectAsState()
+        val fabLongPressValue by viewModel.fabLongPressValue.collectAsState()
+        val fabSwipeUpValue by viewModel.fabSwipeUpValue.collectAsState()
+        val showFabConfigMode by viewModel.showFabConfigMode.collectAsState()
+        val installedShortcuts by viewModel.installedShortcuts.collectAsState()
 
         if (showFontConfigDialog) {
             Box(
@@ -156,6 +190,111 @@ fun TweaksLayout(
                     onSave = { newOrder ->
                         viewModel.setAppMenuOrder(newOrder)
                         viewModel.setShowAppMenuOrderDialog(false)
+                    }
+                )
+            }
+        }
+
+        val showNotificationMessageDialog by viewModel.showNotificationMessageDialog.collectAsState()
+        val notificationMessageType by viewModel.notificationMessageType.collectAsState()
+
+        if (showNotificationMessageDialog) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .hazeEffect(hazeState)
+            ) {
+                NotificationMessageDialog(
+                    selectedType = notificationMessageType,
+                    onDismiss = { viewModel.setShowNotificationMessageDialog(false) },
+                    onSelectType = { type ->
+                        viewModel.setNotificationMessageType(type)
+                        viewModel.setShowNotificationMessageDialog(false)
+                    }
+                )
+            }
+        }
+
+        if (showGlobalIconPackDialog) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .hazeEffect(hazeState)
+            ) {
+                GlobalIconPackPicker(
+                    iconPacks = remember { viewModel.getInstalledIconPacks() },
+                    selectedPackage = globalIconPack,
+                    onPackSelect = { viewModel.setGlobalIconPack(it) },
+                    onDismiss = { viewModel.setShowGlobalIconPackDialog(false) }
+                )
+            }
+        }
+
+        if (showHiddenAppsDialog) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .hazeEffect(hazeState)
+            ) {
+                NotificationManagerDialog(
+                    allApps = apps,
+                    visibleApps = hiddenApps,
+                    title = stringResource(R.string.hidden_apps),
+                    description = stringResource(R.string.hidden_apps_description),
+                    onDismiss = { viewModel.setShowHiddenApps(false) },
+                    onToggleApp = {
+                        if (it in hiddenApps) viewModel.unhideApp(it)
+                        else viewModel.hideApp(it)
+                    },
+                    onSelectAll = { },
+                    onClearAll = { },
+                    iconShape = iconShape,
+                    showShadow = showShadow
+                )
+            }
+        }
+
+        if (showFabConfigMode != FabConfigMode.NONE) {
+            val initialAction = when (showFabConfigMode) {
+                FabConfigMode.SINGLE -> fabSingleTapAction
+                FabConfigMode.DOUBLE -> fabDoubleTapAction
+                FabConfigMode.LONG -> fabLongPressAction
+                FabConfigMode.SWIPE_UP -> fabSwipeUpAction
+                else -> FabAction.NONE
+            }
+            val initialValue = when (showFabConfigMode) {
+                FabConfigMode.SINGLE -> fabSingleTapValue
+                FabConfigMode.DOUBLE -> fabDoubleTapValue
+                FabConfigMode.LONG -> fabLongPressValue
+                FabConfigMode.SWIPE_UP -> fabSwipeUpValue
+                else -> ""
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .hazeEffect(hazeState)
+            ) {
+                FabActionConfigDialog(
+                    configMode = showFabConfigMode,
+                    apps = apps,
+                    installedShortcuts = installedShortcuts,
+                    initialAction = initialAction,
+                    initialValue = initialValue,
+                    iconShape = iconShape,
+                    showShadow = showShadow,
+                    onDismiss = { viewModel.setShowFabConfig(FabConfigMode.NONE) },
+                    onSave = { action, value ->
+                        viewModel.setFabAction(showFabConfigMode, action, value)
+                        viewModel.setShowFabConfig(FabConfigMode.NONE)
+                    },
+                    onPickShortcut = { item ->
+                        val intent = Intent(Intent.ACTION_CREATE_SHORTCUT).apply {
+                            component = ComponentName(
+                                item.shortcutInfo!!.activityInfo.packageName,
+                                item.shortcutInfo.activityInfo.name
+                            )
+                        }
+                        // If shortcut launcher needed, or handled
                     }
                 )
             }

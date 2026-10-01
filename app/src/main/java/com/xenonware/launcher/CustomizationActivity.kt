@@ -13,14 +13,14 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.ViewModelProvider
 import com.xenonware.launcher.data.SharedPreferenceManager
-import com.xenonware.launcher.ui.layouts.settings.TweaksLayout
+import com.xenonware.launcher.ui.layouts.settings.CustomizationLayout
 import com.xenonware.launcher.ui.theme.FontAxes
 import com.xenonware.launcher.ui.theme.FontType
 import com.xenonware.launcher.ui.theme.ScreenEnvironment
 import com.xenonware.launcher.ui.theme.createCustomFontFamily
 import com.xenonware.launcher.viewmodel.SettingsViewModel
 
-class TweaksActivity : ComponentActivity() {
+class CustomizationActivity : ComponentActivity() {
 
     private val sharedPreferenceManager by lazy { SharedPreferenceManager(application) }
     private lateinit var settingsViewModel: SettingsViewModel
@@ -106,7 +106,7 @@ class TweaksActivity : ComponentActivity() {
                 mainFont = customMainFontFamily
             ) { layoutType, isLandscape ->
 
-                TweaksLayout(
+                CustomizationLayout(
                     onNavigateBack = { finish() },
                     viewModel = settingsViewModel,
                     isLandscape = isLandscape,

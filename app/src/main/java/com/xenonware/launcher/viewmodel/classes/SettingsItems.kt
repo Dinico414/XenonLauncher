@@ -2,65 +2,27 @@ package com.xenonware.launcher.viewmodel.classes
 
 import android.content.Intent
 import android.widget.Toast
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.PressInteraction
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AdsClick
 import androidx.compose.material.icons.rounded.BlurOn
-import androidx.compose.material.icons.rounded.Circle
 import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material.icons.rounded.Keyboard
-import androidx.compose.material.icons.rounded.KeyboardDoubleArrowUp
-import androidx.compose.material.icons.rounded.KeyboardHide
 import androidx.compose.material.icons.rounded.NotificationsActive
-import androidx.compose.material.icons.rounded.NotificationsOff
-import androidx.compose.material.icons.rounded.Numbers
-import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Shield
-import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material.icons.rounded.Tune
-import androidx.compose.material.icons.rounded.Visibility
-import androidx.compose.material.icons.rounded.VisibilityOff
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.SwitchColors
 import androidx.compose.material3.SwitchDefaults
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -69,60 +31,28 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.xenon.mylibrary.res.MenuItem
 import com.xenon.mylibrary.res.SettingsGoogleTile
 import com.xenon.mylibrary.res.SettingsSwitchMenuTile
 import com.xenon.mylibrary.res.SettingsSwitchTile
-import com.xenon.mylibrary.res.SettingsSwitchTileContext
 import com.xenon.mylibrary.res.SettingsTile
-import com.xenon.mylibrary.res.SettingsTileContext
-import com.xenon.mylibrary.res.XenonDropDown
-import com.xenon.mylibrary.res.XenonSingleChoiceButtonGroup
 import com.xenon.mylibrary.theme.LayoutType
 import com.xenon.mylibrary.theme.QuicksandTitleVariable
-import com.xenon.mylibrary.values.BiggestCornerRadius
-import com.xenon.mylibrary.values.BiggestSpacing
-import com.xenon.mylibrary.values.ExtraLargeCornerRadius
 import com.xenon.mylibrary.values.ExtraLargeSpacing
 import com.xenon.mylibrary.values.ExtraLargerCornerRadius
-import com.xenon.mylibrary.values.HugerSpacer
-import com.xenon.mylibrary.values.HugerSpacing
-import com.xenon.mylibrary.values.LargeMediumPadding
-import com.xenon.mylibrary.values.LargeMediumSpacer
-import com.xenon.mylibrary.values.LargeMediumSpacing
-import com.xenon.mylibrary.values.LargestBiggerSpacing
-import com.xenon.mylibrary.values.LargestCornerRadius
-import com.xenon.mylibrary.values.LargestPadding
-import com.xenon.mylibrary.values.MediumSmallSpacing
-import com.xenon.mylibrary.values.MediumSmallerCornerRadius
-import com.xenon.mylibrary.values.MediumSpacer
 import com.xenon.mylibrary.values.NoCornerRadius
 import com.xenon.mylibrary.values.NoSpacing
 import com.xenon.mylibrary.values.SmallCornerRadius
 import com.xenon.mylibrary.values.SmallerSpacer
-import com.xenon.mylibrary.values.SmallerStroke
+import com.xenonware.launcher.CustomizationActivity
 import com.xenonware.launcher.R
-import com.xenonware.launcher.TweaksActivity
-import com.xenonware.launcher.model.AppInfo
-import com.xenonware.launcher.model.FabAction
 import com.xenonware.launcher.presentation.sign_in.SignInState
-import com.xenonware.launcher.ui.res.IconShape
-import com.xenonware.launcher.ui.res.VisualizerConfig
-import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
-import com.xenonware.launcher.viewmodel.FabConfigMode
 import com.xenonware.launcher.viewmodel.LauncherViewModel
 import com.xenonware.launcher.viewmodel.SettingsViewModel
-import kotlinx.coroutines.delay
-import kotlin.math.abs
-import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun SettingsItems(
@@ -172,30 +102,9 @@ fun SettingsItems(
     val blurEnabled by viewModel.blurEnabled.collectAsState()
     val developerModeEnabled by viewModel.developerModeEnabled.collectAsState()
     val isAccessibilityRestricted by viewModel.isAccessibilityRestricted.collectAsState()
-    val appLabelsEnabled by viewModel.appLabelsEnabled.collectAsState()
-    val isGridLayout by viewModel.isGridLayout.collectAsState()
-    val openKeyboard by viewModel.openKeyboard.collectAsState()
-    val openKeyboardPortraitOnly by viewModel.openKeyboardPortraitOnly.collectAsState()
-    val advancedSearchEnabled by viewModel.advancedSearchEnabled.collectAsState()
-    val showHiddenAppsInSearch by viewModel.showHiddenAppsInSearch.collectAsState()
-    val dockSafeDrawIme by viewModel.dockSafeDrawIme.collectAsState()
-    val dockSafeDrawImePortraitOnly by viewModel.dockSafeDrawImePortraitOnly.collectAsState()
-    val drawerIconShape by viewModel.drawerIconShape.collectAsState()
-    val drawerIconShadow by viewModel.drawerIconShadow.collectAsState()
-    val globalIconPack by viewModel.globalIconPack.collectAsState()
-    val badgeType by viewModel.notificationBadgeType.collectAsState()
     val timeShortcut by viewModel.timeShortcut.collectAsState()
     val dateShortcut by viewModel.dateShortcut.collectAsState()
     val weatherShortcut by viewModel.weatherShortcut.collectAsState()
-
-    val fabSingleTapAction by viewModel.fabSingleTapAction.collectAsState()
-    val fabDoubleTapAction by viewModel.fabDoubleTapAction.collectAsState()
-    val fabLongPressAction by viewModel.fabLongPressAction.collectAsState()
-    val fabSingleTapValue by viewModel.fabSingleTapValue.collectAsState()
-    val fabDoubleTapValue by viewModel.fabDoubleTapValue.collectAsState()
-    val fabLongPressValue by viewModel.fabLongPressValue.collectAsState()
-    val hideActionButton by viewModel.hideActionButton.collectAsState()
-    val apps by viewModel.apps.collectAsState()
     
     val userData = state.userData
 
@@ -242,7 +151,7 @@ fun SettingsItems(
         title = if (state.isSignInSuccessful) userData?.username ?: "Signed in" else stringResource(id = R.string.sign_in_with_google),
         subtitle = if (state.isSignInSuccessful) userData?.email else null,
         profilePictureUrl = userData?.profilePictureUrl,
-        noAccIcon = painterResource(R.drawable.default_icon),
+        noAccIcon = painterResource(R.drawable.ic_default_icon),
         isSignedIn = state.isSignInSuccessful,
         onClick = if (state.isSignInSuccessful) onSignOutClick else onSignInClick,
         shape = tileShapeOverride ?: standaloneShape,
@@ -278,7 +187,7 @@ fun SettingsItems(
             else
                 stringResource(R.string.accessibility_access_description),
             onClick = { viewModel.openAccessibilitySettings(context) },
-            icon = {  Icon(painterResource(R.drawable.accessibility), null, tint = tileSubtitleColor) },
+            icon = {  Icon(painterResource(R.drawable.ic_accessibility), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: middleShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -308,7 +217,7 @@ fun SettingsItems(
             else
                 stringResource(R.string.accessibility_access_description),
             onClick = { viewModel.openAccessibilitySettings(context) },
-            icon = {  Icon(painterResource(R.drawable.accessibility), null, tint = tileSubtitleColor) },
+            icon = {  Icon(painterResource(R.drawable.ic_accessibility), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: topShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -338,7 +247,7 @@ fun SettingsItems(
             title = stringResource(id = R.string.theme),
             subtitle = "${stringResource(id = R.string.current)} $currentThemeTitle",
             onClick = { viewModel.onThemeSettingClicked() },
-            icon = { Icon(painterResource(R.drawable.themes), null, tint = tileSubtitleColor) },
+            icon = { Icon(painterResource(R.drawable.ic_themes), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: topShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -353,7 +262,7 @@ fun SettingsItems(
             checked = blackedOutEnabled,
             onCheckedChange = { viewModel.setBlackedOutEnabled(it) },
             onClick = { viewModel.setBlackedOutEnabled(!blackedOutEnabled) },
-            icon = { Icon(painterResource(R.drawable.blacked_out), null, tint = tileSubtitleColor) },
+            icon = { Icon(painterResource(R.drawable.ic_blacked_out), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: middleShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -385,7 +294,7 @@ fun SettingsItems(
             checked = coverThemeEnabled,
             onCheckedChange = { viewModel.setCoverThemeEnabled(it) },
             onClick = { viewModel.onCoverThemeClicked() },
-            icon = { Icon(painterResource(R.drawable.cover_screen), null, tint = tileSubtitleColor) },
+            icon = { Icon(painterResource(R.drawable.ic_cover_screen), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: bottomShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -402,7 +311,7 @@ fun SettingsItems(
         title = stringResource(id = R.string.language),
         subtitle = "${stringResource(id = R.string.current)} $currentLanguage",
         onClick = { viewModel.onLanguageSettingClicked(context) },
-        icon = { Icon(painterResource(R.drawable.language), null, tint = tileSubtitleColor) },
+        icon = { Icon(painterResource(R.drawable.ic_language), null, tint = tileSubtitleColor) },
         shape = tileShapeOverride ?: standaloneShape,
         backgroundColor = tileBackgroundColor,
         contentColor = tileContentColor,
@@ -412,387 +321,13 @@ fun SettingsItems(
     )
     Spacer(Modifier.height(actualOuterGroupSpacing))
 
-    // --- app-drawer ---
-    Column {
-        SettingsSwitchTile(
-            title = stringResource(id = R.string.grid_layout),
-            subtitle = if (isGridLayout) stringResource(id = R.string.using_grid_view) else stringResource(id = R.string.using_list_view),
-            checked = isGridLayout,
-            onCheckedChange = { viewModel.setGridLayout(it) },
-            onClick = { viewModel.setGridLayout(!isGridLayout) },
-            icon = {  Icon(painterResource(R.drawable.grid), null, tint = tileSubtitleColor) },
-            shape = tileShapeOverride ?: topShape,
-            backgroundColor = tileBackgroundColor,
-            contentColor = tileContentColor,
-            subtitleColor = tileSubtitleColor,
-            mainContextFont = mainContextFont,
-            subContextFont = subContextFont,
-            switchColors = switchColorsOverride ?: defaultSwitchColors
-        )
-        Spacer(Modifier.height(actualInnerGroupSpacing))
-        SettingsTile(
-            title = stringResource(id = R.string.global_icon_pack),
-            subtitle = if (globalIconPack != null) {
-                val pack = remember(globalIconPack) { viewModel.getInstalledIconPacks().find { it.activityInfo.packageName == globalIconPack } }
-                pack?.loadLabel(context.packageManager)?.toString() ?: globalIconPack!!
-            } else stringResource(R.string.system_default),
-            onClick = { viewModel.setShowGlobalIconPackDialog(true) },
-            icon = { Icon(painterResource(R.drawable.themes), null, tint = tileSubtitleColor) },
-            shape = tileShapeOverride ?: middleShape,
-            backgroundColor = tileBackgroundColor,
-            contentColor = tileContentColor,
-            subtitleColor = tileSubtitleColor,
-            mainContextFont = mainContextFont,
-            subContextFont = subContextFont
-        )
-        Spacer(Modifier.height(actualInnerGroupSpacing))
-        // Icon Shape Selector
-        SettingsTileContext(
-            title = stringResource(id = R.string.icon_shape),
-            icon = {  Icon(painterResource(R.drawable.shape), null, tint = tileSubtitleColor) },
-            shape = tileShapeOverride ?: middleShape,
-            backgroundColor = tileBackgroundColor,
-            contentColor = tileContentColor,
-            subtitleColor = tileSubtitleColor,
-            mainContextFont = mainContextFont,
-            subContextFont = subContextFont,
-            enableRipple = false,
-            contextContent = {
-                val entries = IconShape.entries
-                val interactionSources = remember { entries.map { MutableInteractionSource() } }
-                val pressedStates = remember { mutableStateListOf<Boolean>().apply { repeat(entries.size) { add(false) } } }
-
-                entries.forEachIndexed { index, _ ->
-                    LaunchedEffect(interactionSources[index]) {
-                        var pressStartTime = 0L
-                        interactionSources[index].interactions.collect { interaction ->
-                            when (interaction) {
-                                is PressInteraction.Press -> {
-                                    pressedStates[index] = true
-                                    pressStartTime = System.currentTimeMillis()
-                                }
-                                is PressInteraction.Release -> {
-                                    val duration = System.currentTimeMillis() - pressStartTime
-                                    if (duration < 200) delay((200 - duration).milliseconds)
-                                    pressedStates[index] = false
-                                }
-                                is PressInteraction.Cancel -> pressedStates[index] = false
-                            }
-                        }
-                    }
-                }
-
-                val pressedIndex = pressedStates.indexOfFirst { it }
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = LargestPadding, end = LargestPadding, bottom = LargestPadding)
-                        .clip(RoundedCornerShape(ExtraLargeCornerRadius))
-                        .background(colorScheme.surfaceContainerLowest.copy(alpha = if (LocalIsDarkTheme.current)0.5f else 1f))
-                        .padding(vertical = LargeMediumPadding)
-                        .horizontalScroll(rememberScrollState())
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = LargeMediumPadding).height(HugerSpacing),
-                        horizontalArrangement = Arrangement.spacedBy(LargeMediumSpacer),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        entries.forEachIndexed { index, shape ->
-                            val isSelected = shape == drawerIconShape
-                            val isPressed = pressedStates[index]
-                            val isNeighborPressed = pressedIndex != -1 && abs(index - pressedIndex) == 1
-
-                            val targetWidth = when {
-                                isPressed -> {
-                                    val neighbors = if (index == 0 || index == entries.size - 1) 1 else 2
-                                    HugerSpacer + (if (neighbors == 1) MediumSmallSpacing else LargeMediumSpacing)
-                                }
-                                isNeighborPressed -> 58.dp
-                                else -> HugerSpacer
-                            }
-
-                            val containerWidth by animateDpAsState(
-                                targetValue = targetWidth,
-                                label = "containerWidth",
-                                animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
-                            )
-
-                            val containerRadius by animateDpAsState(
-                                targetValue = when {
-                                    isPressed -> MediumSmallerCornerRadius
-                                    isSelected -> LargestCornerRadius
-                                    else -> BiggestCornerRadius
-                                }, label = "containerRadius", animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
-                        )
-
-                        val containerShape = RoundedCornerShape(containerRadius)
-
-                        Box(
-                            modifier = Modifier
-                                .width(containerWidth)
-                                .fillMaxHeight()
-                                .clip(containerShape)
-                                .background(if (isSelected) colorScheme.primaryContainer else colorScheme.surfaceContainerHighest.copy(alpha = 0.5f))
-                                .border(width = SmallerStroke, color = if (isSelected) colorScheme.primary else Color.Transparent, shape = containerShape)
-                                .clickable(interactionSource = interactionSources[index], indication = null) { viewModel.setDrawerIconShape(shape) }
-                                .padding(LargeMediumPadding), contentAlignment = Alignment.Center) {
-                            Box(
-                                modifier = Modifier.size(BiggestSpacing).clip(shape.getShape()).background(if (isSelected) colorScheme.onPrimaryContainer else colorScheme.onSurfaceVariant)
-                            )
-                        }
-                    }
-                }
-            }
-        })
-        Spacer(Modifier.height(actualInnerGroupSpacing))
-        SettingsSwitchTile(
-            title = stringResource(id = R.string.app_labels),
-            subtitle = if (appLabelsEnabled) stringResource(id = R.string.show_app_labels) else stringResource(id = R.string.hide_app_labels),
-            checked = appLabelsEnabled,
-            onCheckedChange = { viewModel.setAppLabelsEnabled(it) },
-            onClick = { viewModel.setAppLabelsEnabled(!appLabelsEnabled) },
-            icon = { Icon(if (appLabelsEnabled) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff, null, tint = tileSubtitleColor) },
-            shape = tileShapeOverride ?: middleShape,
-            backgroundColor = tileBackgroundColor,
-            contentColor = tileContentColor,
-            subtitleColor = tileSubtitleColor,
-            mainContextFont = mainContextFont,
-            subContextFont = subContextFont,
-            switchColors = switchColorsOverride ?: defaultSwitchColors
-        )
-        Spacer(Modifier.height(actualInnerGroupSpacing))
-        SettingsSwitchTile(
-            title = stringResource(id = R.string.icon_shadows),
-            subtitle = stringResource(id = R.string.apply_depth_description),
-            checked = drawerIconShadow,
-            onCheckedChange = { viewModel.setDrawerIconShadow(it) },
-            onClick = { viewModel.setDrawerIconShadow(!drawerIconShadow) },
-            icon = {  Icon(painterResource(R.drawable.shadow), null, tint = tileSubtitleColor) },
-            shape = tileShapeOverride ?: bottomShape,
-            backgroundColor = tileBackgroundColor,
-            contentColor = tileContentColor,
-            subtitleColor = tileSubtitleColor,
-            mainContextFont = mainContextFont,
-            subContextFont = subContextFont,
-            switchColors = switchColorsOverride ?: defaultSwitchColors
-        )
-    }
-    Spacer(Modifier.height(actualOuterGroupSpacing))
-
-    // --- search ---
-    Column {
-        SettingsSwitchTile(
-            title = stringResource(id = R.string.advanced_search),
-            subtitle = stringResource(id = R.string.advanced_search_description),
-            checked = advancedSearchEnabled,
-            onCheckedChange = { viewModel.setAdvancedSearchEnabled(it) },
-            onClick = { viewModel.setAdvancedSearchEnabled(!advancedSearchEnabled) },
-            icon = { Icon(Icons.Rounded.Search, null, tint = tileSubtitleColor) },
-            shape = tileShapeOverride ?: topShape,
-            backgroundColor = tileBackgroundColor,
-            contentColor = tileContentColor,
-            subtitleColor = tileSubtitleColor,
-            mainContextFont = mainContextFont,
-            subContextFont = subContextFont,
-            switchColors = switchColorsOverride ?: defaultSwitchColors
-        )
-        Spacer(Modifier.height(actualInnerGroupSpacing))
-        SettingsSwitchMenuTile(
-            title = stringResource(id = R.string.show_hidden_apps),
-            subtitle = stringResource(id = R.string.show_hidden_apps_description),
-            checked = showHiddenAppsInSearch,
-            onCheckedChange = { viewModel.setShowHiddenAppsInSearch(it) },
-            onClick = onShowHiddenApps,
-            icon = { Icon(Icons.Rounded.Visibility, null, tint = tileSubtitleColor) },
-            shape = tileShapeOverride ?: middleShape,
-            backgroundColor = tileBackgroundColor,
-            contentColor = tileContentColor,
-            subtitleColor = tileSubtitleColor,
-            mainContextFont = mainContextFont,
-            subContextFont = subContextFont,
-            switchColors = switchColorsOverride ?: defaultSwitchColors
-        )
-        Spacer(Modifier.height(actualInnerGroupSpacing))
-        SettingsSwitchTileContext(
-            title = stringResource(id = R.string.move_with_keyboard),
-            subtitle = if (dockSafeDrawIme) stringResource(id = R.string.dock_move_up_description) else stringResource(id = R.string.dock_stay_bottom_description),
-            checked = dockSafeDrawIme,
-            onCheckedChange = { viewModel.setDockSafeDrawIme(it) },
-            onClick = { viewModel.setDockSafeDrawIme(!dockSafeDrawIme) },
-            icon = { Icon(Icons.Rounded.Keyboard, null, tint = tileSubtitleColor) },
-            shape = tileShapeOverride ?: middleShape,
-            backgroundColor = tileBackgroundColor,
-            contentColor = tileContentColor,
-            subtitleColor = tileSubtitleColor,
-            mainContextFont = mainContextFont,
-            subContextFont = subContextFont,
-            switchColors = switchColorsOverride ?: defaultSwitchColors,
-            showContext = dockSafeDrawIme && (layoutType == LayoutType.SMALL || layoutType == LayoutType.COMPACT),
-            contextContent = {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = LargestPadding, end = LargestPadding, bottom = LargestPadding)
-                        .clip(RoundedCornerShape(ExtraLargeCornerRadius))
-                        .background(colorScheme.surfaceContainerLowest.copy(alpha = if (LocalIsDarkTheme.current) 0.5f else 1f))
-                        .clickable { viewModel.setDockSafeDrawImePortraitOnly(!dockSafeDrawImePortraitOnly) }
-                        .padding(LargeMediumPadding)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                stringResource(id = R.string.move_only_in_portrait),
-                                color = tileContentColor,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Text(
-                                stringResource(id = R.string.move_only_in_portrait_description),
-                                color = tileSubtitleColor,
-                                fontSize = 14.sp
-                            )
-                        }
-                        Spacer(Modifier.width(MediumSpacer))
-                        Checkbox(
-                            checked = dockSafeDrawImePortraitOnly,
-                            onCheckedChange = { viewModel.setDockSafeDrawImePortraitOnly(it) },
-                            colors = CheckboxDefaults.colors(
-                                checkedColor = colorScheme.primary,
-                                uncheckedColor = tileSubtitleColor
-                            )
-                        )
-                    }
-                }
-            }
-        )
-        Spacer(Modifier.height(actualInnerGroupSpacing))
-        SettingsSwitchTileContext(
-            title = stringResource(id = R.string.open_keyboard),
-            subtitle = stringResource(id = R.string.focus_search_description),
-            checked = openKeyboard,
-            onCheckedChange = { viewModel.setOpenKeyboard(it) },
-            onClick = { viewModel.setOpenKeyboard(!openKeyboard) },
-            icon = { Icon(Icons.Rounded.KeyboardHide, null, tint = tileSubtitleColor) },
-            shape = tileShapeOverride ?: bottomShape,
-            backgroundColor = tileBackgroundColor,
-            contentColor = tileContentColor,
-            subtitleColor = tileSubtitleColor,
-            mainContextFont = mainContextFont,
-            subContextFont = subContextFont,
-            switchColors = switchColorsOverride ?: defaultSwitchColors,
-            showContext = openKeyboard && (layoutType == LayoutType.SMALL || layoutType == LayoutType.COMPACT),
-            contextContent = {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = LargestPadding, end = LargestPadding, bottom = LargestPadding)
-                        .clip(RoundedCornerShape(ExtraLargeCornerRadius))
-                        .background(colorScheme.surfaceContainerLowest.copy(alpha = if (LocalIsDarkTheme.current) 0.5f else 1f))
-                        .clickable { viewModel.setOpenKeyboardPortraitOnly(!openKeyboardPortraitOnly) }
-                        .padding(LargeMediumPadding)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                stringResource(id = R.string.open_only_in_portrait),
-                                color = tileContentColor,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Text(
-                                stringResource(id = R.string.open_only_in_portrait_description),
-                                color = tileSubtitleColor,
-                                fontSize = 14.sp
-                            )
-                        }
-                        Spacer(Modifier.width(MediumSpacer))
-                        Checkbox(
-                            checked = openKeyboardPortraitOnly,
-                            onCheckedChange = { viewModel.setOpenKeyboardPortraitOnly(it) },
-                            colors = CheckboxDefaults.colors(
-                                checkedColor = colorScheme.primary,
-                                uncheckedColor = tileSubtitleColor
-                            )
-                        )
-                    }
-                }
-            }
-        )
-    }
-    Spacer(Modifier.height(actualOuterGroupSpacing))
-
-    // --- DOCK FAB ---
-    if (!hideActionButton) {
-        Column {
-            SettingsTile(
-                title = stringResource(id = R.string.fab_single_tap),
-                subtitle = getFabActionTitle(fabSingleTapAction, fabSingleTapValue, apps),
-                onClick = { viewModel.setShowFabConfig(FabConfigMode.SINGLE) },
-                icon = { Icon(Icons.Rounded.TouchApp, null, tint = tileSubtitleColor) },
-                shape = tileShapeOverride ?: topShape,
-                backgroundColor = tileBackgroundColor,
-                contentColor = tileContentColor,
-                subtitleColor = tileSubtitleColor,
-                mainContextFont = mainContextFont,
-                subContextFont = subContextFont
-            )
-            Spacer(Modifier.height(actualInnerGroupSpacing))
-            SettingsTile(
-                title = stringResource(id = R.string.fab_double_tap),
-                subtitle = getFabActionTitle(fabDoubleTapAction, fabDoubleTapValue, apps),
-                onClick = { viewModel.setShowFabConfig(FabConfigMode.DOUBLE) },
-                icon = { Icon(Icons.Rounded.TouchApp, null, tint = tileSubtitleColor) },
-                shape = tileShapeOverride ?: middleShape,
-                backgroundColor = tileBackgroundColor,
-                contentColor = tileContentColor,
-                subtitleColor = tileSubtitleColor,
-                mainContextFont = mainContextFont,
-                subContextFont = subContextFont
-            )
-            Spacer(Modifier.height(actualInnerGroupSpacing))
-            SettingsTile(
-                title = stringResource(id = R.string.fab_long_press),
-                subtitle = getFabActionTitle(fabLongPressAction, fabLongPressValue, apps),
-                onClick = { viewModel.setShowFabConfig(FabConfigMode.LONG) },
-                icon = { Icon(Icons.Rounded.AdsClick, null, tint = tileSubtitleColor) },
-                shape = tileShapeOverride ?: middleShape,
-                backgroundColor = tileBackgroundColor,
-                contentColor = tileContentColor,
-                subtitleColor = tileSubtitleColor,
-                mainContextFont = mainContextFont,
-                subContextFont = subContextFont
-            )
-            val fabSwipeUpAction by viewModel.fabSwipeUpAction.collectAsState()
-            val fabSwipeUpValue by viewModel.fabSwipeUpValue.collectAsState()
-            Spacer(Modifier.height(actualInnerGroupSpacing))
-            SettingsTile(
-                title = stringResource(id = R.string.fab_swipe_up),
-                subtitle = getFabActionTitle(fabSwipeUpAction, fabSwipeUpValue, apps),
-                onClick = { viewModel.setShowFabConfig(FabConfigMode.SWIPE_UP) },
-                icon = { Icon(Icons.Rounded.KeyboardDoubleArrowUp, null, tint = tileSubtitleColor) },
-                shape = tileShapeOverride ?: bottomShape,
-                backgroundColor = tileBackgroundColor,
-                contentColor = tileContentColor,
-                subtitleColor = tileSubtitleColor,
-                mainContextFont = mainContextFont,
-                subContextFont = subContextFont
-            )
-        }
-        Spacer(Modifier.height(actualOuterGroupSpacing))
-    }
-
-    // --- Notification & At a Glance ---
+    // --- At a Glance & Notification Manager ---
     Column {
         SettingsTile(
             title = stringResource(R.string.at_a_glance),
             subtitle = stringResource(R.string.at_a_glance_description),
             onClick = { viewModel.setShowCalendarSelectionDialog(true) },
-            icon = { Icon(painterResource(R.drawable.at_a_glance), null, tint = tileSubtitleColor) },
+            icon = { Icon(painterResource(R.drawable.ic_at_a_glance), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: topShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -806,64 +341,22 @@ fun SettingsItems(
             subtitle = stringResource(R.string.notification_manager_description),
             onClick = { viewModel.setShowNotificationManagerDialog(true) },
             icon = { Icon(Icons.Rounded.NotificationsActive, null, tint = tileSubtitleColor) },
-            shape = tileShapeOverride ?: middleShape,
+            shape = tileShapeOverride ?: bottomShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
             mainContextFont = mainContextFont,
             subContextFont = subContextFont
         )
-        Spacer(Modifier.height(actualInnerGroupSpacing))
-        SettingsTileContext(
-            title = stringResource(id = R.string.notification_badges),
-            icon = {  Icon(painterResource(R.drawable.badge), null, tint = tileSubtitleColor) },
-            shape = tileShapeOverride ?: bottomShape,
-            backgroundColor = tileBackgroundColor,
-            contentColor = tileContentColor,
-            subtitleColor = tileSubtitleColor,
-            mainContextFont = mainContextFont,
-            subContextFont = subContextFont,
-            enableRipple = false,
-            contextContent = {
-                XenonSingleChoiceButtonGroup(
-                    options = listOf(0, 1, 2),
-                    selectedOption = badgeType,
-                    onOptionSelect = { viewModel.setNotificationBadgeType(it) },
-                    label = { type ->
-                        when (type) {
-                            0 -> stringResource(id = R.string.none)
-                            1 -> stringResource(id = R.string.dot)
-                            2 -> stringResource(id = R.string.number)
-                            else -> ""
-                        }
-                    },
-                    mainContextFont = mainContextFont,
-                    subContextFont = subContextFont,
-                    unselectedIcon = { type ->
-                        Icon(
-                            imageVector = when (type) {
-                                0 -> Icons.Rounded.NotificationsOff
-                                1 -> Icons.Rounded.Circle
-                                else -> Icons.Rounded.Numbers
-                            },
-                            contentDescription = null,
-                            modifier = Modifier.size(LargestBiggerSpacing),
-                            tint = tileSubtitleColor
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth().padding(start = LargestPadding, end = LargestPadding, bottom = LargestPadding)
-                )
-            }
-        )
     }
     Spacer(Modifier.height(actualOuterGroupSpacing))
 
-    // --- advanced ---
+    // --- Customization ---
     SettingsTile(
-        title = stringResource(id = R.string.tweaks),
-        subtitle = stringResource(id = R.string.tweaks_description),
+        title = stringResource(id = R.string.customization),
+        subtitle = stringResource(id = R.string.customization_description),
         onClick = {
-            val intent = Intent(context, TweaksActivity::class.java)
+            val intent = Intent(context, CustomizationActivity::class.java)
             context.startActivity(intent)
         },
         icon = { Icon(Icons.Rounded.Tune, null, tint = tileSubtitleColor) },
@@ -882,7 +375,7 @@ fun SettingsItems(
             title = stringResource(id = R.string.time_shortcut),
             subtitle = timeShortcut.ifEmpty { stringResource(id = R.string.not_set) },
             onClick = { onConfigShortcut(LauncherViewModel.ShortcutType.TIME) },
-            icon = {  Icon(painterResource(R.drawable.time), null, tint = tileSubtitleColor) },
+            icon = {  Icon(painterResource(R.drawable.ic_time), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: topShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -895,7 +388,7 @@ fun SettingsItems(
             title = stringResource(id = R.string.date_shortcut),
             subtitle = dateShortcut.ifEmpty { stringResource(id = R.string.not_set) },
             onClick = { onConfigShortcut(LauncherViewModel.ShortcutType.DATE) },
-            icon = {  Icon(painterResource(R.drawable.date), null, tint = tileSubtitleColor) },
+            icon = {  Icon(painterResource(R.drawable.ic_date), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: middleShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -908,7 +401,7 @@ fun SettingsItems(
             title = stringResource(id = R.string.weather_shortcut),
             subtitle = weatherShortcut.ifEmpty { stringResource(id = R.string.not_set) },
             onClick = { onConfigShortcut(LauncherViewModel.ShortcutType.WEATHER) },
-            icon = {  Icon(painterResource(R.drawable.weater), null, tint = tileSubtitleColor) },
+            icon = {  Icon(painterResource(R.drawable.ic_weater), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: bottomShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -938,7 +431,7 @@ fun SettingsItems(
             title = stringResource(R.string.clear_data),
             subtitle = stringResource(R.string.clear_data_description),
             onClick = { viewModel.onClearDataClicked(); haptic.performHapticFeedback(HapticFeedbackType.LongPress) },
-            icon = { Icon(painterResource(R.drawable.reset), null, tint = tileSubtitleColor) },
+            icon = { Icon(painterResource(R.drawable.ic_reset), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: middleShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -951,7 +444,7 @@ fun SettingsItems(
             title = stringResource(R.string.reset_settings),
             subtitle = stringResource(R.string.reset_all_settings_description),
             onClick = { viewModel.onResetSettingsClicked(); haptic.performHapticFeedback(HapticFeedbackType.LongPress) },
-            icon = { Icon(painterResource(R.drawable.reset_settings), null, tint = tileSubtitleColor) },
+            icon = { Icon(painterResource(R.drawable.ic_reset_settings), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: middleShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -981,7 +474,7 @@ fun SettingsItems(
             subtitle = "v $appVersion" + if (developerModeEnabled) " (${stringResource(R.string.developer)})" else "",
             onClick = { viewModel.onInfoTileClicked() },
             onLongClick = { viewModel.openImpressum(context) },
-            icon = { Icon(painterResource(R.drawable.info), null, tint = tileSubtitleColor) },
+            icon = { Icon(painterResource(R.drawable.ic_info), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: bottomShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -997,7 +490,7 @@ fun SettingsItems(
                 val intent = Intent(Intent.ACTION_VIEW, "https://www.buymeacoffee.com/xenonware".toUri())
                 context.startActivity(intent)
             },
-            icon = { Icon(painterResource(R.drawable.buy_me_a_coffee), null, tint = tileSubtitleColor) },
+            icon = { Icon(painterResource(R.drawable.ic_buy_me_a_coffee), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: standaloneShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -1014,7 +507,7 @@ fun SettingsItems(
             title = stringResource(id = R.string.developer_options_title),
             subtitle = stringResource(id = R.string.dev_settings_description),
             onClick = onNavigateToDeveloperOptions,
-            icon = { Icon(painterResource(R.drawable.developer), null, tint = tileSubtitleColor) },
+            icon = { Icon(painterResource(R.drawable.ic_developer), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: standaloneShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -1024,31 +517,3 @@ fun SettingsItems(
         )
     }
 }
-
-@Composable
-fun getFabActionTitle(action: FabAction, value: String, apps: List<AppInfo>): String {
-    return when (action) {
-        FabAction.LOCK_DEVICE -> stringResource(R.string.action_lock_device)
-        FabAction.TRIGGER_ASSISTANT -> stringResource(R.string.action_trigger_assistant)
-        FabAction.OPEN_APP -> {
-            val app = apps.find { it.packageName == value }
-            if (app != null) "${stringResource(R.string.action_open_app)}: ${app.label}"
-            else stringResource(R.string.action_open_app)
-        }
-        FabAction.OPEN_LINK -> {
-            if (value.isNotEmpty()) "${stringResource(R.string.action_open_link)}: $value"
-            else stringResource(R.string.action_open_link)
-        }
-        FabAction.OPEN_SHORTCUT -> {
-            if (value.isNotEmpty()) {
-                val name = value.substringBefore("|")
-                "${stringResource(R.string.action_open_shortcut)}: $name"
-            } else stringResource(R.string.action_open_shortcut)
-        }
-        FabAction.TOGGLE_FLASHLIGHT -> stringResource(R.string.action_toggle_flashlight)
-        FabAction.OPEN_APP_DRAWER -> stringResource(R.string.action_open_app_drawer)
-        FabAction.NONE -> stringResource(R.string.action_none)
-    }
-}
-
-

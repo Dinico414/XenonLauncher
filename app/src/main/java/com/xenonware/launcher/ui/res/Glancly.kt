@@ -101,21 +101,21 @@ fun Glancly(
     val weatherRes = remember(condition, isDay) {
         val c = condition.lowercase()
         val (day, night) = when {
-            c.contains("thunder shower") || c.contains("t-shower") || c.contains("gewitterregen") -> R.drawable.tshower1 to R.drawable.tshower0
-            c.contains("thunder") || c.contains("storm") || c.contains("gewitter") || c.contains("sturm") -> R.drawable.tstorm1 to R.drawable.tstorm0
-            c.contains("tornado") -> R.drawable.tornado1 to R.drawable.tornado0
-            c.contains("hail") || c.contains("hagel") -> R.drawable.hail1 to R.drawable.hail0
-            c.contains("sleet") || c.contains("schneeregen") -> R.drawable.sleet1 to R.drawable.sleet0
-            c.contains("light snow") || c.contains("flurr") || c.contains("leichter schnee") -> R.drawable.lsnow1 to R.drawable.lsnow0
-            c.contains("snow") || c.contains("ice") || c.contains("schnee") || c.contains("eis") -> R.drawable.snow1 to R.drawable.snow0
-            c.contains("shower") || c.contains("drizzle") || c.contains("schauer") || c.contains("niesel") -> R.drawable.shower1 to R.drawable.shower0
-            c.contains("rain") || c.contains("regen") -> R.drawable.rain1 to R.drawable.rain0
-            c.contains("fog") || c.contains("mist") || c.contains("haze") || c.contains("nebel") || c.contains("dunst") -> R.drawable.fog1 to R.drawable.fog0
-            c.contains("wind") -> R.drawable.windy1 to R.drawable.windy0
-            c.contains("partly") || c.contains("teilweise") || c.contains("leicht bewölkt") -> R.drawable.pcloudy1 to R.drawable.pcloudy0
-            c.contains("overcast") || c.contains("cloud") || c.contains("bedeckt") || c.contains("wolken") || c.contains("wolkig") || c.contains("bewölkt") -> R.drawable.mcloudy1 to R.drawable.mcloudy0
-            c.contains("clear") || c.contains("sunny") || c.contains("klar") || c.contains("sonnig") -> R.drawable.clear1 to R.drawable.clear0
-            else -> R.drawable.unknown1 to R.drawable.unknown0
+            c.contains("thunder shower") || c.contains("t-shower") || c.contains("gewitterregen") -> R.drawable.wi_tshower1 to R.drawable.wi_tshower0
+            c.contains("thunder") || c.contains("storm") || c.contains("gewitter") || c.contains("sturm") -> R.drawable.wi_tstorm1 to R.drawable.wi_tstorm0
+            c.contains("tornado") -> R.drawable.wi_tornado1 to R.drawable.wi_tornado0
+            c.contains("hail") || c.contains("hagel") -> R.drawable.wi_hail1 to R.drawable.wi_hail0
+            c.contains("sleet") || c.contains("schneeregen") -> R.drawable.wi_sleet1 to R.drawable.wi_sleet0
+            c.contains("light snow") || c.contains("flurr") || c.contains("leichter schnee") -> R.drawable.wi_lsnow1 to R.drawable.wi_lsnow0
+            c.contains("snow") || c.contains("ice") || c.contains("schnee") || c.contains("eis") -> R.drawable.wi_snow1 to R.drawable.wi_snow0
+            c.contains("shower") || c.contains("drizzle") || c.contains("schauer") || c.contains("niesel") -> R.drawable.wi_shower1 to R.drawable.wi_shower0
+            c.contains("rain") || c.contains("regen") -> R.drawable.wi_rain1 to R.drawable.wi_rain0
+            c.contains("fog") || c.contains("mist") || c.contains("haze") || c.contains("nebel") || c.contains("dunst") -> R.drawable.wi_fog1 to R.drawable.wi_fog0
+            c.contains("wind") -> R.drawable.wi_windy1 to R.drawable.wi_windy0
+            c.contains("partly") || c.contains("teilweise") || c.contains("leicht bewölkt") -> R.drawable.wi_pcloudy1 to R.drawable.wi_pcloudy0
+            c.contains("overcast") || c.contains("cloud") || c.contains("bedeckt") || c.contains("wolken") || c.contains("wolkig") || c.contains("bewölkt") -> R.drawable.wi_mcloudy1 to R.drawable.wi_mcloudy0
+            c.contains("clear") || c.contains("sunny") || c.contains("klar") || c.contains("sonnig") -> R.drawable.wi_clear1 to R.drawable.wi_clear0
+            else -> R.drawable.wi_unknown1 to R.drawable.wi_unknown0
         }
         if (isDay) day else night
     }

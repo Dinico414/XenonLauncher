@@ -38,6 +38,9 @@ class DevSettingsViewModel(application: Application) : AndroidViewModel(applicat
     private val _devModeToggleState = MutableStateFlow(sharedPreferenceManager.developerModeEnabled)
     val devModeToggleState: StateFlow<Boolean> = _devModeToggleState.asStateFlow()
 
+    private val _experimentalOptionsEnabled = MutableStateFlow(sharedPreferenceManager.experimentalOptionsEnabled)
+    val experimentalOptionsEnabled: StateFlow<Boolean> = _experimentalOptionsEnabled.asStateFlow()
+
     private val _crashLogExists = MutableStateFlow(false)
     val crashLogExists: StateFlow<Boolean> = _crashLogExists.asStateFlow()
 
@@ -49,6 +52,13 @@ class DevSettingsViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch {
             sharedPreferenceManager.developerModeEnabled = enabled
             _devModeToggleState.value = enabled
+        }
+    }
+
+    fun setExperimentalOptionsEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            sharedPreferenceManager.experimentalOptionsEnabled = enabled
+            _experimentalOptionsEnabled.value = enabled
         }
     }
 

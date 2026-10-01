@@ -131,6 +131,14 @@ class SharedPreferenceManager(context: Context) {
         get() = prefs.getBoolean("developer_mode_enabled", false)
         set(value) = prefs.edit { putBoolean("developer_mode_enabled", value) }
 
+    var experimentalOptionsEnabled: Boolean
+        get() = prefs.getBoolean("experimental_options_enabled", false)
+        set(value) = prefs.edit { putBoolean("experimental_options_enabled", value) }
+
+    var experimentalWidgetAdjustmentsEnabled: Boolean
+        get() = prefs.getBoolean("experimental_widget_adjustments_enabled", false)
+        set(value) = prefs.edit { putBoolean("experimental_widget_adjustments_enabled", value) }
+
     var fabSingleTapAction: String
         get() = prefs.getString("fab_single_tap_action", "OPEN_APP_DRAWER") ?: "OPEN_APP_DRAWER"
         set(value) = prefs.edit { putString("fab_single_tap_action", value) }
@@ -378,6 +386,8 @@ class SharedPreferenceManager(context: Context) {
             remove("show_hidden_apps_in_search")
             remove("cover_theme_enabled")
             remove("developer_mode_enabled")
+            remove("experimental_options_enabled")
+            remove("experimental_widget_adjustments_enabled")
             remove("app_labels_enabled")
             remove("cover_display_dimension_1")
             remove("cover_display_dimension_2")
