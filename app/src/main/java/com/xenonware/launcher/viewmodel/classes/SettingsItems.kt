@@ -6,13 +6,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.BlurOn
-import androidx.compose.material.icons.rounded.CloudDownload
-import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material.icons.rounded.NotificationsActive
-import androidx.compose.material.icons.rounded.Shield
-import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.SwitchColors
@@ -171,7 +164,7 @@ fun SettingsItems(
             title = stringResource(R.string.default_home),
             subtitle = stringResource(R.string.set_as_default_launcher),
             onClick = { viewModel.openLauncherSelector(context) },
-            icon = { Icon(Icons.Rounded.Home, null, tint = tileSubtitleColor) },
+            icon = { Icon(painterResource(R.drawable.ic_home), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: topShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -200,7 +193,7 @@ fun SettingsItems(
             title = stringResource(R.string.permissions),
             subtitle = stringResource(R.string.permissions_summary),
             onClick = { viewModel.setShowPermissionsDialog(true) },
-            icon = { Icon(Icons.Rounded.Tune, null, tint = tileSubtitleColor) },
+            icon = { Icon(painterResource(R.drawable.ic_toggle), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: bottomShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -230,7 +223,7 @@ fun SettingsItems(
             title = stringResource(R.string.permissions),
             subtitle = stringResource(R.string.permissions_summary),
             onClick = { viewModel.setShowPermissionsDialog(true) },
-            icon = { Icon(Icons.Rounded.Tune, null, tint = tileSubtitleColor) },
+            icon = { Icon(painterResource(R.drawable.ic_toggle), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: bottomShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -278,7 +271,7 @@ fun SettingsItems(
             checked = blurEnabled,
             onCheckedChange = { viewModel.setBlurEnabled(it) },
             onClick = { viewModel.setBlurEnabled(!blurEnabled) },
-            icon = { Icon(Icons.Rounded.BlurOn, null, tint = tileSubtitleColor) },
+            icon = { Icon(painterResource(R.drawable.ic_blur), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: middleShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -340,7 +333,7 @@ fun SettingsItems(
             title = stringResource(R.string.notification_manager),
             subtitle = stringResource(R.string.notification_manager_description),
             onClick = { viewModel.setShowNotificationManagerDialog(true) },
-            icon = { Icon(Icons.Rounded.NotificationsActive, null, tint = tileSubtitleColor) },
+            icon = { Icon(painterResource(R.drawable.ic_notification_manager), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: bottomShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -359,7 +352,7 @@ fun SettingsItems(
             val intent = Intent(context, CustomizationActivity::class.java)
             context.startActivity(intent)
         },
-        icon = { Icon(Icons.Rounded.Tune, null, tint = tileSubtitleColor) },
+        icon = { Icon(painterResource(R.drawable.ic_tune), null, tint = tileSubtitleColor) },
         shape = tileShapeOverride ?: standaloneShape,
         backgroundColor = tileBackgroundColor,
         contentColor = tileContentColor,
@@ -418,7 +411,7 @@ fun SettingsItems(
             title = stringResource(R.string.backup_and_restore),
             subtitle = stringResource(R.string.backup_and_restore_description),
             onClick = { viewModel.setShowBackupDialog(true) },
-            icon = { Icon(Icons.Rounded.CloudDownload, null, tint = tileSubtitleColor) },
+            icon = { Icon(painterResource(R.drawable.ic_backup), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: topShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
@@ -460,7 +453,7 @@ fun SettingsItems(
                 val intent = Intent(Intent.ACTION_VIEW, "https://xenonware.com/privacy_policy_launcher".toUri())
                 context.startActivity(intent)
             },
-            icon = { Icon(Icons.Rounded.Shield, null, tint = tileSubtitleColor) },
+            icon = { Icon(painterResource(R.drawable.ic_privacy), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: middleShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,

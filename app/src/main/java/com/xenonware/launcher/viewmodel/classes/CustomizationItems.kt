@@ -26,7 +26,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Circle
-import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.NotificationsOff
 import androidx.compose.material.icons.rounded.Numbers
@@ -802,8 +801,8 @@ fun CustomizationItems(
                 title = stringResource(R.string.notification_message),
                 subtitle = when (notificationMessageType) {
                     0 -> stringResource(R.string.notification_message_none)
-                    1 -> stringResource(R.string.notification_message_no_notification)
-                    else -> stringResource(R.string.notification_message_up_to_date)
+                    1 -> "\"${stringResource(R.string.notification_message_no_notification)}\""
+                    else -> "\"${stringResource(R.string.notification_message_up_to_date)}\""
                 },
                 onClick = { viewModel.setShowNotificationMessageDialog(true) },
                 icon = { Icon(painterResource(R.drawable.ic_message), null, tint = tileSubtitleColor) },
@@ -857,7 +856,7 @@ fun CustomizationItems(
                 checked = disableGrouping,
                 onCheckedChange = { viewModel.setDisableGrouping(it) },
                 onClick = { viewModel.setDisableGrouping(!disableGrouping) },
-                icon = { Icon(Icons.Rounded.Block, null, tint = tileSubtitleColor) },
+                icon = { Icon(painterResource(R.drawable.ic_block), null, tint = tileSubtitleColor) },
                 shape = tileShapeOverride ?: middleShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
@@ -874,7 +873,7 @@ fun CustomizationItems(
                 checked = notificationDeleteSinglePress,
                 onCheckedChange = { viewModel.setNotificationDeleteSinglePress(it) },
                 onClick = { viewModel.setNotificationDeleteSinglePress(!notificationDeleteSinglePress) },
-                icon = { Icon(Icons.Rounded.Delete, null, tint = tileSubtitleColor) },
+                icon = { Icon(painterResource(R.drawable.ic_delete), null, tint = tileSubtitleColor) },
                 shape = tileShapeOverride ?: bottomShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
