@@ -22,8 +22,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.xenon.mylibrary.res.AnimatedGradientBackground
 import com.xenonware.launcher.ui.theme.XenonTheme
-import com.xenonware.launcher.ui.theme.mainFontFamily
-import com.xenonware.launcher.ui.theme.subFontFamily
+import com.xenonware.launcher.util.mainFontFamily
+import com.xenonware.launcher.util.subFontFamily
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 

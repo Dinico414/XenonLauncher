@@ -13,7 +13,7 @@ import androidx.compose.ui.res.stringResource
 import com.xenon.mylibrary.values.ExtraLargePadding
 import com.xenon.mylibrary.values.LargestPadding
 import com.xenonware.launcher.R
-import com.xenonware.launcher.ui.theme.mainFontFamily
+import com.xenonware.launcher.util.mainFontFamily
 
 @Composable
 fun AllAppsDivider(modifier: Modifier = Modifier) {

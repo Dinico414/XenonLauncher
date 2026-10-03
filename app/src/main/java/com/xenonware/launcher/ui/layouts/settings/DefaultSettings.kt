@@ -55,8 +55,8 @@ import com.xenonware.launcher.ui.res.GlobalIconPackPicker
 import com.xenonware.launcher.ui.res.NotificationManagerDialog
 import com.xenonware.launcher.ui.res.PermissionsDialog
 import com.xenonware.launcher.ui.res.ShortcutConfigDialog
-import com.xenonware.launcher.ui.theme.LocalMainFontFamily
-import com.xenonware.launcher.ui.theme.LocalSubFontFamily
+import com.xenonware.launcher.util.LocalMainFontFamily
+import com.xenonware.launcher.util.LocalSubFontFamily
 import com.xenonware.launcher.viewmodel.FabConfigMode
 import com.xenonware.launcher.viewmodel.LauncherViewModel
 import com.xenonware.launcher.viewmodel.SettingsViewModel
@@ -396,9 +396,7 @@ fun DefaultSettings(
                     availableCalendars = availableCalendars,
                     selectedCalendars = visibleCalendars,
                     onDismiss = { viewModel.setShowCalendarSelectionDialog(false) },
-                    onToggleCalendar = { viewModel.toggleCalendarVisibility(it) },
-                    onSelectAll = { viewModel.setVisibleCalendars(emptyList()) },
-                    onClearAll = { viewModel.setVisibleCalendars(listOf("__NONE__")) }
+                    onSave = { viewModel.setVisibleCalendars(it) }
                 )
             }}
 
@@ -412,9 +410,7 @@ fun DefaultSettings(
                     allApps = apps,
                     visibleApps = visibleNotificationApps,
                     onDismiss = { viewModel.setShowNotificationManagerDialog(false) },
-                    onToggleApp = { viewModel.toggleNotificationAppVisibility(it) },
-                    onSelectAll = { viewModel.setVisibleNotificationApps(emptyList()) },
-                    onClearAll = { viewModel.setVisibleNotificationApps(listOf("__NONE__")) },
+                    onSave = { viewModel.setVisibleNotificationApps(it) },
                     iconShape = iconShape,
                     showShadow = showShadow
                 )
@@ -431,13 +427,9 @@ fun DefaultSettings(
                     visibleApps = hiddenApps,
                     title = stringResource(R.string.hidden_apps),
                     description = stringResource(R.string.hidden_apps_description),
+                    emptyMeansAllSelected = false,
                     onDismiss = { viewModel.setShowHiddenApps(false) },
-                    onToggleApp = {
-                        if (it in hiddenApps) viewModel.unhideApp(it)
-                        else viewModel.hideApp(it)
-                    },
-                    onSelectAll = { /* Not applicable for hidden apps */ },
-                    onClearAll = { viewModel.setVisibleCalendars(emptyList()) }, // Just clear all if needed
+                    onSave = { viewModel.setHiddenApps(it) },
                     iconShape = iconShape,
                     showShadow = showShadow
                 )

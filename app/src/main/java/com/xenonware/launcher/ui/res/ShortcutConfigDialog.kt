@@ -43,8 +43,8 @@ import com.xenon.mylibrary.values.MediumPadding
 import com.xenon.mylibrary.values.MediumSpacer
 import com.xenonware.launcher.R
 import com.xenonware.launcher.model.AppInfo
-import com.xenonware.launcher.ui.theme.LocalMainFontFamily
-import com.xenonware.launcher.ui.theme.LocalSubFontFamily
+import com.xenonware.launcher.util.LocalMainFontFamily
+import com.xenonware.launcher.util.LocalSubFontFamily
 import com.xenonware.launcher.viewmodel.LauncherViewModel
 
 @Composable

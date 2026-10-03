@@ -12,6 +12,10 @@ import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,8 +29,8 @@ import com.xenon.mylibrary.values.LargeMediumCornerRadius
 import com.xenon.mylibrary.values.MediumPadding
 import com.xenon.mylibrary.values.SmallPadding
 import com.xenonware.launcher.R
-import com.xenonware.launcher.ui.theme.LocalMainFontFamily
-import com.xenonware.launcher.ui.theme.LocalSubFontFamily
+import com.xenonware.launcher.util.LocalMainFontFamily
+import com.xenonware.launcher.util.LocalSubFontFamily
 
 @Composable
 fun NotificationMessageDialog(
@@ -34,6 +38,7 @@ fun NotificationMessageDialog(
     onDismiss: () -> Unit,
     onSelectType: (Int) -> Unit
 ) {
+    var currentType by remember(selectedType) { mutableIntStateOf(selectedType) }
     val mainFont = LocalMainFontFamily.current
     val subFont = LocalSubFontFamily.current
 
@@ -46,7 +51,10 @@ fun NotificationMessageDialog(
         subContextFont = subFont,
         title = stringResource(R.string.notification_message),
         confirmButtonText = stringResource(R.string.done),
-        onConfirmButtonClick = onDismiss,
+        onConfirmButtonClick = {
+            onSelectType(currentType)
+            onDismiss()
+        },
         contentManagesScrolling = true
     ) {
         LazyColumn(
@@ -55,7 +63,7 @@ fun NotificationMessageDialog(
                 .heightIn(max = 400.dp)
         ) {
             items(options) { type ->
-                val isSelected = type == selectedType
+                val isSelected = type == currentType
                 val label = when (type) {
                     0 -> stringResource(R.string.notification_message_none)
                     1 -> stringResource(R.string.notification_message_no_notification)
@@ -66,13 +74,13 @@ fun NotificationMessageDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(LargeMediumCornerRadius))
-                        .clickable { onSelectType(type) }
+                        .clickable { currentType = type }
                         .padding(vertical = MediumPadding, horizontal = SmallPadding),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     RadioButton(
                         selected = isSelected,
-                        onClick = { onSelectType(type) }
+                        onClick = { currentType = type }
                     )
                     Text(
                         text = label,

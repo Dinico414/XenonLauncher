@@ -187,8 +187,8 @@ import com.xenonware.launcher.ui.res.MorphingBackCloseIcon
 import com.xenonware.launcher.ui.res.notification.NotificationBadge
 import com.xenonware.launcher.ui.res.search.SearchHistoryItem
 import com.xenonware.launcher.ui.res.search.SearchResultItem
-import com.xenonware.launcher.ui.theme.mainFontFamily
-import com.xenonware.launcher.ui.theme.subFontFamily
+import com.xenonware.launcher.util.mainFontFamily
+import com.xenonware.launcher.util.subFontFamily
 import com.xenonware.launcher.util.LocalDragDropState
 import com.xenonware.launcher.util.matches
 import com.xenonware.launcher.viewmodel.LauncherViewModel
@@ -279,10 +279,6 @@ fun AppDrawer(
 
     LaunchedEffect(advancedSearchEnabled) {
         if (advancedSearchEnabled) {
-            val permissions = mutableListOf<String>()
-            permissions.add(Manifest.permission.READ_MEDIA_AUDIO)
-            permissions.add(Manifest.permission.READ_CONTACTS)
-
             if (!Environment.isExternalStorageManager()) {
                 try {
                     val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {

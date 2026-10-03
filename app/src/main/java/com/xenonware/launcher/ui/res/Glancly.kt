@@ -47,7 +47,7 @@ import com.xenon.mylibrary.values.SmallSpacer
 import com.xenon.mylibrary.values.SmallerPadding
 import com.xenonware.launcher.R
 import com.xenonware.launcher.ui.res.dock.StatusCounters
-import com.xenonware.launcher.ui.theme.mainFontFamily
+import com.xenonware.launcher.util.mainFontFamily
 import com.xenonware.launcher.util.fitScale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch

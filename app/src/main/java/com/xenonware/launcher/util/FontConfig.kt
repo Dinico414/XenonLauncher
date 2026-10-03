@@ -1,4 +1,4 @@
-package com.xenonware.launcher.ui.theme
+package com.xenonware.launcher.util
 
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable

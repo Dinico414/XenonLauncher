@@ -75,11 +75,11 @@ import com.xenonware.launcher.data.SharedPreferenceManager
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.ui.res.IconShape
 import com.xenonware.launcher.ui.res.MorphingBackCloseIcon
-import com.xenonware.launcher.ui.theme.FontAxes
-import com.xenonware.launcher.ui.theme.FontType
+import com.xenonware.launcher.util.FontAxes
+import com.xenonware.launcher.util.FontType
 import com.xenonware.launcher.ui.theme.XenonTheme
-import com.xenonware.launcher.ui.theme.createCustomFontFamily
-import com.xenonware.launcher.ui.theme.mainFontFamily
+import com.xenonware.launcher.util.createCustomFontFamily
+import com.xenonware.launcher.util.mainFontFamily
 import com.xenonware.launcher.util.matches
 import com.xenonware.launcher.viewmodel.LauncherViewModel
 import dev.chrisbanes.haze.HazeState

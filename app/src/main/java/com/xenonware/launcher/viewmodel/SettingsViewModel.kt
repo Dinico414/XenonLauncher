@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.ActivityManager
 import android.app.Application
 import android.app.LocaleManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -131,59 +132,61 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun refreshPermissions() {
         val context = getApplication<Application>()
-        val packageManager = context.packageManager
-        val packageInfo = packageManager.getPackageInfo(
-            context.packageName,
-            PackageManager.GET_PERMISSIONS
+
+        val isNotificationAccessGranted = run {
+            val flat = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
+            !TextUtils.isEmpty(flat) && flat.contains(context.packageName)
+        }
+
+        val isAccessibilityAccessGranted = run {
+            val expectedComponentName = ComponentName(context, XenonAccessibilityService::class.java)
+            val enabledServices = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+            (XenonAccessibilityService.instance != null) || (enabledServices?.contains(expectedComponentName.flattenToString()) == true)
+        }
+
+        val isLocationGranted = context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        val isCalendarGranted = context.checkSelfPermission(Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED
+        val isMicrophoneGranted = context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+        val isContactsGranted = context.checkSelfPermission(Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED
+        val isAllFilesGranted = Environment.isExternalStorageManager()
+
+        val newList = listOf(
+            PermissionStatus(
+                name = context.getString(R.string.notification_access),
+                isGranted = isNotificationAccessGranted,
+                permission = Manifest.permission.BIND_NOTIFICATION_LISTENER_SERVICE
+            ),
+            PermissionStatus(
+                name = context.getString(R.string.accessibility_access),
+                isGranted = isAccessibilityAccessGranted,
+                permission = Manifest.permission.BIND_ACCESSIBILITY_SERVICE
+            ),
+            PermissionStatus(
+                name = context.getString(R.string.location_access),
+                isGranted = isLocationGranted,
+                permission = Manifest.permission.ACCESS_COARSE_LOCATION
+            ),
+            PermissionStatus(
+                name = context.getString(R.string.calendar_access),
+                isGranted = isCalendarGranted,
+                permission = Manifest.permission.READ_CALENDAR
+            ),
+            PermissionStatus(
+                name = context.getString(R.string.microphone_access),
+                isGranted = isMicrophoneGranted,
+                permission = Manifest.permission.RECORD_AUDIO
+            ),
+            PermissionStatus(
+                name = context.getString(R.string.contacts_access),
+                isGranted = isContactsGranted,
+                permission = Manifest.permission.READ_CONTACTS
+            ),
+            PermissionStatus(
+                name = context.getString(R.string.all_files_access),
+                isGranted = isAllFilesGranted,
+                permission = Manifest.permission.MANAGE_EXTERNAL_STORAGE
+            )
         )
-        val requestedPermissions = packageInfo.requestedPermissions ?: emptyArray()
-
-        val newList = requestedPermissions.mapNotNull { permission ->
-            try {
-                val pInfo = packageManager.getPermissionInfo(permission, 0)
-                // Filter for runtime permissions or common special ones
-                val isRuntime = pInfo.protection == android.content.pm.PermissionInfo.PROTECTION_DANGEROUS
-                val isSpecial = permission == Manifest.permission.MANAGE_EXTERNAL_STORAGE ||
-                                permission == Manifest.permission.BIND_NOTIFICATION_LISTENER_SERVICE ||
-                                permission == Manifest.permission.BIND_ACCESSIBILITY_SERVICE
-
-                if (isRuntime || isSpecial) {
-                    val label = when (permission) {
-                        Manifest.permission.READ_CONTACTS -> context.getString(R.string.contacts_access)
-                        Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION -> context.getString(R.string.location_access)
-                        Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR -> context.getString(R.string.calendar_access)
-                        Manifest.permission.POST_NOTIFICATIONS -> context.getString(R.string.post_notifications)
-                        Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_AUDIO -> context.getString(R.string.storage_access)
-                        Manifest.permission.MANAGE_EXTERNAL_STORAGE -> context.getString(R.string.all_files_access)
-                        Manifest.permission.BIND_NOTIFICATION_LISTENER_SERVICE -> context.getString(R.string.notification_access)
-                        Manifest.permission.BIND_ACCESSIBILITY_SERVICE -> context.getString(R.string.accessibility_access)
-                        else -> pInfo.loadLabel(packageManager).toString()
-                    }
-
-                    val isGranted = when (permission) {
-                        Manifest.permission.MANAGE_EXTERNAL_STORAGE -> {
-                            Environment.isExternalStorageManager()
-                        }
-                        Manifest.permission.BIND_NOTIFICATION_LISTENER_SERVICE -> {
-                            val flat = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
-                            !TextUtils.isEmpty(flat) && flat.contains(context.packageName)
-                        }
-                        Manifest.permission.BIND_ACCESSIBILITY_SERVICE -> {
-                            XenonAccessibilityService.instance != null
-                        }
-                        else -> context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
-                    }
-
-                    PermissionStatus(
-                        name = label,
-                        isGranted = isGranted,
-                        permission = permission
-                    )
-                } else null
-            } catch (_: Exception) {
-                null
-            }
-        }.distinctBy { it.name }.sortedBy { it.name }
 
         _permissionsList.value = newList
     }
@@ -191,20 +194,20 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun openPermissionSettings(context: Context, permission: String) {
         val intent = when (permission) {
             Manifest.permission.MANAGE_EXTERNAL_STORAGE -> {
-                Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
-                    data = Uri.fromParts("package", context.packageName, null)
-                }
-            }
-            Manifest.permission.POST_NOTIFICATIONS -> {
-                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
-                    putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                try {
+                    Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                        data = "package:${context.packageName}".toUri()
+                    }
+                } catch (_: Exception) {
+                    Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
                 }
             }
             Manifest.permission.BIND_NOTIFICATION_LISTENER_SERVICE -> {
                 Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
             }
             Manifest.permission.BIND_ACCESSIBILITY_SERVICE -> {
-                Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                AccessibilityUtils.requestAccessibility(context)
+                return
             }
             else -> {
                 Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
@@ -689,6 +692,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             sharedPreferenceManager.hiddenApps = hidden
             _hiddenApps.value = hidden
         }
+    }
+
+    fun setHiddenApps(apps: List<String>) {
+        sharedPreferenceManager.hiddenApps = apps
+        _hiddenApps.value = apps
     }
 
     fun setNotificationBadgeType(type: Int) {

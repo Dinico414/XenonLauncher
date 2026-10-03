@@ -65,12 +65,12 @@ import com.xenon.mylibrary.values.MediumSpacer
 import com.xenon.mylibrary.values.SmallSpacer
 import com.xenon.mylibrary.values.SmallestStroke
 import com.xenonware.launcher.R
-import com.xenonware.launcher.ui.theme.AxisDef
-import com.xenonware.launcher.ui.theme.FontAxes
-import com.xenonware.launcher.ui.theme.FontType
-import com.xenonware.launcher.ui.theme.LocalMainFontFamily
-import com.xenonware.launcher.ui.theme.LocalSubFontFamily
-import com.xenonware.launcher.ui.theme.createCustomFontFamily
+import com.xenonware.launcher.util.AxisDef
+import com.xenonware.launcher.util.FontAxes
+import com.xenonware.launcher.util.FontType
+import com.xenonware.launcher.util.LocalMainFontFamily
+import com.xenonware.launcher.util.LocalSubFontFamily
+import com.xenonware.launcher.util.createCustomFontFamily
 import kotlin.math.roundToInt
 
 @Composable

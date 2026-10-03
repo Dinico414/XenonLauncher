@@ -78,7 +78,7 @@ import com.xenonware.launcher.R
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.notification.LauncherNotification
 import com.xenonware.launcher.ui.res.notification.NotificationBadge
-import com.xenonware.launcher.ui.theme.mainFontFamily
+import com.xenonware.launcher.util.mainFontFamily
 import com.xenonware.launcher.util.LocalDragDropState
 import kotlinx.coroutines.delay
 import kotlin.math.abs

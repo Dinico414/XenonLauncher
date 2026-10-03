@@ -103,12 +103,12 @@ import com.xenonware.launcher.ui.res.CalendarSelectionDialog
 import com.xenonware.launcher.ui.res.NotificationManagerDialog
 import com.xenonware.launcher.ui.res.ShortcutConfigDialog
 import com.xenonware.launcher.ui.res.dock.DockPill
-import com.xenonware.launcher.ui.theme.FontAxes
-import com.xenonware.launcher.ui.theme.FontType
+import com.xenonware.launcher.util.FontAxes
+import com.xenonware.launcher.util.FontType
 import com.xenonware.launcher.ui.theme.ScreenEnvironment
-import com.xenonware.launcher.ui.theme.createCustomFontFamily
-import com.xenonware.launcher.ui.theme.mainFontFamily
-import com.xenonware.launcher.ui.theme.subFontFamily
+import com.xenonware.launcher.util.createCustomFontFamily
+import com.xenonware.launcher.util.mainFontFamily
+import com.xenonware.launcher.util.subFontFamily
 import com.xenonware.launcher.util.DragHandler
 import com.xenonware.launcher.util.LocalDragDropState
 import com.xenonware.launcher.util.PerfLog
@@ -945,9 +945,7 @@ fun LauncherScreen(
                     availableCalendars = availableCalendars,
                     selectedCalendars = visibleCalendars,
                     onDismiss = { viewModel.setShowCalendarSelectionDialog(false) },
-                    onToggleCalendar = { viewModel.toggleCalendarVisibility(it) },
-                    onSelectAll = { viewModel.setVisibleCalendars(emptyList()) },
-                    onClearAll = { viewModel.setVisibleCalendars(listOf("__NONE__")) }
+                    onSave = { viewModel.setVisibleCalendars(it) }
                 )
             }
 
@@ -956,9 +954,7 @@ fun LauncherScreen(
                     allApps = apps,
                     visibleApps = visibleNotificationApps,
                     onDismiss = { viewModel.setShowNotificationManagerDialog(false) },
-                    onToggleApp = { viewModel.toggleNotificationAppVisibility(it) },
-                    onSelectAll = { viewModel.setVisibleNotificationApps(emptyList()) },
-                    onClearAll = { viewModel.setVisibleNotificationApps(listOf("__NONE__")) },
+                    onSave = { viewModel.setVisibleNotificationApps(it) },
                     iconShape = iconShape,
                     showShadow = showShadow
                 )

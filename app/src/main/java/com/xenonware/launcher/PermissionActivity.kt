@@ -33,10 +33,10 @@ import com.xenon.mylibrary.res.XenonIcon
 import com.xenon.mylibrary.utils.PermissionItem
 import com.xenonware.launcher.accessibility.XenonAccessibilityService
 import com.xenonware.launcher.data.SharedPreferenceManager
-import com.xenonware.launcher.ui.theme.FontAxes
-import com.xenonware.launcher.ui.theme.FontType
+import com.xenonware.launcher.util.FontAxes
+import com.xenonware.launcher.util.FontType
 import com.xenonware.launcher.ui.theme.XenonTheme
-import com.xenonware.launcher.ui.theme.createCustomFontFamily
+import com.xenonware.launcher.util.createCustomFontFamily
 import com.xenonware.launcher.util.AccessibilityUtils
 
 class PermissionActivity : BasePermissionActivity() {
@@ -197,20 +197,6 @@ class PermissionActivity : BasePermissionActivity() {
             }
         ))
 
-        // Storage/Media Access
-        add(PermissionItem(
-            name = getString(R.string.storage_access),
-            description = getString(R.string.storage_access_description),
-            isGranted = {
-                val granted = ContextCompat.checkSelfPermission(it, permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED
-                if (!granted) currentPermissionName.value = getString(R.string.storage_access)
-                granted
-            },
-            request = {
-                requestPermissions(arrayOf(permission.READ_MEDIA_IMAGES, permission.READ_MEDIA_AUDIO), 103)
-            }
-        ))
-
         // Microphone / Audio Access (Visualizer)
         add(PermissionItem(
             name = getString(R.string.microphone_access),
@@ -236,20 +222,6 @@ class PermissionActivity : BasePermissionActivity() {
             },
             request = {
                 requestPermissions(arrayOf(permission.READ_CONTACTS), 104)
-            }
-        ))
-
-        // Post Notifications
-        add(PermissionItem(
-            name = getString(R.string.post_notifications),
-            description = getString(R.string.post_notifications_description),
-            isGranted = {
-                val granted = ContextCompat.checkSelfPermission(it, permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-                if (!granted) currentPermissionName.value = getString(R.string.post_notifications)
-                granted
-            },
-            request = {
-                requestPermissions(arrayOf(permission.POST_NOTIFICATIONS), 105)
             }
         ))
 

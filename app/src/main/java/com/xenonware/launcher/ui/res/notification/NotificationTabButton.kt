@@ -72,7 +72,7 @@ import com.xenon.mylibrary.values.MediumSmallSpacer
 import com.xenon.mylibrary.values.SmallCornerRadius
 import com.xenon.mylibrary.values.SmallIconSize
 import com.xenonware.launcher.model.AppInfo
-import com.xenonware.launcher.ui.theme.mainFontFamily
+import com.xenonware.launcher.util.mainFontFamily
 import com.xenonware.launcher.util.ColorUtils
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt

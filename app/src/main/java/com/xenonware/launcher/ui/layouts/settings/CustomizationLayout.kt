@@ -1,10 +1,7 @@
 package com.xenonware.launcher.ui.layouts.settings
 
-import android.app.Activity
 import android.content.ComponentName
 import android.content.Intent
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
@@ -45,8 +42,8 @@ import com.xenonware.launcher.ui.res.GlobalIconPackPicker
 import com.xenonware.launcher.ui.res.NotificationManagerDialog
 import com.xenonware.launcher.ui.res.NotificationMessageDialog
 import com.xenonware.launcher.ui.res.VisualizerConfigDialog
-import com.xenonware.launcher.ui.theme.LocalMainFontFamily
-import com.xenonware.launcher.ui.theme.LocalSubFontFamily
+import com.xenonware.launcher.util.LocalMainFontFamily
+import com.xenonware.launcher.util.LocalSubFontFamily
 import com.xenonware.launcher.viewmodel.FabConfigMode
 import com.xenonware.launcher.viewmodel.SettingsViewModel
 import com.xenonware.launcher.viewmodel.classes.CustomizationItems
@@ -241,13 +238,9 @@ fun CustomizationLayout(
                     visibleApps = hiddenApps,
                     title = stringResource(R.string.hidden_apps),
                     description = stringResource(R.string.hidden_apps_description),
+                    emptyMeansAllSelected = false,
                     onDismiss = { viewModel.setShowHiddenApps(false) },
-                    onToggleApp = {
-                        if (it in hiddenApps) viewModel.unhideApp(it)
-                        else viewModel.hideApp(it)
-                    },
-                    onSelectAll = { },
-                    onClearAll = { },
+                    onSave = { viewModel.setHiddenApps(it) },
                     iconShape = iconShape,
                     showShadow = showShadow
                 )

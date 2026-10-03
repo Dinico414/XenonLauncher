@@ -12,7 +12,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,13 +25,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.xenon.mylibrary.res.XenonDialog
+import com.xenon.mylibrary.res.XenonTextField
 import com.xenon.mylibrary.values.LargeIconSize
-import com.xenon.mylibrary.values.LargeMediumCornerRadius
 import com.xenon.mylibrary.values.LargeMediumPadding
 import com.xenon.mylibrary.values.MassiveCornerRadius
 import com.xenon.mylibrary.values.MediumPadding
@@ -40,8 +38,8 @@ import com.xenon.mylibrary.values.MediumSpacer
 import com.xenon.mylibrary.values.SmallSpacer
 import com.xenonware.launcher.R
 import com.xenonware.launcher.model.AppInfo
-import com.xenonware.launcher.ui.theme.LocalMainFontFamily
-import com.xenonware.launcher.ui.theme.LocalSubFontFamily
+import com.xenonware.launcher.util.LocalMainFontFamily
+import com.xenonware.launcher.util.LocalSubFontFamily
 
 @Composable
 fun AppPickerDialog(
@@ -86,15 +84,13 @@ fun AppPickerDialog(
             verticalArrangement = Arrangement.spacedBy(SmallSpacer)
         ) {
             item {
-                OutlinedTextField(
+                XenonTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    label = { Text(stringResource(R.string.search), fontFamily = subFont) },
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                    textStyle = TextStyle(fontFamily = mainFont),
-                    singleLine = true,
-                    shape = RoundedCornerShape(LargeMediumCornerRadius)
+                    placeholder = { Text(stringResource(R.string.search)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    mainContextFont = mainFont,
+                    subContextFont = subFont
                 )
             }
             val filteredApps = apps.filter { it.label.contains(searchQuery, ignoreCase = true) }

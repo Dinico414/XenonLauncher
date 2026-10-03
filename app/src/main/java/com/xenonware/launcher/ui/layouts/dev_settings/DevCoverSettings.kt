@@ -21,8 +21,8 @@ import com.xenon.mylibrary.ActivityScreen
 import com.xenon.mylibrary.values.MediumPadding
 import com.xenon.mylibrary.values.NoSpacing
 import com.xenonware.launcher.R
-import com.xenonware.launcher.ui.theme.LocalMainFontFamily
-import com.xenonware.launcher.ui.theme.LocalSubFontFamily
+import com.xenonware.launcher.util.LocalMainFontFamily
+import com.xenonware.launcher.util.LocalSubFontFamily
 import com.xenonware.launcher.viewmodel.DevSettingsViewModel
 import com.xenonware.launcher.viewmodel.SettingsViewModel
 import com.xenonware.launcher.viewmodel.classes.DevSettingsItems

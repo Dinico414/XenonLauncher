@@ -23,7 +23,7 @@ import com.xenon.mylibrary.values.ExtraLargerSpacing
 import com.xenon.mylibrary.values.LargestBiggerSpacing
 import com.xenon.mylibrary.values.NoPadding
 import com.xenonware.launcher.R
-import com.xenonware.launcher.ui.theme.mainFontFamily
+import com.xenonware.launcher.util.mainFontFamily
 import com.xenonware.launcher.util.ColorUtils
 
 @Composable

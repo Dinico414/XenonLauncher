@@ -81,8 +81,8 @@ import com.xenon.mylibrary.values.SmallerPadding
 import com.xenonware.launcher.R
 import com.xenonware.launcher.model.AppWidgetGroup
 import com.xenonware.launcher.model.WidgetPickerItemData
-import com.xenonware.launcher.ui.theme.LocalMainFontFamily
-import com.xenonware.launcher.ui.theme.LocalSubFontFamily
+import com.xenonware.launcher.util.LocalMainFontFamily
+import com.xenonware.launcher.util.LocalSubFontFamily
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext

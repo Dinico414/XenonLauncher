@@ -50,8 +50,8 @@ import com.xenon.mylibrary.values.LargeMediumSpacer
 import com.xenon.mylibrary.values.LargestSpacer
 import com.xenon.mylibrary.values.MediumSpacing
 import com.xenonware.launcher.R
-import com.xenonware.launcher.ui.theme.LocalMainFontFamily
-import com.xenonware.launcher.ui.theme.LocalSubFontFamily
+import com.xenonware.launcher.util.LocalMainFontFamily
+import com.xenonware.launcher.util.LocalSubFontFamily
 import com.xenonware.launcher.viewmodel.BackupInfo
 import com.xenonware.launcher.viewmodel.SettingsViewModel
 

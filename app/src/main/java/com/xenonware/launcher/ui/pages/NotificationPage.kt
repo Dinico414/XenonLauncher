@@ -192,8 +192,8 @@ import com.xenonware.launcher.ui.res.dock.StatusCounters
 import com.xenonware.launcher.ui.res.notification.ChronoCluster
 import com.xenonware.launcher.ui.res.notification.NotificationItem
 import com.xenonware.launcher.ui.res.notification.NotificationTabButton
-import com.xenonware.launcher.ui.theme.mainFontFamily
-import com.xenonware.launcher.ui.theme.subFontFamily
+import com.xenonware.launcher.util.mainFontFamily
+import com.xenonware.launcher.util.subFontFamily
 import com.xenonware.launcher.util.ColorUtils
 import com.xenonware.launcher.util.PerfLog
 import com.xenonware.launcher.util.blockHorizontalPagerSwipe

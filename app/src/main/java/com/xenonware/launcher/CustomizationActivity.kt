@@ -14,10 +14,10 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.ViewModelProvider
 import com.xenonware.launcher.data.SharedPreferenceManager
 import com.xenonware.launcher.ui.layouts.settings.CustomizationLayout
-import com.xenonware.launcher.ui.theme.FontAxes
-import com.xenonware.launcher.ui.theme.FontType
+import com.xenonware.launcher.util.FontAxes
+import com.xenonware.launcher.util.FontType
 import com.xenonware.launcher.ui.theme.ScreenEnvironment
-import com.xenonware.launcher.ui.theme.createCustomFontFamily
+import com.xenonware.launcher.util.createCustomFontFamily
 import com.xenonware.launcher.viewmodel.SettingsViewModel
 
 class CustomizationActivity : ComponentActivity() {

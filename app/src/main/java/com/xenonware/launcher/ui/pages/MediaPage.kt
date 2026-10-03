@@ -151,7 +151,7 @@ import com.xenonware.launcher.ui.res.VisualizerConfig
 import com.xenonware.launcher.ui.res.VisualizerStyle
 import com.xenonware.launcher.ui.res.rememberVisualizerPalette
 import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
-import com.xenonware.launcher.ui.theme.mainFontFamily
+import com.xenonware.launcher.util.mainFontFamily
 import com.xenonware.launcher.util.AudioSpectrumAnalyzer
 import com.xenonware.launcher.util.ColorUtils
 import com.xenonware.launcher.util.blockHorizontalPagerSwipe

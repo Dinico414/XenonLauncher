@@ -22,7 +22,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,8 +43,8 @@ import com.xenon.mylibrary.values.LargestSpacing
 import com.xenon.mylibrary.values.MediumPadding
 import com.xenon.mylibrary.values.SmallPadding
 import com.xenonware.launcher.R
-import com.xenonware.launcher.ui.theme.LocalMainFontFamily
-import com.xenonware.launcher.ui.theme.LocalSubFontFamily
+import com.xenonware.launcher.util.LocalMainFontFamily
+import com.xenonware.launcher.util.LocalSubFontFamily
 import com.xenonware.launcher.viewmodel.CalendarInfo
 
 @Composable
@@ -50,10 +52,21 @@ fun CalendarSelectionDialog(
     availableCalendars: List<CalendarInfo>,
     selectedCalendars: List<String>,
     onDismiss: () -> Unit,
-    onToggleCalendar: (String) -> Unit,
-    onSelectAll: () -> Unit,
-    onClearAll: () -> Unit
+    onSave: (List<String>) -> Unit
 ) {
+    val allCalendarIds = remember(availableCalendars) { availableCalendars.map { it.id }.toSet() }
+    var currentSelection by remember(selectedCalendars, allCalendarIds) {
+        mutableStateOf(
+            if (selectedCalendars.isEmpty()) {
+                allCalendarIds
+            } else if (selectedCalendars.contains("__NONE__")) {
+                emptySet()
+            } else {
+                selectedCalendars.toSet()
+            }
+        )
+    }
+
     val listState = rememberLazyListState()
     val showTopDivider by remember {
         derivedStateOf { listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0 }
@@ -71,11 +84,21 @@ fun CalendarSelectionDialog(
         subContextFont = subFont,
         title = stringResource(R.string.select_calendars),
         confirmButtonText = stringResource(R.string.done),
-        onConfirmButtonClick = onDismiss,
+        onConfirmButtonClick = {
+            val result = if (currentSelection.size >= allCalendarIds.size) {
+                emptyList()
+            } else if (currentSelection.isEmpty()) {
+                listOf("__NONE__")
+            } else {
+                currentSelection.toList()
+            }
+            onSave(result)
+            onDismiss()
+        },
         actionButton1Text = stringResource(R.string.select_all),
-        onActionButton1Click = onSelectAll,
+        onActionButton1Click = { currentSelection = allCalendarIds },
         actionButton2Text = stringResource(R.string.clear_all),
-        onActionButton2Click = onClearAll,
+        onActionButton2Click = { currentSelection = emptySet() },
         contentManagesScrolling = true,
         externalShowTopDivider = showTopDivider,
         externalShowBottomDivider = showBottomDivider
@@ -94,6 +117,7 @@ fun CalendarSelectionDialog(
                     modifier = Modifier.padding(bottom = LargestPadding)
                 )
             }
+
             if (availableCalendars.isEmpty()) {
                 item {
                     Box(
@@ -112,13 +136,19 @@ fun CalendarSelectionDialog(
                 }
             } else {
                 items(availableCalendars) { calendar ->
-                    val isSelected = selectedCalendars.contains(calendar.id) || selectedCalendars.isEmpty()
-                    
+                    val isSelected = calendar.id in currentSelection
+
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(LargeMediumCornerRadius))
-                            .clickable { onToggleCalendar(calendar.id) }
+                            .clickable {
+                                currentSelection = if (isSelected) {
+                                    currentSelection - calendar.id
+                                } else {
+                                    currentSelection + calendar.id
+                                }
+                            }
                             .padding(vertical = MediumPadding, horizontal = SmallPadding),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -151,7 +181,13 @@ fun CalendarSelectionDialog(
                         }
                         Checkbox(
                             checked = isSelected,
-                            onCheckedChange = { onToggleCalendar(calendar.id) }
+                            onCheckedChange = { checked ->
+                                currentSelection = if (checked) {
+                                    currentSelection + calendar.id
+                                } else {
+                                    currentSelection - calendar.id
+                                }
+                            }
                         )
                     }
                 }

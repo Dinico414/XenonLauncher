@@ -101,7 +101,7 @@ import com.xenon.mylibrary.values.SmallestStroke
 import com.xenonware.launcher.R
 import com.xenonware.launcher.media.MediaState
 import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
-import com.xenonware.launcher.ui.theme.mainFontFamily
+import com.xenonware.launcher.util.mainFontFamily
 import com.xenonware.launcher.util.ColorUtils
 import com.xenonware.launcher.util.openMediaApp
 import kotlinx.coroutines.delay

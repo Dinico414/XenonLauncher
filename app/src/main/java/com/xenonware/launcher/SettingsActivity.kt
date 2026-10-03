@@ -28,10 +28,10 @@ import com.xenonware.launcher.presentation.sign_in.GoogleAuthUiClient
 import com.xenonware.launcher.presentation.sign_in.SignInViewModel
 import com.xenonware.launcher.presentation.sign_in.SignInViewModel.SignInViewModelFactory
 import com.xenonware.launcher.ui.layouts.settings.SettingsLayout
-import com.xenonware.launcher.ui.theme.FontAxes
-import com.xenonware.launcher.ui.theme.FontType
+import com.xenonware.launcher.util.FontAxes
+import com.xenonware.launcher.util.FontType
 import com.xenonware.launcher.ui.theme.ScreenEnvironment
-import com.xenonware.launcher.ui.theme.createCustomFontFamily
+import com.xenonware.launcher.util.createCustomFontFamily
 import com.xenonware.launcher.viewmodel.SettingsViewModel
 import com.xenonware.launcher.viewmodel.SettingsViewModel.SettingsViewModelFactory
 import kotlinx.coroutines.launch
@@ -216,6 +216,7 @@ class SettingsActivity : ComponentActivity() {
         super.onResume()
         settingsViewModel.updateCurrentLanguage()
         settingsViewModel.refreshDeveloperModeState()
+        settingsViewModel.refreshPermissions()
         lifecycleScope.launch {
             val user = googleAuthUiClient.getSignedInUser()
             sharedPreferenceManager.isUserLoggedIn = user != null

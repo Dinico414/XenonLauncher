@@ -50,8 +50,8 @@ import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.model.AppWidgetGroup
 import com.xenonware.launcher.model.FabAction
 import com.xenonware.launcher.model.WidgetPickerItemData
-import com.xenonware.launcher.ui.theme.LocalMainFontFamily
-import com.xenonware.launcher.ui.theme.LocalSubFontFamily
+import com.xenonware.launcher.util.LocalMainFontFamily
+import com.xenonware.launcher.util.LocalSubFontFamily
 import com.xenonware.launcher.viewmodel.FabConfigMode
 
 @Composable

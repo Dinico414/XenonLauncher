@@ -23,7 +23,6 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Tab
@@ -51,11 +50,11 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.core.graphics.drawable.toBitmap
 import com.xenon.mylibrary.res.XenonColorPicker
 import com.xenon.mylibrary.res.XenonDialog
+import com.xenon.mylibrary.res.XenonTextField
 import com.xenon.mylibrary.values.ExtraBigSpacing
 import com.xenon.mylibrary.values.ExtraLargeCornerRadius
 import com.xenon.mylibrary.values.ExtraLargeSpacing
 import com.xenon.mylibrary.values.HugeSpacing
-import com.xenon.mylibrary.values.LargeMediumCornerRadius
 import com.xenon.mylibrary.values.LargeMediumSpacer
 import com.xenon.mylibrary.values.LargestSpacer
 import com.xenon.mylibrary.values.MediumPadding
@@ -64,8 +63,8 @@ import com.xenon.mylibrary.values.SmallerSpacer
 import com.xenonware.launcher.R
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.model.AppOverride
-import com.xenonware.launcher.ui.theme.LocalMainFontFamily
-import com.xenonware.launcher.ui.theme.LocalSubFontFamily
+import com.xenonware.launcher.util.LocalMainFontFamily
+import com.xenonware.launcher.util.LocalSubFontFamily
 import com.xenonware.launcher.util.generateCustomIcon
 import com.xenonware.launcher.util.loadIconFromPack
 import com.xenonware.launcher.viewmodel.LauncherViewModel
@@ -130,6 +129,7 @@ fun AppEditDialog(
     }
 
     var showIconPackPicker by remember { mutableStateOf(false) }
+    var isResetRequested by remember { mutableStateOf(false) }
     val mainFont = LocalMainFontFamily.current
     val subFont = LocalSubFontFamily.current
 
@@ -139,23 +139,27 @@ fun AppEditDialog(
         title = stringResource(R.string.edit_app),
         confirmButtonText = stringResource(R.string.save),
         onConfirmButtonClick = {
-            viewModel.updateAppOverride(
-                appKey, AppOverride(
-                    customName = if (name == app.name) null else name,
-                    iconPackPackage = iconPackPackage,
-                    iconResourceName = iconResName,
-                    zoom = zoom,
-                    backgroundColor = bgColor?.toArgb(),
-                    borderColor = borderColor.toArgb(),
-                    borderWidth = borderWidth
+            if (isResetRequested && name == app.name && zoom == 1.0f && bgColor == null && iconPackPackage == null) {
+                viewModel.resetAppOverride(appKey)
+                if (appKey != app.packageName) viewModel.resetAppOverride(app.packageName)
+            } else {
+                viewModel.updateAppOverride(
+                    appKey, AppOverride(
+                        customName = if (name == app.name) null else name,
+                        iconPackPackage = iconPackPackage,
+                        iconResourceName = iconResName,
+                        zoom = zoom,
+                        backgroundColor = bgColor?.toArgb(),
+                        borderColor = borderColor.toArgb(),
+                        borderWidth = borderWidth
+                    )
                 )
-            )
+            }
             onDismiss()
         },
         actionButton1Text = stringResource(R.string.reset),
         onActionButton1Click = {
-            viewModel.resetAppOverride(appKey)
-            if (appKey != app.packageName) viewModel.resetAppOverride(app.packageName)
+            isResetRequested = true
             name = app.name
             zoom = 1.0f
             bgColor = null
@@ -194,13 +198,13 @@ fun AppEditDialog(
 
                 Spacer(Modifier.width(LargeMediumSpacer))
 
-                OutlinedTextField(
+                XenonTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text(stringResource(R.string.app_name_label)) },
+                    placeholder = { Text(stringResource(R.string.app_name_label)) },
                     modifier = Modifier.weight(1f),
-                    singleLine = true,
-                    shape = RoundedCornerShape(LargeMediumCornerRadius)
+                    mainContextFont = mainFont,
+                    subContextFont = subFont
                 )
                 IconButton(onClick = { showIconPackPicker = true }) {
                     Icon(Icons.Rounded.Collections, stringResource(R.string.icon_pack), modifier = Modifier.size(ExtraLargeSpacing))

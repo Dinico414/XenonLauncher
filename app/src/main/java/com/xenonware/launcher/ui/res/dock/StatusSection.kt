@@ -92,7 +92,7 @@ import com.xenon.mylibrary.values.SmallerStroke
 import com.xenon.mylibrary.values.SmallestStroke
 import com.xenonware.launcher.R
 import com.xenonware.launcher.ui.res.Glancly
-import com.xenonware.launcher.ui.theme.mainFontFamily
+import com.xenonware.launcher.util.mainFontFamily
 import com.xenonware.launcher.util.fitScale
 import com.xenonware.launcher.util.rememberUsbDataTransfer
 import kotlinx.coroutines.delay

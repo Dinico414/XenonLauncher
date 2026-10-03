@@ -147,8 +147,8 @@ import com.xenonware.launcher.R
 import com.xenonware.launcher.model.WidgetItem
 import com.xenonware.launcher.ui.res.WidgetEditBorder
 import com.xenonware.launcher.ui.res.WidgetSelectorDialog
-import com.xenonware.launcher.ui.theme.mainFontFamily
-import com.xenonware.launcher.ui.theme.subFontFamily
+import com.xenonware.launcher.util.mainFontFamily
+import com.xenonware.launcher.util.subFontFamily
 import com.xenonware.launcher.util.InteractiveAppWidgetHostView
 import com.xenonware.launcher.util.WidgetConfig
 import com.xenonware.launcher.util.findActivity

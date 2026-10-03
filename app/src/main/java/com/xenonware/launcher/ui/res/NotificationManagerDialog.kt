@@ -1,6 +1,7 @@
 package com.xenonware.launcher.ui.res
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,9 +16,12 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,16 +30,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.xenon.mylibrary.res.XenonDialog
+import com.xenon.mylibrary.res.XenonTextField
 import com.xenon.mylibrary.values.IconSizeLarge
 import com.xenon.mylibrary.values.LargeMediumCornerRadius
+import com.xenon.mylibrary.values.LargeMediumPadding
 import com.xenon.mylibrary.values.LargeMediumSpacer
 import com.xenon.mylibrary.values.LargestPadding
 import com.xenon.mylibrary.values.MediumPadding
 import com.xenon.mylibrary.values.SmallPadding
 import com.xenonware.launcher.R
 import com.xenonware.launcher.model.AppInfo
-import com.xenonware.launcher.ui.theme.LocalMainFontFamily
-import com.xenonware.launcher.ui.theme.LocalSubFontFamily
+import com.xenonware.launcher.util.LocalMainFontFamily
+import com.xenonware.launcher.util.LocalSubFontFamily
 
 @Composable
 fun NotificationManagerDialog(
@@ -43,13 +49,30 @@ fun NotificationManagerDialog(
     visibleApps: List<String>,
     title: String = stringResource(R.string.notification_manager),
     description: String = stringResource(R.string.notification_manager_description),
+    emptyMeansAllSelected: Boolean = true,
     onDismiss: () -> Unit,
-    onToggleApp: (String) -> Unit,
-    onSelectAll: () -> Unit,
-    onClearAll: () -> Unit,
+    onSave: (List<String>) -> Unit,
     iconShape: IconShape,
     showShadow: Boolean
 ) {
+    val allPackageNames = remember(allApps) { allApps.map { it.packageName }.toSet() }
+    var selectedPackages by remember(visibleApps, allPackageNames, emptyMeansAllSelected) {
+        mutableStateOf(
+            if (emptyMeansAllSelected) {
+                if (visibleApps.isEmpty()) {
+                    allPackageNames
+                } else if (visibleApps.contains("__NONE__")) {
+                    emptySet()
+                } else {
+                    visibleApps.toSet()
+                }
+            } else {
+                visibleApps.toSet()
+            }
+        )
+    }
+
+    var searchQuery by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
     val showTopDivider by remember {
         derivedStateOf { listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0 }
@@ -60,6 +83,19 @@ fun NotificationManagerDialog(
     val mainFont = LocalMainFontFamily.current
     val subFont = LocalSubFontFamily.current
 
+    val filteredApps = remember(searchQuery, allApps) {
+        if (searchQuery.isBlank()) {
+            allApps
+        } else {
+            allApps.filter { it.label.contains(searchQuery, ignoreCase = true) }
+        }
+    }
+
+    LaunchedEffect(searchQuery) {
+        if (listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0) {
+            listState.scrollToItem(0)
+        }
+    }
 
     XenonDialog(
         onDismissRequest = onDismiss,
@@ -68,11 +104,25 @@ fun NotificationManagerDialog(
         subContextFont = subFont,
         title = title,
         confirmButtonText = stringResource(R.string.done),
-        onConfirmButtonClick = onDismiss,
+        onConfirmButtonClick = {
+            val result = if (emptyMeansAllSelected) {
+                if (selectedPackages.size >= allPackageNames.size) {
+                    emptyList()
+                } else if (selectedPackages.isEmpty()) {
+                    listOf("__NONE__")
+                } else {
+                    selectedPackages.toList()
+                }
+            } else {
+                selectedPackages.toList()
+            }
+            onSave(result)
+            onDismiss()
+        },
         actionButton1Text = stringResource(R.string.select_all),
-        onActionButton1Click = onSelectAll,
+        onActionButton1Click = { selectedPackages = allPackageNames },
         actionButton2Text = stringResource(R.string.clear_all),
-        onActionButton2Click = onClearAll,
+        onActionButton2Click = { selectedPackages = emptySet() },
         contentManagesScrolling = true,
         externalShowTopDivider = showTopDivider,
         externalShowBottomDivider = showBottomDivider
@@ -91,15 +141,51 @@ fun NotificationManagerDialog(
                     modifier = Modifier.padding(bottom = LargestPadding)
                 )
             }
-            
-            items(allApps) { app ->
-                val isSelected = visibleApps.contains(app.packageName) || visibleApps.isEmpty()
-                
+
+            item {
+                XenonTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text(stringResource(R.string.search)) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = LargeMediumPadding),
+                    mainContextFont = mainFont,
+                    subContextFont = subFont
+                )
+            }
+
+            if (filteredApps.isEmpty() && searchQuery.isNotBlank()) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = LargestPadding),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = stringResource(R.string.no_results),
+                            fontSize = 14.sp,
+                            color = colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            items(filteredApps, key = { "${it.packageName}/${it.className}" }) { app ->
+                val isSelected = app.packageName in selectedPackages
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(LargeMediumCornerRadius))
-                        .clickable { onToggleApp(app.packageName) }
+                        .clickable {
+                            selectedPackages = if (isSelected) {
+                                selectedPackages - app.packageName
+                            } else {
+                                selectedPackages + app.packageName
+                            }
+                        }
                         .padding(vertical = MediumPadding, horizontal = SmallPadding),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -118,7 +204,13 @@ fun NotificationManagerDialog(
                     )
                     Checkbox(
                         checked = isSelected,
-                        onCheckedChange = { onToggleApp(app.packageName) }
+                        onCheckedChange = { checked ->
+                            selectedPackages = if (checked) {
+                                selectedPackages + app.packageName
+                            } else {
+                                selectedPackages - app.packageName
+                            }
+                        }
                     )
                 }
             }

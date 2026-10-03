@@ -29,8 +29,8 @@ import com.xenon.mylibrary.values.LargestPadding
 import com.xenon.mylibrary.values.NoPadding
 import com.xenon.mylibrary.values.SmallSpacer
 import com.xenonware.launcher.R
-import com.xenonware.launcher.ui.theme.LocalMainFontFamily
-import com.xenonware.launcher.ui.theme.LocalSubFontFamily
+import com.xenonware.launcher.util.LocalMainFontFamily
+import com.xenonware.launcher.util.LocalSubFontFamily
 import com.xenonware.launcher.viewmodel.PermissionStatus
 
 @Composable

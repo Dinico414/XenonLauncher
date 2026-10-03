@@ -18,6 +18,8 @@ import androidx.compose.ui.unit.dp
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.xenon.mylibrary.theme.LayoutType
 import com.xenon.mylibrary.theme.QuicksandTitleVariable
+import com.xenonware.launcher.util.LocalMainFontFamily
+import com.xenonware.launcher.util.LocalSubFontFamily
 
 @Composable
 fun ScreenEnvironment(

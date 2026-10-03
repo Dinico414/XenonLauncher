@@ -18,6 +18,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -38,8 +39,8 @@ import com.xenon.mylibrary.values.LargestCornerRadius
 import com.xenon.mylibrary.values.MediumLargeSpacing
 import com.xenon.mylibrary.values.MediumSpacer
 import com.xenonware.launcher.R
-import com.xenonware.launcher.ui.theme.LocalMainFontFamily
-import com.xenonware.launcher.ui.theme.LocalSubFontFamily
+import com.xenonware.launcher.util.LocalMainFontFamily
+import com.xenonware.launcher.util.LocalSubFontFamily
 
 @Composable
 fun VisualizerConfigDialog(
@@ -48,6 +49,12 @@ fun VisualizerConfigDialog(
     val context = LocalContext.current
     val mainFont = LocalMainFontFamily.current
     val subFont = LocalSubFontFamily.current
+
+    var localStyle by remember { mutableIntStateOf(VisualizerConfig.visualizerStyle) }
+    var localReactivity by remember { mutableIntStateOf(VisualizerConfig.reactivity) }
+    var localGeometry by remember { mutableIntStateOf(VisualizerConfig.geometricStyle) }
+    var localWaves by remember { mutableIntStateOf(VisualizerConfig.waves) }
+    var localColorProfile by remember { mutableIntStateOf(VisualizerConfig.colorProfile) }
 
     var pickingStyle by remember { mutableStateOf(false) }
     var pickingReactivity by remember { mutableStateOf(false) }
@@ -61,7 +68,15 @@ fun VisualizerConfigDialog(
         mainContextFont = mainFont,
         subContextFont = subFont,
         confirmButtonText = stringResource(R.string.done),
-        onConfirmButtonClick = onDismiss,
+        onConfirmButtonClick = {
+            VisualizerConfig.visualizerStyle = localStyle
+            VisualizerConfig.reactivity = localReactivity
+            VisualizerConfig.geometricStyle = localGeometry
+            VisualizerConfig.waves = localWaves
+            VisualizerConfig.colorProfile = localColorProfile
+            VisualizerConfig.save(context)
+            onDismiss()
+        },
         contentManagesScrolling = true
     ) {
         val standaloneShape = RoundedCornerShape(ExtraLargerCornerRadius)
@@ -72,7 +87,7 @@ fun VisualizerConfigDialog(
             item {
                 SettingsTile(
                     title = "Visualizer Style",
-                    subtitle = VisualizerConfig.getStyleName(VisualizerConfig.visualizerStyle),
+                    subtitle = VisualizerConfig.getStyleName(localStyle),
                     onClick = { pickingStyle = true },
                     shape = standaloneShape,
                     backgroundColor = MaterialTheme.colorScheme.surfaceBright,
@@ -81,12 +96,12 @@ fun VisualizerConfigDialog(
                 )
             }
 
-            val isOscilloscope = VisualizerConfig.visualizerStyle == VisualizerStyle.OSCILLOSCOPE
+            val isOscilloscope = localStyle == VisualizerStyle.OSCILLOSCOPE
             item {
                 SettingsTile(
                     modifier = if (isOscilloscope) Modifier.alpha(0.38f) else Modifier,
                     title = "Visualizer Reactivity",
-                    subtitle = if (isOscilloscope) "Ignored by Oscilloscope" else VisualizerConfig.getReactivityName(VisualizerConfig.reactivity),
+                    subtitle = if (isOscilloscope) "Ignored by Oscilloscope" else VisualizerConfig.getReactivityName(localReactivity),
                     onClick = if (isOscilloscope) null else { { pickingReactivity = true } },
                     shape = standaloneShape,
                     backgroundColor = MaterialTheme.colorScheme.surfaceBright,
@@ -98,7 +113,7 @@ fun VisualizerConfigDialog(
             item {
                 SettingsTile(
                     title = "Geometric Style",
-                    subtitle = VisualizerConfig.getGeometryName(VisualizerConfig.geometricStyle),
+                    subtitle = VisualizerConfig.getGeometryName(localGeometry),
                     onClick = { pickingGeometry = true },
                     shape = standaloneShape,
                     backgroundColor = MaterialTheme.colorScheme.surfaceBright,
@@ -110,15 +125,13 @@ fun VisualizerConfigDialog(
             item {
                 SettingsSwitchTile(
                     title = "Visualizer Waves",
-                    subtitle = if (VisualizerConfig.waves == 1) "Enabled" else "Disabled",
-                    checked = VisualizerConfig.waves == 1,
+                    subtitle = if (localWaves == 1) "Enabled" else "Disabled",
+                    checked = localWaves == 1,
                     onCheckedChange = { 
-                        VisualizerConfig.waves = if (it) 1 else 0
-                        VisualizerConfig.save(context)
+                        localWaves = if (it) 1 else 0
                     },
                     onClick = {
-                        VisualizerConfig.waves = if (VisualizerConfig.waves == 1) 0 else 1
-                        VisualizerConfig.save(context)
+                        localWaves = if (localWaves == 1) 0 else 1
                     },
                     shape = standaloneShape,
                     backgroundColor = MaterialTheme.colorScheme.surfaceBright,
@@ -130,7 +143,7 @@ fun VisualizerConfigDialog(
             item {
                 SettingsTile(
                     title = "Color Profile",
-                    subtitle = VisualizerConfig.getColorProfileName(VisualizerConfig.colorProfile),
+                    subtitle = VisualizerConfig.getColorProfileName(localColorProfile),
                     onClick = { pickingColorProfile = true },
                     shape = standaloneShape,
                     backgroundColor = MaterialTheme.colorScheme.surfaceBright,
@@ -145,11 +158,10 @@ fun VisualizerConfigDialog(
         VisualizerOptionPickerDialog(
             title = "Visualizer Style",
             options = listOf(0, 1, 2, 3, 4, 5),
-            selectedOption = VisualizerConfig.visualizerStyle,
+            selectedOption = localStyle,
             getName = { VisualizerConfig.getStyleName(it) },
             onSelect = { 
-                VisualizerConfig.visualizerStyle = it
-                VisualizerConfig.save(context)
+                localStyle = it
             },
             onDismiss = { pickingStyle = false }
         )
@@ -159,11 +171,10 @@ fun VisualizerConfigDialog(
         VisualizerOptionPickerDialog(
             title = "Visualizer Reactivity",
             options = listOf(0, 1, 2, 3, 4),
-            selectedOption = VisualizerConfig.reactivity,
+            selectedOption = localReactivity,
             getName = { VisualizerConfig.getReactivityName(it) },
             onSelect = { 
-                VisualizerConfig.reactivity = it
-                VisualizerConfig.save(context)
+                localReactivity = it
             },
             onDismiss = { pickingReactivity = false }
         )
@@ -173,11 +184,10 @@ fun VisualizerConfigDialog(
         VisualizerOptionPickerDialog(
             title = "Geometric Style",
             options = listOf(0, 1, 2),
-            selectedOption = VisualizerConfig.geometricStyle,
+            selectedOption = localGeometry,
             getName = { VisualizerConfig.getGeometryName(it) },
             onSelect = { 
-                VisualizerConfig.geometricStyle = it
-                VisualizerConfig.save(context)
+                localGeometry = it
             },
             onDismiss = { pickingGeometry = false }
         )
@@ -187,11 +197,10 @@ fun VisualizerConfigDialog(
         VisualizerOptionPickerDialog(
             title = "Color Profile",
             options = listOf(0, 1, 2),
-            selectedOption = VisualizerConfig.colorProfile,
+            selectedOption = localColorProfile,
             getName = { VisualizerConfig.getColorProfileName(it) },
             onSelect = { 
-                VisualizerConfig.colorProfile = it
-                VisualizerConfig.save(context)
+                localColorProfile = it
             },
             onDismiss = { pickingColorProfile = false }
         )

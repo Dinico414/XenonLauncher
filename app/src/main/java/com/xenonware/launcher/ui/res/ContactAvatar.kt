@@ -14,7 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.xenon.mylibrary.values.ExtraBiggerSpacing
-import com.xenonware.launcher.ui.theme.mainFontFamily
+import com.xenonware.launcher.util.mainFontFamily
 
 @Composable
 fun ContactAvatar(name: String, modifier: Modifier = Modifier) {
