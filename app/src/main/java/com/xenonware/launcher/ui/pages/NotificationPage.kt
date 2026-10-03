@@ -1134,6 +1134,7 @@ private fun EmptyNotificationsState(
                     text = emptyMessage,
                     color = baseColor.copy(alpha = 0.8f),
                     fontSize = 18.sp,
+                    fontFamily = mainFontFamily,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
                     modifier = Modifier.basicMarquee()

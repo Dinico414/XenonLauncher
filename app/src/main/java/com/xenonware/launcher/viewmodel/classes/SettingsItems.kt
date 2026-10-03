@@ -2,14 +2,10 @@ package com.xenonware.launcher.viewmodel.classes
 
 import android.content.Intent
 import android.widget.Toast
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.SwitchColors
@@ -19,7 +15,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -43,7 +38,6 @@ import com.xenon.mylibrary.theme.LayoutType
 import com.xenon.mylibrary.theme.QuicksandTitleVariable
 import com.xenon.mylibrary.values.ExtraLargeSpacing
 import com.xenon.mylibrary.values.ExtraLargerCornerRadius
-import com.xenon.mylibrary.values.LargestPadding
 import com.xenon.mylibrary.values.NoCornerRadius
 import com.xenon.mylibrary.values.NoSpacing
 import com.xenon.mylibrary.values.SmallCornerRadius
@@ -453,29 +447,23 @@ fun SettingsItems(
             subContextFont = subContextFont
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
-        Box(contentAlignment = Alignment.CenterEnd) {
-            SettingsTile(
-                title = stringResource(string.privacy_policy_title),
-                subtitle = stringResource(string.privacy_policy_description),
-                onClick = {
-                    val intent = Intent(Intent.ACTION_VIEW, "https://xenonware.com/privacy_policy_launcher".toUri())
-                    context.startActivity(intent)
-                },
-                icon = { Icon(painterResource(R.drawable.ic_privacy), null, tint = tileSubtitleColor) },
-                shape = tileShapeOverride ?: middleShape,
-                backgroundColor = tileBackgroundColor,
-                contentColor = tileContentColor,
-                subtitleColor = tileSubtitleColor,
-                mainContextFont = mainContextFont,
-                subContextFont = subContextFont
-            )
-            Icon(
-                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                contentDescription = null,
-                tint = tileSubtitleColor,
-                modifier = Modifier.padding(end = LargestPadding)
-            )
-        }
+        SettingsTile(
+            title = stringResource(string.privacy_policy_title),
+            subtitle = stringResource(string.privacy_policy_description),
+            onClick = {
+                val intent = Intent(Intent.ACTION_VIEW, "https://xenonware.com/privacy_policy_launcher".toUri())
+                context.startActivity(intent)
+            },
+            icon = { Icon(painterResource(R.drawable.ic_privacy), null, tint = tileSubtitleColor) },
+            shape = tileShapeOverride ?: middleShape,
+            backgroundColor = tileBackgroundColor,
+            contentColor = tileContentColor,
+            showTrailingIcon = true,
+            subtitleColor = tileSubtitleColor,
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont
+        )
+
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsTile(
             title = stringResource(string.version),
@@ -491,29 +479,22 @@ fun SettingsItems(
             subContextFont = subContextFont
         )
         Spacer(Modifier.height(actualOuterGroupSpacing))
-        Box(contentAlignment = Alignment.CenterEnd) {
-            SettingsTile(
-                title = stringResource(string.buy_me_a_coffee),
-                subtitle = stringResource(string.buy_me_a_coffee_description),
-                onClick = {
-                    val intent = Intent(Intent.ACTION_VIEW, "https://www.buymeacoffee.com/xenonware".toUri())
-                    context.startActivity(intent)
-                },
-                icon = { Icon(painterResource(R.drawable.ic_buy_me_a_coffee), null, tint = tileSubtitleColor) },
-                shape = tileShapeOverride ?: standaloneShape,
-                backgroundColor = tileBackgroundColor,
-                contentColor = tileContentColor,
-                subtitleColor = tileSubtitleColor,
-                mainContextFont = mainContextFont,
-                subContextFont = subContextFont
-            )
-            Icon(
-                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                contentDescription = null,
-                tint = tileSubtitleColor,
-                modifier = Modifier.padding(end = LargestPadding)
-            )
-        }
+        SettingsTile(
+            title = stringResource(string.buy_me_a_coffee),
+            subtitle = stringResource(string.buy_me_a_coffee_description),
+            onClick = {
+                val intent = Intent(Intent.ACTION_VIEW, "https://www.buymeacoffee.com/xenonware".toUri())
+                context.startActivity(intent)
+            },
+            icon = { Icon(painterResource(R.drawable.ic_buy_me_a_coffee), null, tint = tileSubtitleColor) },
+            shape = tileShapeOverride ?: standaloneShape,
+            backgroundColor = tileBackgroundColor,
+            contentColor = tileContentColor,
+            showTrailingIcon = true,
+            subtitleColor = tileSubtitleColor,
+            mainContextFont = mainContextFont,
+            subContextFont = subContextFont
+        )
     }
 
     // --- dev ---
