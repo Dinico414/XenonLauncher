@@ -53,6 +53,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.xenon.mylibrary.R
 import com.xenon.mylibrary.res.SettingsSwitchMenuTile
 import com.xenon.mylibrary.res.SettingsSwitchTile
 import com.xenon.mylibrary.res.SettingsSwitchTileContext
@@ -79,7 +80,7 @@ import com.xenon.mylibrary.values.NoCornerRadius
 import com.xenon.mylibrary.values.SmallCornerRadius
 import com.xenon.mylibrary.values.SmallerSpacer
 import com.xenon.mylibrary.values.SmallerStroke
-import com.xenonware.launcher.R
+import com.xenonware.launcher.R.string
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.model.FabAction
 import com.xenonware.launcher.ui.res.IconShape
@@ -185,8 +186,8 @@ fun CustomizationItems(
         // --- App Drawer & Icons ---
         Column {
             SettingsSwitchTile(
-                title = stringResource(id = R.string.grid_layout),
-                subtitle = if (isGridLayout) stringResource(id = R.string.using_grid_view) else stringResource(id = R.string.using_list_view),
+                title = stringResource(id = string.grid_layout),
+                subtitle = if (isGridLayout) stringResource(id = string.using_grid_view) else stringResource(id = string.using_list_view),
                 checked = isGridLayout,
                 onCheckedChange = { viewModel.setGridLayout(it) },
                 onClick = { viewModel.setGridLayout(!isGridLayout) },
@@ -200,11 +201,11 @@ fun CustomizationItems(
             )
             Spacer(Modifier.height(actualInnerGroupSpacing))
             SettingsTile(
-                title = stringResource(id = R.string.global_icon_pack),
+                title = stringResource(id = string.global_icon_pack),
                 subtitle = if (globalIconPack != null) {
                     val pack = remember(globalIconPack) { viewModel.getInstalledIconPacks().find { it.activityInfo.packageName == globalIconPack } }
                     pack?.loadLabel(context.packageManager)?.toString() ?: globalIconPack!!
-                } else stringResource(R.string.system_default),
+                } else stringResource(string.system_default),
                 onClick = { viewModel.setShowGlobalIconPackDialog(true) },
                 icon = { Icon(painterResource(R.drawable.ic_package), null, tint = tileSubtitleColor) },
                 shape = tileShapeOverride ?: middleShape,
@@ -217,7 +218,7 @@ fun CustomizationItems(
             Spacer(Modifier.height(actualInnerGroupSpacing))
             // Icon Shape Selector
             SettingsTileContext(
-                title = stringResource(id = R.string.icon_shape),
+                title = stringResource(id = string.icon_shape),
                 icon = { Icon(painterResource(R.drawable.ic_shape), null, tint = tileSubtitleColor) },
                 shape = tileShapeOverride ?: middleShape,
                 backgroundColor = tileBackgroundColor,
@@ -318,8 +319,8 @@ fun CustomizationItems(
             )
             Spacer(Modifier.height(actualInnerGroupSpacing))
             SettingsSwitchTile(
-                title = stringResource(id = R.string.app_labels),
-                subtitle = if (appLabelsEnabled) stringResource(id = R.string.show_app_labels) else stringResource(id = R.string.hide_app_labels),
+                title = stringResource(string.app_labels),
+                subtitle = if (appLabelsEnabled) stringResource(string.show_app_labels) else stringResource(id = string.hide_app_labels),
                 checked = appLabelsEnabled,
                 onCheckedChange = { viewModel.setAppLabelsEnabled(it) },
                 onClick = { viewModel.setAppLabelsEnabled(!appLabelsEnabled) },
@@ -333,8 +334,8 @@ fun CustomizationItems(
             )
             Spacer(Modifier.height(actualInnerGroupSpacing))
             SettingsSwitchTile(
-                title = stringResource(id = R.string.icon_shadows),
-                subtitle = stringResource(id = R.string.apply_depth_description),
+                title = stringResource(id = string.icon_shadows),
+                subtitle = stringResource(id = string.apply_depth_description),
                 checked = drawerIconShadow,
                 onCheckedChange = { viewModel.setDrawerIconShadow(it) },
                 onClick = { viewModel.setDrawerIconShadow(!drawerIconShadow) },
@@ -352,8 +353,8 @@ fun CustomizationItems(
         // --- Search & Keyboard Tweaks ---
         Column {
             SettingsSwitchTile(
-                title = stringResource(id = R.string.advanced_search),
-                subtitle = stringResource(id = R.string.advanced_search_description),
+                title = stringResource(id = string.advanced_search),
+                subtitle = stringResource(id = string.advanced_search_description),
                 checked = advancedSearchEnabled,
                 onCheckedChange = { viewModel.setAdvancedSearchEnabled(it) },
                 onClick = { viewModel.setAdvancedSearchEnabled(!advancedSearchEnabled) },
@@ -367,8 +368,8 @@ fun CustomizationItems(
             )
             Spacer(Modifier.height(actualInnerGroupSpacing))
             SettingsSwitchMenuTile(
-                title = stringResource(id = R.string.show_hidden_apps),
-                subtitle = stringResource(id = R.string.show_hidden_apps_description),
+                title = stringResource(id = string.show_hidden_apps),
+                subtitle = stringResource(id = string.show_hidden_apps_description),
                 checked = showHiddenAppsInSearch,
                 onCheckedChange = { viewModel.setShowHiddenAppsInSearch(it) },
                 onClick = onShowHiddenApps,
@@ -382,8 +383,8 @@ fun CustomizationItems(
             )
             Spacer(Modifier.height(actualInnerGroupSpacing))
             SettingsSwitchTileContext(
-                title = stringResource(id = R.string.move_with_keyboard),
-                subtitle = if (dockSafeDrawIme) stringResource(id = R.string.dock_move_up_description) else stringResource(id = R.string.dock_stay_bottom_description),
+                title = stringResource(id = string.move_with_keyboard),
+                subtitle = if (dockSafeDrawIme) stringResource(id = string.dock_move_up_description) else stringResource(id = string.dock_stay_bottom_description),
                 checked = dockSafeDrawIme,
                 onCheckedChange = { viewModel.setDockSafeDrawIme(it) },
                 onClick = { viewModel.setDockSafeDrawIme(!dockSafeDrawIme) },
@@ -410,13 +411,13 @@ fun CustomizationItems(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    stringResource(id = R.string.move_only_in_portrait),
+                                    stringResource(id = string.move_only_in_portrait),
                                     color = tileContentColor,
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Medium
                                 )
                                 Text(
-                                    stringResource(id = R.string.move_only_in_portrait_description),
+                                    stringResource(id = string.move_only_in_portrait_description),
                                     color = tileSubtitleColor,
                                     fontSize = 14.sp
                                 )
@@ -436,8 +437,8 @@ fun CustomizationItems(
             )
             Spacer(Modifier.height(actualInnerGroupSpacing))
             SettingsSwitchTileContext(
-                title = stringResource(id = R.string.open_keyboard),
-                subtitle = stringResource(id = R.string.focus_search_description),
+                title = stringResource(id = string.open_keyboard),
+                subtitle = stringResource(id = string.focus_search_description),
                 checked = openKeyboard,
                 onCheckedChange = { viewModel.setOpenKeyboard(it) },
                 onClick = { viewModel.setOpenKeyboard(!openKeyboard) },
@@ -464,13 +465,13 @@ fun CustomizationItems(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    stringResource(id = R.string.open_only_in_portrait),
+                                    stringResource(id = string.open_only_in_portrait),
                                     color = tileContentColor,
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Medium
                                 )
                                 Text(
-                                    stringResource(id = R.string.open_only_in_portrait_description),
+                                    stringResource(id = string.open_only_in_portrait_description),
                                     color = tileSubtitleColor,
                                     fontSize = 14.sp
                                 )
@@ -494,8 +495,8 @@ fun CustomizationItems(
         // --- Action Button / FAB ---
         Column {
             SettingsSwitchTile(
-                title = stringResource(R.string.hide_action_button),
-                subtitle = stringResource(R.string.hide_action_button_description),
+                title = stringResource(string.hide_action_button),
+                subtitle = stringResource(string.hide_action_button_description),
                 checked = hideActionButton,
                 onCheckedChange = { viewModel.setHideActionButton(it) },
                 onClick = { viewModel.setHideActionButton(!hideActionButton) },
@@ -510,7 +511,7 @@ fun CustomizationItems(
             if (!hideActionButton) {
                 Spacer(Modifier.height(actualInnerGroupSpacing))
                 SettingsTile(
-                    title = stringResource(id = R.string.fab_single_tap),
+                    title = stringResource(id = string.fab_single_tap),
                     subtitle = getFabActionTitle(fabSingleTapAction, fabSingleTapValue, apps),
                     onClick = { viewModel.setShowFabConfig(FabConfigMode.SINGLE) },
                     icon = { Icon(painterResource(R.drawable.ic_touch_app), null, tint = tileSubtitleColor) },
@@ -523,7 +524,7 @@ fun CustomizationItems(
                 )
                 Spacer(Modifier.height(actualInnerGroupSpacing))
                 SettingsTile(
-                    title = stringResource(id = R.string.fab_double_tap),
+                    title = stringResource(id = string.fab_double_tap),
                     subtitle = getFabActionTitle(fabDoubleTapAction, fabDoubleTapValue, apps),
                     onClick = { viewModel.setShowFabConfig(FabConfigMode.DOUBLE) },
                     icon = { Icon(painterResource(R.drawable.ic_touch_double), null, tint = tileSubtitleColor) },
@@ -536,7 +537,7 @@ fun CustomizationItems(
                 )
                 Spacer(Modifier.height(actualInnerGroupSpacing))
                 SettingsTile(
-                    title = stringResource(id = R.string.fab_long_press),
+                    title = stringResource(id = string.fab_long_press),
                     subtitle = getFabActionTitle(fabLongPressAction, fabLongPressValue, apps),
                     onClick = { viewModel.setShowFabConfig(FabConfigMode.LONG) },
                     icon = { Icon(painterResource(R.drawable.ic_touch_long), null, tint = tileSubtitleColor) },
@@ -549,7 +550,7 @@ fun CustomizationItems(
                 )
                 Spacer(Modifier.height(actualInnerGroupSpacing))
                 SettingsTile(
-                    title = stringResource(id = R.string.fab_swipe_up),
+                    title = stringResource(id = string.fab_swipe_up),
                     subtitle = getFabActionTitle(fabSwipeUpAction, fabSwipeUpValue, apps),
                     onClick = { viewModel.setShowFabConfig(FabConfigMode.SWIPE_UP) },
                     icon = { Icon(painterResource(R.drawable.ic_touch_swipe_up), null, tint = tileSubtitleColor) },
@@ -567,7 +568,7 @@ fun CustomizationItems(
         // --- Notification Badges Tweaks ---
         Column {
             SettingsTileContext(
-                title = stringResource(id = R.string.notification_badges),
+                title = stringResource(id = string.notification_badges),
                 icon = { Icon(painterResource(R.drawable.ic_badge), null, tint = tileSubtitleColor) },
                 shape = tileShapeOverride ?: standaloneShape,
                 backgroundColor = tileBackgroundColor,
@@ -583,9 +584,9 @@ fun CustomizationItems(
                         onOptionSelect = { viewModel.setNotificationBadgeType(it) },
                         label = { type ->
                             when (type) {
-                                0 -> stringResource(id = R.string.none)
-                                1 -> stringResource(id = R.string.dot)
-                                2 -> stringResource(id = R.string.number)
+                                0 -> stringResource(id = string.none)
+                                1 -> stringResource(id = string.dot)
+                                2 -> stringResource(id = string.number)
                                 else -> ""
                             }
                         },
@@ -613,8 +614,8 @@ fun CustomizationItems(
         // --- At a Glance Tweaks ---
         Column {
             SettingsSwitchTile(
-                title = stringResource(R.string.show_clock_at_a_glance),
-                subtitle = stringResource(R.string.show_clock_at_a_glance_description),
+                title = stringResource(string.show_clock_at_a_glance),
+                subtitle = stringResource(string.show_clock_at_a_glance_description),
                 checked = showClock,
                 onCheckedChange = { viewModel.setShowClockAtAGlance(it) },
                 onClick = { viewModel.setShowClockAtAGlance(!showClock) },
@@ -630,7 +631,7 @@ fun CustomizationItems(
             Spacer(Modifier.height(actualInnerGroupSpacing))
 
             SettingsTileContext(
-                title = stringResource(R.string.temp_unit),
+                title = stringResource(string.temp_unit),
                 icon = { Icon(painterResource(R.drawable.ic_temperature), null, tint = tileSubtitleColor) },
                 showContext = true,
                 shape = tileShapeOverride ?: middleShape,
@@ -662,8 +663,8 @@ fun CustomizationItems(
             Spacer(Modifier.height(actualInnerGroupSpacing))
 
             SettingsSwitchTile(
-                title = stringResource(R.string.hide_at_a_glance),
-                subtitle = stringResource(R.string.hide_at_a_glance_description),
+                title = stringResource(string.hide_at_a_glance),
+                subtitle = stringResource(string.hide_at_a_glance_description),
                 checked = hideAtAGlance,
                 onCheckedChange = { viewModel.setHideAtAGlance(it) },
                 onClick = { viewModel.setHideAtAGlance(!hideAtAGlance) },
@@ -682,7 +683,7 @@ fun CustomizationItems(
         // --- Notification Tweaks ---
         Column {
             SettingsTileContext(
-                title = stringResource(R.string.notification_indicator),
+                title = stringResource(string.notification_indicator),
                 icon = { Icon(painterResource(R.drawable.ic_notification), null, tint = tileSubtitleColor) },
                 showContext = true,
                 shape = tileShapeOverride ?: topShape,
@@ -781,9 +782,9 @@ fun CustomizationItems(
                                     Icon(
                                         imageVector = iconVector,
                                         contentDescription = when (type) {
-                                            0 -> stringResource(R.string.notification_indicator_none)
-                                            1 -> stringResource(R.string.notification_indicator_checkmark)
-                                            else -> stringResource(R.string.notification_indicator_trophy)
+                                            0 -> stringResource(string.notification_indicator_none)
+                                            1 -> stringResource(string.notification_indicator_checkmark)
+                                            else -> stringResource(string.notification_indicator_trophy)
                                         },
                                         modifier = Modifier.size(BiggestSpacing),
                                         tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
@@ -798,11 +799,11 @@ fun CustomizationItems(
             Spacer(Modifier.height(actualInnerGroupSpacing))
 
             SettingsTile(
-                title = stringResource(R.string.notification_message),
+                title = stringResource(string.notification_message),
                 subtitle = when (notificationMessageType) {
-                    0 -> stringResource(R.string.notification_message_none)
-                    1 -> "\"${stringResource(R.string.notification_message_no_notification)}\""
-                    else -> "\"${stringResource(R.string.notification_message_up_to_date)}\""
+                    0 -> stringResource(string.notification_message_none)
+                    1 -> "\"${stringResource(string.notification_message_no_notification)}\""
+                    else -> "\"${stringResource(string.notification_message_up_to_date)}\""
                 },
                 onClick = { viewModel.setShowNotificationMessageDialog(true) },
                 icon = { Icon(painterResource(R.drawable.ic_message), null, tint = tileSubtitleColor) },
@@ -817,8 +818,8 @@ fun CustomizationItems(
             Spacer(Modifier.height(actualInnerGroupSpacing))
 
             SettingsSwitchTile(
-                title = stringResource(R.string.show_mute_notifications),
-                subtitle = stringResource(R.string.show_mute_notifications_description),
+                title = stringResource(string.show_mute_notifications),
+                subtitle = stringResource(string.show_mute_notifications_description),
                 checked = showMuteNotifications,
                 onCheckedChange = { viewModel.setShowMuteNotifications(it) },
                 onClick = { viewModel.setShowMuteNotifications(!showMuteNotifications) },
@@ -834,8 +835,8 @@ fun CustomizationItems(
             Spacer(Modifier.height(actualInnerGroupSpacing))
 
             SettingsSwitchTile(
-                title = stringResource(R.string.show_permanent_notifications),
-                subtitle = stringResource(R.string.show_permanent_notifications_description),
+                title = stringResource(string.show_permanent_notifications),
+                subtitle = stringResource(string.show_permanent_notifications_description),
                 checked = showPermanentNotifications,
                 onCheckedChange = { viewModel.setShowPermanentNotifications(it) },
                 onClick = { viewModel.setShowPermanentNotifications(!showPermanentNotifications) },
@@ -851,8 +852,8 @@ fun CustomizationItems(
             Spacer(Modifier.height(actualInnerGroupSpacing))
 
             SettingsSwitchTile(
-                title = stringResource(R.string.experimental_disable_grouping),
-                subtitle = stringResource(R.string.experimental_disable_grouping_description),
+                title = stringResource(string.experimental_disable_grouping),
+                subtitle = stringResource(string.experimental_disable_grouping_description),
                 checked = disableGrouping,
                 onCheckedChange = { viewModel.setDisableGrouping(it) },
                 onClick = { viewModel.setDisableGrouping(!disableGrouping) },
@@ -868,8 +869,8 @@ fun CustomizationItems(
             Spacer(Modifier.height(actualInnerGroupSpacing))
 
             SettingsSwitchTile(
-                title = stringResource(R.string.notification_delete_single_press),
-                subtitle = stringResource(R.string.notification_delete_single_press_description),
+                title = stringResource(string.notification_delete_single_press),
+                subtitle = stringResource(string.notification_delete_single_press_description),
                 checked = notificationDeleteSinglePress,
                 onCheckedChange = { viewModel.setNotificationDeleteSinglePress(it) },
                 onClick = { viewModel.setNotificationDeleteSinglePress(!notificationDeleteSinglePress) },
@@ -888,8 +889,8 @@ fun CustomizationItems(
         // --- Font Tweaks ---
         Column {
             SettingsTile(
-                title = stringResource(R.string.font_settings),
-                subtitle = stringResource(R.string.font_settings_description),
+                title = stringResource(string.font_settings),
+                subtitle = stringResource(string.font_settings_description),
                 onClick = { viewModel.setShowFontConfigDialog(true) },
                 icon = { Icon(painterResource(R.drawable.ic_font), null, tint = tileSubtitleColor) },
                 shape = tileShapeOverride ?: standaloneShape,
@@ -906,8 +907,8 @@ fun CustomizationItems(
         // --- App Menu Tweaks ---
         Column {
             SettingsTile(
-                title = stringResource(R.string.app_menu_order),
-                subtitle = stringResource(R.string.app_menu_order_description),
+                title = stringResource(string.app_menu_order),
+                subtitle = stringResource(string.app_menu_order_description),
                 onClick = { viewModel.setShowAppMenuOrderDialog(true) },
                 icon = { Icon(painterResource(R.drawable.ic_reorder), null, tint = tileSubtitleColor) },
                 shape = tileShapeOverride ?: standaloneShape,
@@ -936,8 +937,8 @@ fun CustomizationItems(
             }
 
             SettingsSwitchTileContext(
-                title = stringResource(R.string.hide_dock_scrolling),
-                subtitle = stringResource(R.string.hide_dock_scrolling_description),
+                title = stringResource(string.hide_dock_scrolling),
+                subtitle = stringResource(string.hide_dock_scrolling_description),
                 checked = hideDockScrolling,
                 onCheckedChange = { viewModel.setHideDockScrolling(it) },
                 onClick = { viewModel.setHideDockScrolling(!hideDockScrolling) },
@@ -964,13 +965,13 @@ fun CustomizationItems(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    stringResource(R.string.hide_dock_scrolling_only_small),
+                                    stringResource(string.hide_dock_scrolling_only_small),
                                     color = tileContentColor,
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Medium
                                 )
                                 Text(
-                                    stringResource(R.string.hide_dock_scrolling_only_small_description),
+                                    stringResource(string.hide_dock_scrolling_only_small_description),
                                     color = tileSubtitleColor,
                                     fontSize = 14.sp
                                 )
@@ -992,8 +993,8 @@ fun CustomizationItems(
             Spacer(Modifier.height(actualInnerGroupSpacing))
 
             SettingsSwitchTileContext(
-                title = stringResource(R.string.hide_dock_widgets),
-                subtitle = stringResource(R.string.hide_dock_widgets_description),
+                title = stringResource(string.hide_dock_widgets),
+                subtitle = stringResource(string.hide_dock_widgets_description),
                 checked = hideDockWidgets,
                 onCheckedChange = { viewModel.setHideDockWidgets(it) },
                 onClick = { viewModel.setHideDockWidgets(!hideDockWidgets) },
@@ -1020,13 +1021,13 @@ fun CustomizationItems(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    stringResource(R.string.hide_dock_only_landscape),
+                                    stringResource(string.hide_dock_only_landscape),
                                     color = tileContentColor,
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Medium
                                 )
                                 Text(
-                                    stringResource(R.string.hide_dock_only_landscape_description),
+                                    stringResource(string.hide_dock_only_landscape_description),
                                     color = tileSubtitleColor,
                                     fontSize = 14.sp
                                 )
@@ -1048,8 +1049,8 @@ fun CustomizationItems(
             Spacer(Modifier.height(actualInnerGroupSpacing))
 
             SettingsSwitchTileContext(
-                title = stringResource(R.string.hide_dock_media),
-                subtitle = stringResource(R.string.hide_dock_media_description),
+                title = stringResource(string.hide_dock_media),
+                subtitle = stringResource(string.hide_dock_media_description),
                 checked = hideDockMedia,
                 onCheckedChange = { viewModel.setHideDockMedia(it) },
                 onClick = { viewModel.setHideDockMedia(!hideDockMedia) },
@@ -1076,13 +1077,13 @@ fun CustomizationItems(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    stringResource(R.string.hide_dock_only_landscape),
+                                    stringResource(string.hide_dock_only_landscape),
                                     color = tileContentColor,
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Medium
                                 )
                                 Text(
-                                    stringResource(R.string.hide_dock_only_landscape_description),
+                                    stringResource(string.hide_dock_only_landscape_description),
                                     color = tileSubtitleColor,
                                     fontSize = 14.sp
                                 )
@@ -1104,8 +1105,8 @@ fun CustomizationItems(
             Spacer(Modifier.height(actualInnerGroupSpacing))
 
             SettingsSwitchTile(
-                title = stringResource(R.string.hide_dock_app_drawer),
-                subtitle = stringResource(R.string.hide_dock_app_drawer_description),
+                title = stringResource(string.hide_dock_app_drawer),
+                subtitle = stringResource(string.hide_dock_app_drawer_description),
                 checked = hideDockInAppDrawer,
                 onCheckedChange = { viewModel.setHideDockInAppDrawer(it) },
                 onClick = { viewModel.setHideDockInAppDrawer(!hideDockInAppDrawer) },
@@ -1141,8 +1142,8 @@ fun CustomizationItems(
             Spacer(Modifier.height(actualOuterGroupSpacing))
             Column {
                 SettingsSwitchTile(
-                    title = stringResource(R.string.experimental_widget_adjustments),
-                    subtitle = stringResource(R.string.experimental_widget_adjustments_description),
+                    title = stringResource(string.experimental_widget_adjustments),
+                    subtitle = stringResource(string.experimental_widget_adjustments_description),
                     checked = experimentalWidgetAdjustmentsEnabled,
                     onCheckedChange = { viewModel.setExperimentalWidgetAdjustmentsEnabled(it) },
                     onClick = { viewModel.setExperimentalWidgetAdjustmentsEnabled(!experimentalWidgetAdjustmentsEnabled) },
@@ -1162,25 +1163,25 @@ fun CustomizationItems(
 @Composable
 fun getFabActionTitle(action: FabAction, value: String, apps: List<AppInfo>): String {
     return when (action) {
-        FabAction.LOCK_DEVICE -> stringResource(R.string.action_lock_device)
-        FabAction.TRIGGER_ASSISTANT -> stringResource(R.string.action_trigger_assistant)
+        FabAction.LOCK_DEVICE -> stringResource(string.action_lock_device)
+        FabAction.TRIGGER_ASSISTANT -> stringResource(string.action_trigger_assistant)
         FabAction.OPEN_APP -> {
             val app = apps.find { it.packageName == value }
-            if (app != null) "${stringResource(R.string.action_open_app)}: ${app.label}"
-            else stringResource(R.string.action_open_app)
+            if (app != null) "${stringResource(string.action_open_app)}: ${app.label}"
+            else stringResource(string.action_open_app)
         }
         FabAction.OPEN_LINK -> {
-            if (value.isNotEmpty()) "${stringResource(R.string.action_open_link)}: $value"
-            else stringResource(R.string.action_open_link)
+            if (value.isNotEmpty()) "${stringResource(string.action_open_link)}: $value"
+            else stringResource(string.action_open_link)
         }
         FabAction.OPEN_SHORTCUT -> {
             if (value.isNotEmpty()) {
                 val name = value.substringBefore("|")
-                "${stringResource(R.string.action_open_shortcut)}: $name"
-            } else stringResource(R.string.action_open_shortcut)
+                "${stringResource(string.action_open_shortcut)}: $name"
+            } else stringResource(string.action_open_shortcut)
         }
-        FabAction.TOGGLE_FLASHLIGHT -> stringResource(R.string.action_toggle_flashlight)
-        FabAction.OPEN_APP_DRAWER -> stringResource(R.string.action_open_app_drawer)
-        FabAction.NONE -> stringResource(R.string.action_none)
+        FabAction.TOGGLE_FLASHLIGHT -> stringResource(string.action_toggle_flashlight)
+        FabAction.OPEN_APP_DRAWER -> stringResource(string.action_open_app_drawer)
+        FabAction.NONE -> stringResource(string.action_none)
     }
 }

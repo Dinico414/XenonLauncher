@@ -4,13 +4,13 @@ import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MotionScheme.Companion.expressive
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -18,10 +18,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.text.font.FontFamily
 import androidx.core.graphics.ColorUtils
 import androidx.core.view.WindowCompat
-import com.xenon.mylibrary.theme.QuicksandTitleVariable
 
 data class ExtendedMaterialColorScheme(
     val inverseError: Color,
@@ -37,10 +35,6 @@ val LocalExtendedMaterialColorScheme = staticCompositionLocalOf<ExtendedMaterial
 val LocalIsDarkTheme = staticCompositionLocalOf<Boolean> {
     error("No IsDarkTheme provided")
 }
-
-val extendedMaterialColorScheme: ExtendedMaterialColorScheme
-    @Composable @ReadOnlyComposable get() = LocalExtendedMaterialColorScheme.current
-
 
 private val DarkColorScheme = darkColorScheme(
     primary = primaryDark,
@@ -158,8 +152,6 @@ fun XenonTheme(
     useBlackedOutDarkTheme: Boolean = false,
     isCoverMode: Boolean = false,
     dynamicColor: Boolean = true,
-    fontFamily: FontFamily = FontFamily.Default,
-    mainContextFont: FontFamily = QuicksandTitleVariable,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
@@ -215,17 +207,14 @@ fun XenonTheme(
         }
     }
 
-    val appTypography = remember(fontFamily, mainContextFont) {
-        createTypography(mainFont = mainContextFont, secondaryFont = fontFamily)
-    }
-
     CompositionLocalProvider(
         LocalExtendedMaterialColorScheme provides extendedColorScheme,
         LocalIsDarkTheme provides darkTheme
     ) {
         MaterialTheme(
             colorScheme = baseColorScheme,
-            typography = appTypography,
+            typography = Typography,
+            motionScheme = expressive(),
             content = content
         )
     }

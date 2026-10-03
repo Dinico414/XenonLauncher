@@ -52,7 +52,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
-import com.xenon.mylibrary.res.XenonSnackbar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -64,6 +63,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -89,7 +89,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.core.view.WindowCompat.setDecorFitsSystemWindows
 import com.xenon.mylibrary.res.AnimatedGradientBackground
+import com.xenon.mylibrary.res.XenonSnackbar
 import com.xenon.mylibrary.values.NoSpacing
+import com.xenonware.launcher.R.string
 import com.xenonware.launcher.data.SharedPreferenceManager
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.model.FabAction
@@ -103,18 +105,18 @@ import com.xenonware.launcher.ui.res.CalendarSelectionDialog
 import com.xenonware.launcher.ui.res.NotificationManagerDialog
 import com.xenonware.launcher.ui.res.ShortcutConfigDialog
 import com.xenonware.launcher.ui.res.dock.DockPill
+import com.xenonware.launcher.ui.theme.ScreenEnvironment
+import com.xenonware.launcher.util.DragHandler
 import com.xenonware.launcher.util.FontAxes
 import com.xenonware.launcher.util.FontType
-import com.xenonware.launcher.ui.theme.ScreenEnvironment
-import com.xenonware.launcher.util.createCustomFontFamily
-import com.xenonware.launcher.util.mainFontFamily
-import com.xenonware.launcher.util.subFontFamily
-import com.xenonware.launcher.util.DragHandler
 import com.xenonware.launcher.util.LocalDragDropState
 import com.xenonware.launcher.util.PerfLog
 import com.xenonware.launcher.util.WidgetConfig
 import com.xenonware.launcher.util.WindowBlurBehind
+import com.xenonware.launcher.util.createCustomFontFamily
+import com.xenonware.launcher.util.mainFontFamily
 import com.xenonware.launcher.util.rememberBlurAvailable
+import com.xenonware.launcher.util.subFontFamily
 import com.xenonware.launcher.viewmodel.CalendarEvent
 import com.xenonware.launcher.viewmodel.CalendarInfo
 import com.xenonware.launcher.viewmodel.LauncherViewModel
@@ -432,7 +434,7 @@ class MainActivity : ComponentActivity() {
      * ActivityResultLauncher. super first: ComponentActivity hands its own
      * (random, large) request codes to the Activity Result registry.
      */
-    @Deprecated("Deprecated in Java")
+    @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == WidgetConfig.REQUEST_CONFIGURE ||
@@ -575,14 +577,17 @@ fun LauncherScreen(
     var appToEdit by remember { mutableStateOf<AppInfo?>(null) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
-    val context = LocalContext.current
     val dragDropState = LocalDragDropState.current
+    val removedFromDockTemplate = stringResource(string.app_removed_from_dock)
+    val undoLabel = stringResource(string.undo)
+    val currentRemovedFromDockTemplate by rememberUpdatedState(removedFromDockTemplate)
+    val currentUndoLabel by rememberUpdatedState(undoLabel)
 
     LaunchedEffect(Unit) {
         viewModel.unpinEvent.collect { event ->
             val result = snackbarHostState.showSnackbar(
-                message = context.getString(R.string.app_removed_from_dock, event.appLabel),
-                actionLabel = context.getString(R.string.undo),
+                message = currentRemovedFromDockTemplate.format(event.appLabel),
+                actionLabel = currentUndoLabel,
                 duration = SnackbarDuration.Short
             )
             if (result == SnackbarResult.ActionPerformed) {
@@ -814,11 +819,7 @@ fun LauncherScreen(
                 val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
                 val isSmallDevice = windowWidthDp < 400.dp
 
-                val shouldAnimateDockOff = if (hideDockScrollingOnlySmall) {
-                    isLandscape || isSmallDevice
-                } else {
-                    true
-                }
+                val shouldAnimateDockOff = !hideDockScrollingOnlySmall || isLandscape || isSmallDevice
 
                 val isOnWidgetPage = pagerState.currentPage == 2
                 val isOnMediaPage = pagerState.currentPage == 0
@@ -828,7 +829,7 @@ fun LauncherScreen(
                 val isDockHidden = isDockHiddenByPage || isDockHiddenByAppDrawer
 
                 val dockYOffset by animateDpAsState(
-                    targetValue = if (!isDockHidden && (if (isAppDrawerVisible) (isDockVisibleByScroll || !shouldAnimateDockOff) else true)) 0.dp else 120.dp,
+                    targetValue = if (!isDockHidden && (!isAppDrawerVisible || (isDockVisibleByScroll || !shouldAnimateDockOff))) 0.dp else 120.dp,
                     animationSpec = spring(stiffness = Spring.StiffnessLow),
                     label = "dockYOffset"
                 )
@@ -988,7 +989,7 @@ fun LauncherScreen(
                         AnimatedGradientBackground(modifier = Modifier.fillMaxSize()) {}
                     }
                     Text(
-                        text = stringResource(R.string.welcome),
+                        text = stringResource(string.welcome),
                         modifier = Modifier
                             .align(Alignment.Center)
                             .alpha(alpha.value),

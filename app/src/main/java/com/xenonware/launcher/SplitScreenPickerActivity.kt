@@ -11,16 +11,13 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -33,8 +30,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.MaterialTheme.typography
 import androidx.compose.material3.Text
@@ -49,19 +44,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
@@ -69,24 +59,17 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.core.graphics.drawable.toBitmap
+import com.xenon.mylibrary.res.TopContentBar
 import com.xenon.mylibrary.values.BiggerCornerRadius
-import com.xenon.mylibrary.values.IconSizeMedium
 import com.xenonware.launcher.data.SharedPreferenceManager
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.ui.res.IconShape
-import com.xenonware.launcher.ui.res.MorphingBackCloseIcon
-import com.xenonware.launcher.util.FontAxes
-import com.xenonware.launcher.util.FontType
 import com.xenonware.launcher.ui.theme.XenonTheme
-import com.xenonware.launcher.util.createCustomFontFamily
 import com.xenonware.launcher.util.mainFontFamily
 import com.xenonware.launcher.util.matches
 import com.xenonware.launcher.viewmodel.LauncherViewModel
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
-import dev.chrisbanes.haze.materials.HazeMaterials
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
@@ -115,42 +98,14 @@ class SplitScreenPickerActivity : ComponentActivity() {
         val iconShape = runCatching { IconShape.valueOf(prefs.drawerIconShape) }.getOrNull()
         val showLabels = prefs.appLabelsEnabled
         val hiddenApps = prefs.hiddenApps.toSet()
+        val blurEnabled = prefs.blurEnabled
 
         setContent {
-            val fontType = prefs.fontType
-            val mainFontType = prefs.mainFontType
-            val robotoSettings = prefs.robotoFlexSettings
-            val googleSansSettings = prefs.googleSansFlexSettings
-
-            val customFontFamily = remember(fontType, robotoSettings, googleSansSettings) {
-                createCustomFontFamily(
-                    fontType = FontType.fromId(fontType), robotoSettings = FontAxes.parseSettings(
-                        robotoSettings, FontAxes.ROBOTO_FLEX_AXES
-                    ), googleSansSettings = FontAxes.parseSettings(
-                        googleSansSettings, FontAxes.GOOGLE_SANS_AXES
-                    )
-                )
-            }
-
-            val customMainFontFamily = remember(mainFontType, robotoSettings, googleSansSettings) {
-                createCustomFontFamily(
-                    fontType = FontType.fromId(mainFontType),
-                    robotoSettings = FontAxes.parseSettings(
-                        robotoSettings, FontAxes.ROBOTO_FLEX_AXES
-                    ),
-                    googleSansSettings = FontAxes.parseSettings(
-                        googleSansSettings, FontAxes.GOOGLE_SANS_AXES
-                    )
-                )
-            }
-
             XenonTheme(
                 darkTheme = isSystemInDarkTheme(),
                 useBlackedOutDarkTheme = false,
                 isCoverMode = false,
-                dynamicColor = true,
-                fontFamily = customFontFamily,
-                mainContextFont = customMainFontFamily
+                dynamicColor = true
             ) {
                 val firstPackage = intent.getStringExtra(EXTRA_FIRST_PACKAGE)
                 SplitScreenPicker(
@@ -158,6 +113,7 @@ class SplitScreenPickerActivity : ComponentActivity() {
                     iconShape = iconShape,
                     showLabels = showLabels,
                     hiddenApps = hiddenApps,
+                    blurEnabled = blurEnabled,
                     onAppClick = ::launchSecondApp,
                     onClose = ::finish
                 )
@@ -220,19 +176,20 @@ class SplitScreenPickerActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
 private fun SplitScreenPicker(
     firstPackage: String?,
     iconShape: IconShape?,
     showLabels: Boolean,
     hiddenApps: Set<String>,
+    blurEnabled: Boolean = true,
     onAppClick: (String) -> Unit,
     onClose: () -> Unit,
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
     val focusManager = LocalFocusManager.current
+    val focusRequester = remember { FocusRequester() }
     val sharedApps by LauncherViewModel.launchableApps.collectAsState()
     var fallbackApps by remember { mutableStateOf<List<AppInfo>>(emptyList()) }
 
@@ -286,7 +243,7 @@ private fun SplitScreenPicker(
                     translationY = barTop
                 }
                 .offset { IntOffset(0, -barTop.roundToInt()) }
-                .hazeSource(hazeState)
+                .then(if (blurEnabled) Modifier.hazeSource(hazeState) else Modifier)
                 .navigationBarsPadding()
         ) {
             items(items = shown, key = { app: AppInfo -> "${app.packageName}/${app.className}" }) { app: AppInfo ->
@@ -302,75 +259,31 @@ private fun SplitScreenPicker(
             }
         }
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .onSizeChanged { barSize = it }
-                .padding(horizontal = 16.dp)
-                .zIndex(1f)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .onGloballyPositioned { barTop = it.positionInParent().y }
-                    .shadow(elevation = 12.dp, shape = CircleShape)
-                    .clip(CircleShape)
-                    .hazeEffect(state = hazeState, style = HazeMaterials.ultraThin())
-                    .background(colorScheme.surfaceContainer.copy(alpha = 0.4f))
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) {
-                        // Consume clicks
-                    },
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = {
-                    if (isSearchUIActive) {
-                        query = ""
-                        isSearchFocused = false
-                        focusManager.clearFocus()
-                    } else onClose()
-                }, modifier = Modifier.padding(4.dp)) {
-                    MorphingBackCloseIcon(
-                        progress = iconMorphProgress,
-                        color = colorScheme.onSurface,
-                        modifier = Modifier.size(IconSizeMedium)
-                    )
-                }
-
-                val textStyle = typography.titleLarge.merge(
-                    TextStyle(
-                        fontFamily = mainFontFamily,
-                        textAlign = TextAlign.Center,
-                        color = colorScheme.onSurface
-                    )
-                )
-                BasicTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    singleLine = true,
-                    textStyle = textStyle,
-                    cursorBrush = SolidColor(colorScheme.primary),
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 56.dp)
-                        .onFocusChanged { isSearchFocused = it.isFocused },
-                    decorationBox = { inner ->
-                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            if (query.isEmpty() && !isSearchFocused) {
-                                Text(
-                                    text = stringResource(R.string.search),
-                                    style = textStyle,
-                                    color = colorScheme.onSurface.copy(alpha = 0.6f),
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            }
-                            inner()
-                        }
-                    })
-            }
-        }
+        TopContentBar(
+            modifier = Modifier.zIndex(1f),
+            outsidePadding = PaddingValues(horizontal = 16.dp),
+            value = query,
+            onValueChange = { query = it },
+            placeholder = stringResource(R.string.search),
+            hazeState = if (blurEnabled) hazeState else null,
+            blurEnabled = blurEnabled,
+            navigationProgress = iconMorphProgress,
+            onNavigationClick = {
+                if (isSearchUIActive) {
+                    query = ""
+                    isSearchFocused = false
+                    focusManager.clearFocus()
+                } else onClose()
+            },
+            fontFamily = mainFontFamily,
+            focusRequester = focusRequester,
+            onFocusChanged = { isSearchFocused = it.isFocused },
+            onBarClick = {
+                focusRequester.requestFocus()
+            },
+            onBarSizeChanged = { barSize = it },
+            onBarGloballyPositioned = { barTop = it.positionInParent().y }
+        )
     }
 }
 

@@ -45,7 +45,7 @@ import com.xenon.mylibrary.values.MediumSpacer
 import com.xenon.mylibrary.values.SmallPadding
 import com.xenon.mylibrary.values.SmallSpacer
 import com.xenon.mylibrary.values.SmallerPadding
-import com.xenonware.launcher.R
+import com.xenon.mylibrary.R
 import com.xenonware.launcher.ui.res.dock.StatusCounters
 import com.xenonware.launcher.util.mainFontFamily
 import com.xenonware.launcher.util.fitScale

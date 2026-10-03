@@ -147,12 +147,11 @@ import com.xenonware.launcher.R
 import com.xenonware.launcher.model.WidgetItem
 import com.xenonware.launcher.ui.res.WidgetEditBorder
 import com.xenonware.launcher.ui.res.WidgetSelectorDialog
-import com.xenonware.launcher.util.mainFontFamily
-import com.xenonware.launcher.util.subFontFamily
 import com.xenonware.launcher.util.InteractiveAppWidgetHostView
 import com.xenonware.launcher.util.WidgetConfig
 import com.xenonware.launcher.util.findActivity
 import com.xenonware.launcher.util.isReconfigurable
+import com.xenonware.launcher.util.mainFontFamily
 import com.xenonware.launcher.util.needsConfigOnAdd
 import com.xenonware.launcher.util.rememberWidgetHost
 import com.xenonware.launcher.viewmodel.LauncherViewModel
@@ -333,8 +332,7 @@ fun WidgetPage(
 
     val isAreaVacant = remember(widgets, widgetColumns, rowCount) {
         { widgetId: Int, page: Int, x: Int, y: Int, width: Int, height: Int ->
-            if (x < 0 || y < 0 || x + width > widgetColumns || y + height > rowCount) false
-            else widgets.none { other ->
+            !(x < 0 || y < 0 || x + width > widgetColumns || y + height > rowCount) && widgets.none { other ->
                 other.id != widgetId &&
                         other.page == page &&
                         x < other.x + other.width &&
@@ -405,11 +403,11 @@ fun WidgetPage(
     val currentWidgets by rememberUpdatedState(widgets)
     LaunchedEffect(Unit) {
         withFrameNanos { }
-        for (w in currentWidgets) {
-            if (w.type == "shortcut" || widgetHost.isCreated(w.id)) continue
+        for ((id, _, _, _, _, _, type) in currentWidgets) {
+            if (type == "shortcut" || widgetHost.isCreated(id)) continue
             withFrameNanos { }
-            val info = runCatching { appWidgetManager.getAppWidgetInfo(w.id) }.getOrNull()
-            widgetHost.prewarm(w.id, info)
+            val info = runCatching { appWidgetManager.getAppWidgetInfo(id) }.getOrNull()
+            widgetHost.prewarm(id, info)
         }
         keepAllPages = true
     }
@@ -476,7 +474,7 @@ fun WidgetPage(
         if (result.resultCode == Activity.RESULT_OK) {
             placeWidget(id, runCatching { appWidgetManager.getAppWidgetInfo(id) }.getOrNull())
         } else {
-            widgetHost.deleteWidget(id) // setup cancelled: free the id, don't place it
+            widgetHost.deleteWidget(id) // setup canceled: free the id, don't place it
         }
     }
 
@@ -542,7 +540,7 @@ fun WidgetPage(
             .fillMaxSize()
             .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
             .then(if (experimentalWidgetAdjustments) {
-                Modifier.pointerInput(experimentalWidgetAdjustments) {
+                Modifier.pointerInput(true) {
                     awaitPointerEventScope {
                         while (true) {
                             val event = awaitPointerEvent(PointerEventPass.Initial)
@@ -986,8 +984,7 @@ fun WidgetPage(
                         offsetY = with(density) { dropDownOffset.y.toDp() },
                         anchorPos = Offset.Zero,
                         alignment = Alignment.Center,
-                        mainContextFont = mainFontFamily,
-                        subContextFont = subFontFamily
+                        mainContextFont = mainFontFamily
                     )
                 }
             }

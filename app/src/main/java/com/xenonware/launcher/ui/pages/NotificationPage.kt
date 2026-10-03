@@ -153,6 +153,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
+import com.xenon.mylibrary.R
 import com.xenon.mylibrary.res.MenuItem
 import com.xenon.mylibrary.res.XenonDropDown
 import com.xenon.mylibrary.values.BigSpacing
@@ -184,7 +185,7 @@ import com.xenon.mylibrary.values.SmallerElevation
 import com.xenon.mylibrary.values.SmallerPadding
 import com.xenon.mylibrary.values.SmallerSpacer
 import com.xenon.mylibrary.values.SmallestSpacing
-import com.xenonware.launcher.R
+import com.xenonware.launcher.R.string
 import com.xenonware.launcher.accessibility.XenonAccessibilityService
 import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.notification.LauncherNotification
@@ -192,11 +193,10 @@ import com.xenonware.launcher.ui.res.dock.StatusCounters
 import com.xenonware.launcher.ui.res.notification.ChronoCluster
 import com.xenonware.launcher.ui.res.notification.NotificationItem
 import com.xenonware.launcher.ui.res.notification.NotificationTabButton
-import com.xenonware.launcher.util.mainFontFamily
-import com.xenonware.launcher.util.subFontFamily
 import com.xenonware.launcher.util.ColorUtils
 import com.xenonware.launcher.util.PerfLog
 import com.xenonware.launcher.util.blockHorizontalPagerSwipe
+import com.xenonware.launcher.util.mainFontFamily
 import com.xenonware.launcher.util.shouldDisableLandscapeLayout
 import com.xenonware.launcher.viewmodel.CalendarEvent
 import com.xenonware.launcher.viewmodel.CalendarInfo
@@ -830,13 +830,13 @@ fun NotificationPage(
 
         // Dropdown menus
         if (showAtAGlanceMenu) {
-            val selectWallpaperLabel = stringResource(R.string.select_wallpaper)
+            val selectWallpaperLabel = stringResource(string.select_wallpaper)
             XenonDropDown(
                 expanded = true,
                 onDismissRequest = { showAtAGlanceMenu = false },
                 items = listOf(
                     MenuItem(
-                        text = stringResource(R.string.wallpaper),
+                        text = stringResource(string.wallpaper),
                         onClick = {
                             val intent = Intent(Intent.ACTION_SET_WALLPAPER)
                             context.startActivity(Intent.createChooser(intent, selectWallpaperLabel))
@@ -844,12 +844,12 @@ fun NotificationPage(
                         leadingIcon = { Icon(Icons.Rounded.Wallpaper, null) }
                     ),
                     MenuItem(
-                        text = stringResource(R.string.settings),
+                        text = stringResource(string.settings),
                         onClick = { onOpenSettings() },
                         leadingIcon = { Icon(Icons.Rounded.Settings, null) }
                     ),
                     MenuItem(
-                        text = stringResource(R.string.at_a_glance_settings),
+                        text = stringResource(string.at_a_glance_settings),
                         onClick = { viewModel.setShowCalendarSelectionDialog(true) },
                         leadingIcon = { Icon(Icons.Rounded.CalendarToday, null) }
                     )
@@ -857,19 +857,18 @@ fun NotificationPage(
                 hazeState = if (blurSetting) hazeState else null,
                 anchorPos = dropDownOffset,
                 alignment = Alignment.Center,
-                mainContextFont = mainFontFamily,
-                subContextFont = subFontFamily
+                mainContextFont = mainFontFamily
             )
         }
 
         if (showPageMenu) {
-            val selectWallpaperLabel = stringResource(R.string.select_wallpaper)
+            val selectWallpaperLabel = stringResource(string.select_wallpaper)
             XenonDropDown(
                 expanded = true,
                 onDismissRequest = { showPageMenu = false },
                 items = listOf(
                     MenuItem(
-                        text = stringResource(R.string.wallpaper),
+                        text = stringResource(string.wallpaper),
                         onClick = {
                             val intent = Intent(Intent.ACTION_SET_WALLPAPER)
                             context.startActivity(Intent.createChooser(intent, selectWallpaperLabel))
@@ -877,12 +876,12 @@ fun NotificationPage(
                         leadingIcon = { Icon(Icons.Rounded.Wallpaper, null) }
                     ),
                     MenuItem(
-                        text = stringResource(R.string.settings),
+                        text = stringResource(string.settings),
                         onClick = { onOpenSettings() },
                         leadingIcon = { Icon(Icons.Rounded.Settings, null) }
                     ),
                     MenuItem(
-                        text = stringResource(R.string.notification_manager),
+                        text = stringResource(string.notification_manager),
                         onClick = { viewModel.setShowNotificationManagerDialog(true) },
                         leadingIcon = { Icon(Icons.Rounded.NotificationsActive, null) }
                     )
@@ -890,8 +889,7 @@ fun NotificationPage(
                 hazeState = if (blurSetting) hazeState else null,
                 anchorPos = dropDownOffset,
                 alignment = Alignment.Center,
-                mainContextFont = mainFontFamily,
-                subContextFont = subFontFamily
+                mainContextFont = mainFontFamily
             )
         }
     }
@@ -1113,8 +1111,8 @@ private fun EmptyNotificationsState(
         else -> null
     }
     val emptyMessage = when (messageType) {
-        1 -> stringResource(R.string.notification_message_no_notification)
-        2 -> stringResource(R.string.notification_message_up_to_date)
+        1 -> stringResource(string.notification_message_no_notification)
+        2 -> stringResource(string.notification_message_up_to_date)
         else -> ""
     }
 
@@ -1166,7 +1164,7 @@ private fun NotificationSummaryState(
                 modifier = Modifier.size(HugerSpacing)
             )
             Text(
-                text = if (allMuted) stringResource(R.string.notification_message_no_notification) else pluralStringResource(R.plurals.notification_count, notificationCount, notificationCount),
+                text = if (allMuted) stringResource(string.notification_message_no_notification) else pluralStringResource(com.xenonware.launcher.R.plurals.notification_count, notificationCount, notificationCount),
                 color = baseColor.copy(alpha = 0.8f),
                 fontSize = 18.sp,
                 fontFamily = mainFontFamily,
@@ -1483,7 +1481,7 @@ fun AtAGlance(
                 } else {
                     if (calendarEvents.isEmpty()) {
                         Text(
-                            text = stringResource(R.string.no_upcoming_events),
+                            text = stringResource(string.no_upcoming_events),
                             fontSize = eventTitleFontSize,
                             fontWeight = FontWeight.Bold,
                             color = baseColor,
@@ -1555,9 +1553,9 @@ fun AtAGlance(
                                                 verticalArrangement = Arrangement.Center,
                                                 modifier = Modifier.weight(1f)
                                             ) {
-                                                val todayLabel = stringResource(R.string.today)
+                                                val todayLabel = stringResource(string.today)
                                                 val currentLocale = LocalConfiguration.current.locales[0]
-                                                val nowLabel = stringResource(R.string.now).replaceFirstChar { if (it.isLowerCase()) it.titlecase(currentLocale) else it.toString() }
+                                                val nowLabel = stringResource(string.now).replaceFirstChar { if (it.isLowerCase()) it.titlecase(currentLocale) else it.toString() }
                                                 val tempText = if (mode == WeatherViewMode.TODAY) {
                                                     if (weatherState.maxTemp != null && weatherState.minTemp != null) {
                                                         "$todayLabel ${weatherState.maxTemp.replace("+", "")}/${weatherState.minTemp.replace("+", "")}"
@@ -1638,9 +1636,9 @@ fun AtAGlance(
                                                 fontWeight = FontWeight.Bold,
                                                 color = baseColor
                                             )
-                                            val todayLabel = stringResource(R.string.today)
-                                            val tomorrowLabel = stringResource(R.string.tomorrow)
-                                            val allDayLabel = stringResource(R.string.all_day)
+                                            val todayLabel = stringResource(string.today)
+                                            val tomorrowLabel = stringResource(string.tomorrow)
+                                            val allDayLabel = stringResource(string.all_day)
                                             val timeText = remember(event, timeFormatter, todayLabel, tomorrowLabel, allDayLabel) {
                                                 eventTimeText(event, timeFormatter, todayLabel, tomorrowLabel, allDayLabel)
                                             }
@@ -1673,7 +1671,7 @@ fun AtAGlance(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Rounded.KeyboardArrowUp,
-                                        contentDescription = stringResource(R.string.scroll_up),
+                                        contentDescription = stringResource(string.scroll_up),
                                         tint = if (pagerState.currentPage > 0) baseColor.copy(alpha = 0.5f) else baseColor.copy(alpha = 0.15f),
                                         modifier = Modifier
                                             .size(ExtraLargerSpacing)
@@ -1722,7 +1720,7 @@ fun AtAGlance(
 
                                     Icon(
                                         imageVector = Icons.Rounded.KeyboardArrowDown,
-                                        contentDescription = stringResource(R.string.scroll_down),
+                                        contentDescription = stringResource(string.scroll_down),
                                         tint = if (pagerState.currentPage < calendarEvents.size) baseColor.copy(alpha = 0.5f) else baseColor.copy(alpha = 0.15f),
                                         modifier = Modifier
                                             .size(ExtraLargerSpacing)
@@ -2089,7 +2087,7 @@ fun NotificationTabs(
                             } else {
                                 Toast.makeText(
                                     context,
-                                    R.string.long_press_to_delete_all,
+                                    string.long_press_to_delete_all,
                                     Toast.LENGTH_SHORT
                                 ).show()
                             }
@@ -2099,7 +2097,7 @@ fun NotificationTabs(
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = Icons.Rounded.Delete,
-                        contentDescription = stringResource(R.string.clear_all),
+                        contentDescription = stringResource(string.clear_all),
                         tint = MaterialTheme.colorScheme.onError,
                         modifier = Modifier.size(ExtraLargeSpacing)
                     )
@@ -2165,9 +2163,9 @@ private fun GlanceEventList(
     onPick: (page: Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val todayLabel = stringResource(R.string.today)
-    val tomorrowLabel = stringResource(R.string.tomorrow)
-    val allDayLabel = stringResource(R.string.all_day)
+    val todayLabel = stringResource(string.today)
+    val tomorrowLabel = stringResource(string.tomorrow)
+    val allDayLabel = stringResource(string.all_day)
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),

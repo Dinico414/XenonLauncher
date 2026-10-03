@@ -28,7 +28,7 @@ credentials = "1.6.0"
 credentialsPlayServicesAuth = "1.6.0"
 leakcanary = "1.0.0"
 
-xenonCommons = "3.0.7"
+xenonCommons = "3.1.0"
 #noinspection UnusedVersionCatalogEntry
 xenonUi = "4.0"
 

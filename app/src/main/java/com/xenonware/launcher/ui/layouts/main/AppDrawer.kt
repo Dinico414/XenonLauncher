@@ -1,6 +1,5 @@
 package com.xenonware.launcher.ui.layouts.main
 
-import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.os.Environment
@@ -42,10 +41,10 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -58,14 +57,12 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ViewList
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.material.icons.rounded.Settings
@@ -74,7 +71,6 @@ import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.MaterialTheme.typography
@@ -101,12 +97,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
@@ -134,8 +127,6 @@ import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.ViewConfiguration
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
@@ -146,6 +137,7 @@ import androidx.compose.ui.zIndex
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
 import com.xenon.mylibrary.res.MenuItem
+import com.xenon.mylibrary.res.TopContentBar
 import com.xenon.mylibrary.res.XenonDropDown
 import com.xenon.mylibrary.res.XenonSingleChoiceButtonGroup
 import com.xenon.mylibrary.values.BiggerCornerRadius
@@ -161,8 +153,6 @@ import com.xenon.mylibrary.values.ExtraLargerSpacer
 import com.xenon.mylibrary.values.ExtraLargerSpacing
 import com.xenon.mylibrary.values.HugeSpacing
 import com.xenon.mylibrary.values.HugestSpacing
-import com.xenon.mylibrary.values.IconSizeMedium
-import com.xenon.mylibrary.values.LargeMediumElevation
 import com.xenon.mylibrary.values.LargestCornerRadius
 import com.xenon.mylibrary.values.LargestPadding
 import com.xenon.mylibrary.values.LargestSpacer
@@ -170,10 +160,8 @@ import com.xenon.mylibrary.values.MediumPadding
 import com.xenon.mylibrary.values.MediumSmallerCornerRadius
 import com.xenon.mylibrary.values.MediumSpacer
 import com.xenon.mylibrary.values.NoCornerRadius
-import com.xenon.mylibrary.values.NoElevation
 import com.xenon.mylibrary.values.NoSpacing
 import com.xenon.mylibrary.values.SmallElevation
-import com.xenon.mylibrary.values.SmallPadding
 import com.xenon.mylibrary.values.SmallSpacer
 import com.xenon.mylibrary.values.SmallerSpacing
 import com.xenonware.launcher.R
@@ -183,14 +171,13 @@ import com.xenonware.launcher.model.SearchHistoryEntry
 import com.xenonware.launcher.model.SearchHistoryType
 import com.xenonware.launcher.model.SearchResult
 import com.xenonware.launcher.ui.res.AllAppsDivider
-import com.xenonware.launcher.ui.res.MorphingBackCloseIcon
 import com.xenonware.launcher.ui.res.notification.NotificationBadge
 import com.xenonware.launcher.ui.res.search.SearchHistoryItem
 import com.xenonware.launcher.ui.res.search.SearchResultItem
-import com.xenonware.launcher.util.mainFontFamily
-import com.xenonware.launcher.util.subFontFamily
 import com.xenonware.launcher.util.LocalDragDropState
+import com.xenonware.launcher.util.mainFontFamily
 import com.xenonware.launcher.util.matches
+import com.xenonware.launcher.util.subFontFamily
 import com.xenonware.launcher.viewmodel.LauncherViewModel
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
@@ -210,7 +197,6 @@ enum class SearchType {
     Apps, Contacts, Files, Web
 }
 
-@OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
 fun AppDrawer(
     viewModel: LauncherViewModel,
@@ -606,9 +592,6 @@ fun AppDrawer(
             list
         }
     }
-
-    fun launchModeItems(app: AppInfo, closeMenu: () -> Unit): List<MenuItem> = emptyList()
-
 
     val scope = rememberCoroutineScope()
     val backProgress = remember { Animatable(0f) }
@@ -1280,7 +1263,7 @@ fun AppDrawer(
 
                     searchResultMenuApp?.let { app ->
                         XenonDropDown(
-                            expanded = searchResultMenuApp != null,
+                            expanded = true,
                             onDismissRequest = { searchResultMenuApp = null },
                             items = buildAppMenuItems(app, isSearch = true) { searchResultMenuApp = null },
                             hazeState = if (blurEnabled) hazeState else null,
@@ -1289,7 +1272,6 @@ fun AppDrawer(
                             anchorPos = Offset.Zero,
                             alignment = Alignment.Center,
                             mainContextFont = mainFontFamily,
-                            subContextFont = subFontFamily
                         )
                     }
 
@@ -1353,138 +1335,73 @@ fun AppDrawer(
                             }
                         }
 
-                        Row(
+                        TopContentBar(
                             modifier = Modifier
                                 .graphicsLayer(clip = false)
-                                .zIndex(1f)
-                                .fillMaxWidth()
-                                .onSizeChanged { searchBarHeightPx = it.height }
-                                .onGloballyPositioned { coords ->
-                                    searchBarAnchor = coords.positionInRoot().let { pos ->
-                                        Offset(pos.x + coords.size.width, pos.y + coords.size.height)
-                                    }
-                                }
-                                .shadow(elevation = if (blurEnabled) NoElevation else LargeMediumElevation, shape = CircleShape)
-                                .clip(CircleShape)
-                                .hazeEffect(state = hazeState, style = HazeMaterials.ultraThin())
-                                .background(colorScheme.surfaceContainer.copy(alpha = if(blurEnabled) 0.4f else 1f))
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null
-                                ) {
-                                    isSearchActiveInternal = true
-                                    focusRequester.requestFocus()
-                                },
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            IconButton(
-                                onClick = { closeSearchOrDismiss() }, Modifier.padding(SmallPadding)
-                            ) {
-                                MorphingBackCloseIcon(
-                                    progress = iconMorphProgress,
-                                    color = colorScheme.onSurface,
-                                    modifier = Modifier.size(IconSizeMedium)
-                                )
-                            }
-
-                            val textStyle = typography.titleLarge.merge(
-                                TextStyle(
-                                    fontFamily = mainFontFamily,
-                                    textAlign = TextAlign.Center,
-                                    color = colorScheme.onSurface
-                                )
-                            )
-
-                            BasicTextField(
-                                value = searchQuery,
-                                onValueChange = { searchQuery = it },
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .focusRequester(focusRequester)
-                                    .onFocusChanged { isSearchFocused = it.isFocused },
-                                interactionSource = searchInteractionSource,
-                                singleLine = true,
-                                textStyle = textStyle,
-                                cursorBrush = SolidColor(colorScheme.primary),
-                                decorationBox = { innerTextField ->
-                                    Box(
-                                        Modifier.fillMaxWidth(), contentAlignment = Alignment.Center
-                                    ) {
-                                        if (searchQuery.isEmpty() && !isSearchFocused) {
-                                            Text(
-                                                text = stringResource(R.string.search),
-                                                style = textStyle,
-                                                color = colorScheme.onSurface.copy(alpha = 0.6f),
-                                                modifier = Modifier.fillMaxWidth()
-                                            )
-                                        }
-                                        innerTextField()
-                                    }
-                                })
-
-                            Box {
-                                IconButton(
-                                    onClick = { showMenu = !showMenu },
-                                    modifier = Modifier.padding(SmallPadding)
-                                ) {
-                                    Icon(
-                                        Icons.Rounded.MoreVert,
-                                        tint = colorScheme.onSurface,
-                                        contentDescription = stringResource(R.string.more_options)
-                                    )
-                                }
-                                XenonDropDown(
-                                    expanded = showMenu,
-                                    onDismissRequest = { showMenu = false },
-                                    items = listOf(
-                                        MenuItem(
-                                            text = if (isGridLayout) stringResource(R.string.list_view) else stringResource(R.string.grid_view),
-                                            onClick = onToggleLayout,
-                                            dismissOnClick = true,
-                                            leadingIcon = {
-                                                Icon(
-                                                    if (isGridLayout) Icons.AutoMirrored.Rounded.ViewList
-                                                    else Icons.Rounded.GridView,
-                                                    contentDescription = stringResource(R.string.toggle_layout)
-                                                )
-                                            }),
-                                        MenuItem(
-                                            text = stringResource(R.string.show_keyboard),
-                                            onClick = { viewModel.setOpenKeyboard(!openKeyboard) },
-                                            dismissOnClick = false,
-                                            leadingIcon = {
-                                                Icon(
-                                                    if (openKeyboard) Icons.Rounded.Visibility
-                                                    else Icons.Rounded.VisibilityOff,
-                                                    contentDescription = null
-                                                )
-                                            }),
-                                        MenuItem(
-                                            text = stringResource(R.string.advanced_search),
-                                            onClick = { viewModel.setAdvancedSearchEnabled(!advancedSearchEnabled) },
-                                            dismissOnClick = false,
-                                            leadingIcon = { Icon(if (advancedSearchEnabled) Icons.Rounded.Search else Icons.Rounded.SearchOff, null) }
-                                        ),
-                                        MenuItem(
-                                            text = stringResource(R.string.settings),
-                                            onClick = { onSettingsClick() },
-                                            dismissOnClick = true,
-                                            leadingIcon = {
-                                                Icon(
-                                                    Icons.Rounded.Settings,
-                                                    contentDescription = stringResource(R.string.settings)
-                                                )
-                                            })
-                                    ),
-                                    hazeState = if (blurEnabled) hazeState else null,
-                                    anchorPos = searchBarAnchor,
-                                    offsetY = MediumSpacer,
-                                    alignment = Alignment.TopEnd,
-                                    mainContextFont = mainFontFamily,
-                                    subContextFont = subFontFamily
-                                )
-                            }
-                        }
+                                .zIndex(1f),
+                            outsidePadding = PaddingValues(0.dp),
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            placeholder = stringResource(R.string.search),
+                            hazeState = hazeState,
+                            blurEnabled = blurEnabled,
+                            navigationProgress = iconMorphProgress,
+                            onNavigationClick = { closeSearchOrDismiss() },
+                            fontFamily = mainFontFamily,
+                            focusRequester = focusRequester,
+                            onFocusChanged = { isSearchFocused = it.isFocused },
+                            interactionSource = searchInteractionSource,
+                            onBarClick = {
+                                isSearchActiveInternal = true
+                                focusRequester.requestFocus()
+                            },
+                            onBarSizeChanged = { searchBarHeightPx = it.height },
+                            onBarAnchorChanged = { searchBarAnchor = it },
+                            menuExpanded = showMenu,
+                            onMenuExpandedChange = { showMenu = it },
+                            menuItems = listOf(
+                                MenuItem(
+                                    text = if (isGridLayout) stringResource(R.string.list_view) else stringResource(R.string.grid_view),
+                                    onClick = onToggleLayout,
+                                    dismissOnClick = true,
+                                    leadingIcon = {
+                                        Icon(
+                                            if (isGridLayout) Icons.AutoMirrored.Rounded.ViewList
+                                            else Icons.Rounded.GridView,
+                                            contentDescription = stringResource(R.string.toggle_layout)
+                                        )
+                                    }),
+                                MenuItem(
+                                    text = stringResource(R.string.show_keyboard),
+                                    onClick = { viewModel.setOpenKeyboard(!openKeyboard) },
+                                    dismissOnClick = false,
+                                    leadingIcon = {
+                                        Icon(
+                                            if (openKeyboard) Icons.Rounded.Visibility
+                                            else Icons.Rounded.VisibilityOff,
+                                            contentDescription = null
+                                        )
+                                    }),
+                                MenuItem(
+                                    text = stringResource(R.string.advanced_search),
+                                    onClick = { viewModel.setAdvancedSearchEnabled(!advancedSearchEnabled) },
+                                    dismissOnClick = false,
+                                    leadingIcon = { Icon(if (advancedSearchEnabled) Icons.Rounded.Search else Icons.Rounded.SearchOff, null) }
+                                ),
+                                MenuItem(
+                                    text = stringResource(R.string.settings),
+                                    onClick = { onSettingsClick() },
+                                    dismissOnClick = true,
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Rounded.Settings,
+                                            contentDescription = stringResource(R.string.settings)
+                                        )
+                                    })
+                            ),
+                            menuMainContextFont = mainFontFamily,
+                            menuSubContextFont = subFontFamily
+                        )
                     }
                 }
             }
@@ -1501,7 +1418,6 @@ fun AppDrawer(
                 anchorPos = Offset.Zero,
                 alignment = Alignment.Center,
                 mainContextFont = mainFontFamily,
-                subContextFont = subFontFamily
             )
         }
 

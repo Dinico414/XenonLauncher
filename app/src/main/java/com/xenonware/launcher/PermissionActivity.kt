@@ -33,11 +33,11 @@ import com.xenon.mylibrary.res.XenonIcon
 import com.xenon.mylibrary.utils.PermissionItem
 import com.xenonware.launcher.accessibility.XenonAccessibilityService
 import com.xenonware.launcher.data.SharedPreferenceManager
+import com.xenonware.launcher.ui.theme.XenonTheme
+import com.xenonware.launcher.util.AccessibilityUtils
 import com.xenonware.launcher.util.FontAxes
 import com.xenonware.launcher.util.FontType
-import com.xenonware.launcher.ui.theme.XenonTheme
 import com.xenonware.launcher.util.createCustomFontFamily
-import com.xenonware.launcher.util.AccessibilityUtils
 
 class PermissionActivity : BasePermissionActivity() {
 
@@ -92,9 +92,7 @@ class PermissionActivity : BasePermissionActivity() {
                 darkTheme = isSystemInDarkTheme(),
                 useBlackedOutDarkTheme = false,
                 isCoverMode = false,
-                dynamicColor = true,
-                fontFamily = customFontFamily,
-                mainContextFont = customMainFontFamily
+                dynamicColor = true
             ) {
                 AnimatedGradientBackground(modifier = Modifier.fillMaxSize()) {
                     Surface(

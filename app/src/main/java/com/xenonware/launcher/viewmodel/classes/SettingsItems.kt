@@ -34,6 +34,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.xenon.mylibrary.R
 import com.xenon.mylibrary.res.SettingsGoogleTile
 import com.xenon.mylibrary.res.SettingsSwitchMenuTile
 import com.xenon.mylibrary.res.SettingsSwitchTile
@@ -48,7 +49,7 @@ import com.xenon.mylibrary.values.NoSpacing
 import com.xenon.mylibrary.values.SmallCornerRadius
 import com.xenon.mylibrary.values.SmallerSpacer
 import com.xenonware.launcher.CustomizationActivity
-import com.xenonware.launcher.R
+import com.xenonware.launcher.R.string
 import com.xenonware.launcher.presentation.sign_in.SignInState
 import com.xenonware.launcher.viewmodel.LauncherViewModel
 import com.xenonware.launcher.viewmodel.SettingsViewModel
@@ -147,7 +148,7 @@ fun SettingsItems(
 
     // --- ACCOUNT ---
     SettingsGoogleTile(
-        title = if (state.isSignInSuccessful) userData?.username ?: "Signed in" else stringResource(id = R.string.sign_in_with_google),
+        title = if (state.isSignInSuccessful) userData?.username ?: "Signed in" else stringResource(string.sign_in_with_google),
         subtitle = if (state.isSignInSuccessful) userData?.email else null,
         profilePictureUrl = userData?.profilePictureUrl,
         noAccIcon = painterResource(R.drawable.ic_default_icon),
@@ -159,7 +160,7 @@ fun SettingsItems(
         subtitleColor = tileSubtitleColor,
         mainContextFont = mainContextFont,
         subContextFont = subContextFont ?: mainContextFont,
-        iconContentDescription = stringResource(id = R.string.profile_picture)
+        iconContentDescription = stringResource(string.profile_picture)
     )
     Spacer(Modifier.height(actualOuterGroupSpacing))
 
@@ -167,8 +168,8 @@ fun SettingsItems(
     val isDefault = viewModel.isDefaultLauncher(context)
     if (!isDefault) {
         SettingsTile(
-            title = stringResource(R.string.default_home),
-            subtitle = stringResource(R.string.set_as_default_launcher),
+            title = stringResource(string.default_home),
+            subtitle = stringResource(string.set_as_default_launcher),
             onClick = { viewModel.openLauncherSelector(context) },
             icon = { Icon(painterResource(R.drawable.ic_home), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: topShape,
@@ -180,11 +181,11 @@ fun SettingsItems(
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsTile(
-            title = stringResource(R.string.accessibility_access),
+            title = stringResource(string.accessibility_access),
             subtitle = if (isAccessibilityRestricted)
-                stringResource(R.string.accessibility_restricted_description)
+                stringResource(string.accessibility_restricted_description)
             else
-                stringResource(R.string.accessibility_access_description),
+                stringResource(string.accessibility_access_description),
             onClick = { viewModel.openAccessibilitySettings(context) },
             icon = {  Icon(painterResource(R.drawable.ic_accessibility), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: middleShape,
@@ -196,8 +197,8 @@ fun SettingsItems(
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsTile(
-            title = stringResource(R.string.permissions),
-            subtitle = stringResource(R.string.permissions_summary),
+            title = stringResource(string.permissions),
+            subtitle = stringResource(string.permissions_summary),
             onClick = { viewModel.setShowPermissionsDialog(true) },
             icon = { Icon(painterResource(R.drawable.ic_toggle), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: bottomShape,
@@ -210,11 +211,11 @@ fun SettingsItems(
         Spacer(Modifier.height(actualOuterGroupSpacing))
     } else {
         SettingsTile(
-            title = stringResource(R.string.accessibility_access),
+            title = stringResource(string.accessibility_access),
             subtitle = if (isAccessibilityRestricted)
-                stringResource(R.string.accessibility_restricted_description)
+                stringResource(string.accessibility_restricted_description)
             else
-                stringResource(R.string.accessibility_access_description),
+                stringResource(string.accessibility_access_description),
             onClick = { viewModel.openAccessibilitySettings(context) },
             icon = {  Icon(painterResource(R.drawable.ic_accessibility), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: topShape,
@@ -226,8 +227,8 @@ fun SettingsItems(
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsTile(
-            title = stringResource(R.string.permissions),
-            subtitle = stringResource(R.string.permissions_summary),
+            title = stringResource(string.permissions),
+            subtitle = stringResource(string.permissions_summary),
             onClick = { viewModel.setShowPermissionsDialog(true) },
             icon = { Icon(painterResource(R.drawable.ic_toggle), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: bottomShape,
@@ -243,8 +244,8 @@ fun SettingsItems(
     // --- theming ---
     Column {
         SettingsTile(
-            title = stringResource(id = R.string.theme),
-            subtitle = "${stringResource(id = R.string.current)} $currentThemeTitle",
+            title = stringResource(string.theme),
+            subtitle = "${stringResource(string.current)} $currentThemeTitle",
             onClick = { viewModel.onThemeSettingClicked() },
             icon = { Icon(painterResource(R.drawable.ic_themes), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: topShape,
@@ -256,8 +257,8 @@ fun SettingsItems(
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsSwitchTile(
-            title = stringResource(R.string.blacked_out),
-            subtitle = stringResource(R.string.blacked_out_description),
+            title = stringResource(string.blacked_out),
+            subtitle = stringResource(string.blacked_out_description),
             checked = blackedOutEnabled,
             onCheckedChange = { viewModel.setBlackedOutEnabled(it) },
             onClick = { viewModel.setBlackedOutEnabled(!blackedOutEnabled) },
@@ -272,8 +273,8 @@ fun SettingsItems(
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsSwitchTile(
-            title = stringResource(id = R.string.blur_effect),
-            subtitle = stringResource(id = R.string.enable_glass_haze),
+            title = stringResource(string.blur_effect),
+            subtitle = stringResource(string.enable_glass_haze),
             checked = blurEnabled,
             onCheckedChange = { viewModel.setBlurEnabled(it) },
             onClick = { viewModel.setBlurEnabled(!blurEnabled) },
@@ -288,8 +289,8 @@ fun SettingsItems(
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsSwitchMenuTile(
-            title = stringResource(id = R.string.cover_screen_mode),
-            subtitle = "${stringResource(R.string.selected_cover_screen)}\n(${if (applyCoverTheme) stringResource(R.string.active) else stringResource(R.string.inactive)})",
+            title = stringResource(string.cover_screen_mode),
+            subtitle = "${stringResource(string.selected_cover_screen)}\n(${if (applyCoverTheme) stringResource(string.active) else stringResource(string.inactive)})",
             checked = coverThemeEnabled,
             onCheckedChange = { viewModel.setCoverThemeEnabled(it) },
             onClick = { viewModel.onCoverThemeClicked() },
@@ -307,8 +308,8 @@ fun SettingsItems(
 
     // --- Language ---
     SettingsTile(
-        title = stringResource(id = R.string.language),
-        subtitle = "${stringResource(id = R.string.current)} $currentLanguage",
+        title = stringResource(string.language),
+        subtitle = "${stringResource(string.current)} $currentLanguage",
         onClick = { viewModel.onLanguageSettingClicked(context) },
         icon = { Icon(painterResource(R.drawable.ic_language), null, tint = tileSubtitleColor) },
         shape = tileShapeOverride ?: standaloneShape,
@@ -323,8 +324,8 @@ fun SettingsItems(
     // --- At a Glance & Notification Manager ---
     Column {
         SettingsTile(
-            title = stringResource(R.string.at_a_glance),
-            subtitle = stringResource(R.string.at_a_glance_description),
+            title = stringResource(string.at_a_glance),
+            subtitle = stringResource(string.at_a_glance_description),
             onClick = { viewModel.setShowCalendarSelectionDialog(true) },
             icon = { Icon(painterResource(R.drawable.ic_at_a_glance), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: topShape,
@@ -336,8 +337,8 @@ fun SettingsItems(
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsTile(
-            title = stringResource(R.string.notification_manager),
-            subtitle = stringResource(R.string.notification_manager_description),
+            title = stringResource(string.notification_manager),
+            subtitle = stringResource(string.notification_manager_description),
             onClick = { viewModel.setShowNotificationManagerDialog(true) },
             icon = { Icon(painterResource(R.drawable.ic_notification_manager), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: bottomShape,
@@ -352,8 +353,8 @@ fun SettingsItems(
 
     // --- Customization ---
     SettingsTile(
-        title = stringResource(id = R.string.customization),
-        subtitle = stringResource(id = R.string.customization_description),
+        title = stringResource(string.customization),
+        subtitle = stringResource(string.customization_description),
         onClick = {
             val intent = Intent(context, CustomizationActivity::class.java)
             context.startActivity(intent)
@@ -371,8 +372,8 @@ fun SettingsItems(
     // --- shortcuts ---
     Column {
         SettingsTile(
-            title = stringResource(id = R.string.time_shortcut),
-            subtitle = timeShortcut.ifEmpty { stringResource(id = R.string.not_set) },
+            title = stringResource(string.time_shortcut),
+            subtitle = timeShortcut.ifEmpty { stringResource(string.not_set) },
             onClick = { onConfigShortcut(LauncherViewModel.ShortcutType.TIME) },
             icon = {  Icon(painterResource(R.drawable.ic_time), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: topShape,
@@ -384,8 +385,8 @@ fun SettingsItems(
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsTile(
-            title = stringResource(id = R.string.date_shortcut),
-            subtitle = dateShortcut.ifEmpty { stringResource(id = R.string.not_set) },
+            title = stringResource(string.date_shortcut),
+            subtitle = dateShortcut.ifEmpty { stringResource(string.not_set) },
             onClick = { onConfigShortcut(LauncherViewModel.ShortcutType.DATE) },
             icon = {  Icon(painterResource(R.drawable.ic_date), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: middleShape,
@@ -397,8 +398,8 @@ fun SettingsItems(
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsTile(
-            title = stringResource(id = R.string.weather_shortcut),
-            subtitle = weatherShortcut.ifEmpty { stringResource(id = R.string.not_set) },
+            title = stringResource(string.weather_shortcut),
+            subtitle = weatherShortcut.ifEmpty { stringResource(string.not_set) },
             onClick = { onConfigShortcut(LauncherViewModel.ShortcutType.WEATHER) },
             icon = {  Icon(painterResource(R.drawable.ic_weater), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: bottomShape,
@@ -414,8 +415,8 @@ fun SettingsItems(
     // --- system ---
     Column {
         SettingsTile(
-            title = stringResource(R.string.backup_and_restore),
-            subtitle = stringResource(R.string.backup_and_restore_description),
+            title = stringResource(string.backup_and_restore),
+            subtitle = stringResource(string.backup_and_restore_description),
             onClick = { viewModel.setShowBackupDialog(true) },
             icon = { Icon(painterResource(R.drawable.ic_backup), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: topShape,
@@ -427,8 +428,8 @@ fun SettingsItems(
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsTile(
-            title = stringResource(R.string.clear_data),
-            subtitle = stringResource(R.string.clear_data_description),
+            title = stringResource(string.clear_data),
+            subtitle = stringResource(string.clear_data_description),
             onClick = { viewModel.onClearDataClicked(); haptic.performHapticFeedback(HapticFeedbackType.LongPress) },
             icon = { Icon(painterResource(R.drawable.ic_reset), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: middleShape,
@@ -440,8 +441,8 @@ fun SettingsItems(
         )
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsTile(
-            title = stringResource(R.string.reset_settings),
-            subtitle = stringResource(R.string.reset_all_settings_description),
+            title = stringResource(string.reset_settings),
+            subtitle = stringResource(string.reset_all_settings_description),
             onClick = { viewModel.onResetSettingsClicked(); haptic.performHapticFeedback(HapticFeedbackType.LongPress) },
             icon = { Icon(painterResource(R.drawable.ic_reset_settings), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: middleShape,
@@ -454,8 +455,8 @@ fun SettingsItems(
         Spacer(Modifier.height(actualInnerGroupSpacing))
         Box(contentAlignment = Alignment.CenterEnd) {
             SettingsTile(
-                title = stringResource(R.string.privacy_policy_title),
-                subtitle = stringResource(R.string.privacy_policy_description),
+                title = stringResource(string.privacy_policy_title),
+                subtitle = stringResource(string.privacy_policy_description),
                 onClick = {
                     val intent = Intent(Intent.ACTION_VIEW, "https://xenonware.com/privacy_policy_launcher".toUri())
                     context.startActivity(intent)
@@ -477,8 +478,8 @@ fun SettingsItems(
         }
         Spacer(Modifier.height(actualInnerGroupSpacing))
         SettingsTile(
-            title = stringResource(R.string.version),
-            subtitle = "v $appVersion" + if (developerModeEnabled) " (${stringResource(R.string.developer)})" else "",
+            title = stringResource(string.version),
+            subtitle = "v $appVersion" + if (developerModeEnabled) " (${stringResource(string.developer)})" else "",
             onClick = { viewModel.onInfoTileClicked() },
             onLongClick = { viewModel.openImpressum(context) },
             icon = { Icon(painterResource(R.drawable.ic_info), null, tint = tileSubtitleColor) },
@@ -492,8 +493,8 @@ fun SettingsItems(
         Spacer(Modifier.height(actualOuterGroupSpacing))
         Box(contentAlignment = Alignment.CenterEnd) {
             SettingsTile(
-                title = stringResource(R.string.buy_me_a_coffee),
-                subtitle = stringResource(R.string.buy_me_a_coffee_description),
+                title = stringResource(string.buy_me_a_coffee),
+                subtitle = stringResource(string.buy_me_a_coffee_description),
                 onClick = {
                     val intent = Intent(Intent.ACTION_VIEW, "https://www.buymeacoffee.com/xenonware".toUri())
                     context.startActivity(intent)
@@ -519,8 +520,8 @@ fun SettingsItems(
     if (developerModeEnabled) {
         Spacer(Modifier.height(actualOuterGroupSpacing))
         SettingsTile(
-            title = stringResource(id = R.string.developer_options_title),
-            subtitle = stringResource(id = R.string.dev_settings_description),
+            title = stringResource(string.developer_options_title),
+            subtitle = stringResource(string.dev_settings_description),
             onClick = onNavigateToDeveloperOptions,
             icon = { Icon(painterResource(R.drawable.ic_developer), null, tint = tileSubtitleColor) },
             shape = tileShapeOverride ?: standaloneShape,
