@@ -283,7 +283,7 @@
     <string name="open_website">Open Website</string>
     <string name="web_search">Web Search</string>
     <string name="buy_me_a_coffee">Buy me a coffee</string>
-    <string name="buy_me_a_coffee_description">Support the developer of Xenon Launcher</string>
+    <string name="buy_me_a_coffee_description">Support the developer of %1$s</string>
     <string name="contact_developer">Contact Dev</string>
     <string name="contact_developer_description">Send crash logs and feedback to the developer via email.</string>
     <string name="customization">Customization</string>
