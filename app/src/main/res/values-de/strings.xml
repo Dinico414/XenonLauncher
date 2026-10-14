@@ -13,6 +13,8 @@
     <string name="focus_search_description">Suche oben im Drawer fokussieren.</string>
     <string name="open_only_in_portrait">Nur im Porträt-Modus öffnen</string>
     <string name="open_only_in_portrait_description">Tastatur nicht im Querformat öffnen.</string>
+    <string name="hardware_keyboard_only">Nur wenn Hardware-Tastatur erkannt</string>
+    <string name="hardware_keyboard_only_description">Option ignorieren, wenn die Bildschirmtastatur benutzt wird.</string>
     <string name="blur_effect">Weichzeichner-Effekt</string>
     <string name="enable_glass_haze">Aktiviere Milchglass Effekt.</string>
     <string name="theme">Theme</string>

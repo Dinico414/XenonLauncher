@@ -295,6 +295,7 @@ class MainActivity : ComponentActivity() {
                 val calendarEvents by viewModel.calendarEvents.collectAsState()
                 val dockSafeDrawIme by viewModel.dockSafeDrawIme.collectAsState()
                 val dockSafeDrawImePortraitOnly by viewModel.dockSafeDrawImePortraitOnly.collectAsState()
+                val dockSafeDrawImeHardwareKeyboardOnly by viewModel.dockSafeDrawImeHardwareKeyboardOnly.collectAsState()
                 val configShortcutType by viewModel.configShortcutType.collectAsState()
                 val blurSetting by viewModel.blurEnabled.collectAsState()
                 val showClockAtAGlance by viewModel.showClockAtAGlance.collectAsState()
@@ -349,6 +350,7 @@ class MainActivity : ComponentActivity() {
                     visibleNotificationApps = visibleNotificationApps,
                     dockSafeDrawIme = dockSafeDrawIme,
                     dockSafeDrawImePortraitOnly = dockSafeDrawImePortraitOnly,
+                    dockSafeDrawImeHardwareKeyboardOnly = dockSafeDrawImeHardwareKeyboardOnly,
                     configShortcutType = configShortcutType,
                     blurSetting = blurSetting,
                     showClockAtAGlance = showClockAtAGlance,
@@ -538,6 +540,7 @@ fun LauncherScreen(
     visibleNotificationApps: List<String>,
     dockSafeDrawIme: Boolean,
     dockSafeDrawImePortraitOnly: Boolean = false,
+    dockSafeDrawImeHardwareKeyboardOnly: Boolean = false,
     configShortcutType: LauncherViewModel.ShortcutType?,
     blurSetting: Boolean,
     showClockAtAGlance: Boolean,
@@ -901,6 +904,7 @@ fun LauncherScreen(
                     fabSingleTapAction = fabSingleTapAction,
                     dockSafeDrawIme = dockSafeDrawIme && !isReplyingToNotification,
                     dockSafeDrawImePortraitOnly = dockSafeDrawImePortraitOnly,
+                    dockSafeDrawImeHardwareKeyboardOnly = dockSafeDrawImeHardwareKeyboardOnly,
                     onUnpinApp = { viewModel.unpinApp(it) },
                     onPinApp = { pkg, index -> viewModel.pinApp(pkg, index) },
                     onReorderApp = { from, to -> viewModel.reorderPinnedApp(from, to) }

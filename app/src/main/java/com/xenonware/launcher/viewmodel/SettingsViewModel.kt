@@ -234,6 +234,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _dockSafeDrawImePortraitOnly = MutableStateFlow(sharedPreferenceManager.dockSafeDrawImePortraitOnly)
     val dockSafeDrawImePortraitOnly: StateFlow<Boolean> = _dockSafeDrawImePortraitOnly.asStateFlow()
 
+    private val _dockSafeDrawImeHardwareKeyboardOnly = MutableStateFlow(sharedPreferenceManager.dockSafeDrawImeHardwareKeyboardOnly)
+    val dockSafeDrawImeHardwareKeyboardOnly: StateFlow<Boolean> = _dockSafeDrawImeHardwareKeyboardOnly.asStateFlow()
+
     private val _drawerIconShape = MutableStateFlow(IconShape.valueOf(sharedPreferenceManager.drawerIconShape))
     val drawerIconShape: StateFlow<IconShape> = _drawerIconShape.asStateFlow()
 
@@ -508,6 +511,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             "notification_badge_type" -> _notificationBadgeType.value = sharedPreferenceManager.notificationBadgeType
             "dock_safedraw_ime" -> _dockSafeDrawIme.value = sharedPreferenceManager.dockSafeDrawIme
             "dock_safedraw_ime_portrait_only" -> _dockSafeDrawImePortraitOnly.value = sharedPreferenceManager.dockSafeDrawImePortraitOnly
+            "dock_safedraw_ime_hardware_keyboard_only" -> _dockSafeDrawImeHardwareKeyboardOnly.value = sharedPreferenceManager.dockSafeDrawImeHardwareKeyboardOnly
             "drawer_icon_shape" -> _drawerIconShape.value = IconShape.valueOf(sharedPreferenceManager.drawerIconShape)
             "drawer_icon_shadow" -> _drawerIconShadow.value = sharedPreferenceManager.drawerIconShadow
             "global_icon_pack" -> _globalIconPack.value = sharedPreferenceManager.globalIconPack
@@ -712,6 +716,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setDockSafeDrawImePortraitOnly(enabled: Boolean) {
         sharedPreferenceManager.dockSafeDrawImePortraitOnly = enabled
         _dockSafeDrawImePortraitOnly.value = enabled
+    }
+
+    fun setDockSafeDrawImeHardwareKeyboardOnly(enabled: Boolean) {
+        sharedPreferenceManager.dockSafeDrawImeHardwareKeyboardOnly = enabled
+        _dockSafeDrawImeHardwareKeyboardOnly.value = enabled
     }
 
     fun setShowClockAtAGlance(enabled: Boolean) {
@@ -1054,6 +1063,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         _blurEnabled.value = true
         _isGridLayout.value = true
         _openKeyboard.value = false
+        _openKeyboardPortraitOnly.value = false
+        _dockSafeDrawIme.value = false
+        _dockSafeDrawImePortraitOnly.value = false
+        _dockSafeDrawImeHardwareKeyboardOnly.value = false
         _advancedSearchEnabled.value = true
         _appLabelsEnabled.value = true
         _drawerIconShape.value = IconShape.Circle

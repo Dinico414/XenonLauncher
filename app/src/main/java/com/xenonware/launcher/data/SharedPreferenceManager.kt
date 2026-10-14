@@ -83,6 +83,10 @@ class SharedPreferenceManager(context: Context) {
         get() = prefs.getBoolean("dock_safedraw_ime_portrait_only", false)
         set(value) = prefs.edit { putBoolean("dock_safedraw_ime_portrait_only", value) }
 
+    var dockSafeDrawImeHardwareKeyboardOnly: Boolean
+        get() = prefs.getBoolean("dock_safedraw_ime_hardware_keyboard_only", false)
+        set(value) = prefs.edit { putBoolean("dock_safedraw_ime_hardware_keyboard_only", value) }
+
     var timeShortcut: String
         get() = prefs.getString("time_shortcut", "") ?: ""
         set(value) = prefs.edit { putString("time_shortcut", value) }

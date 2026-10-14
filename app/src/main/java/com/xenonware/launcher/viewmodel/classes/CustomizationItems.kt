@@ -166,6 +166,7 @@ fun CustomizationItems(
     val showHiddenAppsInSearch by viewModel.showHiddenAppsInSearch.collectAsState()
     val dockSafeDrawIme by viewModel.dockSafeDrawIme.collectAsState()
     val dockSafeDrawImePortraitOnly by viewModel.dockSafeDrawImePortraitOnly.collectAsState()
+    val dockSafeDrawImeHardwareKeyboardOnly by viewModel.dockSafeDrawImeHardwareKeyboardOnly.collectAsState()
     val drawerIconShape by viewModel.drawerIconShape.collectAsState()
     val drawerIconShadow by viewModel.drawerIconShadow.collectAsState()
     val globalIconPack by viewModel.globalIconPack.collectAsState()
@@ -397,41 +398,31 @@ fun CustomizationItems(
                 subContextFont = subContextFont,
                 showContext = dockSafeDrawIme && (layoutType == LayoutType.SMALL || layoutType == LayoutType.COMPACT),
                 contextContent = {
-                    Box(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(start = LargestPadding, end = LargestPadding, bottom = LargestPadding)
                             .clip(RoundedCornerShape(ExtraLargeCornerRadius))
                             .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = if (LocalIsDarkTheme.current) 0.5f else 1f))
-                            .clickable { viewModel.setDockSafeDrawImePortraitOnly(!dockSafeDrawImePortraitOnly) }
-                            .padding(LargeMediumPadding)
+                            .padding(LargeMediumPadding),
+                        verticalArrangement = Arrangement.spacedBy(MediumSpacer)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    stringResource(id = string.move_only_in_portrait),
-                                    color = tileContentColor,
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                Text(
-                                    stringResource(id = string.move_only_in_portrait_description),
-                                    color = tileSubtitleColor,
-                                    fontSize = 14.sp
-                                )
-                            }
-                            Spacer(Modifier.width(MediumSpacer))
-                            Checkbox(
-                                checked = dockSafeDrawImePortraitOnly,
-                                onCheckedChange = { viewModel.setDockSafeDrawImePortraitOnly(it) },
-                                colors = CheckboxDefaults.colors(
-                                    checkedColor = MaterialTheme.colorScheme.primary,
-                                    uncheckedColor = tileSubtitleColor
-                                )
-                            )
-                        }
+                        ContextToggleItem(
+                            title = stringResource(id = string.move_only_in_portrait),
+                            checked = dockSafeDrawImePortraitOnly,
+                            onCheckedChange = { viewModel.setDockSafeDrawImePortraitOnly(it) },
+                            description = stringResource(id = string.move_only_in_portrait_description),
+                            contentColor = tileContentColor,
+                            subtitleColor = tileSubtitleColor
+                        )
+                        ContextToggleItem(
+                            title = stringResource(id = string.hardware_keyboard_only),
+                            checked = dockSafeDrawImeHardwareKeyboardOnly,
+                            onCheckedChange = { viewModel.setDockSafeDrawImeHardwareKeyboardOnly(it) },
+                            description = stringResource(id = string.hardware_keyboard_only_description),
+                            contentColor = tileContentColor,
+                            subtitleColor = tileSubtitleColor
+                        )
                     }
                 }
             )
@@ -1157,6 +1148,51 @@ fun CustomizationItems(
                 )
             }
         }
+    }
+}
+
+/**
+ * A labelled checkbox used inside a settings tile's expandable context area.
+ * Tapping anywhere on the row toggles the checkbox.
+ */
+@Composable
+private fun ContextToggleItem(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    description: String,
+    contentColor: Color,
+    subtitleColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onCheckedChange(!checked) },
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                title,
+                color = contentColor,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                description,
+                color = subtitleColor,
+                fontSize = 13.sp
+            )
+        }
+        Spacer(Modifier.width(MediumSpacer))
+        Checkbox(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = CheckboxDefaults.colors(
+                checkedColor = MaterialTheme.colorScheme.primary,
+                uncheckedColor = subtitleColor
+            )
+        )
     }
 }
 

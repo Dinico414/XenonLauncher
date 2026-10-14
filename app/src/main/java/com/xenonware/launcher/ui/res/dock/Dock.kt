@@ -9,6 +9,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -47,6 +48,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -57,8 +59,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
@@ -98,6 +109,14 @@ internal val DockHeight = HugeBiggerSpacing
 internal val DockFabSize = HugerSpacing
 internal val DockCollapsedSectionWidth = BiggestSpacing
 
+/**
+ * IME height threshold separating the word-suggestion strip from a full software keyboard.
+ * With a hardware keyboard driving input only the suggestion bar shows (~40-56dp), while a full
+ * on-screen keyboard is much taller (~200dp+). Anything above this is treated as the software
+ * keyboard being in use.
+ */
+private val SuggestionStripMaxHeight = 200.dp
+
 internal val DockSectionShape = RoundedCornerShape(MassiveCornerRadius)
 
 @Composable
@@ -124,21 +143,32 @@ internal fun Modifier.dockSectionSize(
 @Composable
 private fun rememberDockBottomPadding(
     dockSafeDrawIme: Boolean,
-    dockSafeDrawImePortraitOnly: Boolean = false
+    dockSafeDrawImePortraitOnly: Boolean = false,
+    dockSafeDrawImeHardwareKeyboardOnly: Boolean = false
 ): Dp {
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val hasHardwareKeyboard = configuration.keyboard != android.content.res.Configuration.KEYBOARD_NOKEYS &&
+            configuration.hardKeyboardHidden == android.content.res.Configuration.HARDKEYBOARDHIDDEN_NO
 
     val navPadding = WindowInsets.navigationBars
         .only(WindowInsetsSides.Bottom).asPaddingValues().calculateBottomPadding()
     val imePadding = WindowInsets.ime
         .only(WindowInsetsSides.Bottom).asPaddingValues().calculateBottomPadding()
 
-    val shouldMoveForIme = if (dockSafeDrawImePortraitOnly) {
-        dockSafeDrawIme && !isLandscape
+    val orientationOk = !dockSafeDrawImePortraitOnly || !isLandscape
+
+    // With the "hardware keyboard" option: when a hardware keyboard is connected we always move
+    // for the keyboard, UNLESS a full software keyboard is shown. A full software keyboard makes
+    // the IME inset tall (> SuggestionStripMaxHeight); a small inset means only the suggestion
+    // strip is visible and the hardware keyboard is driving input.
+    val imeIsFullSoftwareKeyboard = imePadding > SuggestionStripMaxHeight
+    val keyboardOk = if (dockSafeDrawImeHardwareKeyboardOnly) {
+        hasHardwareKeyboard && !imeIsFullSoftwareKeyboard
     } else {
-        dockSafeDrawIme
+        imePadding > NoSpacing
     }
+    val shouldMoveForIme = dockSafeDrawIme && orientationOk && keyboardOk
 
     val safeDrawBottom = if (shouldMoveForIme) maxOf(navPadding, imePadding) else navPadding
     val target = if (safeDrawBottom < LargestSpacing) LargestSpacing else safeDrawBottom + MediumSpacing
@@ -186,6 +216,7 @@ fun DockPill(
     isCharging: Boolean = false,
     dockSafeDrawIme: Boolean = false,
     dockSafeDrawImePortraitOnly: Boolean = false,
+    dockSafeDrawImeHardwareKeyboardOnly: Boolean = false,
     hideActionButton: Boolean = false,
     fabSingleTapAction: FabAction = FabAction.OPEN_APP_DRAWER,
     onUnpinApp: (String) -> Unit = {},
@@ -200,6 +231,36 @@ fun DockPill(
 
     var currentPage by remember { mutableStateOf(DockPage.Apps) }
 
+    val appContext = LocalContext.current
+
+    // Number-key shortcuts are handled only while the dock itself holds focus. When a text
+    // field (app-drawer search bar, notification reply) owns focus, keys are delivered to that
+    // field instead, so the dock never sees them and typed digits stay in the text field.
+    val dockFocusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        // Claim focus on first composition so number keys work without an initial tap, but never
+        // steal it away later: if a text field takes focus we simply stop receiving events.
+        runCatching { dockFocusRequester.requestFocus() }
+    }
+
+    val numberKeyModifier = Modifier
+        .focusRequester(dockFocusRequester)
+        .focusable()
+        .onPreviewKeyEvent { event ->
+            if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+            handleDockNumberKey(
+                event = event,
+                currentPage = currentPage,
+                apps = apps,
+                onSelectPage = { currentPage = it },
+                onOpenDrawer = onFabClick,
+                onOpenNotificationShade = { openNotifications(appContext) },
+                onAppClick = onAppClick,
+                onMediaPlayPause = onMediaPlayPause,
+                onMediaSkipNext = onMediaSkipNext,
+            )
+        }
+
     val dockAlpha by animateFloatAsState(
         targetValue = if (isAppDrawerVisible && hazeState != null) 0.4f else 1f,
         label = "dockAlpha",
@@ -212,12 +273,13 @@ fun DockPill(
     )
 
     val baseDockColor = colorScheme.surfaceContainer
-    val bottomPadding = rememberDockBottomPadding(dockSafeDrawIme, dockSafeDrawImePortraitOnly)
+    val bottomPadding = rememberDockBottomPadding(dockSafeDrawIme, dockSafeDrawImePortraitOnly, dockSafeDrawImeHardwareKeyboardOnly)
 
     Row(
         modifier = modifier
             .width(finalMaxDockWidth)
             .padding(bottom = bottomPadding, start = LargestPadding, end = LargestPadding)
+            .then(numberKeyModifier)
             .pointerInput(isAppDrawerVisible, onFabClick) {
                 var totalVerticalDrag = 0f
                 detectVerticalDragGestures(
@@ -445,3 +507,87 @@ private fun DockFab(
         }
     }
 }
+
+/* ---------------------------------------------------------------------- */
+/* Number-key dock shortcuts                                               */
+/* ---------------------------------------------------------------------- */
+
+/**
+ * Handles a single number key (0-9) pressed while the dock holds focus and performs the action
+ * mapped to the currently expanded panel.
+ *
+ * Keys are only consumed when they actually trigger something, so other handlers/typing keep
+ * working for anything we do not act on. Returns true when the event was handled.
+ */
+private fun handleDockNumberKey(
+    event: KeyEvent,
+    currentPage: DockPage,
+    apps: List<AppInfo>,
+    onSelectPage: (DockPage) -> Unit,
+    onOpenDrawer: () -> Unit,
+    onOpenNotificationShade: () -> Unit,
+    onAppClick: (String) -> Unit,
+    onMediaPlayPause: () -> Unit,
+    onMediaSkipNext: () -> Unit,
+): Boolean {
+    when (event.key) {
+        Key.Zero -> {
+            onOpenDrawer()
+            return true
+        }
+
+        Key.One -> {
+            when (currentPage) {
+                DockPage.Status -> onOpenNotificationShade()
+                DockPage.Apps, DockPage.Media -> onSelectPage(DockPage.Status)
+            }
+            return true
+        }
+
+        Key.Eight -> {
+            when (currentPage) {
+                DockPage.Media -> onMediaPlayPause()
+                DockPage.Status, DockPage.Apps -> onSelectPage(DockPage.Media)
+            }
+            return true
+        }
+
+        Key.Nine -> {
+            when (currentPage) {
+                DockPage.Media -> onMediaSkipNext()
+                DockPage.Status, DockPage.Apps -> onSelectPage(DockPage.Media)
+            }
+            return true
+        }
+    }
+
+    // Keys 2-7: launch a pinned dock app when the Apps panel is open, otherwise switch panels.
+    val appIndex = numberToAppIndex(event.key) ?: return false
+    return when (currentPage) {
+        DockPage.Apps -> {
+            val app = apps.getOrNull(appIndex) ?: return false
+            onAppClick(appKeyOf(app))
+            true
+        }
+
+        DockPage.Status, DockPage.Media -> {
+            onSelectPage(DockPage.Apps)
+            true
+        }
+    }
+}
+
+/** Maps Key.Two..Key.Seven to a zero-based dock app index (0..5), or null for other keys. */
+private fun numberToAppIndex(key: Key): Int? = when (key) {
+    Key.Two -> 0
+    Key.Three -> 1
+    Key.Four -> 2
+    Key.Five -> 3
+    Key.Six -> 4
+    Key.Seven -> 5
+    else -> null
+}
+
+/** Matches the key used elsewhere when launching a dock app (see FixedAppSection). */
+private fun appKeyOf(app: AppInfo): String =
+    if (app.className.isNotEmpty()) "${app.packageName}/${app.className}" else app.packageName

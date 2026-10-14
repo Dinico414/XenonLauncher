@@ -14,6 +14,8 @@
     <string name="focus_search_description">Focus search at top of drawer</string>
     <string name="open_only_in_portrait">Open only in portrait</string>
     <string name="open_only_in_portrait_description">Don\'t open keyboard in landscape.</string>
+    <string name="hardware_keyboard_only">Only if Hardware Keyboard is detected</string>
+    <string name="hardware_keyboard_only_description">Ignore this option while the on-screen keyboard is being used.</string>
     <string name="blur_effect">Blur Effect</string>
     <string name="enable_glass_haze">Enable frosted glass effect.</string>
     <string name="theme">Theme</string>
