@@ -1,6 +1,10 @@
 package com.xenonware.launcher.ui.layouts.main
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -23,9 +27,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
@@ -33,8 +42,13 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.platform.ViewConfiguration
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import com.xenon.mylibrary.values.ExtraBiggestBigSpacing
@@ -45,9 +59,16 @@ import com.xenon.mylibrary.values.SmallElevation
 import com.xenon.mylibrary.values.SmallSpacer
 import com.xenon.mylibrary.values.SmallerSpacing
 import com.xenonware.launcher.model.AppInfo
+import com.xenonware.launcher.R
 import com.xenonware.launcher.ui.res.IconShape
 import com.xenonware.launcher.ui.res.notification.NotificationBadge
 import com.xenonware.launcher.util.DragDropState
+
+/** Thickness of the focus outline drawn around the highlighted icon. */
+private val AppFocusRingWidth = 2.dp
+
+/** Gap between the icon and its focus outline, on every side. */
+private val AppFocusRingPadding = 8.dp
 
 @Composable
 fun AppDrawerGridLayout(
@@ -62,13 +83,29 @@ fun AppDrawerGridLayout(
     onLongPress: ((Offset) -> Unit)? = null,
     iconShape: IconShape = IconShape.Circle,
     showShadow: Boolean = false,
-    showLabels: Boolean = true
+    showLabels: Boolean = true,
+    isFocused: Boolean = false,
+    // When supplied the cell becomes a Compose/Android focus target. Android's focus system then
+    // moves the highlight between neighbouring cells on its own for arrow keys, D-pad, TV remotes
+    // and MindControl's virtual-gamepad / ACTION_FOCUS navigation - so we never intercept arrows.
+    focusRequester: FocusRequester? = null,
+    onFocusChanged: ((Boolean) -> Unit)? = null,
+    onKeyEvent: ((KeyEvent) -> Boolean)? = null,
 ) {
     var itemPos by remember { mutableStateOf(Offset.Zero) }
     var pressOffset by remember { mutableStateOf(Offset.Zero) }
     var isActualDrag by remember { mutableStateOf(false) }
     val density = LocalDensity.current
     val haptic = LocalHapticFeedback.current
+
+    // Single launch path shared by every input type (tap, Enter, gamepad A, accessibility click)
+    // so the focused and touched behaviours can never drift apart.
+    val launch: () -> Unit = {
+        onAppClick(
+            if (app.className.isNotEmpty()) "${app.packageName}/${app.className}" else app.packageName
+        )
+        onDismiss()
+    }
 
     val viewConfiguration = LocalViewConfiguration.current
     val customViewConfiguration = remember(viewConfiguration) {
@@ -78,6 +115,15 @@ fun AppDrawerGridLayout(
         }
     }
 
+    // Animated highlight opacity. The outline wraps the whole cell (icon + label).
+    val focusRingAlpha by animateFloatAsState(
+        targetValue = if (isFocused) 1f else 0f,
+        animationSpec = tween(150),
+        label = "appFocusRing"
+    )
+    // Describe the "selected" state to accessibility services (TalkBack and geometric D-pad focus
+    // search) when this cell is the one the highlight sits on.
+    val focusDescription = stringResource(R.string.app_focused_description, app.label)
     CompositionLocalProvider(LocalViewConfiguration provides customViewConfiguration) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -85,12 +131,22 @@ fun AppDrawerGridLayout(
             modifier = modifier
                 .then(if (!showLabels) Modifier.aspectRatio(1f) else Modifier)
                 .onGloballyPositioned { itemPos = it.positionInRoot() }
+                .then(
+                    if (focusRequester != null) {
+                        Modifier
+                            .focusRequester(focusRequester)
+                            .focusable()
+                            .onFocusChanged { onFocusChanged?.invoke(it.isFocused) }
+                            .onKeyEvent { event -> onKeyEvent?.invoke(event) ?: false }
+                    } else Modifier
+                )
+                .semantics(mergeDescendants = true) {
+                    if (isFocused) contentDescription = focusDescription
+                    onClick(label = app.label) { launch(); true }
+                }
                 .pointerInput(Unit) {
                     detectTapGestures(
-                        onTap = {
-                            onAppClick(if (app.className.isNotEmpty()) "${app.packageName}/${app.className}" else app.packageName)
-                            onDismiss()
-                        }
+                        onTap = { launch() }
                     )
                 }
                 .pointerInput(Unit) {
@@ -145,14 +201,30 @@ fun AppDrawerGridLayout(
             Box(contentAlignment = Alignment.TopEnd) {
                 app.icon?.let { icon ->
                     val shape = iconShape.getShape()
-                    Image(
-                        bitmap = icon.toBitmap().asImageBitmap(),
-                        contentDescription = app.label,
+                    Box(
                         modifier = Modifier
-                            .size(HugeSpacing)
-                            .then(if (showShadow) Modifier.shadow(SmallElevation, shape) else Modifier)
-                            .clip(shape)
-                    )
+                            .size(HugeSpacing + AppFocusRingPadding * 2)
+                            .then(
+                                if (focusRingAlpha > 0f) {
+                                    Modifier.border(
+                                        width = AppFocusRingWidth,
+                                        color = colorScheme.primary.copy(alpha = focusRingAlpha),
+                                        // Follows the icon shape so the outline hugs the icon.
+                                        shape = shape
+                                    )
+                                } else Modifier
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Image(
+                            bitmap = icon.toBitmap().asImageBitmap(),
+                            contentDescription = app.label,
+                            modifier = Modifier
+                                .size(HugeSpacing)
+                                .then(if (showShadow) Modifier.shadow(SmallElevation, shape) else Modifier)
+                                .clip(shape)
+                        )
+                    }
                 }
                 NotificationBadge(
                     count = notificationCount,

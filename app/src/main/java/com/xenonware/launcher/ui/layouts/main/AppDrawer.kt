@@ -24,9 +24,15 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -54,6 +60,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -77,6 +84,7 @@ import androidx.compose.material3.MaterialTheme.typography
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
@@ -86,6 +94,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -97,6 +106,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
@@ -104,9 +115,13 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.findRootCoordinates
@@ -197,11 +212,15 @@ enum class SearchType {
     Apps, Contacts, Files, Web
 }
 
+/** Thickness of the focus outline drawn around the highlighted row in the list layout. */
+private val AppListItemFocusRingWidth = 2.dp
+
 @Composable
 fun AppDrawer(
     viewModel: LauncherViewModel,
     apps: List<AppInfo>,
     recentlyOpened: List<AppInfo>,
+    keyDispatcher: DrawerKeyDispatcher,
     containerColor: Color,
     onAppClick: (String) -> Unit,
     onSettingsClick: () -> Unit,
@@ -242,6 +261,22 @@ fun AppDrawer(
 
     val gridState = rememberLazyGridState()
     val listState = rememberLazyGridState()
+
+    // ---- Non-touch navigation (keyboard / D-pad / TV remote / gamepad / accessibility) ----
+    // Navigation rides on Android's own focus system: each app cell is a focus target, so arrows,
+    // D-pad, TV remotes, a controller and MindControl's arrow actions all move the highlight using
+    // the single mechanism the platform already provides. We only track which cell is focused.
+    var focusedAppIndex by remember { mutableIntStateOf(-1) }
+
+    // One stable requester per app so a cell can be focused programmatically (first item on open)
+    // and so accessibility focus search can land on it.
+    val itemFocusRequesters = remember { mutableStateMapOf<String, FocusRequester>() }
+
+    fun appKey(app: AppInfo): String =
+        if (app.className.isNotEmpty()) "${app.packageName}/${app.className}" else app.packageName
+
+    fun requesterFor(app: AppInfo): FocusRequester =
+        itemFocusRequesters.getOrPut(appKey(app)) { FocusRequester() }
 
     var searchQuery by remember { mutableStateOf("") }
     val searchResults by viewModel.searchResults.collectAsState()
@@ -290,6 +325,10 @@ fun AppDrawer(
     var isSearchFocused by remember { mutableStateOf(false) }
     var searchResultPressOffset by remember { mutableStateOf(Offset.Zero) }
     var isSearchActiveInternal by remember { mutableStateOf(false) }
+    // Set when the user taps the bar; focus is requested on the next frame once the
+    // layout has settled. Requesting focus inline (same frame as the search-UI
+    // recomposition) was a no-op because the field's focus node moved mid-layout.
+    var pendingSearchFocus by remember { mutableStateOf(false) }
 
     val isSearchUIActive = isSearchFocused || searchQuery.isNotEmpty() || isSearchActiveInternal
 
@@ -380,6 +419,20 @@ fun AppDrawer(
         }
     }
 
+    // Focus the search field after the search UI has settled. Covers both a plain
+    // tap on the bar and the auto-open-keyboard path. Waiting one frame (or a couple)
+    // lets the field's focus target exist before we request focus on it.
+    LaunchedEffect(pendingSearchFocus, isSearchActiveInternal) {
+        if (pendingSearchFocus) {
+            // Let the triggering recomposition + layout land first.
+            withFrameNanos { }
+            withFrameNanos { }
+            focusRequester.requestFocus()
+            keyboardController?.show()
+            pendingSearchFocus = false
+        }
+    }
+
     // Unfocus and hide keyboard when scrolling down if search is empty
     LaunchedEffect(isAtTop) {
         if (!isAtTop && searchQuery.isEmpty()) {
@@ -421,6 +474,16 @@ fun AppDrawer(
             source.filter { it.matches(searchQuery) }
         }
     }
+
+    // Number of columns the app grid currently lays out with, so arrow-key movement matches what
+    // the user sees. Each cell in the list layout effectively spans the whole row (1 column).
+    val navColumns = if (isGridLayout && selectedSearchType == SearchType.Apps) {
+        if (isWideScreen) 6 else 4
+    } else {
+        if (isWideScreen) 2 else 1
+    }
+
+    val activeGridState = if (isGridLayout) gridState else listState
 
     val openFileLabel = stringResource(R.string.open_file)
     fun handleSearchResultClick(result: SearchResult) {
@@ -464,6 +527,158 @@ fun AppDrawer(
             keyboardController?.hide()
         } else {
             onDismiss()
+        }
+    }
+
+    // ---- Non-touch navigation handlers (need `scope` and `closeSearchOrDismiss`, so they live
+    // after those declarations). ----
+    val scope = rememberCoroutineScope()
+
+    // The apps the highlight moves through: the grid list only. The recent row is a shortcut strip
+    // whose apps also appear in the grid, so including it here would highlight the same app twice.
+    fun navItems(): List<AppInfo> = filteredApps
+
+    // True when the grid cell at [navIndex] (position in [navItems]) carries the highlight.
+    fun isNavIndexFocused(navIndex: Int): Boolean = focusedAppIndex == navIndex
+
+    // Grid index of the app at [navIndex] in [navItems]: the grid reserves its first spanned slot
+    // for the recent/web header, so the apps start at list index 1.
+    fun gridIndexOf(navIndex: Int): Int {
+        val headerOffset = if (isGridLayout && selectedSearchType == SearchType.Apps) 1 else 0
+        return (navIndex + headerOffset).coerceAtLeast(0)
+    }
+
+    // Scrolls just enough to bring the grid item at [targetIndex] fully into view - one small step
+    // at a time. It never calls animateScrollToItem, which snaps the target to the very top of the
+    // viewport and looked like a full-page jump (and could leave the row behind the dock).
+    fun ensureScrolledIntoView(targetIndex: Int) {
+        val info = activeGridState.layoutInfo
+
+        // While a layout pass has not happened yet, nothing to compute.
+        if (info.visibleItemsInfo.isEmpty()) return
+
+        // The search bar floats over the top of the grid, so keep the highlighted row clear of it.
+        val searchBarOverlayPx = barHeightPx + with(density) { LargestPadding.toPx() }.toInt()
+        val topEdge = info.viewportStartOffset + searchBarOverlayPx
+        // The dock floats over the bottom of the grid, so keep the highlighted row clear of it.
+        val dockOverlayPx = if (isDockHiddenInDrawer) 0 else with(density) { drawerBottomPadding.toPx() }.toInt()
+        val bottomEdge = info.viewportEndOffset - dockOverlayPx
+
+        val item = info.visibleItemsInfo.firstOrNull { it.index == targetIndex }
+        val delta: Float = if (item != null) {
+            val itemTop = item.offset.y
+            val itemBottom = item.offset.y + item.size.height
+            when {
+                itemTop < topEdge -> (itemTop - topEdge).toFloat()
+                itemBottom > bottomEdge -> (itemBottom - bottomEdge).toFloat()
+                else -> 0f
+            }
+        } else {
+            // Off screen: step by exactly the distance to the nearest visible item of the same
+            // column, so we move by whole rows rather than jumping the target to the top.
+            val first = info.visibleItemsInfo.first()
+            val last = info.visibleItemsInfo.last()
+            val targetAbove = targetIndex < first.index
+            val rowHeight = (info.visibleItemsInfo.firstOrNull { it.index == first.index + navColumns }
+                ?.offset?.y?.minus(first.offset.y)) ?: first.size.height
+            if (targetAbove) {
+                (-(first.offset.y - topEdge)).toFloat() -
+                    rowHeight.toFloat() * ((first.index - targetIndex) / navColumns)
+            } else {
+                (last.size.height + (last.offset.y + last.size.height - bottomEdge)).toFloat() +
+                    rowHeight.toFloat() * ((targetIndex - last.index) / navColumns)
+            }
+        }
+
+        if (delta != 0f) {
+            runCatching { scope.launch { activeGridState.animateScrollBy(delta) } }
+        }
+    }
+
+    // Moves the highlight to the app at [index] in [navItems], focuses that cell (so the Android
+    // focus system agrees with the highlight) and scrolls it into view with a minimal step.
+    fun moveFocusTo(index: Int) {
+        val items = navItems()
+        if (items.isEmpty()) return
+        val clamped = index.coerceIn(0, items.lastIndex)
+        focusedAppIndex = clamped
+        runCatching { requesterFor(items[clamped]).requestFocus() }
+        ensureScrolledIntoView(gridIndexOf(clamped))
+    }
+
+    // Explicit index-based navigation. We drive the highlight ourselves rather than relying on
+    // Compose's arrow traversal (a lazy grid eats arrow keys for scrolling, so it never moved the
+    // highlight). This reacts to every key that reaches the app: a controller's D-pad, MindControl's
+    // forwarded arrows and injected keys. Each cell still reports focus so accessibility focus search
+    // stays in sync.
+    fun handleDrawerNavKey(event: KeyEvent): Boolean {
+        val action = keyEventToNavAction(event) ?: return false
+        return when (action) {
+            DrawerNavAction.Select -> {
+                val app = navItems().getOrNull(focusedAppIndex) ?: return false
+                onAppClick(appKey(app))
+                onDismiss()
+                true
+            }
+
+            DrawerNavAction.ContextMenu -> {
+                val app = navItems().getOrNull(focusedAppIndex) ?: return false
+                appMenuInfo = app to (menuCard?.takeIf { it.first == app }?.second?.topLeft ?: Offset.Zero)
+                true
+            }
+
+            DrawerNavAction.Back -> {
+                closeSearchOrDismiss()
+                true
+            }
+
+            DrawerNavAction.Up,
+            DrawerNavAction.Down,
+            DrawerNavAction.Left,
+            DrawerNavAction.Right,
+            DrawerNavAction.PageUp,
+            DrawerNavAction.PageDown -> {
+                val next = focusIndexAfterMove(
+                    current = focusedAppIndex,
+                    columns = navColumns,
+                    itemCount = navItems().size,
+                    action = action,
+                    pageSize = navColumns * 4
+                )
+                moveFocusTo(if (focusedAppIndex < 0) 0 else next)
+                true
+            }
+
+            DrawerNavAction.TypeChar -> false
+        }
+    }
+
+    // Route hardware keys from the Activity to this drawer while it is visible, so arrows, D-pad
+    // and MindControl's forwarded keys all reach the same handler no matter what holds focus.
+    DisposableEffect(keyDispatcher) {
+        keyDispatcher.handler = { event -> handleDrawerNavKey(event) }
+        onDispose { keyDispatcher.handler = null }
+    }
+
+    // Focus the first app when the drawer opens (unless the search field should take the keyboard),
+    // so a D-pad / controller / arrow key works straight away. Android's focus system then moves
+    // the highlight between cells on its own.
+    LaunchedEffect(isVisible, shouldOpenKeyboard, isSearchUIActive) {
+        if (!isVisible) return@LaunchedEffect
+        withFrameNanos { }
+        withFrameNanos { }
+        if (!shouldOpenKeyboard && !isSearchUIActive) {
+            if (focusedAppIndex < 0) focusedAppIndex = 0
+            navItems().firstOrNull()?.let { app ->
+                runCatching { requesterFor(app).requestFocus() }
+            }
+        }
+    }
+
+    // Keep the highlight valid when the app list shrinks (e.g. filtering as the user types).
+    LaunchedEffect(filteredApps.size, searchQuery) {
+        if (focusedAppIndex > navItems().lastIndex) {
+            focusedAppIndex = navItems().lastIndex.coerceAtLeast(0)
         }
     }
 
@@ -593,7 +808,6 @@ fun AppDrawer(
         }
     }
 
-    val scope = rememberCoroutineScope()
     val backProgress = remember { Animatable(0f) }
     val searchBackProgress = remember { Animatable(0f) }
     val currentOnDismiss by rememberUpdatedState(onDismiss)
@@ -766,11 +980,21 @@ fun AppDrawer(
                 drawerOrigin = it.positionOnScreen()
                 drawerInWindow = it.positionInWindow()
             }
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onDismiss
-            )
+            .pointerInput(Unit) {
+                // Dismiss only when the tap lands on the scrim *outside* the sheet.
+                // Waiting for UP (not the initial DOWN) means a tap that starts on the
+                // sheet - e.g. the search field - is never stolen from the child that
+                // claims it, so the text field reliably receives focus.
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    val up = waitForUpOrCancellation() ?: return@awaitEachGesture
+                    if (up.changedToUpIgnoreConsumed() &&
+                        (down.isConsumed || up.isConsumed).not()
+                    ) {
+                        onDismiss()
+                    }
+                }
+            }
     ) {
         Box(
             modifier = Modifier
@@ -803,13 +1027,23 @@ fun AppDrawer(
                         )
                     }
                 )
-                .clickable(enabled = false) { }
+                // Consume every touch that lands on the sheet so it can never fall
+                // through to the scrim's dismiss handler. Transparent indication keeps
+                // the sheet visually unchanged.
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { }
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .animateContentSize(animationSpec = tween(300))
                     .graphicsLayer(clip = false)
+                    // Catch navigation keys wherever they land in the drawer. onPreviewKeyEvent runs
+                    // before descendants, so a key is handled even if focus sits on the sheet rather
+                    // than a cell.
+                    .onPreviewKeyEvent { event -> handleDrawerNavKey(event) }
             ) {
                 Spacer(Modifier.height(LargestSpacer))
 
@@ -902,7 +1136,10 @@ fun AppDrawer(
                                                                     onLongPress = { appMenuInfo = app to it },
                                                                     iconShape = iconShape,
                                                                     showShadow = showShadow,
-                                                                    showLabels = showLabels
+                                                                    showLabels = showLabels,
+                                                                    // The recent row is a non-navigable shortcut strip: its apps are also
+                                                                    // in the grid below, so only that copy carries the highlight.
+                                                                    isFocused = false
                                                                 )
                                                             }
                                                         }
@@ -934,7 +1171,7 @@ fun AppDrawer(
 
                             // Keyed by package and class so each item's state and gesture handlers follow
                             // their app instead of staying at a list position
-                            items(filteredApps, key = { "${it.packageName}/${it.className}" }) { app ->
+                            itemsIndexed(filteredApps, key = { _, app -> "${app.packageName}/${app.className}" }) { index, app ->
                                 AppDrawerGridLayout(
                                     app = app,
                                     notificationCount = groupedNotifications[app.packageName]?.size ?: 0,
@@ -946,7 +1183,16 @@ fun AppDrawer(
                                     onLongPress = { appMenuInfo = app to it },
                                     iconShape = iconShape,
                                     showShadow = showShadow,
-                                    showLabels = showLabels
+                                    showLabels = showLabels,
+                                    isFocused = isNavIndexFocused(index),
+                                    focusRequester = requesterFor(app),
+                                    onFocusChanged = { focused ->
+                                        if (focused) {
+                                            focusedAppIndex = index
+                                            ensureScrolledIntoView(gridIndexOf(index))
+                                        }
+                                    },
+                                    onKeyEvent = { event -> handleDrawerNavKey(event) }
                                 )
                             }
 
@@ -1057,7 +1303,7 @@ fun AppDrawer(
 
                                 // Keyed by package and class so itemPos/pressOffset and the gesture
                                 // handlers below always belong to the app shown in the row
-                                items(filteredApps, key = { "${it.packageName}/${it.className}" }) { app ->
+                                itemsIndexed(filteredApps, key = { _, app -> "${app.packageName}/${app.className}" }) { index, app ->
                                     var itemPos by remember { mutableStateOf(Offset.Zero) }
                                     var pressOffset by remember { mutableStateOf(Offset.Zero) }
                                     var isActualDrag by remember { mutableStateOf(false) }
@@ -1071,6 +1317,7 @@ fun AppDrawer(
                                     }
 
                                     CompositionLocalProvider(LocalViewConfiguration provides customViewConfiguration) {
+                                        val listItemFocused = isNavIndexFocused(index)
                                         Row(
                                             verticalAlignment = Alignment.CenterVertically,
                                             horizontalArrangement = if (showLabels) Arrangement.Start else Arrangement.Center,
@@ -1078,6 +1325,24 @@ fun AppDrawer(
                                                 .fillMaxWidth()
                                                 .clip(RoundedCornerShape(LargestCornerRadius))
                                                 .onGloballyPositioned { itemPos = it.positionInRoot() }
+                                                .focusRequester(requesterFor(app))
+                                                .focusable()
+                                                .onFocusChanged { state ->
+                                                    if (state.isFocused) {
+                                                        focusedAppIndex = index
+                                                        ensureScrolledIntoView(gridIndexOf(index))
+                                                    }
+                                                }
+                                                .onKeyEvent { event -> handleDrawerNavKey(event) }
+                                                .then(
+                                                    if (listItemFocused) {
+                                                        Modifier.border(
+                                                            width = AppListItemFocusRingWidth,
+                                                            color = colorScheme.primary,
+                                                            shape = RoundedCornerShape(LargestCornerRadius)
+                                                        )
+                                                    } else Modifier
+                                                )
                                                 .pointerInput("${app.packageName}/${app.className}") {
                                                     detectTapGestures(
                                                         onTap = {
@@ -1353,7 +1618,7 @@ fun AppDrawer(
                             interactionSource = searchInteractionSource,
                             onBarClick = {
                                 isSearchActiveInternal = true
-                                focusRequester.requestFocus()
+                                pendingSearchFocus = true
                             },
                             onBarSizeChanged = { searchBarHeightPx = it.height },
                             onBarAnchorChanged = { searchBarAnchor = it },

@@ -1,5 +1,6 @@
 package com.xenonware.launcher
 
+import android.annotation.SuppressLint
 import android.app.WallpaperColors
 import android.app.WallpaperManager
 import android.app.WallpaperManager.getInstance
@@ -97,6 +98,7 @@ import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.model.FabAction
 import com.xenonware.launcher.notification.LauncherNotification
 import com.xenonware.launcher.ui.layouts.main.AppDrawer
+import com.xenonware.launcher.ui.layouts.main.DrawerKeyDispatcher
 import com.xenonware.launcher.ui.pages.MediaPage
 import com.xenonware.launcher.ui.pages.NotificationPage
 import com.xenonware.launcher.ui.pages.WidgetPage
@@ -131,6 +133,19 @@ import kotlin.time.Duration.Companion.milliseconds
 class MainActivity : ComponentActivity() {
     private val viewModel: LauncherViewModel by viewModels()
     private lateinit var sharedPreferenceManager: SharedPreferenceManager
+
+    // Routes hardware keys to the open drawer. This is the standard entry point every key passes
+    // through, so default behaviour is preserved for anything the drawer does not handle.
+    private val drawerKeyDispatcher = DrawerKeyDispatcher()
+
+    @SuppressLint("RestrictedApi")
+    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        if (event.action == android.view.KeyEvent.ACTION_DOWN && drawerKeyDispatcher.isActive) {
+            val composeEvent = androidx.compose.ui.input.key.KeyEvent(event)
+            if (drawerKeyDispatcher.dispatch(composeEvent)) return true
+        }
+        return super.dispatchKeyEvent(event)
+    }
 
     private var lastAppliedTheme: Int = -1
     private var lastAppliedCoverThemeEnabled: Boolean = false
@@ -329,6 +344,7 @@ class MainActivity : ComponentActivity() {
 
                 LauncherScreen(
                     viewModel = viewModel,
+                    keyDispatcher = drawerKeyDispatcher,
                     apps = apps,
                     pinnedApps = pinnedApps,
                     recentlyOpened = recentlyOpened,
@@ -519,6 +535,7 @@ fun rememberWallpaperDarkIcons(): Boolean {
 @Composable
 fun LauncherScreen(
     viewModel: LauncherViewModel,
+    keyDispatcher: DrawerKeyDispatcher,
     apps: List<AppInfo>,
     pinnedApps: List<AppInfo>,
     recentlyOpened: List<AppInfo>,
@@ -790,6 +807,7 @@ fun LauncherScreen(
                             viewModel = viewModel,
                             apps = apps,
                             recentlyOpened = recentlyOpened,
+                            keyDispatcher = keyDispatcher,
                             containerColor = if (blurAvailable) {
                                 val lerp = if (isDarkTheme) 0.5f else 0.15f
                                 lerp(MaterialTheme.colorScheme.surface.copy(alpha = 0.65f), Color.Black.copy(alpha = 0.2f), lerp)

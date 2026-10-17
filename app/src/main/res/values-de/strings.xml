@@ -121,6 +121,8 @@
     <string name="search_type_contacts">Kontakte</string>
     <string name="search_type_files">Dateien</string>
     <string name="search_type_web">Web</string>
+    <string name="app_focused_description">%1$s, ausgewählt. Enter zum Öffnen.</string>
+    <string name="app_navigation_hint">Mit den Pfeiltasten oder dem Steuerkreuz navigieren, Enter zum Öffnen.</string>
 
     <!-- Welcome & Permissions -->
     <string name="welcome_title">Willkommen beim Xenon Launcher</string>
