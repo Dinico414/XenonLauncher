@@ -632,8 +632,67 @@ fun AppDrawer(
                 true
             }
 
-            DrawerNavAction.Up,
-            DrawerNavAction.Down,
+            DrawerNavAction.Up -> {
+                // Up climbs out of the app list in stages:
+                //  1. while there is a row above, keep moving the highlight up;
+                //  2. at the top row, move focus into the search bar;
+                //  3. pressing Up again (with the search bar focused) closes the drawer.
+                //
+                // Escalation (steps 2 and 3) only happens on the initial press, never on key
+                // auto-repeat: holding Up would otherwise blow straight through the search bar and
+                // close the drawer in one gesture.
+                val isRepeat = event.nativeKeyEvent.repeatCount > 0
+                when {
+                    isSearchFocused -> {
+                        if (!isRepeat) onDismiss()
+                    }
+
+                    focusedAppIndex < navColumns -> {
+                        // First row (or nothing focused): hand focus to the search bar so typing
+                        // searches instead of moving the highlight.
+                        if (!isRepeat) {
+                            focusRequester.requestFocus()
+                            isSearchActiveInternal = true
+                        }
+                    }
+
+                    else -> {
+                        val next = focusIndexAfterMove(
+                            current = focusedAppIndex,
+                            columns = navColumns,
+                            itemCount = navItems().size,
+                            action = action,
+                            pageSize = navColumns * 4
+                        )
+                        moveFocusTo(next)
+                    }
+                }
+                true
+            }
+
+            DrawerNavAction.Down -> {
+                // Coming back down from the search bar should return to the app highlight rather
+                // than scroll the (empty) results list.
+                if (isSearchFocused) {
+                    if (filteredApps.isEmpty()) {
+                        focusManager.clearFocus()
+                        keyboardController?.hide()
+                    } else {
+                        moveFocusTo(0)
+                    }
+                } else {
+                    val next = focusIndexAfterMove(
+                        current = focusedAppIndex,
+                        columns = navColumns,
+                        itemCount = navItems().size,
+                        action = action,
+                        pageSize = navColumns * 4
+                    )
+                    moveFocusTo(if (focusedAppIndex < 0) 0 else next)
+                }
+                true
+            }
+
             DrawerNavAction.Left,
             DrawerNavAction.Right,
             DrawerNavAction.PageUp,
@@ -663,8 +722,14 @@ fun AppDrawer(
     // Focus the first app when the drawer opens (unless the search field should take the keyboard),
     // so a D-pad / controller / arrow key works straight away. Android's focus system then moves
     // the highlight between cells on its own.
+    //
+    // Only do this when the user is actually navigating with a hardware / HID device: a purely
+    // touch user should never see a focus highlight on the first app they never asked for. If the
+    // user later picks up a D-pad while the drawer is open, handleDrawerNavKey focuses on the next
+    // key press anyway.
     LaunchedEffect(isVisible, shouldOpenKeyboard, isSearchUIActive) {
         if (!isVisible) return@LaunchedEffect
+        if (!HardwareInputState.isHardwareNavigationActive) return@LaunchedEffect
         withFrameNanos { }
         withFrameNanos { }
         if (!shouldOpenKeyboard && !isSearchUIActive) {

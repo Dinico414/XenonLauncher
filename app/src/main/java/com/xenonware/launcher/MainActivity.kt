@@ -99,6 +99,10 @@ import com.xenonware.launcher.model.FabAction
 import com.xenonware.launcher.notification.LauncherNotification
 import com.xenonware.launcher.ui.layouts.main.AppDrawer
 import com.xenonware.launcher.ui.layouts.main.DrawerKeyDispatcher
+import com.xenonware.launcher.ui.layouts.main.HomeKeyAction
+import com.xenonware.launcher.ui.layouts.main.HardwareInputState
+import com.xenonware.launcher.ui.layouts.main.KeyDebugLogging
+import com.xenonware.launcher.ui.layouts.main.homeKeyToAction
 import com.xenonware.launcher.ui.pages.MediaPage
 import com.xenonware.launcher.ui.pages.NotificationPage
 import com.xenonware.launcher.ui.pages.WidgetPage
@@ -107,6 +111,7 @@ import com.xenonware.launcher.ui.res.CalendarSelectionDialog
 import com.xenonware.launcher.ui.res.NotificationManagerDialog
 import com.xenonware.launcher.ui.res.ShortcutConfigDialog
 import com.xenonware.launcher.ui.res.dock.DockPill
+import com.xenonware.launcher.ui.res.dock.openNotifications
 import com.xenonware.launcher.ui.theme.ScreenEnvironment
 import com.xenonware.launcher.util.DragHandler
 import com.xenonware.launcher.util.FontAxes
@@ -138,13 +143,56 @@ class MainActivity : ComponentActivity() {
     // through, so default behaviour is preserved for anything the drawer does not handle.
     private val drawerKeyDispatcher = DrawerKeyDispatcher()
 
+    // Bridges home-screen keys (D-pad / controller / MindControl) from the Activity to the Compose
+    // pager + drawer. Compose owns the pagerState, which the Activity cannot reach directly, so the
+    // content installs a handler here while it is composed.
+    private var homeKeyHandler: ((android.view.KeyEvent) -> Boolean)? = null
+
+    // The pager page the launcher is currently showing, mirrored from Compose so onNewIntent (the
+    // Home button path) can make a page-aware decision. Media = 0, Home = 1, Widgets = 2.
+    private var currentPagerPage: Int = LauncherViewModel.HOME_PAGE_INDEX
+
+    // Whether the app drawer's search UI is active, mirrored from Compose. Number key 0 toggles the
+    // drawer, but must not steal a "0" the user is typing into the search field, so the handler
+    // checks this before acting.
+    private var searchActiveInDrawer: Boolean = false
+
     @SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
-        if (event.action == android.view.KeyEvent.ACTION_DOWN && drawerKeyDispatcher.isActive) {
-            val composeEvent = androidx.compose.ui.input.key.KeyEvent(event)
-            if (drawerKeyDispatcher.dispatch(composeEvent)) return true
+        // Diagnostic: log every hardware key so we can see exactly what a controller / MindControl
+        // emits for each direction and trigger. Temporary - remove once the mapping is settled.
+        if (KeyDebugLogging.ENABLED && (event.action == android.view.KeyEvent.ACTION_DOWN)) {
+            android.util.Log.d(
+                "XenonKeys",
+                "action=${event.action} keyCode=${event.keyCode} " +
+                    "scanCode=${event.scanCode} deviceId=${event.deviceId} " +
+                    "repeat=${event.repeatCount} source=0x${event.source.toString(16)}",
+            )
+        }
+
+        if (event.action == android.view.KeyEvent.ACTION_DOWN) {
+            // Remember that the user is driving the launcher with a hardware / HID device, so the
+            // drawer may place an initial focus highlight on the first app.
+            HardwareInputState.onHardwareInput()
+
+            // The open drawer gets first refusal so its own navigation keeps working.
+            if (drawerKeyDispatcher.isActive) {
+                val composeEvent = androidx.compose.ui.input.key.KeyEvent(event)
+                if (drawerKeyDispatcher.dispatch(composeEvent)) return true
+            }
+            // Otherwise let the home screen act on paging / drawer-open / shade-open keys.
+            if (homeKeyHandler?.invoke(event) == true) return true
         }
         return super.dispatchKeyEvent(event)
+    }
+
+    override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean {
+        // Any touch means the user is driving the launcher by touch, so the drawer should not drop a
+        // focus highlight on the first app. Only the initial DOWN matters - not every move.
+        if (ev.actionMasked == android.view.MotionEvent.ACTION_DOWN) {
+            HardwareInputState.onTouchInput()
+        }
+        return super.dispatchTouchEvent(ev)
     }
 
     private var lastAppliedTheme: Int = -1
@@ -207,6 +255,66 @@ class MainActivity : ComponentActivity() {
                 viewModel.navigationEvents.collect { page ->
                     pagerState.animateScrollToPage(page)
                 }
+            }
+
+            // Home-screen hardware keys. Installed while the pager is composed and only active when
+            // the app drawer is closed (the drawer has its own navigation handler). Left/Right and
+            // the bumpers switch pages; Up/Space open the drawer; Down expands the notification
+            // shade. Home is page-aware: it returns to the home/notification page first, then opens
+            // the drawer. Keys we do not recognise fall through to the system untouched.
+            val scope = rememberCoroutineScope()
+            val homePageIndex = LauncherViewModel.HOME_PAGE_INDEX
+            // Mirror the visible page to the Activity so the Home-button path (onNewIntent) can make
+            // the same page-aware decision as the KEYCODE_HOME hardware path.
+            LaunchedEffect(pagerState.currentPage) {
+                currentPagerPage = pagerState.currentPage
+            }
+            DisposableEffect(pagerState, isAppDrawerVisible) {
+                homeKeyHandler = handler@{ nativeEvent ->
+                    val action = homeKeyToAction(nativeEvent)
+
+                    // Number key 0 toggles the app drawer and must work whether it is open or not,
+                    // so it is handled before the "drawer open" guard below. When the search field is
+                    // active, "0" is a character the user is typing - leave it alone.
+                    if (action == HomeKeyAction.ToggleDrawer) {
+                        if (isAppDrawerVisible && searchActiveInDrawer) return@handler false
+                        viewModel.setAppDrawerVisible(!isAppDrawerVisible)
+                        return@handler true
+                    }
+
+                    if (isAppDrawerVisible) return@handler false
+
+                    when (action) {
+                        HomeKeyAction.PageLeft -> {
+                            scope.launch {
+                                val target = (pagerState.currentPage - 1).coerceAtLeast(0)
+                                if (target != pagerState.currentPage) pagerState.animateScrollToPage(target)
+                            }
+                        }
+                        HomeKeyAction.PageRight -> {
+                            scope.launch {
+                                val target = (pagerState.currentPage + 1)
+                                    .coerceAtMost(pagerState.pageCount - 1)
+                                if (target != pagerState.currentPage) pagerState.animateScrollToPage(target)
+                            }
+                        }
+                        HomeKeyAction.OpenDrawer -> viewModel.setAppDrawerVisible(true)
+                        HomeKeyAction.OpenNotifications -> openNotifications(this@MainActivity)
+                        HomeKeyAction.Home -> {
+                            // Home behaviour:
+                            //  - already on the notification page -> open the app drawer
+                            //  - on any other page (media / widgets) -> go to the notification page
+                            if (pagerState.currentPage == homePageIndex) {
+                                viewModel.setAppDrawerVisible(true)
+                            } else {
+                                scope.launch { pagerState.animateScrollToPage(homePageIndex) }
+                            }
+                        }
+                        null -> return@handler false
+                    }
+                    return@handler true
+                }
+                onDispose { homeKeyHandler = null }
             }
 
             val wallpaperDarkIcons = rememberWallpaperDarkIcons()
@@ -387,6 +495,7 @@ class MainActivity : ComponentActivity() {
                     wallpaperDarkIcons = wallpaperDarkIcons,
                     isAppDrawerVisible = isAppDrawerVisible,
                     onAppDrawerVisibilityChange = { viewModel.setAppDrawerVisible(it) },
+                    onSearchActiveChange = { searchActiveInDrawer = it },
                     pagerState = pagerState,
                     onAppClick = { viewModel.launchApp(it) },
                     onOpenSettings = {
@@ -493,7 +602,7 @@ class MainActivity : ComponentActivity() {
                 (intent.action == Intent.ACTION_MAIN && intent.categories == null)
 
         if (isHomeIntent) {
-            viewModel.onHomePressed()
+            viewModel.onHomePressed(currentPagerPage)
         }
         viewModel.loadCalendarEvents()
     }
@@ -569,6 +678,7 @@ fun LauncherScreen(
     wallpaperDarkIcons: Boolean,
     isAppDrawerVisible: Boolean,
     onAppDrawerVisibilityChange: (Boolean) -> Unit,
+    onSearchActiveChange: (Boolean) -> Unit,
     pagerState: PagerState,
     onAppClick: (String) -> Unit,
     onOpenSettings: () -> Unit,
@@ -628,8 +738,10 @@ fun LauncherScreen(
 
     var drawerInteractiveProgress by remember { mutableFloatStateOf(1f) }
 
-    var isSearchActiveInDrawer by remember { mutableStateOf(false) }
     var closeSearchTrigger by remember { mutableIntStateOf(0) }
+    // Search-active state lives here for the UI, and is mirrored to the Activity (via
+    // onSearchActiveChange) so its hardware-key handler can tell a typed "0" apart from a toggle.
+    var isSearchActiveInDrawer by remember { mutableStateOf(false) }
     var isDockVisibleByScroll by remember { mutableStateOf(true) }
 
     var notificationShift by remember { mutableFloatStateOf(0f) }
@@ -690,6 +802,7 @@ fun LauncherScreen(
             keyboardController?.hide()
             drawerInteractiveProgress = 1f
             isSearchActiveInDrawer = false
+            onSearchActiveChange(false)
             closeSearchTrigger = 0
             appToEdit = null
         }
@@ -823,7 +936,10 @@ fun LauncherScreen(
                             onToggleLayout = { viewModel.setGridLayout(!isGridLayout) },
                             onProgress = { drawerInteractiveProgress = it },
                             blurEnabled = blurSetting,
-                            onSearchActiveChange = { isSearchActiveInDrawer = it },
+                            onSearchActiveChange = {
+                                isSearchActiveInDrawer = it
+                                onSearchActiveChange(it)
+                            },
                             closeSearchTrigger = closeSearchTrigger,
                             showLabels = appLabelsEnabled,
                             hideDockScrolling = hideDockScrolling,

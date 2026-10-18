@@ -146,6 +146,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     companion object {
         private const val TAG = "LauncherViewModel"
 
+        /** Pager index of the home / notifications page (Media = 0, Home = 1, Widgets = 2). */
+        const val HOME_PAGE_INDEX = 1
+
         private const val DAY_MILLIS = 24 * 60 * 60 * 1000L
 
         private const val LOCATION_MAX_AGE_MS = 30L * 60 * 1000
@@ -714,11 +717,25 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val _navigationEvents = MutableSharedFlow<Int>(replay = 1)
     val navigationEvents: SharedFlow<Int> = _navigationEvents
 
-    fun onHomePressed() {
+    /**
+     * Page-aware Home key behaviour.
+     *
+     *  - Already on the home / notifications page (index 1) -> open the app drawer.
+     *  - On the media (0) or widgets (2) page -> return to the home / notifications page first; a
+     *    subsequent Home press then opens the drawer (because we are now on page 1).
+     *
+     * [currentPage] is the pager page the launcher is showing; the ViewModel cannot observe it
+     * directly because the pager lives in the composition.
+     */
+    fun onHomePressed(currentPage: Int) {
         viewModelScope.launch {
-            _isAppDrawerVisible.value = false
-            delay(100.milliseconds)
-            _navigationEvents.emit(1)
+            if (currentPage == HOME_PAGE_INDEX) {
+                _isAppDrawerVisible.value = true
+            } else {
+                _isAppDrawerVisible.value = false
+                delay(100.milliseconds)
+                _navigationEvents.emit(HOME_PAGE_INDEX)
+            }
         }
     }
 
