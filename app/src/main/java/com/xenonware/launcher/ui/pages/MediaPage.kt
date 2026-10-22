@@ -81,6 +81,7 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -151,11 +152,11 @@ import com.xenonware.launcher.ui.res.VisualizerConfig
 import com.xenonware.launcher.ui.res.VisualizerStyle
 import com.xenonware.launcher.ui.res.rememberVisualizerPalette
 import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
-import com.xenonware.launcher.util.mainFontFamily
 import com.xenonware.launcher.util.AudioSpectrumAnalyzer
 import com.xenonware.launcher.util.ColorUtils
 import com.xenonware.launcher.util.blockHorizontalPagerSwipe
 import com.xenonware.launcher.util.isSmallScreenDevice
+import com.xenonware.launcher.util.mainFontFamily
 import com.xenonware.launcher.util.openMediaApp
 import com.xenonware.launcher.util.shouldDisableLandscapeLayout
 import dev.chrisbanes.haze.HazeState
@@ -208,8 +209,6 @@ fun MediaPage(
         albumArt = mediaState.albumArt,
         albumArtUri = mediaState.albumArtUri,
     )
-
-    val baseBgAlpha = if (isDarkTheme) 0.8f else 0.6f
 
     MaterialTheme(colorScheme = theme.scheme) {
         val contentColor = colorScheme.onSurface
@@ -277,11 +276,14 @@ fun MediaPage(
         val maxSmallCoverSize = minOf(windowWidthDp / 3, verticalSafeDrawHeight/3)
         val portraitAlbumArtSize = if (isSmallDevice) maxSmallCoverSize else 280.dp
 
-        // Constant background effects (no animation)
-        val bgProgress = 1f
-
         val dynamicBackground = colorScheme.inversePrimary
-        val backgroundTint = dynamicBackground.copy(alpha = baseBgAlpha)
+        // Solid, fully-opaque page background. Never translucent so the page behind can't bleed
+        // through and no offscreen blending against the layer below is required.
+        // 50/50 blend of the scheme's secondary and onSecondary for a clearly visible, solid tone
+        // (inverseSurface is too close to secondary to read as a distinct color).
+        val solidBackground = lerp(theme.scheme.secondary, theme.scheme.onSecondary, 0.5f)
+        // Album-tinted wash painted at full opacity over the solid base.
+        val backgroundTint = dynamicBackground
 
         val textShadow = Shadow(
             color = Color.Black.copy(alpha = 0.3f), offset = Offset(0f, 2f), blurRadius = 4f
@@ -300,11 +302,15 @@ fun MediaPage(
                     }
                 }
         ) {
-            // Background layers: tint, album art, visualizer
+            // Background layers: solid base, (media-only) tint, album art, visualizer
             Box(
                 modifier = Modifier
                     .matchParentSize()
-                    .background(backgroundTint.copy(alpha = baseBgAlpha * bgProgress))
+                    // Opaque base guarantees the page never shows the layer behind it.
+                    .background(solidBackground)
+                    // Album-tinted wash is applied ONLY while media is present; with no media the
+                    // page stays the plain solid background.
+                    .then(if (artModel != null) Modifier.background(backgroundTint) else Modifier)
             ) {
                 // Background Album Art
                 artModel?.let { model ->
@@ -312,7 +318,6 @@ fun MediaPage(
                         modifier = Modifier
                             .fillMaxSize()
                             .graphicsLayer {
-                                alpha = bgProgress
                                 compositingStrategy = if (progress() > 0.01f) {
                                     CompositingStrategy.Offscreen
                                 } else {

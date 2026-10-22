@@ -32,6 +32,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -1112,7 +1113,7 @@ fun AppDrawer(
             ) {
                 Spacer(Modifier.height(LargestSpacer))
 
-                // Drag handle
+                // Drag handle: grab and pull down to dismiss the drawer, snap back otherwise.
                 Box(
                     modifier = Modifier
                         .width(40.dp)
@@ -1121,6 +1122,40 @@ fun AppDrawer(
                             colorScheme.onSurfaceVariant.copy(alpha = 0.6f), CircleShape
                         )
                         .align(Alignment.CenterHorizontally)
+                        .pointerInput(Unit) {
+                            var dragVelocity = 0f
+                            detectVerticalDragGestures(
+                                onDragStart = { dragVelocity = 0f },
+                                onVerticalDrag = { change, dragAmount ->
+                                    change.consume()
+                                    // Pull down freely; never let the sheet rise above rest.
+                                    offsetY = (offsetY + dragAmount).coerceAtLeast(0f)
+                                    // Exponential moving average of the deltas, for fling detection.
+                                    dragVelocity = dragVelocity * 0.5f + dragAmount * 0.5f
+                                },
+                                onDragEnd = {
+                                    if (offsetY > dismissThresholdPx || dragVelocity > flingDismissVelocity) {
+                                        val target =
+                                            if (sheetHeightPx > 0) sheetHeightPx.toFloat() else offsetY + 1000f
+                                        scope.launch {
+                                            animate(offsetY, target, animationSpec = tween(220)) { v, _ -> offsetY = v }
+                                            currentOnDismiss()
+                                        }
+                                    } else if (offsetY > 0f) {
+                                        scope.launch {
+                                            animate(offsetY, 0f, animationSpec = tween(220)) { v, _ -> offsetY = v }
+                                        }
+                                    }
+                                },
+                                onDragCancel = {
+                                    if (offsetY > 0f) {
+                                        scope.launch {
+                                            animate(offsetY, 0f, animationSpec = tween(220)) { v, _ -> offsetY = v }
+                                        }
+                                    }
+                                }
+                            )
+                        }
                 )
 
                 Spacer(Modifier.height(LargestSpacer))

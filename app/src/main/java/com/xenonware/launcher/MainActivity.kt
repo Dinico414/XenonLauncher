@@ -72,7 +72,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
@@ -871,11 +870,12 @@ fun LauncherScreen(
                                         .graphicsLayer {
                                             val p = mediaProgress()
                                             if (p > 0f) {
+                                                // Slide/scale stays; the media page is fully opaque now,
+                                                // so there is no need to fade this page out or render it
+                                                // into an offscreen layer just to hide it.
                                                 translationX = -0.25f * size.width * p
-                                                alpha = 1f - p
                                                 scaleX = 1f - 0.06f * p
                                                 scaleY = 1f - 0.06f * p
-                                                compositingStrategy = CompositingStrategy.Offscreen
                                             }
                                         }
                                 ) {
