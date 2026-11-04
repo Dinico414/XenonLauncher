@@ -300,12 +300,12 @@ class MainActivity : ComponentActivity() {
                         HomeKeyAction.OpenDrawer -> viewModel.setAppDrawerVisible(true)
                         HomeKeyAction.OpenNotifications -> openNotifications(this@MainActivity)
                         HomeKeyAction.Home -> {
-                            // Home behaviour:
-                            //  - already on the notification page -> open the app drawer
-                            //  - on any other page (media / widgets) -> go to the notification page
-                            if (pagerState.currentPage == homePageIndex) {
-                                viewModel.setAppDrawerVisible(true)
-                            } else {
+                            // Home always goes home: on any other page (media / widgets) it first
+                            // returns to the home page. It deliberately does NOT open the app
+                            // drawer any more - coming back from another app via the Home button
+                            // landed the user in a drawer that still had their previous search in
+                            // it. The drawer is opened by the FAB, Up/Space or number key 0.
+                            if (pagerState.currentPage != homePageIndex) {
                                 scope.launch { pagerState.animateScrollToPage(homePageIndex) }
                             }
                         }
@@ -941,6 +941,11 @@ fun LauncherScreen(
                                 onSearchActiveChange(it)
                             },
                             closeSearchTrigger = closeSearchTrigger,
+                            // Closing the drawer resets its search. Remounting the drawer after it
+                            // has been dismissed - which is what returning from another app does
+                            // while the drawer is animating out - starts from a clean, closed
+                            // search instead of restoring the query from before.
+                            resetSearchOnCompose = closeSearchTrigger,
                             showLabels = appLabelsEnabled,
                             hideDockScrolling = hideDockScrolling,
                             onDockVisibilityChange = { isDockVisibleByScroll = it },

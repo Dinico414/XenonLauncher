@@ -720,19 +720,18 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     /**
      * Page-aware Home key behaviour.
      *
-     *  - Already on the home / notifications page (index 1) -> open the app drawer.
-     *  - On the media (0) or widgets (2) page -> return to the home / notifications page first; a
-     *    subsequent Home press then opens the drawer (because we are now on page 1).
+     * Home always returns to the home / notifications page and never opens the app drawer: this is
+     * the path taken when the user comes back to the launcher from another app (via the Home button
+     * or `onNewIntent`), and landing in a drawer that still holds the search from minutes ago was
+     * surprising. The drawer is opened by the FAB, an Up/Space key or number key 0.
      *
      * [currentPage] is the pager page the launcher is showing; the ViewModel cannot observe it
      * directly because the pager lives in the composition.
      */
     fun onHomePressed(currentPage: Int) {
         viewModelScope.launch {
-            if (currentPage == HOME_PAGE_INDEX) {
-                _isAppDrawerVisible.value = true
-            } else {
-                _isAppDrawerVisible.value = false
+            _isAppDrawerVisible.value = false
+            if (currentPage != HOME_PAGE_INDEX) {
                 delay(100.milliseconds)
                 _navigationEvents.emit(HOME_PAGE_INDEX)
             }

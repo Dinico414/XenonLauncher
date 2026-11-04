@@ -238,6 +238,9 @@ fun AppDrawer(
     blurEnabled: Boolean = true,
     onSearchActiveChange: (Boolean) -> Unit = {},
     closeSearchTrigger: Int = 0,
+    // When this increments the drawer drops any in-progress search on the next composition, so a
+    // dismissed drawer never comes back with the query the user typed last time.
+    resetSearchOnCompose: Int = 0,
     showLabels: Boolean = true,
     hideDockScrolling: Boolean = false,
     onDockVisibilityChange: (Boolean) -> Unit = {},
@@ -283,7 +286,9 @@ fun AppDrawer(
     fun requesterFor(app: AppInfo): FocusRequester =
         itemFocusRequesters.getOrPut(appKey(app)) { FocusRequester() }
 
-    var searchQuery by remember { mutableStateOf("") }
+    // Keyed on resetSearchOnCompose so a fresh drawer is built with an empty query rather than
+    // restoring the one typed into a previous incarnation of the drawer.
+    var searchQuery by remember(resetSearchOnCompose) { mutableStateOf("") }
     val searchResults by viewModel.searchResults.collectAsState()
     val searchHistory by viewModel.searchHistory.collectAsState()
 
@@ -319,7 +324,7 @@ fun AppDrawer(
         }
     }
 
-    var selectedSearchType by remember { mutableStateOf(SearchType.Apps) }
+    var selectedSearchType by remember(resetSearchOnCompose) { mutableStateOf(SearchType.Apps) }
 
     LaunchedEffect(advancedSearchEnabled, moveWebSearch) {
         if (!advancedSearchEnabled || (moveWebSearch && selectedSearchType == SearchType.Web)) {
@@ -329,7 +334,7 @@ fun AppDrawer(
 
     var isSearchFocused by remember { mutableStateOf(false) }
     var searchResultPressOffset by remember { mutableStateOf(Offset.Zero) }
-    var isSearchActiveInternal by remember { mutableStateOf(false) }
+    var isSearchActiveInternal by remember(resetSearchOnCompose) { mutableStateOf(false) }
     // Set when the user taps the bar; focus is requested on the next frame once the
     // layout has settled. Requesting focus inline (same frame as the search-UI
     // recomposition) was a no-op because the field's focus node moved mid-layout.
