@@ -1285,6 +1285,8 @@ fun AppDrawer(
                                                                     onPinApp = onPinApp,
                                                                     dragDropState = dragDropState,
                                                                     onLongPress = { appMenuInfo = app to it },
+// The menu opens on the haptic, so a drag starting right after has to close it again.
+onLongPressCancelled = { appMenuInfo = null },
                                                                     iconShape = iconShape,
                                                                     showShadow = showShadow,
                                                                     showLabels = showLabels,
@@ -1332,6 +1334,8 @@ fun AppDrawer(
                                     onPinApp = onPinApp,
                                     dragDropState = dragDropState,
                                     onLongPress = { appMenuInfo = app to it },
+// The menu opens on the haptic, so a drag starting right after has to close it again.
+onLongPressCancelled = { appMenuInfo = null },
                                     iconShape = iconShape,
                                     showShadow = showShadow,
                                     showLabels = showLabels,
@@ -1416,6 +1420,8 @@ fun AppDrawer(
                                                                         onPinApp = onPinApp,
                                                                         dragDropState = dragDropState,
                                                                         onLongPress = { appMenuInfo = app to it },
+// The menu opens on the haptic, so a drag starting right after has to close it again.
+onLongPressCancelled = { appMenuInfo = null },
                                                                         iconShape = iconShape,
                                                                         showShadow = showShadow,
                                                                         showLabels = showLabels
@@ -1455,9 +1461,11 @@ fun AppDrawer(
                                 // Keyed by package and class so itemPos/pressOffset and the gesture
                                 // handlers below always belong to the app shown in the row
                                 itemsIndexed(filteredApps, key = { _, app -> "${app.packageName}/${app.className}" }) { index, app ->
-                                    var itemPos by remember { mutableStateOf(Offset.Zero) }
-                                    var pressOffset by remember { mutableStateOf(Offset.Zero) }
-                                    var isActualDrag by remember { mutableStateOf(false) }
+                                    // Plain MutableState objects (instead of `by remember`) so the
+                                    // gesture handlers below capture the state, not a one-shot value.
+                                    val itemPosState = remember { mutableStateOf(Offset.Zero) }
+                                    val pressOffsetState = remember { mutableStateOf(Offset.Zero) }
+                                    val isActualDragState = remember { mutableStateOf(false) }
 
                                     val viewConfiguration = LocalViewConfiguration.current
                                     val customViewConfiguration = remember(viewConfiguration) {
@@ -1475,7 +1483,7 @@ fun AppDrawer(
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .clip(RoundedCornerShape(LargestCornerRadius))
-                                                .onGloballyPositioned { itemPos = it.positionInRoot() }
+                                                .onGloballyPositioned { itemPosState.value = it.positionInRoot() }
                                                 .focusRequester(requesterFor(app))
                                                 .focusable()
                                                 .onFocusChanged { state ->
@@ -1505,21 +1513,27 @@ fun AppDrawer(
                                                     var totalDragDistance = 0f
                                                     detectDragGesturesAfterLongPress(onDragStart = { offset ->
                                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                        isActualDrag = false
-                                                        pressOffset = offset
+                                                        isActualDragState.value = false
+                                                        pressOffsetState.value = offset
                                                         totalDragDistance = 0f
+                                                        // Show the menu the instant the long press
+                                                        // fires instead of waiting for the release.
+                                                        appMenuInfo = app to (itemPosState.value + offset)
                                                     }, onDrag = { change, dragAmount ->
                                                         totalDragDistance += dragAmount.getDistance()
                                                         val threshold = with(density) { ExtraLargerSpacing.toPx() }
 
-                                                        if (totalDragDistance > threshold && !isActualDrag) {
-                                                            isActualDrag = true
+                                                        if (totalDragDistance > threshold && !isActualDragState.value) {
+                                                            isActualDragState.value = true
                                                             dragDropState.startDrag(
-                                                                app, itemPos + pressOffset
+                                                                app, itemPosState.value + pressOffsetState.value
                                                             )
+                                                            // It turned into a drag after all, so
+                                                            // drop the menu the long press opened.
+                                                            appMenuInfo = null
                                                         }
 
-                                                        if (isActualDrag) {
+                                                        if (isActualDragState.value) {
                                                             change.consume()
                                                             dragDropState.dragOffset += dragAmount
 
@@ -1539,7 +1553,7 @@ fun AppDrawer(
                                                             }
                                                         }
                                                     }, onDragEnd = {
-                                                        if (isActualDrag) {
+                                                        if (isActualDragState.value) {
                                                             val finalPos = dragDropState.dragOffset
                                                             val verticalDist =
                                                                 if (finalPos.y < dragDropState.dockBounds.top) {
@@ -1560,9 +1574,10 @@ fun AppDrawer(
                                                                     dragDropState.targetIndex
                                                                 )
                                                             }
-                                                        } else {
-                                                            appMenuInfo = app to (itemPos + pressOffset)
                                                         }
+                                                        // The menu was already shown when the long
+                                                        // press fired; a plain release needs no
+                                                        // action here.
                                                         dragDropState.stopDrag()
                                                     }, onDragCancel = { dragDropState.stopDrag() })
                                                 }

@@ -80,7 +80,8 @@ fun SearchResultItem(
     showShadow: Boolean = false,
     shape: Shape = RoundedCornerShape(LargestCornerRadius)
 ) {
-    var itemPos by remember { mutableStateOf(Offset.Zero) }
+    // Plain MutableState so the gesture block below reads the live position, not a snapshot.
+    val itemPosState = remember { mutableStateOf(Offset.Zero) }
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -88,7 +89,7 @@ fun SearchResultItem(
             .fillMaxWidth()
             .clip(shape)
             .background(colorScheme.surfaceContainer.copy(alpha = 0.8f))
-            .onGloballyPositioned { itemPos = it.positionInRoot() }
+            .onGloballyPositioned { itemPosState.value = it.positionInRoot() }
             .then(
                 if (onLongClick != null) {
                     Modifier
@@ -96,11 +97,14 @@ fun SearchResultItem(
                             detectTapGestures(onTap = { onClick(result) })
                         }
                         .pointerInput(result) {
-                            var tempOffset = Offset.Zero
                             detectDragGesturesAfterLongPress(
-                                onDragStart = { offset -> tempOffset = offset },
+                                // Open the menu as soon as the long press fires, matching the
+                                // app drawer, rather than waiting for the finger to lift.
+                                onDragStart = { offset ->
+                                    onLongClick(result, itemPosState.value + offset)
+                                },
                                 onDrag = { change, _ -> change.consume() },
-                                onDragEnd = { onLongClick(result, itemPos + tempOffset) }
+                                onDragEnd = { }
                             )
                         }
                 } else {

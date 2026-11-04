@@ -22,7 +22,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -80,7 +79,10 @@ fun AppDrawerGridLayout(
     onDismiss: () -> Unit,
     onPinApp: (String, Int) -> Unit,
     dragDropState: DragDropState,
+    // Fired the instant the long-press haptic fires, so the context menu can appear immediately.
     onLongPress: ((Offset) -> Unit)? = null,
+    // Fired once the finger has travelled far enough that the gesture is a drag, not a long press.
+    onLongPressCancelled: (() -> Unit)? = null,
     iconShape: IconShape = IconShape.Circle,
     showShadow: Boolean = false,
     showLabels: Boolean = true,
@@ -92,9 +94,12 @@ fun AppDrawerGridLayout(
     onFocusChanged: ((Boolean) -> Unit)? = null,
     onKeyEvent: ((KeyEvent) -> Boolean)? = null,
 ) {
-    var itemPos by remember { mutableStateOf(Offset.Zero) }
-    var pressOffset by remember { mutableStateOf(Offset.Zero) }
-    var isActualDrag by remember { mutableStateOf(false) }
+    // Held as plain MutableState objects (rather than `by remember`) so the pointerInput handlers
+    // below can read the live value: they capture the state object once, while a delegated local
+    // inside a pointerInput block goes stale the moment a second gesture block is composed.
+    val itemPosState = remember { mutableStateOf(Offset.Zero) }
+    val pressOffsetState = remember { mutableStateOf(Offset.Zero) }
+    val isActualDragState = remember { mutableStateOf(false) }
     val density = LocalDensity.current
     val haptic = LocalHapticFeedback.current
 
@@ -130,7 +135,7 @@ fun AppDrawerGridLayout(
             verticalArrangement = Arrangement.Center,
             modifier = modifier
                 .then(if (!showLabels) Modifier.aspectRatio(1f) else Modifier)
-                .onGloballyPositioned { itemPos = it.positionInRoot() }
+                .onGloballyPositioned { itemPosState.value = it.positionInRoot() }
                 .then(
                     if (focusRequester != null) {
                         Modifier
@@ -153,19 +158,25 @@ fun AppDrawerGridLayout(
                     var totalDragDistance = 0f
                     detectDragGesturesAfterLongPress(onDragStart = { offset ->
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        isActualDrag = false
-                        pressOffset = offset
+                        isActualDragState.value = false
+                        pressOffsetState.value = offset
                         totalDragDistance = 0f
+                        // Long press is committed the moment the haptic fires: show the menu now
+                        // instead of waiting to find out whether this turns into a drag.
+                        onLongPress?.invoke(itemPosState.value + offset)
                     }, onDrag = { change, dragAmount ->
                         totalDragDistance += dragAmount.getDistance()
                         val threshold = with(density) { ExtraLargerSpacing.toPx() }
 
-                        if (totalDragDistance > threshold && !isActualDrag) {
-                            isActualDrag = true
-                            dragDropState.startDrag(app, itemPos + pressOffset)
+                        if (totalDragDistance > threshold && !isActualDragState.value) {
+                            isActualDragState.value = true
+                            dragDropState.startDrag(app, itemPosState.value + pressOffsetState.value)
+                            // The gesture became a drag, so the menu we opened on long press is not
+                            // what the user meant: get rid of it before the drag card appears.
+                            onLongPressCancelled?.invoke()
                         }
 
-                        if (isActualDrag) {
+                        if (isActualDragState.value) {
                             change.consume()
                             dragDropState.dragOffset += dragAmount
 
@@ -178,7 +189,7 @@ fun AppDrawerGridLayout(
                             }
                         }
                     }, onDragEnd = {
-                        if (isActualDrag) {
+                        if (isActualDragState.value) {
                             val finalPos = dragDropState.dragOffset
                             val verticalDist = if (finalPos.y < dragDropState.dockBounds.top) {
                                 dragDropState.dockBounds.top - finalPos.y
@@ -191,10 +202,9 @@ fun AppDrawerGridLayout(
                             if (dragDropState.dockBounds.contains(finalPos) || verticalDist < hitThreshold) {
                                 onPinApp(if (app.className.isNotEmpty()) "${app.packageName}/${app.className}" else app.packageName, dragDropState.targetIndex)
                             }
-                        } else {
-                            // User let go after long press without dragging -> Show menu
-                            onLongPress?.invoke(itemPos + pressOffset)
                         }
+                        // The menu was already shown when the long press fired, so a release
+                        // without a drag needs no action here.
                         dragDropState.stopDrag()
                     }, onDragCancel = { dragDropState.stopDrag() })
                 }) {
