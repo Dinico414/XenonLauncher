@@ -154,6 +154,21 @@ internal fun scanCodeToNavAction(scanCode: Int): DrawerNavAction? = when (scanCo
 private val PRINTABLE_SYMBOLS = ".,-_=[]\\;'/`@+*#!?()&%$:<>\"{}|~^".toSet()
 
 /**
+ * True for the keys that mean "confirm" (Enter, D-pad centre, gamepad A) as opposed to Space, which
+ * [keyEventToNavAction] also maps to [DrawerNavAction.Select] but which is a literal character while
+ * the user is typing in the search field.
+ */
+fun KeyEvent.isConfirmKey(): Boolean = when (nativeKeyEvent.keyCode) {
+    NativeKeyEvent.KEYCODE_ENTER,
+    NativeKeyEvent.KEYCODE_NUMPAD_ENTER,
+    NativeKeyEvent.KEYCODE_DPAD_CENTER,
+    NativeKeyEvent.KEYCODE_BUTTON_A,
+    -> true
+
+    else -> false
+}
+
+/**
  * Computes the index to move to for a directional / paging action over a grid of [itemCount] items
  * laid out in [columns] columns.
  *

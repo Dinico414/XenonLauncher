@@ -2,6 +2,7 @@ package com.xenonware.launcher.ui.layouts.main
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Environment
 import android.provider.Settings
 import androidx.activity.compose.PredictiveBackHandler
@@ -65,6 +66,8 @@ import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ViewList
 import androidx.compose.material.icons.rounded.Delete
@@ -143,6 +146,7 @@ import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.ViewConfiguration
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
@@ -476,6 +480,12 @@ fun AppDrawer(
         }
     }
 
+    // Hardware keys reach the drawer through a handler installed in a DisposableEffect, which keeps
+    // the lambda from the composition that created it. Reading the live list through a State (rather
+    // than capturing this recomposition's value) keeps Enter and the highlight in sync with what is
+    // actually on screen.
+    val currentFilteredApps by rememberUpdatedState(filteredApps)
+
     // Number of columns the app grid currently lays out with, so arrow-key movement matches what
     // the user sees. Each cell in the list layout effectively spans the whole row (1 column).
     val navColumns = if (isGridLayout && selectedSearchType == SearchType.Apps) {
@@ -508,14 +518,40 @@ fun AppDrawer(
                 onDismiss()
             }
             is SearchResult.Web -> {
+                // A free-text query can contain spaces, '&', '#', '+' ... which would truncate or
+                // corrupt the URL, so it is percent-encoded before being put in the query string.
                 val url = if (result.isUrl) {
                     if (result.query.startsWith("http")) result.query else "https://${result.query}"
                 } else {
-                    "https://www.google.com/search?q=${result.query}"
+                    "https://www.google.com/search?q=${Uri.encode(result.query)}"
                 }
                 context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
                 onDismiss()
             }
+        }
+    }
+
+    /**
+     * Acts on the query itself when the user presses Enter. The decision lives in
+     * [resolveSearchSubmit]; this only carries it out. Returns true when Enter was consumed, false
+     * when the caller should fall back to its usual "open the highlighted app" behaviour.
+     */
+    fun submitSearch(): Boolean {
+        // The other search categories act on their own highlighted result instead.
+        if (selectedSearchType != SearchType.Apps) return false
+
+        return when (val action = resolveSearchSubmit(searchQuery, currentFilteredApps)) {
+            is SearchSubmitAction.LaunchApp -> {
+                handleSearchResultClick(SearchResult.App(action.app))
+                true
+            }
+
+            is SearchSubmitAction.WebSearch -> {
+                handleSearchResultClick(SearchResult.Web(action.query, false))
+                true
+            }
+
+            SearchSubmitAction.None -> false
         }
     }
 
@@ -616,6 +652,16 @@ fun AppDrawer(
         val action = keyEventToNavAction(event) ?: return false
         return when (action) {
             DrawerNavAction.Select -> {
+                // Space also maps to Select, but while a query is being typed it is a literal
+                // character for the text field, not a confirmation - let it through.
+                if (isSearchFocused && !event.isConfirmKey()) return false
+
+                // Enter acts on the query itself once it has narrowed the list down: a single
+                // surviving app opens, a query with no app left goes to the web. With several
+                // matches submitSearch() declines and we keep the old behaviour of opening the
+                // highlighted app.
+                if (event.isConfirmKey() && submitSearch()) return true
+
                 val app = navItems().getOrNull(focusedAppIndex) ?: return false
                 onAppClick(appKey(app))
                 onDismiss()
@@ -1706,7 +1752,25 @@ fun AppDrawer(
                                 .zIndex(1f),
                             outsidePadding = PaddingValues(0.dp),
                             value = searchQuery,
-                            onValueChange = { searchQuery = it },
+                            onValueChange = { newValue ->
+                                // A soft-keyboard "Enter" reaches us as a committed newline rather
+                                // than as a key event, so it is turned into a submit here and kept
+                                // out of the query. Hardware Enter is handled in
+                                // handleDrawerNavKey instead.
+                                if (newValue.contains('\n')) {
+                                    searchQuery = newValue.replace("\n", "").trim()
+                                    submitSearch()
+                                } else {
+                                    searchQuery = newValue
+                                }
+                            },
+                            // Without this the field keeps its default ImeAction.Done +
+                            // NoEnterAction, which renders as a checkmark that only dismisses the
+                            // keyboard: the search could never be submitted from the touch
+                            // keyboard. ImeAction.Search renders a search key and routes it to
+                            // onSearch below.
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                            keyboardActions = KeyboardActions(onSearch = { submitSearch() }),
                             placeholder = stringResource(R.string.search),
                             hazeState = hazeState,
                             blurEnabled = blurEnabled,
