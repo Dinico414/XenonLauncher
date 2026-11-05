@@ -490,6 +490,8 @@ fun AppDrawer(
     // than capturing this recomposition's value) keeps Enter and the highlight in sync with what is
     // actually on screen.
     val currentFilteredApps by rememberUpdatedState(filteredApps)
+    // Same reason as above, for the contact / file / web tabs, whose rows come from [filteredResults].
+    val currentFilteredResults by rememberUpdatedState(filteredResults)
 
     // Number of columns the app grid currently lays out with, so arrow-key movement matches what
     // the user sees. Each cell in the list layout effectively spans the whole row (1 column).
@@ -525,11 +527,8 @@ fun AppDrawer(
             is SearchResult.Web -> {
                 // A free-text query can contain spaces, '&', '#', '+' ... which would truncate or
                 // corrupt the URL, so it is percent-encoded before being put in the query string.
-                val url = if (result.isUrl) {
-                    if (result.query.startsWith("http")) result.query else "https://${result.query}"
-                } else {
-                    "https://www.google.com/search?q=${Uri.encode(result.query)}"
-                }
+                val url = if (result.isUrl) withDefaultScheme(result.query)
+                else "https://www.google.com/search?q=${Uri.encode(result.query)}"
                 context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
                 onDismiss()
             }
@@ -540,14 +539,27 @@ fun AppDrawer(
      * Acts on the query itself when the user presses Enter. The decision lives in
      * [resolveSearchSubmit]; this only carries it out. Returns true when Enter was consumed, false
      * when the caller should fall back to its usual "open the highlighted app" behaviour.
+     *
+     * Works in every search category, so Enter means the same thing wherever the user is: open the
+     * one thing the query points at, or search the web when it points at nothing.
      */
     fun submitSearch(): Boolean {
-        // The other search categories act on their own highlighted result instead.
-        if (selectedSearchType != SearchType.Apps) return false
+        // The rows the user can actually see in this category. The app grid also lists query-derived
+        // web rows appended after the apps, so the visible app list has to be taken before that
+        // tail - counting a web row as an app would make "exactly one app matched" never true.
+        val visibleResults: List<SearchResult> = when (selectedSearchType) {
+            SearchType.Apps -> currentFilteredApps.map { SearchResult.App(it) }
+            else -> currentFilteredResults
+        }
 
-        return when (val action = resolveSearchSubmit(searchQuery, currentFilteredApps)) {
-            is SearchSubmitAction.LaunchApp -> {
-                handleSearchResultClick(SearchResult.App(action.app))
+        return when (val action = resolveSearchSubmit(searchQuery, selectedSearchType, visibleResults)) {
+            is SearchSubmitAction.Open -> {
+                handleSearchResultClick(action.result)
+                true
+            }
+
+            is SearchSubmitAction.OpenUrl -> {
+                handleSearchResultClick(SearchResult.Web(action.url, true))
                 true
             }
 
@@ -661,9 +673,8 @@ fun AppDrawer(
                 // character for the text field, not a confirmation - let it through.
                 if (isSearchFocused && !event.isConfirmKey()) return false
 
-                // Enter acts on the query itself once it has narrowed the list down: a single
-                // surviving app opens, a query with no app left goes to the web. With several
-                // matches submitSearch() declines and we keep the old behaviour of opening the
+                // Enter first acts on the query itself, in every search category. submitSearch()
+                // only declines for an ambiguous app query, where we fall through to opening the
                 // highlighted app.
                 if (event.isConfirmKey() && submitSearch()) return true
 
