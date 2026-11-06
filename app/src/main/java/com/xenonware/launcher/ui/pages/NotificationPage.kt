@@ -1595,8 +1595,18 @@ fun AtAGlance(
                                                     }
                                                 )
                                         ) {
+                                            // The weather icon opens the pull page on a short press;
+                                            // long press also opens it, so the gesture is
+                                            // discoverable either way.
                                             Box(
-                                                modifier = Modifier.size(BigSpacing),
+                                                modifier = Modifier
+                                                    .size(BigSpacing)
+                                                    .combinedClickable(
+                                                        interactionSource = remember { MutableInteractionSource() },
+                                                        indication = null,
+                                                        onClick = { onExpandedChange(true) },
+                                                        onLongClick = { onExpandedChange(true) }
+                                                    ),
                                                 contentAlignment = Alignment.Center
                                             ) {
                                                 Image(
@@ -1743,12 +1753,15 @@ fun AtAGlance(
                                             }
                                     )
 
+                                    // The counter is the pull-page handle: a short press expands the
+                                    // list, while a long press keeps working as before. The arrows
+                                    // keep their own tap = scroll one page behaviour.
                                     Box(
                                         modifier = Modifier.combinedClickable(
                                             interactionSource = remember { MutableInteractionSource() },
                                             indication = null,
                                             onLongClick = expand,
-                                            onClick = {}
+                                            onClick = expand
                                         )
                                     ) {
                                         if (pagerState.currentPage == 0) {
