@@ -296,6 +296,12 @@
     <string name="tweaks_description">Advanced customization options</string>
     <string name="show_clock_at_a_glance">Show Clock in At a Glance</string>
     <string name="show_clock_at_a_glance_description">Display the current time in the At a Glance section</string>
+    <string name="clock_font">Clock Font</string>
+    <string name="clock_font_main">Primary</string>
+    <string name="clock_font_and_size">%1$s · %2$d%%</string>
+    <string name="clock_font_secondary">Secondary</string>
+    <string name="clock_size">Clock Size</string>
+    <string name="clock_size_description">Scale the At a Glance clock up to 300%. The date is not scaled</string>
     <string name="hide_at_a_glance">Hide At a Glance</string>
     <string name="hide_at_a_glance_description">Completely remove the At a Glance section from the notification page</string>
     <string name="experimental_move_web_search">Move Web Search</string>

@@ -294,6 +294,12 @@
     <string name="tweaks_description">Erweiterte Anpassungsoptionen</string>
     <string name="show_clock_at_a_glance">Uhr in „Auf einen Blick“ anzeigen</string>
     <string name="show_clock_at_a_glance_description">Zeigt die aktuelle Uhrzeit im Abschnitt „Auf einen Blick“ an</string>
+    <string name="clock_font">Uhrschrift</string>
+    <string name="clock_font_main">Primär</string>
+    <string name="clock_font_and_size">%1$s · %2$d%%</string>
+    <string name="clock_font_secondary">Sekundär</string>
+    <string name="clock_size">Uhrgröße</string>
+    <string name="clock_size_description">Skaliert die Uhr in „Auf einen Blick“ bis auf 300%. Das Datum wird nicht skaliert</string>
     <string name="hide_at_a_glance">„Auf einen Blick“ ausblenden</string>
     <string name="hide_at_a_glance_description">Entfernt den Abschnitt „Auf einen Blick“ vollständig von der Benachrichtigungsseite</string>
     <string name="experimental_move_web_search">Websuche verschieben</string>

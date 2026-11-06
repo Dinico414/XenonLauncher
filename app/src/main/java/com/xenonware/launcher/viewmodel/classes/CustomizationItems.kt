@@ -33,19 +33,24 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -70,6 +75,7 @@ import com.xenon.mylibrary.values.ExtraLargerCornerRadius
 import com.xenon.mylibrary.values.HugerSpacing
 import com.xenon.mylibrary.values.LargeMediumPadding
 import com.xenon.mylibrary.values.LargeMediumSpacer
+import com.xenon.mylibrary.values.LargerSpacing
 import com.xenon.mylibrary.values.LargestBiggerSpacing
 import com.xenon.mylibrary.values.LargestCornerRadius
 import com.xenon.mylibrary.values.LargestPadding
@@ -78,6 +84,7 @@ import com.xenon.mylibrary.values.MediumSmallerCornerRadius
 import com.xenon.mylibrary.values.MediumSpacer
 import com.xenon.mylibrary.values.NoCornerRadius
 import com.xenon.mylibrary.values.SmallCornerRadius
+import com.xenon.mylibrary.values.SmallSpacer
 import com.xenon.mylibrary.values.SmallerSpacer
 import com.xenon.mylibrary.values.SmallerStroke
 import com.xenonware.launcher.R.string
@@ -85,10 +92,16 @@ import com.xenonware.launcher.model.AppInfo
 import com.xenonware.launcher.model.FabAction
 import com.xenonware.launcher.ui.res.IconShape
 import com.xenonware.launcher.ui.theme.LocalIsDarkTheme
+import com.xenonware.launcher.util.CLOCK_SIZE_SLIDER_STEPS
+import com.xenonware.launcher.util.ClockFont
+import com.xenonware.launcher.util.MAX_CLOCK_SIZE_SCALE
+import com.xenonware.launcher.util.MIN_CLOCK_SIZE_SCALE
+import com.xenonware.launcher.util.clockSizePercent
 import com.xenonware.launcher.viewmodel.FabConfigMode
 import com.xenonware.launcher.viewmodel.SettingsViewModel
 import kotlinx.coroutines.delay
 import kotlin.math.abs
+import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
@@ -139,6 +152,8 @@ fun CustomizationItems(
     ) else RoundedCornerShape(NoCornerRadius)
 
     val showClock by viewModel.showClockAtAGlance.collectAsState()
+    val clockSizeScale by viewModel.clockSizeScale.collectAsState()
+    val clockFont by viewModel.clockFont.collectAsState()
     val experimentalOptionsEnabled by viewModel.experimentalOptionsEnabled.collectAsState()
     val experimentalWidgetAdjustmentsEnabled by viewModel.experimentalWidgetAdjustmentsEnabled.collectAsState()
     val notificationIndicatorType by viewModel.notificationIndicatorType.collectAsState()
@@ -188,11 +203,19 @@ fun CustomizationItems(
         Column {
             SettingsSwitchTile(
                 title = stringResource(id = string.grid_layout),
-                subtitle = if (isGridLayout) stringResource(id = string.using_grid_view) else stringResource(id = string.using_list_view),
+                subtitle = if (isGridLayout) stringResource(id = string.using_grid_view) else stringResource(
+                    id = string.using_list_view
+                ),
                 checked = isGridLayout,
                 onCheckedChange = { viewModel.setGridLayout(it) },
                 onClick = { viewModel.setGridLayout(!isGridLayout) },
-                icon = { Icon(painterResource(R.drawable.ic_grid), null, tint = tileSubtitleColor) },
+                icon = {
+                    Icon(
+                        painterResource(R.drawable.ic_grid),
+                        null,
+                        tint = tileSubtitleColor
+                    )
+                },
                 shape = tileShapeOverride ?: topShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
@@ -204,11 +227,20 @@ fun CustomizationItems(
             SettingsTile(
                 title = stringResource(id = string.global_icon_pack),
                 subtitle = if (globalIconPack != null) {
-                    val pack = remember(globalIconPack) { viewModel.getInstalledIconPacks().find { it.activityInfo.packageName == globalIconPack } }
+                    val pack = remember(globalIconPack) {
+                        viewModel.getInstalledIconPacks()
+                            .find { it.activityInfo.packageName == globalIconPack }
+                    }
                     pack?.loadLabel(context.packageManager)?.toString() ?: globalIconPack!!
                 } else stringResource(string.system_default),
                 onClick = { viewModel.setShowGlobalIconPackDialog(true) },
-                icon = { Icon(painterResource(R.drawable.ic_package), null, tint = tileSubtitleColor) },
+                icon = {
+                    Icon(
+                        painterResource(R.drawable.ic_package),
+                        null,
+                        tint = tileSubtitleColor
+                    )
+                },
                 shape = tileShapeOverride ?: middleShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
@@ -220,7 +252,13 @@ fun CustomizationItems(
             // Icon Shape Selector
             SettingsTileContext(
                 title = stringResource(id = string.icon_shape),
-                icon = { Icon(painterResource(R.drawable.ic_shape), null, tint = tileSubtitleColor) },
+                icon = {
+                    Icon(
+                        painterResource(R.drawable.ic_shape),
+                        null,
+                        tint = tileSubtitleColor
+                    )
+                },
                 shape = tileShapeOverride ?: middleShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
@@ -231,7 +269,13 @@ fun CustomizationItems(
                 contextContent = {
                     val entries = IconShape.entries
                     val interactionSources = remember { entries.map { MutableInteractionSource() } }
-                    val pressedStates = remember { mutableStateListOf<Boolean>().apply { repeat(entries.size) { add(false) } } }
+                    val pressedStates = remember {
+                        mutableStateListOf<Boolean>().apply {
+                            repeat(entries.size) {
+                                add(false)
+                            }
+                        }
+                    }
 
                     entries.forEachIndexed { index, _ ->
                         LaunchedEffect(interactionSources[index]) {
@@ -242,11 +286,13 @@ fun CustomizationItems(
                                         pressedStates[index] = true
                                         pressStartTime = System.currentTimeMillis()
                                     }
+
                                     is PressInteraction.Release -> {
                                         val duration = System.currentTimeMillis() - pressStartTime
                                         if (duration < 200) delay((200 - duration).milliseconds)
                                         pressedStates[index] = false
                                     }
+
                                     is PressInteraction.Cancel -> pressedStates[index] = false
                                 }
                             }
@@ -258,27 +304,36 @@ fun CustomizationItems(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(start = LargestPadding, end = LargestPadding, bottom = LargestPadding)
+                            .padding(
+                                start = LargestPadding,
+                                end = LargestPadding,
+                                bottom = LargestPadding
+                            )
                             .clip(RoundedCornerShape(ExtraLargeCornerRadius))
                             .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = if (LocalIsDarkTheme.current) 0.5f else 1f))
                             .padding(vertical = LargeMediumPadding)
                             .horizontalScroll(rememberScrollState())
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = LargeMediumPadding).height(HugerSpacing),
+                            modifier = Modifier
+                                .padding(horizontal = LargeMediumPadding)
+                                .height(HugerSpacing),
                             horizontalArrangement = Arrangement.spacedBy(LargeMediumSpacer),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             entries.forEachIndexed { index, shape ->
                                 val isSelected = shape == drawerIconShape
                                 val isPressed = pressedStates[index]
-                                val isNeighborPressed = pressedIndex != -1 && abs(index - pressedIndex) == 1
+                                val isNeighborPressed =
+                                    pressedIndex != -1 && abs(index - pressedIndex) == 1
 
                                 val targetWidth = when {
                                     isPressed -> {
-                                        val neighbors = if (index == 0 || index == entries.size - 1) 1 else 2
+                                        val neighbors =
+                                            if (index == 0 || index == entries.size - 1) 1 else 2
                                         HugerSpacing + (if (neighbors == 1) MediumSmallSpacing else LargeMediumSpacer)
                                     }
+
                                     isNeighborPressed -> 58.dp
                                     else -> HugerSpacing
                                 }
@@ -286,7 +341,10 @@ fun CustomizationItems(
                                 val containerWidth by animateDpAsState(
                                     targetValue = targetWidth,
                                     label = "containerWidth",
-                                    animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioNoBouncy,
+                                        stiffness = Spring.StiffnessMedium
+                                    )
                                 )
 
                                 val containerRadius by animateDpAsState(
@@ -294,7 +352,12 @@ fun CustomizationItems(
                                         isPressed -> MediumSmallerCornerRadius
                                         isSelected -> LargestCornerRadius
                                         else -> BiggestCornerRadius
-                                    }, label = "containerRadius", animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
+                                    },
+                                    label = "containerRadius",
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioNoBouncy,
+                                        stiffness = Spring.StiffnessMedium
+                                    )
                                 )
 
                                 val containerShape = RoundedCornerShape(containerRadius)
@@ -304,13 +367,28 @@ fun CustomizationItems(
                                         .width(containerWidth)
                                         .fillMaxHeight()
                                         .clip(containerShape)
-                                        .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f))
-                                        .border(width = SmallerStroke, color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent, shape = containerShape)
-                                        .clickable(interactionSource = interactionSources[index], indication = null) { viewModel.setDrawerIconShape(shape) }
-                                        .padding(LargeMediumPadding), contentAlignment = Alignment.Center
+                                        .background(
+                                            if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest.copy(
+                                                alpha = 0.5f
+                                            )
+                                        )
+                                        .border(
+                                            width = SmallerStroke,
+                                            color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                            shape = containerShape
+                                        )
+                                        .clickable(
+                                            interactionSource = interactionSources[index],
+                                            indication = null
+                                        ) { viewModel.setDrawerIconShape(shape) }
+                                        .padding(LargeMediumPadding),
+                                    contentAlignment = Alignment.Center
                                 ) {
                                     Box(
-                                        modifier = Modifier.size(BiggestSpacing).clip(shape.getShape()).background(if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant)
+                                        modifier = Modifier
+                                            .size(BiggestSpacing)
+                                            .clip(shape.getShape())
+                                            .background(if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant)
                                     )
                                 }
                             }
@@ -321,11 +399,19 @@ fun CustomizationItems(
             Spacer(Modifier.height(actualInnerGroupSpacing))
             SettingsSwitchTile(
                 title = stringResource(string.app_labels),
-                subtitle = if (appLabelsEnabled) stringResource(string.show_app_labels) else stringResource(id = string.hide_app_labels),
+                subtitle = if (appLabelsEnabled) stringResource(string.show_app_labels) else stringResource(
+                    id = string.hide_app_labels
+                ),
                 checked = appLabelsEnabled,
                 onCheckedChange = { viewModel.setAppLabelsEnabled(it) },
                 onClick = { viewModel.setAppLabelsEnabled(!appLabelsEnabled) },
-                icon = { Icon(painterResource(R.drawable.ic_visibility_off), null, tint = tileSubtitleColor) },
+                icon = {
+                    Icon(
+                        painterResource(R.drawable.ic_visibility_off),
+                        null,
+                        tint = tileSubtitleColor
+                    )
+                },
                 shape = tileShapeOverride ?: middleShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
@@ -340,7 +426,13 @@ fun CustomizationItems(
                 checked = drawerIconShadow,
                 onCheckedChange = { viewModel.setDrawerIconShadow(it) },
                 onClick = { viewModel.setDrawerIconShadow(!drawerIconShadow) },
-                icon = { Icon(painterResource(R.drawable.ic_shadow), null, tint = tileSubtitleColor) },
+                icon = {
+                    Icon(
+                        painterResource(R.drawable.ic_shadow),
+                        null,
+                        tint = tileSubtitleColor
+                    )
+                },
                 shape = tileShapeOverride ?: bottomShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
@@ -359,7 +451,13 @@ fun CustomizationItems(
                 checked = advancedSearchEnabled,
                 onCheckedChange = { viewModel.setAdvancedSearchEnabled(it) },
                 onClick = { viewModel.setAdvancedSearchEnabled(!advancedSearchEnabled) },
-                icon = { Icon(painterResource(R.drawable.ic_search_advanced), null, tint = tileSubtitleColor) },
+                icon = {
+                    Icon(
+                        painterResource(R.drawable.ic_search_advanced),
+                        null,
+                        tint = tileSubtitleColor
+                    )
+                },
                 shape = tileShapeOverride ?: topShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
@@ -374,7 +472,13 @@ fun CustomizationItems(
                 checked = showHiddenAppsInSearch,
                 onCheckedChange = { viewModel.setShowHiddenAppsInSearch(it) },
                 onClick = onShowHiddenApps,
-                icon = { Icon(painterResource(R.drawable.ic_hide), null, tint = tileSubtitleColor) },
+                icon = {
+                    Icon(
+                        painterResource(R.drawable.ic_hide),
+                        null,
+                        tint = tileSubtitleColor
+                    )
+                },
                 shape = tileShapeOverride ?: middleShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
@@ -385,11 +489,19 @@ fun CustomizationItems(
             Spacer(Modifier.height(actualInnerGroupSpacing))
             SettingsSwitchTileContext(
                 title = stringResource(id = string.move_with_keyboard),
-                subtitle = if (dockSafeDrawIme) stringResource(id = string.dock_move_up_description) else stringResource(id = string.dock_stay_bottom_description),
+                subtitle = if (dockSafeDrawIme) stringResource(id = string.dock_move_up_description) else stringResource(
+                    id = string.dock_stay_bottom_description
+                ),
                 checked = dockSafeDrawIme,
                 onCheckedChange = { viewModel.setDockSafeDrawIme(it) },
                 onClick = { viewModel.setDockSafeDrawIme(!dockSafeDrawIme) },
-                icon = { Icon(painterResource(R.drawable.ic_keyboard_move), null, tint = tileSubtitleColor) },
+                icon = {
+                    Icon(
+                        painterResource(R.drawable.ic_keyboard_move),
+                        null,
+                        tint = tileSubtitleColor
+                    )
+                },
                 shape = tileShapeOverride ?: middleShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
@@ -401,7 +513,11 @@ fun CustomizationItems(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(start = LargestPadding, end = LargestPadding, bottom = LargestPadding)
+                            .padding(
+                                start = LargestPadding,
+                                end = LargestPadding,
+                                bottom = LargestPadding
+                            )
                             .clip(RoundedCornerShape(ExtraLargeCornerRadius))
                             .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = if (LocalIsDarkTheme.current) 0.5f else 1f))
                             .padding(LargeMediumPadding),
@@ -433,7 +549,13 @@ fun CustomizationItems(
                 checked = openKeyboard,
                 onCheckedChange = { viewModel.setOpenKeyboard(it) },
                 onClick = { viewModel.setOpenKeyboard(!openKeyboard) },
-                icon = { Icon(painterResource(R.drawable.ic_keyboard), null, tint = tileSubtitleColor) },
+                icon = {
+                    Icon(
+                        painterResource(R.drawable.ic_keyboard),
+                        null,
+                        tint = tileSubtitleColor
+                    )
+                },
                 shape = tileShapeOverride ?: bottomShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
@@ -445,7 +567,11 @@ fun CustomizationItems(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(start = LargestPadding, end = LargestPadding, bottom = LargestPadding)
+                            .padding(
+                                start = LargestPadding,
+                                end = LargestPadding,
+                                bottom = LargestPadding
+                            )
                             .clip(RoundedCornerShape(ExtraLargeCornerRadius))
                             .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = if (LocalIsDarkTheme.current) 0.5f else 1f))
                             .clickable { viewModel.setOpenKeyboardPortraitOnly(!openKeyboardPortraitOnly) }
@@ -491,7 +617,13 @@ fun CustomizationItems(
                 checked = hideActionButton,
                 onCheckedChange = { viewModel.setHideActionButton(it) },
                 onClick = { viewModel.setHideActionButton(!hideActionButton) },
-                icon = { Icon(painterResource(R.drawable.ic_touch_off), null, tint = tileSubtitleColor) },
+                icon = {
+                    Icon(
+                        painterResource(R.drawable.ic_touch_off),
+                        null,
+                        tint = tileSubtitleColor
+                    )
+                },
                 shape = tileShapeOverride ?: if (hideActionButton) standaloneShape else topShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
@@ -505,7 +637,13 @@ fun CustomizationItems(
                     title = stringResource(id = string.fab_single_tap),
                     subtitle = getFabActionTitle(fabSingleTapAction, fabSingleTapValue, apps),
                     onClick = { viewModel.setShowFabConfig(FabConfigMode.SINGLE) },
-                    icon = { Icon(painterResource(R.drawable.ic_touch_app), null, tint = tileSubtitleColor) },
+                    icon = {
+                        Icon(
+                            painterResource(R.drawable.ic_touch_app),
+                            null,
+                            tint = tileSubtitleColor
+                        )
+                    },
                     shape = tileShapeOverride ?: middleShape,
                     backgroundColor = tileBackgroundColor,
                     contentColor = tileContentColor,
@@ -518,7 +656,13 @@ fun CustomizationItems(
                     title = stringResource(id = string.fab_double_tap),
                     subtitle = getFabActionTitle(fabDoubleTapAction, fabDoubleTapValue, apps),
                     onClick = { viewModel.setShowFabConfig(FabConfigMode.DOUBLE) },
-                    icon = { Icon(painterResource(R.drawable.ic_touch_double), null, tint = tileSubtitleColor) },
+                    icon = {
+                        Icon(
+                            painterResource(R.drawable.ic_touch_double),
+                            null,
+                            tint = tileSubtitleColor
+                        )
+                    },
                     shape = tileShapeOverride ?: middleShape,
                     backgroundColor = tileBackgroundColor,
                     contentColor = tileContentColor,
@@ -531,7 +675,13 @@ fun CustomizationItems(
                     title = stringResource(id = string.fab_long_press),
                     subtitle = getFabActionTitle(fabLongPressAction, fabLongPressValue, apps),
                     onClick = { viewModel.setShowFabConfig(FabConfigMode.LONG) },
-                    icon = { Icon(painterResource(R.drawable.ic_touch_long), null, tint = tileSubtitleColor) },
+                    icon = {
+                        Icon(
+                            painterResource(R.drawable.ic_touch_long),
+                            null,
+                            tint = tileSubtitleColor
+                        )
+                    },
                     shape = tileShapeOverride ?: middleShape,
                     backgroundColor = tileBackgroundColor,
                     contentColor = tileContentColor,
@@ -544,7 +694,13 @@ fun CustomizationItems(
                     title = stringResource(id = string.fab_swipe_up),
                     subtitle = getFabActionTitle(fabSwipeUpAction, fabSwipeUpValue, apps),
                     onClick = { viewModel.setShowFabConfig(FabConfigMode.SWIPE_UP) },
-                    icon = { Icon(painterResource(R.drawable.ic_touch_swipe_up), null, tint = tileSubtitleColor) },
+                    icon = {
+                        Icon(
+                            painterResource(R.drawable.ic_touch_swipe_up),
+                            null,
+                            tint = tileSubtitleColor
+                        )
+                    },
                     shape = tileShapeOverride ?: bottomShape,
                     backgroundColor = tileBackgroundColor,
                     contentColor = tileContentColor,
@@ -560,7 +716,13 @@ fun CustomizationItems(
         Column {
             SettingsTileContext(
                 title = stringResource(id = string.notification_badges),
-                icon = { Icon(painterResource(R.drawable.ic_badge), null, tint = tileSubtitleColor) },
+                icon = {
+                    Icon(
+                        painterResource(R.drawable.ic_badge),
+                        null,
+                        tint = tileSubtitleColor
+                    )
+                },
                 shape = tileShapeOverride ?: standaloneShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
@@ -595,7 +757,13 @@ fun CustomizationItems(
                                 tint = tileSubtitleColor
                             )
                         },
-                        modifier = Modifier.fillMaxWidth().padding(start = LargestPadding, end = LargestPadding, bottom = LargestPadding)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                start = LargestPadding,
+                                end = LargestPadding,
+                                bottom = LargestPadding
+                            )
                     )
                 }
             )
@@ -604,26 +772,168 @@ fun CustomizationItems(
 
         // --- At a Glance Tweaks ---
         Column {
-            SettingsSwitchTile(
+            // The clock's font and size are properties of the clock itself, so they live in this
+            // switch's content rather than as tiles of their own. The content is only offered while
+            // the clock is on - there is nothing to style otherwise.
+            SettingsSwitchTileContext(
                 title = stringResource(string.show_clock_at_a_glance),
                 subtitle = stringResource(string.show_clock_at_a_glance_description),
                 checked = showClock,
                 onCheckedChange = { viewModel.setShowClockAtAGlance(it) },
                 onClick = { viewModel.setShowClockAtAGlance(!showClock) },
-                icon = { Icon(painterResource(R.drawable.ic_at_a_glance_clock), null, tint = tileSubtitleColor) },
+                icon = {
+                    Icon(
+                        painterResource(R.drawable.ic_at_a_glance_clock),
+                        null,
+                        tint = tileSubtitleColor
+                    )
+                },
                 shape = tileShapeOverride ?: topShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
                 subtitleColor = tileSubtitleColor,
                 mainContextFont = mainContextFont,
-                subContextFont = subContextFont
+                subContextFont = subContextFont,
+                showContext = showClock,
+                enableRipple = false,
+                contextContent = {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = if (LocalIsDarkTheme.current) 0.5f else 1f))
+                            // No click handler here on purpose: this card only holds controls, and the
+                            // switch above already handles taps that should toggle the clock.
+                            .padding(12.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            // Larger than the gap inside each section (SmallSpacer) so the Font and
+                            // Size groups read as two separate blocks rather than one list.
+                            verticalArrangement = Arrangement.spacedBy(LargerSpacing)
+                        ) {
+                            // --- Font ---
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(SmallSpacer)
+                            ) {
+                                Text(
+                                    text = stringResource(string.clock_font),
+                                    color = tileSubtitleColor,
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        fontFamily = mainContextFont
+                                    )
+                                )
+                                XenonSingleChoiceButtonGroup(
+                                    options = ClockFont.entries,
+                                    selectedOption = clockFont,
+                                    onOptionSelect = { viewModel.setClockFont(it) },
+                                    label = { font ->
+                                        when (font) {
+                                            ClockFont.MAIN -> stringResource(string.clock_font_main)
+                                            ClockFont.SECONDARY -> stringResource(string.clock_font_secondary)
+                                        }
+                                    },
+                                    // Only the unselected chip is overridden, to match the notification
+                                    // indicator picker's translucent surfaceContainerHigh. The selected
+                                    // chip is left to the library's own default.
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f),
+                                    mainContextFont = mainContextFont,
+                                    subContextFont = subContextFont,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+
+                            // --- Size ---
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(SmallSpacer)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = stringResource(string.clock_size),
+                                        color = tileSubtitleColor,
+                                        style = MaterialTheme.typography.labelMedium.copy(
+                                            fontFamily = mainContextFont
+                                        ),
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    // Live readout of the current scale, next to the header so it is
+                                    // visible at a glance without reading the slider thumb.
+                                    Text(
+                                        text = "${clockSizePercent(clockSizeScale)}%",
+                                        color = tileContentColor,
+                                        style = MaterialTheme.typography.labelMedium.copy(
+                                            fontFamily = mainContextFont,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    )
+                                }
+
+                                // Haptic feedback per step. The slider reports every intermediate
+                                // position during a drag, so the tick is keyed on the quantized
+                                // percentage: it fires once each time the value crosses into a new
+                                // 10% step, not once per pixel of movement.
+                                val haptic = LocalHapticFeedback.current
+                                var lastTickPercent by remember { mutableIntStateOf(clockSizePercent(clockSizeScale)) }
+                                @Suppress("DEPRECATION")
+                                Slider(
+                                    value = clockSizeScale,
+                                    onValueChange = { raw ->
+                                        viewModel.setClockSizeScale(raw)
+                                        val percent = clockSizePercent(raw)
+                                        if (percent != lastTickPercent) {
+                                            lastTickPercent = percent
+                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        }
+                                    },
+                                    valueRange = MIN_CLOCK_SIZE_SCALE..MAX_CLOCK_SIZE_SCALE,
+                                    steps = CLOCK_SIZE_SLIDER_STEPS,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                // The slider's own endpoints, so the available range is obvious.
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = "${(MIN_CLOCK_SIZE_SCALE * 100).roundToInt()}%",
+                                        color = tileSubtitleColor,
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontFamily = subContextFont ?: mainContextFont
+                                        )
+                                    )
+                                    Text(
+                                        text = "${(MAX_CLOCK_SIZE_SCALE * 100).roundToInt()}%",
+                                        color = tileSubtitleColor,
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontFamily = subContextFont ?: mainContextFont
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             )
 
+            // Keep the group's rhythm: this spacer separates the clock tile from Temp Unit.
             Spacer(Modifier.height(actualInnerGroupSpacing))
 
             SettingsTileContext(
                 title = stringResource(string.temp_unit),
-                icon = { Icon(painterResource(R.drawable.ic_temperature), null, tint = tileSubtitleColor) },
+                icon = {
+                    Icon(
+                        painterResource(R.drawable.ic_temperature),
+                        null,
+                        tint = tileSubtitleColor
+                    )
+                },
                 showContext = true,
                 shape = tileShapeOverride ?: middleShape,
                 backgroundColor = tileBackgroundColor,
@@ -646,7 +956,13 @@ fun CustomizationItems(
                         },
                         mainContextFont = mainContextFont,
                         subContextFont = subContextFont,
-                        modifier = Modifier.fillMaxWidth().padding(start = LargestPadding, end = LargestPadding, bottom = LargestPadding)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                start = LargestPadding,
+                                end = LargestPadding,
+                                bottom = LargestPadding
+                            )
                     )
                 }
             )
@@ -659,7 +975,13 @@ fun CustomizationItems(
                 checked = hideAtAGlance,
                 onCheckedChange = { viewModel.setHideAtAGlance(it) },
                 onClick = { viewModel.setHideAtAGlance(!hideAtAGlance) },
-                icon = { Icon(painterResource(R.drawable.ic_at_a_glance_show), null, tint = tileSubtitleColor) },
+                icon = {
+                    Icon(
+                        painterResource(R.drawable.ic_at_a_glance_show),
+                        null,
+                        tint = tileSubtitleColor
+                    )
+                },
                 shape = tileShapeOverride ?: bottomShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
@@ -675,7 +997,13 @@ fun CustomizationItems(
         Column {
             SettingsTileContext(
                 title = stringResource(string.notification_indicator),
-                icon = { Icon(painterResource(R.drawable.ic_notification), null, tint = tileSubtitleColor) },
+                icon = {
+                    Icon(
+                        painterResource(R.drawable.ic_notification),
+                        null,
+                        tint = tileSubtitleColor
+                    )
+                },
                 showContext = true,
                 shape = tileShapeOverride ?: topShape,
                 backgroundColor = tileBackgroundColor,
@@ -687,7 +1015,13 @@ fun CustomizationItems(
                 contextContent = {
                     val entries = listOf(0, 1, 2)
                     val interactionSources = remember { entries.map { MutableInteractionSource() } }
-                    val pressedStates = remember { mutableStateListOf<Boolean>().apply { repeat(entries.size) { add(false) } } }
+                    val pressedStates = remember {
+                        mutableStateListOf<Boolean>().apply {
+                            repeat(entries.size) {
+                                add(false)
+                            }
+                        }
+                    }
 
                     entries.forEachIndexed { index, _ ->
                         LaunchedEffect(interactionSources[index]) {
@@ -698,11 +1032,13 @@ fun CustomizationItems(
                                         pressedStates[index] = true
                                         pressStartTime = System.currentTimeMillis()
                                     }
+
                                     is PressInteraction.Release -> {
                                         val duration = System.currentTimeMillis() - pressStartTime
                                         if (duration < 200) delay((200 - duration).milliseconds)
                                         pressedStates[index] = false
                                     }
+
                                     is PressInteraction.Cancel -> pressedStates[index] = false
                                 }
                             }
@@ -714,27 +1050,36 @@ fun CustomizationItems(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(start = LargestPadding, end = LargestPadding, bottom = LargestPadding)
+                            .padding(
+                                start = LargestPadding,
+                                end = LargestPadding,
+                                bottom = LargestPadding
+                            )
                             .clip(RoundedCornerShape(ExtraLargeCornerRadius))
                             .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = if (LocalIsDarkTheme.current) 0.5f else 1f))
                             .padding(vertical = LargeMediumPadding)
                             .horizontalScroll(rememberScrollState())
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = LargeMediumPadding).height(HugerSpacing),
+                            modifier = Modifier
+                                .padding(horizontal = LargeMediumPadding)
+                                .height(HugerSpacing),
                             horizontalArrangement = Arrangement.spacedBy(LargeMediumSpacer),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             entries.forEachIndexed { index, type ->
                                 val isSelected = type == notificationIndicatorType
                                 val isPressed = pressedStates[index]
-                                val isNeighborPressed = pressedIndex != -1 && abs(index - pressedIndex) == 1
+                                val isNeighborPressed =
+                                    pressedIndex != -1 && abs(index - pressedIndex) == 1
 
                                 val targetWidth = when {
                                     isPressed -> {
-                                        val neighbors = if (index == 0 || index == entries.size - 1) 1 else 2
+                                        val neighbors =
+                                            if (index == 0 || index == entries.size - 1) 1 else 2
                                         HugerSpacing + (if (neighbors == 1) MediumSmallSpacing else LargeMediumSpacer)
                                     }
+
                                     isNeighborPressed -> 58.dp
                                     else -> HugerSpacing
                                 }
@@ -742,7 +1087,10 @@ fun CustomizationItems(
                                 val containerWidth by animateDpAsState(
                                     targetValue = targetWidth,
                                     label = "containerWidth",
-                                    animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioNoBouncy,
+                                        stiffness = Spring.StiffnessMedium
+                                    )
                                 )
 
                                 val containerRadius by animateDpAsState(
@@ -750,7 +1098,12 @@ fun CustomizationItems(
                                         isPressed -> MediumSmallerCornerRadius
                                         isSelected -> LargestCornerRadius
                                         else -> BiggestCornerRadius
-                                    }, label = "containerRadius", animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
+                                    },
+                                    label = "containerRadius",
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioNoBouncy,
+                                        stiffness = Spring.StiffnessMedium
+                                    )
                                 )
 
                                 val containerShape = RoundedCornerShape(containerRadius)
@@ -760,10 +1113,22 @@ fun CustomizationItems(
                                         .width(containerWidth)
                                         .fillMaxHeight()
                                         .clip(containerShape)
-                                        .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f))
-                                        .border(width = SmallerStroke, color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent, shape = containerShape)
-                                        .clickable(interactionSource = interactionSources[index], indication = null) { viewModel.setNotificationIndicatorType(type) }
-                                        .padding(LargeMediumPadding), contentAlignment = Alignment.Center
+                                        .background(
+                                            if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest.copy(
+                                                alpha = 0.5f
+                                            )
+                                        )
+                                        .border(
+                                            width = SmallerStroke,
+                                            color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                            shape = containerShape
+                                        )
+                                        .clickable(
+                                            interactionSource = interactionSources[index],
+                                            indication = null
+                                        ) { viewModel.setNotificationIndicatorType(type) }
+                                        .padding(LargeMediumPadding),
+                                    contentAlignment = Alignment.Center
                                 ) {
                                     val iconVector = when (type) {
                                         0 -> Icons.Rounded.Block
@@ -797,7 +1162,13 @@ fun CustomizationItems(
                     else -> "\"${stringResource(string.notification_message_up_to_date)}\""
                 },
                 onClick = { viewModel.setShowNotificationMessageDialog(true) },
-                icon = { Icon(painterResource(R.drawable.ic_message), null, tint = tileSubtitleColor) },
+                icon = {
+                    Icon(
+                        painterResource(R.drawable.ic_message),
+                        null,
+                        tint = tileSubtitleColor
+                    )
+                },
                 shape = tileShapeOverride ?: middleShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
@@ -814,7 +1185,13 @@ fun CustomizationItems(
                 checked = showMuteNotifications,
                 onCheckedChange = { viewModel.setShowMuteNotifications(it) },
                 onClick = { viewModel.setShowMuteNotifications(!showMuteNotifications) },
-                icon = { Icon(painterResource(R.drawable.ic_notification_silenced), null, tint = tileSubtitleColor) },
+                icon = {
+                    Icon(
+                        painterResource(R.drawable.ic_notification_silenced),
+                        null,
+                        tint = tileSubtitleColor
+                    )
+                },
                 shape = tileShapeOverride ?: middleShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
@@ -831,7 +1208,13 @@ fun CustomizationItems(
                 checked = showPermanentNotifications,
                 onCheckedChange = { viewModel.setShowPermanentNotifications(it) },
                 onClick = { viewModel.setShowPermanentNotifications(!showPermanentNotifications) },
-                icon = { Icon(painterResource(R.drawable.ic_notification_pin), null, tint = tileSubtitleColor) },
+                icon = {
+                    Icon(
+                        painterResource(R.drawable.ic_notification_pin),
+                        null,
+                        tint = tileSubtitleColor
+                    )
+                },
                 shape = tileShapeOverride ?: middleShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
@@ -848,7 +1231,13 @@ fun CustomizationItems(
                 checked = disableGrouping,
                 onCheckedChange = { viewModel.setDisableGrouping(it) },
                 onClick = { viewModel.setDisableGrouping(!disableGrouping) },
-                icon = { Icon(painterResource(R.drawable.ic_block), null, tint = tileSubtitleColor) },
+                icon = {
+                    Icon(
+                        painterResource(R.drawable.ic_block),
+                        null,
+                        tint = tileSubtitleColor
+                    )
+                },
                 shape = tileShapeOverride ?: middleShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
@@ -865,7 +1254,13 @@ fun CustomizationItems(
                 checked = notificationDeleteSinglePress,
                 onCheckedChange = { viewModel.setNotificationDeleteSinglePress(it) },
                 onClick = { viewModel.setNotificationDeleteSinglePress(!notificationDeleteSinglePress) },
-                icon = { Icon(painterResource(R.drawable.ic_delete), null, tint = tileSubtitleColor) },
+                icon = {
+                    Icon(
+                        painterResource(R.drawable.ic_delete),
+                        null,
+                        tint = tileSubtitleColor
+                    )
+                },
                 shape = tileShapeOverride ?: bottomShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
@@ -883,7 +1278,13 @@ fun CustomizationItems(
                 title = stringResource(string.font_settings),
                 subtitle = stringResource(string.font_settings_description),
                 onClick = { viewModel.setShowFontConfigDialog(true) },
-                icon = { Icon(painterResource(R.drawable.ic_font), null, tint = tileSubtitleColor) },
+                icon = {
+                    Icon(
+                        painterResource(R.drawable.ic_font),
+                        null,
+                        tint = tileSubtitleColor
+                    )
+                },
                 shape = tileShapeOverride ?: standaloneShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
@@ -901,7 +1302,13 @@ fun CustomizationItems(
                 title = stringResource(string.app_menu_order),
                 subtitle = stringResource(string.app_menu_order_description),
                 onClick = { viewModel.setShowAppMenuOrderDialog(true) },
-                icon = { Icon(painterResource(R.drawable.ic_reorder), null, tint = tileSubtitleColor) },
+                icon = {
+                    Icon(
+                        painterResource(R.drawable.ic_reorder),
+                        null,
+                        tint = tileSubtitleColor
+                    )
+                },
                 shape = tileShapeOverride ?: standaloneShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
@@ -933,7 +1340,13 @@ fun CustomizationItems(
                 checked = hideDockScrolling,
                 onCheckedChange = { viewModel.setHideDockScrolling(it) },
                 onClick = { viewModel.setHideDockScrolling(!hideDockScrolling) },
-                icon = { Icon(painterResource(R.drawable.ic_scroll), null, tint = tileSubtitleColor) },
+                icon = {
+                    Icon(
+                        painterResource(R.drawable.ic_scroll),
+                        null,
+                        tint = tileSubtitleColor
+                    )
+                },
                 shape = getDockShape(dockIndex++),
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
@@ -989,7 +1402,13 @@ fun CustomizationItems(
                 checked = hideDockWidgets,
                 onCheckedChange = { viewModel.setHideDockWidgets(it) },
                 onClick = { viewModel.setHideDockWidgets(!hideDockWidgets) },
-                icon = { Icon(painterResource(R.drawable.ic_widgets), null, tint = tileSubtitleColor) },
+                icon = {
+                    Icon(
+                        painterResource(R.drawable.ic_widgets),
+                        null,
+                        tint = tileSubtitleColor
+                    )
+                },
                 shape = getDockShape(dockIndex++),
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
@@ -1045,7 +1464,13 @@ fun CustomizationItems(
                 checked = hideDockMedia,
                 onCheckedChange = { viewModel.setHideDockMedia(it) },
                 onClick = { viewModel.setHideDockMedia(!hideDockMedia) },
-                icon = { Icon(painterResource(R.drawable.ic_media), null, tint = tileSubtitleColor) },
+                icon = {
+                    Icon(
+                        painterResource(R.drawable.ic_media),
+                        null,
+                        tint = tileSubtitleColor
+                    )
+                },
                 shape = getDockShape(dockIndex++),
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
@@ -1101,7 +1526,13 @@ fun CustomizationItems(
                 checked = hideDockInAppDrawer,
                 onCheckedChange = { viewModel.setHideDockInAppDrawer(it) },
                 onClick = { viewModel.setHideDockInAppDrawer(!hideDockInAppDrawer) },
-                icon = { Icon(painterResource(R.drawable.ic_dock_hide), null, tint = tileSubtitleColor) },
+                icon = {
+                    Icon(
+                        painterResource(R.drawable.ic_dock_hide),
+                        null,
+                        tint = tileSubtitleColor
+                    )
+                },
                 shape = getDockShape(dockIndex++),
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
@@ -1119,7 +1550,13 @@ fun CustomizationItems(
                 title = "Music Visualizer",
                 subtitle = "Customize the appearance and behavior of the music visualizer",
                 onClick = { viewModel.setShowVisualizerConfigDialog(true) },
-                icon = { Icon(painterResource(R.drawable.ic_media_visualizer), null, tint = tileSubtitleColor) },
+                icon = {
+                    Icon(
+                        painterResource(R.drawable.ic_media_visualizer),
+                        null,
+                        tint = tileSubtitleColor
+                    )
+                },
                 shape = tileShapeOverride ?: standaloneShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
@@ -1138,7 +1575,13 @@ fun CustomizationItems(
                     checked = experimentalWidgetAdjustmentsEnabled,
                     onCheckedChange = { viewModel.setExperimentalWidgetAdjustmentsEnabled(it) },
                     onClick = { viewModel.setExperimentalWidgetAdjustmentsEnabled(!experimentalWidgetAdjustmentsEnabled) },
-                    icon = { Icon(painterResource(R.drawable.ic_widgets), null, tint = tileSubtitleColor) },
+                    icon = {
+                        Icon(
+                            painterResource(R.drawable.ic_widgets),
+                            null,
+                            tint = tileSubtitleColor
+                        )
+                    },
                     shape = tileShapeOverride ?: standaloneShape,
                     backgroundColor = tileBackgroundColor,
                     contentColor = tileContentColor,
@@ -1206,16 +1649,19 @@ fun getFabActionTitle(action: FabAction, value: String, apps: List<AppInfo>): St
             if (app != null) "${stringResource(string.action_open_app)}: ${app.label}"
             else stringResource(string.action_open_app)
         }
+
         FabAction.OPEN_LINK -> {
             if (value.isNotEmpty()) "${stringResource(string.action_open_link)}: $value"
             else stringResource(string.action_open_link)
         }
+
         FabAction.OPEN_SHORTCUT -> {
             if (value.isNotEmpty()) {
                 val name = value.substringBefore("|")
                 "${stringResource(string.action_open_shortcut)}: $name"
             } else stringResource(string.action_open_shortcut)
         }
+
         FabAction.TOGGLE_FLASHLIGHT -> stringResource(string.action_toggle_flashlight)
         FabAction.OPEN_APP_DRAWER -> stringResource(string.action_open_app_drawer)
         FabAction.NONE -> stringResource(string.action_none)

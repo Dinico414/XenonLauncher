@@ -41,6 +41,8 @@ import com.xenonware.launcher.model.FabAction
 import com.xenonware.launcher.model.WidgetPickerItemData
 import com.xenonware.launcher.ui.res.IconShape
 import com.xenonware.launcher.util.AccessibilityUtils
+import com.xenonware.launcher.util.ClockFont
+import com.xenonware.launcher.util.quantizeClockSizeScale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -324,6 +326,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _showClockAtAGlance = MutableStateFlow(sharedPreferenceManager.showClockAtAGlance)
     val showClockAtAGlance: StateFlow<Boolean> = _showClockAtAGlance.asStateFlow()
 
+    private val _clockSizeScale = MutableStateFlow(sharedPreferenceManager.clockSizeScale)
+    val clockSizeScale: StateFlow<Float> = _clockSizeScale.asStateFlow()
+
+    private val _clockFont = MutableStateFlow(sharedPreferenceManager.clockFont)
+    val clockFont: StateFlow<ClockFont> = _clockFont.asStateFlow()
+
     private val _hideAtAGlance = MutableStateFlow(sharedPreferenceManager.hideAtAGlance)
     val hideAtAGlance: StateFlow<Boolean> = _hideAtAGlance.asStateFlow()
 
@@ -530,6 +538,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             "fab_swipe_up_action" -> _fabSwipeUpAction.value = FabAction.fromString(sharedPreferenceManager.fabSwipeUpAction)
             "fab_swipe_up_value" -> _fabSwipeUpValue.value = sharedPreferenceManager.fabSwipeUpValue
             "show_clock_at_a_glance" -> _showClockAtAGlance.value = sharedPreferenceManager.showClockAtAGlance
+            "clock_size_scale" -> _clockSizeScale.value = sharedPreferenceManager.clockSizeScale
+            "clock_font" -> _clockFont.value = sharedPreferenceManager.clockFont
             "hide_at_a_glance" -> _hideAtAGlance.value = sharedPreferenceManager.hideAtAGlance
             "hide_dock_scrolling" -> _hideDockScrolling.value = sharedPreferenceManager.hideDockScrolling
             "hide_dock_scrolling_only_small" -> _hideDockScrollingOnlySmall.value = sharedPreferenceManager.hideDockScrollingOnlySmall
@@ -726,6 +736,21 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setShowClockAtAGlance(enabled: Boolean) {
         sharedPreferenceManager.showClockAtAGlance = enabled
         _showClockAtAGlance.value = enabled
+    }
+
+    /**
+     * Sets the At a Glance clock size. The value is snapped to a 10% step, so the stored scale and
+     * the slider thumb always agree.
+     */
+    fun setClockSizeScale(scale: Float) {
+        val snapped = quantizeClockSizeScale(scale)
+        sharedPreferenceManager.clockSizeScale = snapped
+        _clockSizeScale.value = snapped
+    }
+
+    fun setClockFont(font: ClockFont) {
+        sharedPreferenceManager.clockFont = font
+        _clockFont.value = font
     }
 
     fun setHideAtAGlance(enabled: Boolean) {

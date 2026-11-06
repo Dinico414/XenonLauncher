@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
 import com.xenonware.launcher.model.AppOverride
+import com.xenonware.launcher.util.ClockFont
+import com.xenonware.launcher.util.quantizeClockSizeScale
 import org.json.JSONObject
 
 class SharedPreferenceManager(context: Context) {
@@ -193,6 +195,22 @@ class SharedPreferenceManager(context: Context) {
     var showClockAtAGlance: Boolean
         get() = prefs.getBoolean("show_clock_at_a_glance", false)
         set(value) = prefs.edit { putBoolean("show_clock_at_a_glance", value) }
+
+    /**
+     * Size of the At a Glance clock text, as a multiplier of its default size. 1.0 is the stock size
+     * (the smallest the UI offers); the slider goes up to 2.0 in 10% steps. The date is not scaled.
+     *
+     * Stored values are snapped to a slider step on read as well as on write, so a value written by
+     * an older build (or by hand) can never leave the slider sitting between two stops.
+     */
+    var clockSizeScale: Float
+        get() = quantizeClockSizeScale(prefs.getFloat("clock_size_scale", 1f))
+        set(value) = prefs.edit { putFloat("clock_size_scale", quantizeClockSizeScale(value)) }
+
+    /** Which of the two configured fonts the At a Glance clock uses. See [ClockFont]. */
+    var clockFont: ClockFont
+        get() = ClockFont.fromId(prefs.getInt("clock_font", ClockFont.MAIN.id))
+        set(value) = prefs.edit { putInt("clock_font", value.id) }
 
     var hideAtAGlance: Boolean
         get() = prefs.getBoolean("hide_at_a_glance", false)

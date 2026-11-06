@@ -66,6 +66,7 @@ import com.xenonware.launcher.notification.NotificationManager
 import com.xenonware.launcher.notification.XenonNotificationService
 import com.xenonware.launcher.ui.res.IconShape
 import com.xenonware.launcher.util.AudioSpectrumAnalyzer
+import com.xenonware.launcher.util.ClockFont
 import com.xenonware.launcher.util.ColorUtils
 import com.xenonware.launcher.util.generateCustomIcon
 import com.xenonware.launcher.util.getIconPackMap
@@ -292,6 +293,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 loadApps()
             }
             "show_clock_at_a_glance" -> _showClockAtAGlance.value = prefManager.showClockAtAGlance
+            "clock_size_scale" -> _clockSizeScale.value = prefManager.clockSizeScale
+            "clock_font" -> _clockFont.value = prefManager.clockFont
             "hide_at_a_glance" -> _hideAtAGlance.value = prefManager.hideAtAGlance
             "hide_dock_scrolling" -> _hideDockScrolling.value = prefManager.hideDockScrolling
             "hide_dock_scrolling_only_small" -> _hideDockScrollingOnlySmall.value = prefManager.hideDockScrollingOnlySmall
@@ -438,6 +441,12 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private val _showClockAtAGlance = MutableStateFlow(prefManager.showClockAtAGlance)
     val showClockAtAGlance: StateFlow<Boolean> = _showClockAtAGlance
+
+    private val _clockSizeScale = MutableStateFlow(prefManager.clockSizeScale)
+    val clockSizeScale: StateFlow<Float> = _clockSizeScale
+
+    private val _clockFont = MutableStateFlow(prefManager.clockFont)
+    val clockFont: StateFlow<ClockFont> = _clockFont
 
     private val _hideAtAGlance = MutableStateFlow(prefManager.hideAtAGlance)
     val hideAtAGlance: StateFlow<Boolean> = _hideAtAGlance

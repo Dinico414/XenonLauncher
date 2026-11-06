@@ -193,10 +193,13 @@ import com.xenonware.launcher.ui.res.dock.StatusCounters
 import com.xenonware.launcher.ui.res.notification.ChronoCluster
 import com.xenonware.launcher.ui.res.notification.NotificationItem
 import com.xenonware.launcher.ui.res.notification.NotificationTabButton
+import com.xenonware.launcher.util.ClockFont
 import com.xenonware.launcher.util.ColorUtils
 import com.xenonware.launcher.util.PerfLog
 import com.xenonware.launcher.util.blockHorizontalPagerSwipe
+import com.xenonware.launcher.util.family
 import com.xenonware.launcher.util.mainFontFamily
+import com.xenonware.launcher.util.sanitizeClockSizeScale
 import com.xenonware.launcher.util.shouldDisableLandscapeLayout
 import com.xenonware.launcher.viewmodel.CalendarEvent
 import com.xenonware.launcher.viewmodel.CalendarInfo
@@ -294,6 +297,10 @@ fun NotificationPage(
     val showMuteNotifications by viewModel.showMuteNotifications.collectAsState()
     val showPermanentNotifications by viewModel.showPermanentNotifications.collectAsState()
     val disableGrouping by viewModel.disableGrouping.collectAsState()
+    // User's size multiplier for the At a Glance clock, so the notification page and the settings
+    // slider always describe the same thing.
+    val clockSizeScale by viewModel.clockSizeScale.collectAsState()
+    val clockFont by viewModel.clockFont.collectAsState()
 
     var selectedPackage by remember { mutableStateOf<String?>(null) }
     var showAtAGlanceMenu by remember { mutableStateOf(false) }
@@ -642,6 +649,8 @@ fun NotificationPage(
                             currentTime = currentTime,
                             currentDate = currentDate,
                             showClock = showClock,
+                            clockSizeScale = clockSizeScale,
+                            clockFont = clockFont,
                             calendarEvents = calendarEvents,
                             availableCalendars = availableCalendars,
                             isLandscape = true,
@@ -751,6 +760,8 @@ fun NotificationPage(
                             currentTime = currentTime,
                             currentDate = currentDate,
                             showClock = showClock,
+                            clockSizeScale = clockSizeScale,
+                            clockFont = clockFont,
                             calendarEvents = calendarEvents,
                             availableCalendars = availableCalendars,
                             isLandscape = false,
@@ -1315,6 +1326,10 @@ fun AtAGlance(
     currentTime: String,
     currentDate: String,
     showClock: Boolean,
+    // Multiplier for the clock line. See [MIN_CLOCK_SIZE_SCALE].
+    clockSizeScale: Float = 1f,
+    // Which of the two configured fonts the clock is drawn in.
+    clockFont: ClockFont = ClockFont.MAIN,
     calendarEvents: List<CalendarEvent>,
     availableCalendars: List<CalendarInfo>,
     isLandscape: Boolean,
@@ -1329,10 +1344,27 @@ fun AtAGlance(
     modifier: Modifier = Modifier
 ) {
     val baseColor = if (isWallpaperDark) Color.Black else Color.White
+    // Only the clock itself follows the size setting. The date, the timers and the event text all
+    // keep their stock sizes, so a large clock never drags the rest of the layout along with it.
+    val clockScale = sanitizeClockSizeScale(clockSizeScale)
     val dateFontSize = if (isLandscape) 18.sp else 16.sp
+    // Reserved height for the clock/date line, so a scaled-up clock grows upward instead of making
+    // the row taller and stretching the gap to the events below.
+    //
+    // This must match what the row measured BEFORE the clock could be scaled, or the line itself
+    // gets taller and the gap grows even at 100%. A 16sp text box is ~19-20dp, so this is the font
+    // size with no extra multiplier - the 1.5x slack that was here before made the row ~24dp and
+    // added spacing on its own.
+    val dateLineHeight = with(LocalDensity.current) { dateFontSize.toDp() }
     val eventTitleFontSize = if (isLandscape) 32.sp else 24.sp
     val subtitleFontSize = if (isLandscape) 16.sp else 14.sp
     val spacing = if (isLandscape) MediumSpacing else SmallSpacing
+    // A fixed height for the event carousel, deliberately independent of the clock size.
+    //
+    // The Column above stacks the clock row and the carousel, so a taller clock already pushes the
+    // carousel down by exactly the right amount on its own. Growing this value too would count the
+    // clock's growth twice: once as real layout, once as extra carousel height - which is what put
+    // a large empty band between the clock and the events.
     val pageHeight = if (isLandscape) 80.dp else 60.dp
 
     val pagerState = rememberPagerState { calendarEvents.size + 1 }
@@ -1427,21 +1459,45 @@ fun AtAGlance(
             ) {
                 Row(
                     modifier = Modifier.weight(1f),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.Bottom
                 ) {
                     if (showClock) {
+                        // The clock, the separator and the date all align on one BASELINE.
+                        //
+                        // Baseline, not Bottom: a text box carries descender padding that scales
+                        // with the font, so aligning bottom edges leaves a big clock sitting above
+                        // the date even with flush boxes.
+                        //
+                        // The clock is the tallest child; the row's height is pinned separately
+                        // (see the Column's spacing below) so it cannot push the events down.
                         Text(
-                            text = "$currentTime · ",
-                            fontSize = dateFontSize,
+                            text = currentTime,
+                            fontSize = dateFontSize * clockScale,
+                            fontFamily = clockFont.family(),
                             fontWeight = FontWeight.Bold,
-                            color = baseColor.copy(alpha = 0.95f)
+                            color = baseColor.copy(alpha = 0.95f),
+                            maxLines = 1,
+                            softWrap = false,
+                            modifier = Modifier.alignByBaseline()
+                        )
+                        Text(
+                            // The separator belongs to the date, not the clock: it keeps the
+                            // date's size and colour, so it never balloons with the clock.
+                            text = " · ",
+                            fontSize = dateFontSize,
+                            fontWeight = FontWeight.Medium,
+                            color = baseColor.copy(alpha = 0.7f),
+                            maxLines = 1,
+                            modifier = Modifier.alignByBaseline()
                         )
                     }
                     Text(
                         text = currentDate,
                         fontSize = dateFontSize,
                         fontWeight = FontWeight.Medium,
-                        color = baseColor.copy(alpha = 0.7f)
+                        color = baseColor.copy(alpha = 0.7f),
+                        maxLines = 1,
+                        modifier = Modifier.alignByBaseline()
                     )
                 }
 
